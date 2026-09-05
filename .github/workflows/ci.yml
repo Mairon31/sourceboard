@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -17,17 +17,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: npm
       - name: Install dependencies
-        run: npm install
-      - name: Bootstrap dependency lockfile
-        run: |
-          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: add reproducible dependency lockfile"
-            git push origin HEAD:master
-          fi
+        run: npm ci
       - name: Lint and format check
         run: npm run lint
       - name: Typecheck
