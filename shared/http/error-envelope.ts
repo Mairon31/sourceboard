@@ -6,7 +6,11 @@ export interface ErrorEnvelope {
   };
 }
 
-export function createErrorEnvelope(code: string, message: string, requestId: string): ErrorEnvelope {
+export function createErrorEnvelope(
+  code: string,
+  message: string,
+  requestId: string,
+): ErrorEnvelope {
   return {
     error: {
       code,

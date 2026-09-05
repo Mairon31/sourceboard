@@ -5,8 +5,8 @@
   "compatibility_date": "2026-09-05",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
   // Phase 1 adds D1, R2, KV, Queues, Rate Limiting, Email and Turnstile bindings.
   // Resource IDs are intentionally not invented in Phase 0.
 }

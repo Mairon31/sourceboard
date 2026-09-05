@@ -13,7 +13,7 @@ See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the
 - TypeScript
 - React 19
 - React Router v8 framework mode with SSR
-- Vite 7+
+- Vite 8
 - Cloudflare Vite Plugin
 - Cloudflare Workers + Static Assets
 - Zod
@@ -44,6 +44,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run deploy:dry-run
 npm run test:e2e
 ```
 
@@ -87,6 +88,12 @@ Preview the production build locally:
 
 ```bash
 npm run preview
+```
+
+Validate Worker packaging without publishing:
+
+```bash
+npm run deploy:dry-run
 ```
 
 Deploy the Worker and static assets:

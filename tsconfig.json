@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
     "rootDirs": [".", "./.react-router/types"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "paths": {
       "~/*": ["./app/*"]
     }
