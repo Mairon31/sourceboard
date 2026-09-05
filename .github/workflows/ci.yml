@@ -25,6 +25,10 @@ jobs:
           name: phase-0-package-lock
           path: package-lock.json
           if-no-files-found: error
+      - name: Diagnostic formatting pass
+        run: |
+          npm run format
+          git diff -- . ':!package-lock.json'
       - name: Lint and format check
         run: npm run lint
       - name: Typecheck
