@@ -9,7 +9,20 @@
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["vite/client"]
+    "verbatimModuleSyntax": true,
+    "rootDirs": [".", "./.react-router/types"],
+    "types": ["vite/client"],
+    "paths": {
+      "~/*": ["./app/*"]
+    }
   },
-  "include": ["app", "worker", "shared", "tests", "*.ts"]
+  "include": [
+    ".react-router/types/**/*",
+    "app/**/*",
+    "worker/**/*",
+    "shared/**/*",
+    "tests/**/*",
+    "worker-configuration.d.ts",
+    "*.ts"
+  ]
 }
