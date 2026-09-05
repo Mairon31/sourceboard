@@ -11,13 +11,14 @@
     "build": "react-router build",
     "preview": "npm run build && vite preview",
     "deploy": "wrangler deploy",
+    "deploy:dry-run": "wrangler deploy --dry-run",
     "typegen": "wrangler types --env-interface CloudflareEnvironment && react-router typegen",
     "typecheck": "npm run typegen && tsc --noEmit",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run deploy:dry-run"
   },
   "dependencies": {
     "isbot": "5.1.32",
@@ -28,12 +29,12 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.54.3",
-    "@eslint/js": "9.39.5",
+    "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
     "@react-router/dev": "8.3.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
-    "eslint": "9.39.5",
+    "eslint": "10.10.0",
     "prettier": "3.9.6",
     "typescript": "5.9.3",
     "typescript-eslint": "8.69.0",
