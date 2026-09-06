@@ -125,7 +125,7 @@ Status: **COMPLETED**
 
 ### Phase 0B verification evidence
 
-GitHub Actions run `#46` (`34019844403`) passed every established gate: `npm ci`, lint/Prettier,
+GitHub Actions run `#47` (`34020005160`) passed every established gate: `npm ci`, lint/Prettier,
 strict typecheck, 18 unit tests across 7 files, production build, Wrangler deploy dry-run and 65
 Playwright E2E tests with no failures or flakiness. See [`docs/UI_UX_PHASE_0B.md`](UI_UX_PHASE_0B.md)
 for the scope, decisions, evidence and deferred work.
