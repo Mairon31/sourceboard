@@ -489,6 +489,98 @@ export const reputationSignals = sqliteTable(
   ],
 );
 
+export const storeItems = sqliteTable(
+  "store_items",
+  {
+    id: text("id").primaryKey(),
+    type: text("type").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    pricePoints: integer("price_points", { mode: "number" }).notNull(),
+    assetId: text("asset_id"),
+    configJson: text("config_json").notNull().default("{}"),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    startsAt: integer("starts_at", { mode: "number" }),
+    endsAt: integer("ends_at", { mode: "number" }),
+    sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("store_items_active_order_index").on(table.isActive, table.sortOrder),
+    check(
+      "store_items_type_check",
+      sql`${table.type} IN ('AVATAR_FRAME', 'PROFILE_BANNER', 'PROFILE_EFFECT', 'NAME_FONT', 'EMOTE_PACK', 'STICKER_PACK')`,
+    ),
+    check("store_items_price_check", sql`${table.pricePoints} >= 0`),
+  ],
+);
+
+export const userInventory = sqliteTable(
+  "user_inventory",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    storeItemId: text("store_item_id")
+      .notNull()
+      .references(() => storeItems.id, { onDelete: "restrict" }),
+    acquiredAt: integer("acquired_at", { mode: "number" }).notNull(),
+    source: text("source").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.storeItemId] }),
+    index("user_inventory_user_acquired_index").on(table.userId, table.acquiredAt),
+    check(
+      "user_inventory_source_check",
+      sql`${table.source} IN ('PURCHASE', 'ACHIEVEMENT', 'ADMIN_GRANT')`,
+    ),
+  ],
+);
+
+export const storePurchases = sqliteTable(
+  "store_purchases",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    storeItemId: text("store_item_id")
+      .notNull()
+      .references(() => storeItems.id, { onDelete: "restrict" }),
+    pricePaid: integer("price_paid", { mode: "number" }).notNull(),
+    ledgerDebitId: text("ledger_debit_id").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("store_purchases_idempotency_unique").on(table.idempotencyKey),
+    index("store_purchases_user_created_index").on(table.userId, table.createdAt),
+  ],
+);
+
+export const userCosmetics = sqliteTable(
+  "user_cosmetics",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slot: text("slot").notNull(),
+    storeItemId: text("store_item_id")
+      .notNull()
+      .references(() => storeItems.id, { onDelete: "restrict" }),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.slot] }),
+    uniqueIndex("user_cosmetics_item_unique").on(table.userId, table.storeItemId),
+    check(
+      "user_cosmetics_slot_check",
+      sql`${table.slot} IN ('AVATAR_FRAME', 'PROFILE_BANNER', 'PROFILE_EFFECT', 'NAME_FONT')`,
+    ),
+  ],
+);
+
 export const postRevisions = sqliteTable(
   "post_revisions",
   {

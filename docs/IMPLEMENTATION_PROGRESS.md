@@ -370,6 +370,21 @@ GitHub Actions run `#74` (`34042939102`) passed lint/Prettier, strict TypeScript
 
 Phase 9 — Store, inventory, cosmetics, fonts and emote packs starts only after Phase 8 is green and reviewable.
 
+## Phase 9 — Store, inventory, cosmetics, fonts and emote packs
+
+Status: **IMPLEMENTED — pending CI and review**
+
+Implemented on the stacked `phase-9-store-cosmetics` branch:
+
+- [x] scheduled store catalog for the six canonical item types;
+- [x] atomic conditional point debit, purchase history and inventory entitlement;
+- [x] purchase idempotency and no duplicate non-consumable ownership;
+- [x] inventory-only cosmetic equip slots;
+- [x] allowlisted structured configuration for fonts and profile effects;
+- [x] capability-protected admin catalog create/update with audit entries.
+
+See [`docs/PHASE_9_STORE.md`](PHASE_9_STORE.md) for the contract and deliberate boundaries.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B
