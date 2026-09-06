@@ -6,13 +6,14 @@ owner and a recorded exception before production traffic is enabled.
 ## Cloudflare resources and secrets
 
 - [ ] Approved account, Worker name and custom domain are recorded privately.
-- [ ] D1 database exists; its ID is copied from Cloudflare into the private
-      deploy config, never guessed.
+- [x] D1 `sourceboard-db` exists and its Cloudflare database ID is bound in
+      `wrangler.jsonc`.
 - [ ] All forward migrations are applied to a reviewed staging database first.
-- [ ] Private R2 media bucket and KV namespace exist.
-- [ ] `sourceboard-events` and `sourceboard-events-dlq` exist.
-- [ ] Four Rate Limiting namespaces are created and attached to the `ssr`
-      environment.
+- [x] Private R2 `sourceboard-media` and the existing `sourceboard-cache` KV
+      namespace exist and are bound.
+- [x] `sourceboard-events` and `sourceboard-events-dlq` exist.
+- [x] Four account-scoped Workers Rate Limiting bindings are attached to the
+      top-level and `ssr` configurations.
 - [ ] Turnstile production site key is configured; secret is stored with
       `npx wrangler secret put TURNSTILE_SECRET`.
 - [ ] `EMAIL_FROM`, `EMAIL_LOOKUP_KEY_V1` and `DATA_ENCRYPTION_KEY_V1` are
@@ -25,7 +26,7 @@ owner and a recorded exception before production traffic is enabled.
 - [ ] Cloudflare WAF managed rules are enabled in a monitored mode first, then
       promoted after false-positive review.
 - [ ] Login, content, reaction and upload abuse rules have tested thresholds.
-- [ ] Security headers are present on API, SSR and media responses.
+- [x] Security headers are present on API, SSR and media responses.
 - [ ] Anonymous post, friends-only, private, deleted and NSFW privacy cases are
       tested through public HTML, metadata, JSON-LD, cache and search paths.
 - [ ] R2 bucket is not public and direct object access is denied.

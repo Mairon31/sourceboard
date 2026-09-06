@@ -37,18 +37,21 @@ control.
 
 ## Cloudflare production configuration
 
-`wrangler.jsonc` is intentionally local-safe. The complete deploy shape is kept
-in [`../wrangler.phase1.example.jsonc`](../wrangler.phase1.example.jsonc), with
-placeholders for D1, KV and Rate Limiting namespace IDs. Operators must replace
-those placeholders only with values returned by the approved Cloudflare
-account. No ID belongs in source control until it is real and reviewed.
+`wrangler.jsonc` is the Workers Builds source of truth. It now binds the
+verified `sourceboard-db` D1 ID and existing `sourceboard-cache` KV ID in both
+the top-level and `env.ssr` configurations, plus the four fixed account-scoped
+Workers Rate Limiting identifiers and the production resource names. The
+connected Cloudflare API does not expose Workers Rate Limiting namespace
+creation/listing; their positive integer identifiers are defined by the account
+operator and are not resource UUIDs.
 
 Before the first production deploy:
 
-1. Create/verify the D1 database, private R2 bucket, KV namespace, event queue
-   and `sourceboard-events-dlq` queue.
-2. Create the four Rate Limiting namespaces and configure the IDs in the
-   private deployment configuration. The current suggested limits are 10 auth,
+1. Verify the D1 database, private R2 bucket, KV namespace, event queue and
+   `sourceboard-events-dlq` queue; the named resources are already present in
+   the connected account and the D1 migrations are applied through `0013`.
+2. Keep the four account-scoped Rate Limiting identifiers stable and unique.
+   The current limits are 10 auth,
    60 content, 120 reactions and 20 uploads per 60-second window; tune them
    with observed traffic and abuse data.
 3. Register the production Turnstile site. Put only its public site key in the
@@ -161,8 +164,7 @@ The local container still cannot launch the Cloudflare Vite Playwright server
 because of its `uv_interface_addresses` failure; GitHub Actions remains the
 browser gate.
 
-The following remain explicit production launch prerequisites: real Cloudflare
-resources, WAF configuration, custom domain, Turnstile and Email Service
-verification, backup/restore drill, alert routing, an external penetration
-test, and review/removal of the remaining inline-style `'unsafe-inline'`
-allowance.
+The following remain explicit production launch prerequisites: WAF configuration,
+custom domain, Turnstile site/secret, Email Service sender and missing Worker
+secrets, backup/restore drill, alert routing, an external penetration test, and
+review/removal of the remaining inline-style `'unsafe-inline'` allowance.

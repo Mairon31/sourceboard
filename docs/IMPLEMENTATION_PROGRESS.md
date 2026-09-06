@@ -486,6 +486,21 @@ WAF/custom-domain/Turnstile/Email setup, a backup/restore drill, alert routing,
 external penetration testing and review/removal of the remaining inline-style
 allowance remain explicit production release prerequisites.
 
+### 2026-09-06 production provisioning checkpoint
+
+- [x] Reused Cloudflare D1 `sourceboard-db`, private R2 `sourceboard-media`,
+      existing KV `sourceboard-cache`, and Queue `sourceboard-events`.
+- [x] Created `sourceboard-events-dlq` only after an account-level absence
+      check; no duplicate named resource was created.
+- [x] Bound the verified D1/KV identifiers, Queue/DLQ, Email, Durable Object,
+      and four account-scoped Workers Rate Limiting policies in `wrangler.jsonc`
+      and `env.ssr`; the generated SSR config and deploy dry-run include them.
+- [x] Applied remote D1 migrations `0000` through `0013`.
+- [ ] Turnstile site key/secret and `EMAIL_FROM` are unavailable in the
+      connected account; existing `EMAIL_LOOKUP_KEY_V1` and
+      `DATA_ENCRYPTION_KEY_V1` are present. Custom domain, WAF, backup/restore,
+      alerts and external security review remain pending.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B
