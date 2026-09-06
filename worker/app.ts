@@ -8,9 +8,9 @@ const requestHandler = createRequestHandler(
 );
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const requestId = resolveRequestId(request.headers);
-    const apiResponse = await handleApiRequest(request, requestId);
+    const apiResponse = await handleApiRequest(request, requestId, env);
 
     if (apiResponse) {
       return apiResponse;

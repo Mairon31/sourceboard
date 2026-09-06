@@ -6,9 +6,9 @@
 
 ## Current phase
 
-**Phase 0B — UI/UX Experience Pass**
+**Phase 1 — Cloudflare infrastructure + D1/R2/KV**
 
-Status: **COMPLETED**
+Status: **IN PROGRESS**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -52,7 +52,8 @@ The implemented baseline passed every required verification gate in CI runs `339
 - Vite is pinned to the v8 line because the current Cloudflare Vite integration supports it and the baseline uses Vite's native `resolve.tsconfigPaths` option.
 - The React Router v8 request handler receives no legacy arbitrary `AppLoadContext` object in Phase 0. A typed `RouterContextProvider` will be introduced only when a later phase actually requires request-scoped loader context.
 - `compatibility_date` is `2026-09-05` and `nodejs_compat` is enabled.
-- D1/R2/KV/Queues and other resource bindings are intentionally deferred to later resource phases; no fake resource IDs are committed.
+- Phase 1 wires local-safe D1/R2/KV/Queue/Email/Turnstile contracts and
+  documents Rate Limiting bindings without inventing remote resource IDs.
 - CI uses the committed lockfile with `npm ci` and keeps GitHub token permissions read-only.
 
 ## Phase 0A — Design System, Liquid Glass and Motion Framework
@@ -125,7 +126,7 @@ Status: **COMPLETED**
 
 ### Phase 0B verification evidence
 
-GitHub Actions run `#47` (`34020005160`) passed every established gate: `npm ci`, lint/Prettier,
+GitHub Actions run `#48` (`34020133138`) passed every established gate: `npm ci`, lint/Prettier,
 strict typecheck, 18 unit tests across 7 files, production build, Wrangler deploy dry-run and 65
 Playwright E2E tests with no failures or flakiness. See [`docs/UI_UX_PHASE_0B.md`](UI_UX_PHASE_0B.md)
 for the scope, decisions, evidence and deferred work.
@@ -134,16 +135,25 @@ The E2E closure corrected strict locator ownership, added an explicit hydrated-U
 admin shell, kept static checks independent of hydration timing and added the missing SSR root title.
 No backend feature or fake persistence was introduced.
 
-## Next phase
+## Phase 1 — Cloudflare infrastructure + D1/R2/KV
 
-**Phase 1 — Cloudflare infrastructure + D1/R2/KV**
+Status: **IN PROGRESS**
 
-Status: **READY AFTER REVIEW**
+Implemented on the stacked `phase-1-cloudflare-infrastructure` branch:
 
-Phase 1 may begin after the stacked Phase 0B PR is reviewed. It must reuse the existing contracts and
-introduce only the canonical infrastructure scope: D1 as source of truth, private R2 behind Worker
-authorization and KV only for cache/config. No resource IDs or secrets are committed until real
-provisioning exists.
+- [x] local-safe D1 `DB`, private R2 `MEDIA`, KV `CACHE`, Queue `EVENTS` and Email `EMAIL` bindings;
+- [x] explicit `ssr` environment binding declarations for the Vite/React Router build artifact;
+- [x] complete non-deployable template for the four Rate Limiting bindings and real resource IDs;
+- [x] public Turnstile site-key variable contract and secret documentation;
+- [x] Drizzle SQLite schema plus Wrangler-compatible first migration;
+- [x] prepared-query D1 system metadata repository;
+- [x] typed R2 media service for put/get/head/delete;
+- [x] boolean-only health binding availability response;
+- [x] local D1 migration and R2 round-trip verification.
+
+See [`docs/PHASE_1_INFRASTRUCTURE.md`](PHASE_1_INFRASTRUCTURE.md) for the exact configuration,
+provisioning commands, verification evidence and rollback boundary. Authentication, sessions, RBAC,
+private media authorization and product persistence remain Phase 2+ work.
 
 ## Known limitations
 
@@ -151,4 +161,5 @@ provisioning exists.
   product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- D1/R2/KV/Queues, authentication and product persistence remain outside Phase 0B by design.
+- Authentication, sessions, RBAC, product persistence and authorized media gateways remain outside
+  Phase 1 by design.
