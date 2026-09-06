@@ -111,10 +111,39 @@ export function createStoreService(db: D1Database) {
            FROM store_purchases WHERE idempotency_key = ?`,
         )
         .bind(purchaseKey)
-        .first();
+        .first<{
+          id: string;
+          storeItemId: string;
+          pricePaid: number;
+          idempotencyKey: string;
+        }>();
       if (!purchase)
         throw new Error("The item is unavailable, already owned, or the balance is insufficient.");
       return purchase;
+    },
+
+    async grant(userId: string, itemId: string, now = Date.now()) {
+      const result = await db
+        .prepare(
+          `INSERT OR IGNORE INTO user_inventory (user_id, store_item_id, acquired_at, source)
+           SELECT ?, id, ?, 'ADMIN_GRANT' FROM store_items
+           WHERE id = ? AND EXISTS (SELECT 1 FROM users WHERE id = ?)`,
+        )
+        .bind(userId, now, itemId, userId)
+        .run();
+      if (!result.meta.changes) {
+        const existing = await db
+          .prepare(
+            `SELECT EXISTS(
+              SELECT 1 FROM users WHERE id = ?
+                AND EXISTS (SELECT 1 FROM store_items WHERE id = ?)
+            ) AS valid`,
+          )
+          .bind(userId, itemId)
+          .first<{ valid: number }>();
+        if (!existing?.valid) throw new Error("The user or store item was not found.");
+      }
+      return { userId, storeItemId: itemId, created: Number(result.meta.changes ?? 0) > 0 };
     },
 
     async inventory(userId: string) {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createManualAdjustment, processReputationEvent } from "../../worker/reputation/service";
 
-function createDb(options: { duplicate?: boolean } = {}) {
+function createDb(options: { duplicate?: boolean; batchChanges?: boolean } = {}) {
   const statements: string[] = [];
   const db = {
     prepare: vi.fn((query: string) => {
@@ -22,7 +22,9 @@ function createDb(options: { duplicate?: boolean } = {}) {
       };
       return statement as unknown as D1PreparedStatement;
     }),
-    batch: vi.fn(async () => []),
+    batch: vi.fn(async (statements: unknown[]) =>
+      options.batchChanges ? statements.map(() => ({ meta: { changes: 1 } })) : [],
+    ),
   } as unknown as D1Database;
   return { db, statements };
 }
@@ -74,6 +76,25 @@ describe("reputation ledger", () => {
     expect(statements.some((query) => query.includes("INSERT OR IGNORE INTO point_ledger"))).toBe(
       true,
     );
+  });
+
+  it("emits each newly earned achievement only after its D1 insert", async () => {
+    const { db } = createDb({ batchChanges: true });
+    const send = vi.fn(async () => undefined);
+    await processReputationEvent(
+      db,
+      { type: "source.verified", postId: "post", commentId: "comment" },
+      100,
+      { send } as unknown as Queue,
+    );
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith({
+      notification: expect.objectContaining({
+        type: "achievement.earned",
+        recipientUserId: "contributor",
+        entityType: "ACHIEVEMENT",
+      }),
+    });
   });
 
   it("rejects invalid manual adjustments before touching D1", async () => {

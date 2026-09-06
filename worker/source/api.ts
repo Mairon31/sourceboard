@@ -7,6 +7,7 @@ import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { PostError } from "../posts/errors";
+import type { NotificationEvent } from "../notifications/service";
 
 function json(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -96,6 +97,22 @@ async function emit(
   payload: Record<string, string>,
 ): Promise<void> {
   if (env.EVENTS) await env.EVENTS.send({ type, ...payload });
+  if (env.EVENTS && (type === "source.accepted" || type === "source.verified")) {
+    const recipient = await env.DB?.prepare("SELECT author_id AS userId FROM posts WHERE id = ?")
+      .bind(payload.postId)
+      .first<{ userId: string }>();
+    if (recipient) {
+      await env.EVENTS.send({
+        notification: {
+          type: type as NotificationEvent["type"],
+          eventId: `${type}:${payload.postId}:${payload.commentId}`,
+          recipientUserId: recipient.userId,
+          entityType: "POST",
+          entityId: payload.postId,
+        },
+      });
+    }
+  }
 }
 
 export function isSourceRoute(pathname: string): boolean {

@@ -1,3 +1,8 @@
+interface NotificationHubNamespace {
+  idFromName(name: string): DurableObjectId;
+  get(id: DurableObjectId): DurableObjectStub;
+}
+
 /**
  * The Phase 1 binding contract is deliberately optional at the application
  * boundary. Local development can start without remote provisioning, while
@@ -8,6 +13,7 @@ export interface SourceBoardEnvironment {
   MEDIA?: R2Bucket;
   CACHE?: KVNamespace;
   EVENTS?: Queue;
+  NOTIFICATION_HUB?: NotificationHubNamespace;
   RATE_LIMIT_AUTH?: RateLimit;
   RATE_LIMIT_CONTENT?: RateLimit;
   RATE_LIMIT_REACTIONS?: RateLimit;

@@ -57,7 +57,11 @@ export interface ProfileService {
   block(viewerId: string, targetId: string): Promise<void>;
   unblock(viewerId: string, targetId: string): Promise<void>;
   listFriends(viewerId: string): Promise<FriendsListDto>;
-  listNotifications(userId: string): Promise<{ notifications: NotificationRecord[] }>;
+  listNotifications(
+    userId: string,
+  ): Promise<{ notifications: NotificationRecord[]; unreadCount: number }>;
+  markNotificationRead(userId: string, notificationId: string): Promise<boolean>;
+  markAllNotificationsRead(userId: string): Promise<number>;
 }
 
 function validateProfileInput(input: ProfileUpdateInput): void {
@@ -405,7 +409,15 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
   }
 
   async function listNotifications(userId: string) {
-    return { notifications: await dependencies.store.listNotifications(userId, 50) };
+    return dependencies.store.listNotificationsWithUnreadCount(userId, 50);
+  }
+
+  async function markNotificationRead(userId: string, notificationId: string) {
+    return dependencies.store.markNotificationRead(userId, notificationId, now());
+  }
+
+  async function markAllNotificationsRead(userId: string) {
+    return dependencies.store.markAllNotificationsRead(userId, now());
   }
 
   return {
@@ -422,6 +434,8 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
     unblock,
     listFriends,
     listNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
   };
 }
 

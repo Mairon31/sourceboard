@@ -124,17 +124,42 @@ export async function handleCommentApiRequest(
         );
       }
       const input = await body(request);
+      const postId = decodeURIComponent(postMatch[1] ?? "");
+      const parentCommentId =
+        typeof input.parentCommentId === "string" ? input.parentCommentId : null;
+      const recipient = parentCommentId
+        ? await database(env)
+            .prepare("SELECT author_id AS userId FROM comments WHERE id = ?")
+            .bind(parentCommentId)
+            .first<{ userId: string }>()
+        : await database(env)
+            .prepare("SELECT author_id AS userId FROM posts WHERE id = ?")
+            .bind(postId)
+            .first<{ userId: string }>();
+      const comment = await commentService.create({
+        postId,
+        authorId,
+        parentCommentId,
+        richtext: input.richtext,
+        plaintext: input.plaintext,
+        attachment: input.attachment,
+      });
+      if (env.EVENTS && recipient && recipient.userId !== authorId) {
+        await env.EVENTS.send({
+          notification: {
+            type: parentCommentId ? "comment.reply" : "comment.created",
+            eventId: `comment:${comment.id}`,
+            recipientUserId: recipient.userId,
+            actorUserId: authorId,
+            entityType: "COMMENT",
+            entityId: comment.id,
+            payload: { postId, parentCommentId },
+          },
+        });
+      }
       return json(
         {
-          comment: await commentService.create({
-            postId: decodeURIComponent(postMatch[1] ?? ""),
-            authorId,
-            parentCommentId:
-              typeof input.parentCommentId === "string" ? input.parentCommentId : null,
-            richtext: input.richtext,
-            plaintext: input.plaintext,
-            attachment: input.attachment,
-          }),
+          comment,
         },
         requestId,
         201,

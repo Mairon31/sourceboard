@@ -72,7 +72,7 @@ export async function handleModerationRequest(
   const url = new URL(request.url);
   if (!isModerationRoute(url.pathname)) return null;
   try {
-    const service = createModerationService(database(env));
+    const service = createModerationService(database(env), { events: env.EVENTS });
     if (request.method === "POST" && url.pathname === "/api/reports") {
       assertSameOrigin(request);
       assertCsrfToken(request);

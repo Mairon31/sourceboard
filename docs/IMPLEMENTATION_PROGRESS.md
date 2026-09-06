@@ -406,13 +406,20 @@ See [`docs/PHASE_10_MODERATION.md`](PHASE_10_MODERATION.md) for the contract and
 
 GitHub Actions run `#84` (`34045600762`) passed lint/Prettier, strict TypeScript, 74 unit tests across 24 files, production build, Wrangler deploy dry-run, local D1 migrations through `0011` and 75 Playwright E2E tests. The PR remains unmerged for review.
 
+## Phase 11 — Notificaciones y tiempo real
+
+Status: **COMPLETE — verified in CI**
+
+See [`docs/PHASE_11_NOTIFICATIONS.md`](PHASE_11_NOTIFICATIONS.md) for the D1-first notification contract, domain producers, realtime client reconciliation, and deliberate boundaries.
+
+GitHub Actions run `#89` (`34047822984`) passed lint/Prettier, strict TypeScript, 82 unit tests across 26 files, production build, Wrangler deploy dry-run, local D1 migrations through `0012`, and 75 Playwright E2E tests. The PR remains unmerged for review.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B
   product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- Source resolution, full moderation, notifications and public search remain deferred to their
-  canonical phases. Auth and
+- Public search remains deferred to its canonical phase. Auth and
   profile mutations remain unavailable until operators provide the required Worker Secrets and
   real Rate Limit/Email resources; no insecure local bypass is used.

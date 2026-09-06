@@ -99,11 +99,20 @@ export async function handleStoreRequest(
       if (typeof body.idempotencyKey !== "string")
         return failure("INVALID_REQUEST", "An idempotency key is required.", requestId, 400);
       const itemId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
-      return response(
-        { purchase: await service.purchase(userId, itemId, body.idempotencyKey) },
-        requestId,
-        201,
-      );
+      const purchase = await service.purchase(userId, itemId, body.idempotencyKey);
+      if (env.EVENTS) {
+        await env.EVENTS.send({
+          notification: {
+            type: "store.purchased",
+            eventId: `store.purchase:${purchase.idempotencyKey}`,
+            recipientUserId: userId,
+            entityType: "STORE_ITEM",
+            entityId: purchase.storeItemId,
+            payload: { pricePaid: purchase.pricePaid },
+          },
+        });
+      }
+      return response({ purchase }, requestId, 201);
     }
     if (request.method === "GET" && url.pathname === "/api/me/inventory") {
       const userId = await sessionUser(request, env);
@@ -124,6 +133,42 @@ export async function handleStoreRequest(
       if (typeof body.storeItemId !== "string")
         return failure("INVALID_REQUEST", "A store item is required.", requestId, 400);
       return response({ cosmetic: await service.equip(userId, slot, body.storeItemId) }, requestId);
+    }
+    if (request.method === "POST" && url.pathname === "/api/admin/store/grant") {
+      assertSameOrigin(request);
+      assertCsrfToken(request);
+      const actorUserId = await requireAdmin(request, requestId, env);
+      const body = parseBody(await request.json());
+      if (typeof body.userId !== "string" || typeof body.storeItemId !== "string")
+        return failure("INVALID_REQUEST", "A user and store item are required.", requestId, 400);
+      const grant = await service.grant(body.userId, body.storeItemId);
+      if (grant.created && env.EVENTS) {
+        await env.EVENTS.send({
+          notification: {
+            type: "store.granted",
+            eventId: `store.grant:${grant.userId}:${grant.storeItemId}`,
+            recipientUserId: grant.userId,
+            actorUserId,
+            entityType: "STORE_ITEM",
+            entityId: grant.storeItemId,
+            payload: { source: "ADMIN_GRANT" },
+          },
+        });
+      }
+      await database
+        .prepare(
+          "INSERT INTO audit_logs (id, actor_user_id, action, target_type, target_id, metadata_json, request_id, created_at) VALUES (?, ?, 'STORE_ITEM_GRANTED', 'USER', ?, ?, ?, ?)",
+        )
+        .bind(
+          crypto.randomUUID(),
+          actorUserId,
+          grant.userId,
+          JSON.stringify({ storeItemId: grant.storeItemId, created: grant.created }),
+          requestId,
+          Date.now(),
+        )
+        .run();
+      return response({ grant }, requestId, grant.created ? 201 : 200);
     }
     if (url.pathname === "/api/admin/store" || /^\/api\/admin\/store\/[^/]+$/.test(url.pathname)) {
       assertSameOrigin(request);

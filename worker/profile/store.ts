@@ -22,6 +22,8 @@ export interface PreferencesUpdateInput {
   blurNsfw: boolean;
   allowNsfwDirectOverride: boolean;
   allowFriendRequests: boolean;
+  notifyActivity?: boolean;
+  notifyFriendships?: boolean;
 }
 
 export interface SocialLinkInput {
@@ -80,6 +82,12 @@ export interface ProfileStore {
     now: number,
   ): Promise<void>;
   updatePreferences(userId: string, input: PreferencesUpdateInput, now: number): Promise<void>;
+  listNotificationsWithUnreadCount(
+    userId: string,
+    limit: number,
+  ): Promise<{ notifications: NotificationRecord[]; unreadCount: number }>;
+  markNotificationRead(userId: string, notificationId: string, now: number): Promise<boolean>;
+  markAllNotificationsRead(userId: string, now: number): Promise<number>;
   getFriendship(firstUserId: string, secondUserId: string): Promise<FriendshipRecord | null>;
   getRelationship(viewerId: string | null, targetId: string): Promise<Relationship>;
   getBlock(blockerId: string, blockedId: string): Promise<boolean>;
@@ -133,6 +141,8 @@ interface PreferenceRow {
   blur_nsfw: number;
   allow_nsfw_direct_override: number;
   allow_friend_requests: number;
+  notify_activity: number;
+  notify_friendships: number;
   created_at: number;
   updated_at: number;
 }
@@ -184,9 +194,9 @@ interface MediaAssetRow {
 interface NotificationRow {
   id: string;
   user_id: string;
-  type: "FRIEND_REQUEST" | "FRIEND_ACCEPTED";
+  type: string;
   actor_user_id: string | null;
-  entity_type: "USER" | "FRIENDSHIP" | null;
+  entity_type: string | null;
   entity_id: string | null;
   payload_json: string | null;
   read_at: number | null;
@@ -222,6 +232,8 @@ function toPreferences(row: PreferenceRow): UserPreferenceRecord {
     blurNsfw: row.blur_nsfw === 1,
     allowNsfwDirectOverride: row.allow_nsfw_direct_override === 1,
     allowFriendRequests: row.allow_friend_requests === 1,
+    notifyActivity: row.notify_activity === 1,
+    notifyFriendships: row.notify_friendships === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -393,8 +405,8 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       db
         .prepare(
           `INSERT OR IGNORE INTO user_preferences
-             (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests, created_at, updated_at)
-           VALUES (?, 1, 1, 0, 1, ?, ?)`,
+             (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests, notify_activity, notify_friendships, created_at, updated_at)
+           VALUES (?, 1, 1, 0, 1, 1, 1, ?, ?)`,
         )
         .bind(userId, now, now),
     ]);
@@ -449,7 +461,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       const row = await db
         .prepare(
           `SELECT user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override,
-                  allow_friend_requests, created_at, updated_at
+                  allow_friend_requests, notify_activity, notify_friendships, created_at, updated_at
            FROM user_preferences WHERE user_id = ?`,
         )
         .bind(userId)
@@ -464,7 +476,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       const created = await db
         .prepare(
           `SELECT user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override,
-                  allow_friend_requests, created_at, updated_at
+                  allow_friend_requests, notify_activity, notify_friendships, created_at, updated_at
            FROM user_preferences WHERE user_id = ?`,
         )
         .bind(userId)
@@ -519,13 +531,15 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       await db
         .prepare(
           `INSERT INTO user_preferences
-             (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+             (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests, notify_activity, notify_friendships, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT (user_id) DO UPDATE SET
              hide_nsfw = excluded.hide_nsfw,
              blur_nsfw = excluded.blur_nsfw,
              allow_nsfw_direct_override = excluded.allow_nsfw_direct_override,
              allow_friend_requests = excluded.allow_friend_requests,
+             notify_activity = excluded.notify_activity,
+             notify_friendships = excluded.notify_friendships,
              updated_at = excluded.updated_at`,
         )
         .bind(
@@ -534,6 +548,8 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
           input.blurNsfw ? 1 : 0,
           input.allowNsfwDirectOverride ? 1 : 0,
           input.allowFriendRequests ? 1 : 0,
+          input.notifyActivity === false ? 0 : 1,
+          input.notifyFriendships === false ? 0 : 1,
           now,
           now,
         )
@@ -624,9 +640,10 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
           .prepare(
             `INSERT INTO notifications
                (id, user_id, type, actor_user_id, entity_type, entity_id, payload_json, read_at, created_at)
-             VALUES (?, ?, 'FRIEND_REQUEST', ?, 'FRIENDSHIP', ?, NULL, NULL, ?)`,
+             SELECT ?, ?, 'FRIEND_REQUEST', ?, 'FRIENDSHIP', ?, NULL, NULL, ?
+             WHERE COALESCE((SELECT notify_friendships FROM user_preferences WHERE user_id = ?), 1) = 1`,
           )
-          .bind(`friend-request-${id}`, addresseeId, requesterId, id, createdAt),
+          .bind(`friend-request-${id}`, addresseeId, requesterId, id, createdAt, addresseeId),
       ]);
       return {
         id,
@@ -657,7 +674,8 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
           .prepare(
             `INSERT INTO notifications
                (id, user_id, type, actor_user_id, entity_type, entity_id, payload_json, read_at, created_at)
-             VALUES (?, ?, 'FRIEND_REQUEST', ?, 'FRIENDSHIP', ?, NULL, NULL, ?)`,
+             SELECT ?, ?, 'FRIEND_REQUEST', ?, 'FRIENDSHIP', ?, NULL, NULL, ?
+             WHERE COALESCE((SELECT notify_friendships FROM user_preferences WHERE user_id = ?), 1) = 1`,
           )
           .bind(
             `friend-request-${existing.id}-${createdAt}`,
@@ -665,6 +683,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
             requesterId,
             existing.id,
             createdAt,
+            addresseeId,
           ),
       ]);
       const reopened = await getFriendship(requesterId, addresseeId);
@@ -693,7 +712,8 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
           .prepare(
             `INSERT INTO notifications
                (id, user_id, type, actor_user_id, entity_type, entity_id, payload_json, read_at, created_at)
-             VALUES (?, ?, 'FRIEND_ACCEPTED', ?, 'FRIENDSHIP', ?, NULL, NULL, ?)`,
+             SELECT ?, ?, 'FRIEND_ACCEPTED', ?, 'FRIENDSHIP', ?, NULL, NULL, ?
+             WHERE COALESCE((SELECT notify_friendships FROM user_preferences WHERE user_id = ?), 1) = 1`,
           )
           .bind(
             `friend-accepted-${friendshipId}`,
@@ -701,6 +721,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
             addresseeId,
             friendshipId,
             now,
+            row.requester_id,
           ),
       ]);
       return results[0]?.meta.changes === 1;
@@ -774,6 +795,37 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
         .bind(userId, limit)
         .all<NotificationRow>();
       return result.results.map(toNotification);
+    },
+
+    async listNotificationsWithUnreadCount(userId, limit) {
+      const [notifications, unread] = await Promise.all([
+        this.listNotifications(userId, limit),
+        db
+          .prepare(
+            "SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND read_at IS NULL",
+          )
+          .bind(userId)
+          .first<{ count: number }>(),
+      ]);
+      return { notifications, unreadCount: Number(unread?.count ?? 0) };
+    },
+
+    async markNotificationRead(userId, notificationId, now) {
+      const result = await db
+        .prepare(
+          "UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE id = ? AND user_id = ?",
+        )
+        .bind(now, notificationId, userId)
+        .run();
+      return result.meta.changes === 1;
+    },
+
+    async markAllNotificationsRead(userId, now) {
+      const result = await db
+        .prepare("UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL")
+        .bind(now, userId)
+        .run();
+      return result.meta.changes;
     },
 
     async getMediaAsset(assetId) {

@@ -85,6 +85,13 @@
       "when": 1788711827009,
       "tag": "0011_tough_loners",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1788712641296,
+      "tag": "0012_shallow_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }

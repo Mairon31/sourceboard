@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { assertReason, assertReportInput, canActOnTarget } from "../../worker/moderation/service";
+import { describe, expect, it, vi } from "vitest";
+import {
+  assertReason,
+  assertReportInput,
+  canActOnTarget,
+  createModerationService,
+} from "../../worker/moderation/service";
 
 describe("moderation contracts", () => {
   it("accepts canonical report categories and rejects unknown categories", () => {
@@ -31,5 +36,41 @@ describe("moderation contracts", () => {
     expect(canActOnTarget(moderator, user)).toBe(true);
     expect(canActOnTarget(moderator, admin)).toBe(false);
     expect(canActOnTarget(admin, admin)).toBe(false);
+  });
+
+  it("queues a notification for the affected content owner after the action is recorded", async () => {
+    const send = vi.fn(async () => undefined);
+    const db = {
+      prepare: vi.fn((query: string) => {
+        const statement = {
+          bind: vi.fn(() => statement),
+          first: vi.fn(async <T>() =>
+            query.includes("FROM posts") ? ({ userId: "target-user" } as T) : null,
+          ),
+          run: vi.fn(async () => ({ meta: { changes: 1 } })),
+        };
+        return statement as unknown as D1PreparedStatement;
+      }),
+      batch: vi.fn(async (statements: D1PreparedStatement[]) =>
+        statements.map(() => ({ meta: { changes: 1 } })),
+      ),
+    } as unknown as D1Database;
+
+    await createModerationService(db, { events: { send } as unknown as Queue }).apply({
+      actorUserId: "moderator",
+      targetType: "POST",
+      targetId: "post-1",
+      action: "HIDE",
+      reason: "Repeated spam content",
+      requestId: "request-1",
+    });
+
+    expect(send).toHaveBeenCalledWith({
+      notification: expect.objectContaining({
+        type: "moderation.action",
+        recipientUserId: "target-user",
+        entityId: "post-1",
+      }),
+    });
   });
 });
