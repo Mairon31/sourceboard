@@ -342,14 +342,33 @@ See [`docs/PHASE_7_ACCEPTED_VERIFIED_SOURCE.md`](PHASE_7_ACCEPTED_VERIFIED_SOURC
 
 ### Phase 7 verification evidence
 
-GitHub Actions run `#72` (`34041818059`) passed lint/Prettier, strict TypeScript,
+GitHub Actions run `#73` (`34041951469`) passed lint/Prettier, strict TypeScript,
 63 unit tests, production build, Wrangler deploy dry-run, local D1 migrations
 through `0007` and 75 Playwright E2E tests. No merge was performed.
 
+## Phase 8 — Points, reputation, medals and achievements
+
+Status: **COMPLETED — PR #11 ready for review**
+
+Implemented on the stacked `phase-8-reputation-achievements` branch:
+
+- [x] append-only D1 point ledger with idempotency keys and exact reversal entries;
+- [x] Queue consumer for Phase 7 source events with retry/ack behavior;
+- [x] Accepted Source and Verified Source rewards with self-answer protection;
+- [x] versioned achievement catalog and earned-medal persistence;
+- [x] repeated source-pair anti-farming signals;
+- [x] capability-protected, reason-required manual point adjustments with audit log;
+- [x] persisted profile points, verified-source count and achievements.
+
+See [`docs/PHASE_8_REPUTATION_ACHIEVEMENTS.md`](PHASE_8_REPUTATION_ACHIEVEMENTS.md) for the data contract and deferred scope.
+
+### Phase 8 verification evidence
+
+GitHub Actions run `#74` (`34042939102`) passed lint/Prettier, strict TypeScript, 66 unit tests across 21 files, production build, Wrangler deploy dry-run, local D1 migrations through `0008` and 75 Playwright E2E tests. The PR remains unmerged for review.
+
 ## Next phase
 
-Phase 8 — Points, reputation, medals and achievements is next, stacked on
-Phase 7 and constrained by its source event contracts.
+Phase 9 — Store, inventory, cosmetics, fonts and emote packs starts only after Phase 8 is green and reviewable.
 
 ## Known limitations
 

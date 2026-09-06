@@ -1,6 +1,7 @@
 import { Link, useLoaderData } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
+import { createReputationReader } from "../../worker/reputation/read";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { SocialActionButton } from "../components/product/SocialActionButton";
@@ -18,6 +19,7 @@ export async function loader({ params, request, context }: LoaderArgs) {
     async (runtime, userId) => ({
       profile: await createProfileService({
         store: createD1ProfileStore(runtime.db),
+        reputation: createReputationReader(runtime.db),
       }).getPublicProfile(params.username ?? "", userId),
       unavailable: false,
     }),
@@ -128,6 +130,18 @@ function ProfileStats({ profile }: { profile: PublicProfile }) {
         <strong>{profile.friendCount}</strong>
         <span>Friends</span>
       </div>
+      {profile.points !== undefined && (
+        <div className="product-stat">
+          <strong>{profile.points}</strong>
+          <span>Points</span>
+        </div>
+      )}
+      {profile.verifiedSources !== undefined && (
+        <div className="product-stat">
+          <strong>{profile.verifiedSources}</strong>
+          <span>Verified sources</span>
+        </div>
+      )}
       <div className="product-stat">
         <strong>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends"}</strong>
         <span>Visibility</span>
@@ -150,19 +164,27 @@ function ProfileHero({ profile }: { profile: PublicProfile }) {
   );
 }
 
-function ContributionHistory() {
+function ContributionHistory({ profile }: { profile: PublicProfile }) {
   return (
     <>
       <PageHeader
         eyebrow="Contribution history"
         title="Reputation is earned in SourceBoard"
-        description="Achievements and public source activity will appear as those phases add persisted contribution data."
+        description="Contribution points and achievements are calculated from the server-side ledger."
       />
       <Card className="product-empty-state">
         <p>
-          Profile identity and social privacy are live. Contribution points, achievements and source
-          history remain server-authoritative work for their later phases.
+          Verified source rewards and achievement history are server-authoritative and append-only.
         </p>
+        {profile.achievements?.length ? (
+          <div className="product-chip-row" aria-label="Earned achievements">
+            {profile.achievements.map((achievement) => (
+              <Badge key={achievement.id} tone="neutral">
+                {achievement.icon} {achievement.name}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
         <Link className="product-text-action" to="/">
           Return to feed
         </Link>
@@ -177,7 +199,7 @@ export default function ProfileRoute() {
   return (
     <ProductShell wide>
       <ProfileHero profile={profile} />
-      <ContributionHistory />
+      <ContributionHistory profile={profile} />
     </ProductShell>
   );
 }

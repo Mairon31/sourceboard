@@ -82,6 +82,16 @@ export interface PublicProfileDto {
   canRemoveFriend: boolean;
   canBlock: boolean;
   friendCount: number;
+  points?: number;
+  reputation?: number;
+  verifiedSources?: number;
+  achievements?: Array<{
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    earnedAt?: string;
+  }>;
 }
 
 export interface FriendsListDto {

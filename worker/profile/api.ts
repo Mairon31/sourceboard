@@ -11,6 +11,7 @@ import { createMediaService } from "../media/r2";
 import { ProfileError, isProfileError } from "./errors";
 import { createD1ProfileStore, type ProfileStore, type SocialLinkInput } from "./store";
 import { createProfileService } from "./service";
+import { createReputationReader } from "../reputation/read";
 
 const profileUpdateSchema = z.object({
   displayName: z.string(),
@@ -115,7 +116,13 @@ function createService(env: SourceBoardEnvironment): {
   store: ProfileStore;
 } {
   const store = createD1ProfileStore(requireDatabase(env));
-  return { store, service: createProfileService({ store }) };
+  return {
+    store,
+    service: createProfileService({
+      store,
+      reputation: createReputationReader(requireDatabase(env)),
+    }),
+  };
 }
 
 async function getOptionalViewerId(

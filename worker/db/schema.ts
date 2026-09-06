@@ -402,6 +402,93 @@ export const sourceResolutions = sqliteTable(
   ],
 );
 
+export const pointLedger = sqliteTable(
+  "point_ledger",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amount: integer("amount", { mode: "number" }).notNull(),
+    entryType: text("entry_type").notNull(),
+    rewardType: text("reward_type"),
+    sourceEvent: text("source_event"),
+    sourceEventId: text("source_event_id"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    metadataJson: text("metadata_json"),
+    createdByUserId: text("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("point_ledger_idempotency_unique").on(table.idempotencyKey),
+    index("point_ledger_user_created_index").on(table.userId, table.createdAt),
+    index("point_ledger_source_event_index").on(table.sourceEvent, table.sourceEventId),
+    check(
+      "point_ledger_entry_type_check",
+      sql`${table.entryType} IN ('AWARD', 'REVERSAL', 'MANUAL_ADJUSTMENT')`,
+    ),
+    check("point_ledger_amount_nonzero_check", sql`${table.amount} <> 0`),
+  ],
+);
+
+export const achievementCatalog = sqliteTable(
+  "achievement_catalog",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    version: integer("version", { mode: "number" }).notNull().default(1),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    icon: text("icon").notNull(),
+    verifiedSourceThreshold: integer("verified_source_threshold", { mode: "number" }).notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("achievement_catalog_slug_version_unique").on(table.slug, table.version),
+    check("achievement_catalog_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
+    check("achievement_catalog_threshold_check", sql`${table.verifiedSourceThreshold} > 0`),
+  ],
+);
+
+export const userAchievements = sqliteTable(
+  "user_achievements",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    achievementId: text("achievement_id")
+      .notNull()
+      .references(() => achievementCatalog.id, { onDelete: "restrict" }),
+    earnedAt: integer("earned_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("user_achievements_user_achievement_unique").on(table.userId, table.achievementId),
+    index("user_achievements_user_earned_index").on(table.userId, table.earnedAt),
+  ],
+);
+
+export const reputationSignals = sqliteTable(
+  "reputation_signals",
+  {
+    id: text("id").primaryKey(),
+    signalType: text("signal_type").notNull(),
+    postId: text("post_id").references(() => posts.id, { onDelete: "cascade" }),
+    actorUserId: text("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    targetUserId: text("target_user_id").references(() => users.id, { onDelete: "set null" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    metadataJson: text("metadata_json"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("reputation_signals_idempotency_unique").on(table.idempotencyKey),
+    index("reputation_signals_post_created_index").on(table.postId, table.createdAt),
+  ],
+);
+
 export const postRevisions = sqliteTable(
   "post_revisions",
   {
