@@ -25,6 +25,11 @@ moderation workflows or anonymous-identity deanonymization. Those remain
 owned by their later phases. The post-image object keys remain private R2
 implementation details and are never exposed as public bucket URLs.
 
+Migration `0004` grants `anonymous_post.deanonymize` to the seeded Admin role,
+matching the Phase 4A capability boundary. Owner already receives all seeded
+capabilities. Moderator and Source Verifier do not receive anonymous identity
+lookup by default.
+
 Cloudflare D1 migrations are forward-only. Production rollback uses the
 approved backup/restore process or a reviewed corrective migration; no unsafe
 automatic `down` migration is implied. Local reset experiments must use a

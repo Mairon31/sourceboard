@@ -47,13 +47,19 @@ export interface PostService {
     editorUserId: string,
     input: Omit<PostUpdateInput, "slug">,
   ): Promise<PostDetail>;
-  setNsfw(postId: string, editorUserId: string, isNsfw: boolean): Promise<PostDetail>;
+  setNsfw(
+    postId: string,
+    editorUserId: string,
+    isNsfw: boolean,
+    options?: { allowModeration?: boolean },
+  ): Promise<PostDetail>;
   archivePost(postId: string, authorId: string, archived: boolean): Promise<void>;
   deletePost(postId: string, authorId: string): Promise<void>;
   getVisibleMedia(
     assetId: string,
     viewerId: string | null,
   ): Promise<{ post: PostWithAuthor; media: PostWithAuthor["media"] } | null>;
+  getAnonymousAuthorForAdmin(postId: string): Promise<{ userId: string; username: string }>;
 }
 
 function validatePostFields(input: {
@@ -350,9 +356,12 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
       return toPostDetail(nextPost, editorUserId, policyDependencies);
     },
 
-    async setNsfw(postId, editorUserId, isNsfw) {
+    async setNsfw(postId, editorUserId, isNsfw, options = {}) {
       const current = await requirePost(postId);
-      if (current.post.authorId !== editorUserId) {
+      const isOwner = current.post.authorId === editorUserId;
+      const isAuthorOwnedNsfwMark =
+        !current.post.isNsfw || current.post.nsfwMarkedBy === editorUserId;
+      if ((!isOwner || !isAuthorOwnedNsfwMark) && !options.allowModeration) {
         throw new PostError(
           403,
           "POST_NSFW_FORBIDDEN",
@@ -389,6 +398,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
           createdAt: currentTime,
         },
         now: currentTime,
+        allowNonOwner: !isOwner,
       });
       if (!updated)
         throw new PostError(
@@ -396,7 +406,11 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
           "POST_EDIT_WINDOW_CLOSED",
           "The seven-day edit window has closed.",
         );
-      return toPostDetail(await requirePost(postId), editorUserId, policyDependencies);
+      return toPostDetail(
+        await requirePost(postId),
+        isOwner ? editorUserId : null,
+        policyDependencies,
+      );
     },
 
     async archivePost(postId, authorId, archived) {
@@ -416,6 +430,18 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
       if (!post || post.media.status !== "ACTIVE") return null;
       if (!(await canViewPost(viewerId, post.post, policyDependencies))) return null;
       return { post, media: post.media };
+    },
+
+    async getAnonymousAuthorForAdmin(postId) {
+      const post = await requirePost(postId);
+      if (post.post.authorMode !== "ANONYMOUS") {
+        throw new PostError(
+          409,
+          "POST_NOT_ANONYMOUS",
+          "This post does not use anonymous authorship.",
+        );
+      }
+      return { userId: post.author.userId, username: post.author.username };
     },
   };
 }

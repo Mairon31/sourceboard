@@ -1,12 +1,51 @@
+import { useParams } from "react-router";
 import { useState } from "react";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { Badge, Button, Card, Textarea } from "../components/ui";
 import { PresentationNotice } from "../components/product/ProductShell";
 
+function readCsrfToken(): string {
+  if (typeof document === "undefined") return "";
+  const cookie = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("__Host-sourceboard_csrf="));
+  return cookie ? decodeURIComponent(cookie.slice("__Host-sourceboard_csrf=".length)) : "";
+}
+
 export default function AdminAnonymousRoute() {
+  const { postId = "" } = useParams();
   const [reason, setReason] = useState("");
-  const [revealed, setRevealed] = useState(false);
+  const [status, setStatus] = useState<"idle" | "loading" | "revealed" | "unavailable">("idle");
+  const [username, setUsername] = useState<string | null>(null);
   const canReveal = reason.trim().length >= 10;
+
+  async function revealIdentity() {
+    setStatus("loading");
+    setUsername(null);
+    try {
+      const response = await fetch(
+        `/api/admin/anonymous-posts/${encodeURIComponent(postId)}/reveal-author`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": readCsrfToken(),
+          },
+          body: JSON.stringify({ reason: reason.trim() }),
+        },
+      );
+      if (!response.ok) {
+        setStatus("unavailable");
+        return;
+      }
+      const result = (await response.json()) as { author?: { username?: string } };
+      setUsername(result.author?.username ?? null);
+      setStatus(result.author?.username ? "revealed" : "unavailable");
+    } catch {
+      setStatus("unavailable");
+    }
+  }
 
   return (
     <AdminShell>
@@ -20,10 +59,12 @@ export default function AdminAnonymousRoute() {
         <div className="admin-reveal-state">
           <div>
             <Badge>Identity protected</Badge>
-            <strong>{revealed ? "Presentation-only identity preview" : "Anonymous Author"}</strong>
+            <strong>
+              {status === "revealed" ? "Identity revealed for this audit" : "Anonymous Author"}
+            </strong>
             <span>
-              {revealed
-                ? "No real private identity is exposed by this fixture."
+              {status === "revealed" && username
+                ? `Internal account: ${username}`
                 : "The public product must not correlate this post with a profile."}
             </span>
           </div>
@@ -34,24 +75,25 @@ export default function AdminAnonymousRoute() {
           value={reason}
           onChange={(event) => {
             setReason(event.target.value);
-            setRevealed(false);
+            setStatus("idle");
           }}
           placeholder="Describe the abuse-prevention or moderation need…"
-          hint="Production access will record actor, post, timestamp and reason in audit logs."
+          hint="Every lookup is capability-checked and written to the audit log."
         />
 
-        <Button disabled={!canReveal} onClick={() => setRevealed(true)}>
-          Reveal identity
+        <Button disabled={!canReveal || status === "loading"} onClick={revealIdentity}>
+          {status === "loading" ? "Checking access…" : "Reveal identity"}
         </Button>
 
-        {revealed ? (
-          <div className="product-store-preview-status">
-            Access would be audited in the production system.
+        {status === "unavailable" ? (
+          <div className="product-store-preview-status" role="status">
+            Identity access is unavailable or not authorized for this account.
           </div>
         ) : null}
 
         <PresentationNotice>
-          Phase 0B intentionally does not contain or expose a real deanonymization backend.
+          The public post and its metadata remain anonymized. This view never uses the public DTO to
+          expose identity.
         </PresentationNotice>
       </Card>
     </AdminShell>

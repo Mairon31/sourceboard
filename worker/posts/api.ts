@@ -1,6 +1,7 @@
 import { createIdentifier } from "../auth/crypto";
+import { createAuthContext, createAuthService } from "../auth/service";
 import { isAuthError } from "../auth/errors";
-import { createAuthService } from "../auth/service";
+import { hasCapability, type Capability } from "../auth/rbac";
 import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
@@ -91,6 +92,67 @@ function requireMutationSecurity(request: Request): void {
 function parseBoolean(value: FormDataEntryValue | null, fallback = false): boolean {
   if (value === null) return fallback;
   return ["1", "true", "on", "yes"].includes(String(value).toLowerCase());
+}
+
+async function requireCapability(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+  capability: Capability,
+): Promise<{
+  userId: string;
+  authStore: ReturnType<typeof createD1AuthStore>;
+  context: ReturnType<typeof createAuthContext>;
+}> {
+  const db = requireDatabase(env);
+  const authStore = createD1AuthStore(db);
+  const auth = createAuthService({ store: authStore, env });
+  const session = await auth.getSession(request);
+  if (!session) throw new PostError(401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
+  const context = createAuthContext(request, requestId);
+  const authorization = await auth.getAuthorization(context);
+  if (!hasCapability(authorization, capability)) {
+    throw new PostError(403, "CAPABILITY_REQUIRED", "You are not allowed to perform this action.");
+  }
+  return { userId: session.user.id, authStore, context };
+}
+
+function parseAuditReason(input: Record<string, unknown>): string {
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (!reason || reason.length > 500) {
+    throw new PostError(
+      400,
+      "AUDIT_REASON_REQUIRED",
+      "A reason of 500 characters or fewer is required.",
+    );
+  }
+  return reason;
+}
+
+async function writeCapabilityAudit(
+  authStore: ReturnType<typeof createD1AuthStore>,
+  requestId: string,
+  ipPrefixHash: string,
+  input: {
+    actorUserId: string;
+    action: string;
+    targetId: string;
+    reason: string;
+    metadata?: Record<string, unknown>;
+  },
+): Promise<void> {
+  await authStore.writeAuditLog({
+    id: createIdentifier(),
+    actorUserId: input.actorUserId,
+    action: input.action,
+    targetType: "post",
+    targetId: input.targetId,
+    reason: input.reason,
+    metadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
+    requestId,
+    ipPrefixHash,
+    createdAt: Date.now(),
+  });
 }
 
 function parsePostVisibility(value: unknown): PostVisibility {
@@ -270,14 +332,71 @@ async function handlePostAction(
     if (request.method !== "POST" && request.method !== "DELETE") {
       throw new PostError(404, "NOT_FOUND", "Post endpoint not found.");
     }
-    return jsonResponse(
-      { post: await service.setNsfw(postId, viewerId, request.method === "POST") },
-      requestId,
-    );
+    const current = await createD1PostStore(requireDatabase(env)).getNsfwPost(postId);
+    if (!current) throw new PostError(404, "POST_NOT_FOUND", "The post was not found.");
+    const isNsfw = request.method === "POST";
+    const isOwner = current.authorUserId === viewerId;
+    const isAuthorOwnedNsfwMark = !current.isNsfw || current.nsfwMarkedBy === viewerId;
+    let moderation: Awaited<ReturnType<typeof requireCapability>> | null = null;
+    let reason: string | null = null;
+    if (!isOwner || !isAuthorOwnedNsfwMark) {
+      moderation = await requireCapability(
+        request,
+        requestId,
+        env,
+        isNsfw ? "post.nsfw.mark" : "post.nsfw.unmark",
+      );
+      reason = parseAuditReason(await parseJson(request));
+    }
+    const post = await service.setNsfw(postId, viewerId, isNsfw, {
+      allowModeration: Boolean(moderation),
+    });
+    if (moderation && reason) {
+      await writeCapabilityAudit(
+        moderation.authStore,
+        requestId,
+        moderation.context.security.ipPrefixHash,
+        {
+          actorUserId: viewerId,
+          action: isNsfw ? "post.nsfw.mark" : "post.nsfw.unmark",
+          targetId: postId,
+          reason,
+          metadata: { source: "moderation" },
+        },
+      );
+    }
+    return jsonResponse({ post }, requestId);
   }
   if (request.method !== "POST") throw new PostError(404, "NOT_FOUND", "Post endpoint not found.");
   await service.archivePost(postId, viewerId, action === "archive");
   return jsonResponse({ archived: action === "archive" }, requestId);
+}
+
+async function handleAnonymousReveal(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+  postId: string,
+): Promise<Response> {
+  requireMutationSecurity(request);
+  if (request.method !== "POST") throw new PostError(404, "NOT_FOUND", "Post endpoint not found.");
+  const body = await parseJson(request);
+  const reason = parseAuditReason(body);
+  const capability = await requireCapability(request, requestId, env, "anonymous_post.deanonymize");
+  await writeCapabilityAudit(
+    capability.authStore,
+    requestId,
+    capability.context.security.ipPrefixHash,
+    {
+      actorUserId: capability.userId,
+      action: "anonymous_post.deanonymize",
+      targetId: postId,
+      reason,
+      metadata: { scope: "author_lookup" },
+    },
+  );
+  const author = await createService(env).getAnonymousAuthorForAdmin(postId);
+  return jsonResponse({ postId, author }, requestId);
 }
 
 async function getViewerForMedia(
@@ -396,6 +515,7 @@ function isPostRoute(pathname: string): boolean {
   return (
     pathname === "/api/posts" ||
     pathname.startsWith("/api/posts/") ||
+    pathname.startsWith("/api/admin/anonymous-posts/") ||
     pathname.startsWith("/api/media/post/") ||
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml" ||
@@ -417,6 +537,17 @@ export async function handlePostApiRequest(
       url.pathname === "/sitemap-posts-1.xml"
     ) {
       return await handleSeoRequest(request, requestId, env);
+    }
+    const revealMatch = url.pathname.match(
+      /^\/api\/admin\/anonymous-posts\/([^/]+)\/reveal-author$/,
+    );
+    if (revealMatch) {
+      return await handleAnonymousReveal(
+        request,
+        requestId,
+        env,
+        decodePathSegment(revealMatch[1] ?? ""),
+      );
     }
     const mediaMatch = url.pathname.match(/^\/api\/media\/post\/([^/]+)$/);
     if (request.method === "GET" && mediaMatch) {
