@@ -1,4 +1,4 @@
-name: Phase 0A Lockfile Bootstrap
+name: Phase 0A Bootstrap
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  lockfile:
+  bootstrap:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -19,14 +19,16 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Refresh lockfile
-        run: npm install --package-lock-only --ignore-scripts
-      - name: Commit lockfile when changed
+      - name: Install exact dependencies
+        run: npm ci
+      - name: Apply pinned Prettier
+        run: npx prettier --write app shared tests
+      - name: Commit formatter output when changed
         run: |
-          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
+          if [ -n "$(git status --porcelain -- app shared tests)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "chore: refresh phase 0a dependency lockfile"
+            git add app shared tests
+            git commit -m "style: apply phase 0a formatter"
             git push origin HEAD:phase-0a-design-system
           fi
