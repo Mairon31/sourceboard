@@ -77,11 +77,13 @@ test("interactive primitives support keyboard use", async ({ page }) => {
 test("reduced motion collapses decorative animation", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
+  await page.getByRole("tab", { name: "States" }).click();
 
-  const duration = await page
-    .getByTestId("demo-skeleton")
-    .evaluate((element) => getComputedStyle(element).animationDuration);
-  expect(["0s", "0.001s"]).toContain(duration);
+  const shimmer = await page.getByTestId("demo-skeleton").evaluate((element) => {
+    const pseudo = getComputedStyle(element, "::after");
+    return { display: pseudo.display, duration: pseudo.animationDuration };
+  });
+  expect(shimmer.display).toBe("none");
 });
 
 for (const viewport of viewports) {
@@ -90,9 +92,27 @@ for (const viewport of viewports) {
     await page.goto("/");
     await expect(page.getByRole("banner")).toBeVisible();
 
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(1);
+    const diagnostic = await page.evaluate(() => {
+      const overflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+      const offenders = [...document.querySelectorAll<HTMLElement>("body *")]
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return {
+            tag: element.tagName.toLowerCase(),
+            className: element.className,
+            left: Math.round(rect.left),
+            right: Math.round(rect.right),
+            width: Math.round(rect.width),
+          };
+        })
+        .filter((entry) => entry.left < -1 || entry.right > window.innerWidth + 1)
+        .slice(0, 12);
+      return { overflow, offenders };
+    });
+
+    expect(
+      diagnostic.overflow,
+      JSON.stringify(diagnostic.offenders, null, 2),
+    ).toBeLessThanOrEqual(1);
   });
 }
