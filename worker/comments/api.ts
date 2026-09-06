@@ -11,6 +11,7 @@ import { createD1ProfileStore } from "../profile/store";
 import { createD1CommentStore } from "./store";
 import { createCommentService } from "./service";
 import { createEntitlementChecker } from "../store/entitlements";
+import { createModerationService } from "../moderation/service";
 
 function isCommentRoute(pathname: string): boolean {
   return (
@@ -115,6 +116,13 @@ export async function handleCommentApiRequest(
     if (postMatch && request.method === "POST") {
       mutationSecurity(request);
       const authorId = await requiredViewer(request, env);
+      if (await createModerationService(database(env)).hasActiveSanction(authorId, "COMMENT")) {
+        throw new PostError(
+          403,
+          "COMMENT_RESTRICTED",
+          "Your commenting access is temporarily restricted.",
+        );
+      }
       const input = await body(request);
       return json(
         {

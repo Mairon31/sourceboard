@@ -14,6 +14,7 @@ import { assertPostImage, sha256Hex } from "./image";
 import { createD1PostStore } from "./store";
 import { createPostService } from "./service";
 import type { FeedKind, PostAuthorMode, PostVisibility } from "./types";
+import { createModerationService } from "../moderation/service";
 
 function jsonResponse(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -200,6 +201,13 @@ async function createPostFromForm(
 ): Promise<{ post: unknown }> {
   requireMutationSecurity(request);
   const viewerId = await requireViewerId(request, env);
+  if (await createModerationService(requireDatabase(env)).hasActiveSanction(viewerId, "POSTING")) {
+    throw new PostError(
+      403,
+      "POSTING_RESTRICTED",
+      "Your posting access is temporarily restricted.",
+    );
+  }
   await requireContentRateLimit(env, viewerId, request);
   const form = await request.formData();
   const fileEntry = form.get("file") ?? form.get("image");

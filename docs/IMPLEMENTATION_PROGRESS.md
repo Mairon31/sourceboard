@@ -390,6 +390,22 @@ See [`docs/PHASE_9_STORE.md`](PHASE_9_STORE.md) for the contract and deliberate 
 
 GitHub Actions run `#82` (`34044939144`) passed all required gates, including 71 unit tests and 75 Playwright E2E tests. Phase 9 is complete and remains unmerged for review.
 
+## Phase 10 — Moderación completa, reportes y sanciones
+
+Status: **COMPLETE — CI green, ready for review**
+
+- [x] reportes persistentes para post/comment/user/source con categorías canónicas, deduplicación y estados de cola;
+- [x] cola administrativa protegida por capability;
+- [x] acciones auditadas de hide/restore, lock/unlock, NSFW, revocación de verificación y sanciones de usuario;
+- [x] restricciones temporales de publicar/comentar, suspensión y ban con `expires_at` y evaluación server-side;
+- [x] protección de jerarquía Moderator/Admin/Owner sin confiar en la UI;
+- [x] appeals básicos asociados a sanciones;
+- [x] UI administrativa conectada a la cola persistida.
+
+See [`docs/PHASE_10_MODERATION.md`](PHASE_10_MODERATION.md) for the contract and deliberate boundaries.
+
+GitHub Actions run `#84` (`34045600762`) passed lint/Prettier, strict TypeScript, 74 unit tests across 24 files, production build, Wrangler deploy dry-run, local D1 migrations through `0011` and 75 Playwright E2E tests. The PR remains unmerged for review.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B

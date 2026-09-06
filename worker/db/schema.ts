@@ -183,6 +183,90 @@ export const auditLogs = sqliteTable(
   ],
 );
 
+export const moderationReports = sqliteTable(
+  "moderation_reports",
+  {
+    id: text("id").primaryKey(),
+    reporterUserId: text("reporter_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    category: text("category").notNull(),
+    detail: text("detail"),
+    status: text("status").notNull().default("OPEN"),
+    assigneeUserId: text("assignee_user_id").references(() => users.id),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("moderation_reports_duplicate_index").on(
+      table.reporterUserId,
+      table.targetType,
+      table.targetId,
+      table.category,
+    ),
+    index("moderation_reports_queue_index").on(table.status, table.createdAt),
+  ],
+);
+
+export const moderationActions = sqliteTable(
+  "moderation_actions",
+  {
+    id: text("id").primaryKey(),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => users.id),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    action: text("action").notNull(),
+    reason: text("reason").notNull(),
+    expiresAt: integer("expires_at", { mode: "number" }),
+    metadataJson: text("metadata_json"),
+    requestId: text("request_id"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [index("moderation_actions_target_index").on(table.targetType, table.targetId)],
+);
+
+export const userSanctions = sqliteTable(
+  "user_sanctions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => users.id),
+    kind: text("kind").notNull(),
+    reason: text("reason").notNull(),
+    expiresAt: integer("expires_at", { mode: "number" }),
+    revokedAt: integer("revoked_at", { mode: "number" }),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [index("user_sanctions_active_index").on(table.userId, table.kind, table.expiresAt)],
+);
+
+export const moderationAppeals = sqliteTable(
+  "moderation_appeals",
+  {
+    id: text("id").primaryKey(),
+    sanctionId: text("sanction_id")
+      .notNull()
+      .references(() => userSanctions.id, { onDelete: "cascade" }),
+    appellantUserId: text("appellant_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    detail: text("detail").notNull(),
+    status: text("status").notNull().default("OPEN"),
+    reviewerUserId: text("reviewer_user_id").references(() => users.id),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [index("moderation_appeals_queue_index").on(table.status, table.createdAt)],
+);
+
 export const mediaAssets = sqliteTable(
   "media_assets",
   {
