@@ -1,0 +1,374 @@
+import type {
+  FriendView,
+  ModerationQueueItem,
+  NotificationView,
+  PostDetail,
+  PostSummary,
+  PublicProfile,
+  StoreItemView,
+} from "../../shared/ui/contracts";
+
+const anonymousAuthor = {
+  mode: "ANONYMOUS" as const,
+  displayName: "Anonymous Author",
+};
+
+const auroraAuthor = {
+  mode: "IDENTIFIED" as const,
+  displayName: "Aurora Vale",
+  username: "aurora",
+  profileUrl: "/profile/aurora",
+};
+
+const acceptedSource = {
+  commentId: "comment-source",
+  canonicalUrl: "https://example.com/original-source",
+  acceptedAt: "2026-09-05T20:15:00Z",
+  label: "Accepted Source" as const,
+};
+
+const verifiedSource = {
+  commentId: "comment-source",
+  canonicalUrl: "https://example.com/original-source",
+  evidenceSummary: "The source page predates reposts and matches the uncropped original.",
+  verifiedAt: "2026-09-05T21:00:00Z",
+  verifierLabel: "Source verifier",
+  label: "Verified Source" as const,
+};
+
+export const feedFixtures: PostSummary[] = [
+  {
+    id: "post-public",
+    title: "Where did this concert photo originally come from?",
+    description: "I found this crop in an old repost and want the original upload.",
+    author: auroraAuthor,
+    createdAt: "2026-09-06T01:05:00Z",
+    status: "OPEN",
+    visibility: "PUBLIC",
+    isNsfw: false,
+    nsfwPresentation: "VISIBLE",
+    reaction: { type: "LIKE", count: 18, viewerReacted: false },
+    commentCount: 7,
+    imageAlt: "Presentation placeholder for an uploaded source-search image",
+  },
+  {
+    id: "post-anonymous",
+    title: "Trying to identify the original post behind this meme",
+    description: "The public author identity is intentionally masked in this example.",
+    author: anonymousAuthor,
+    createdAt: "2026-09-05T23:40:00Z",
+    status: "ANSWERED",
+    visibility: "PUBLIC",
+    isNsfw: false,
+    nsfwPresentation: "VISIBLE",
+    reaction: { type: "LIKE", count: 43, viewerReacted: true },
+    commentCount: 14,
+    imageAlt: "Presentation placeholder for an anonymous post image",
+    acceptedSource,
+  },
+  {
+    id: "post-verified",
+    title: "Original editorial photo found and verified",
+    description: "A source verifier confirmed the canonical page and chronology.",
+    author: auroraAuthor,
+    createdAt: "2026-09-05T18:12:00Z",
+    status: "VERIFIED",
+    visibility: "PUBLIC",
+    isNsfw: false,
+    nsfwPresentation: "VISIBLE",
+    reaction: { type: "LIKE", count: 126, viewerReacted: false },
+    commentCount: 22,
+    imageAlt: "Presentation placeholder for a verified-source post image",
+    acceptedSource,
+    verifiedSource,
+  },
+  {
+    id: "post-nsfw",
+    title: "Source request hidden by NSFW preference",
+    description:
+      "This fixture proves the hidden-content state without rendering sensitive imagery.",
+    author: anonymousAuthor,
+    createdAt: "2026-09-05T15:30:00Z",
+    status: "OPEN",
+    visibility: "PUBLIC",
+    isNsfw: true,
+    nsfwPresentation: "HIDDEN",
+    reaction: { type: "LIKE", count: 5, viewerReacted: false },
+    commentCount: 3,
+    imageAlt: "NSFW content hidden by user preference",
+  },
+  {
+    id: "post-archived",
+    title: "Archived source request",
+    author: auroraAuthor,
+    createdAt: "2026-09-04T12:00:00Z",
+    status: "ARCHIVED",
+    visibility: "PUBLIC",
+    isNsfw: false,
+    nsfwPresentation: "VISIBLE",
+    reaction: { type: "LIKE", count: 2, viewerReacted: false },
+    commentCount: 1,
+    imageAlt: "Presentation placeholder for an archived post",
+  },
+  {
+    id: "post-locked",
+    title: "Locked moderation example",
+    author: auroraAuthor,
+    createdAt: "2026-09-03T12:00:00Z",
+    status: "LOCKED",
+    visibility: "PUBLIC",
+    isNsfw: false,
+    nsfwPresentation: "VISIBLE",
+    reaction: { type: "LIKE", count: 9, viewerReacted: false },
+    commentCount: 0,
+    imageAlt: "Presentation placeholder for a locked post",
+  },
+];
+
+const sourceComment = {
+  id: "comment-source",
+  author: {
+    mode: "IDENTIFIED" as const,
+    displayName: "Mika Chen",
+    username: "mikachen",
+    profileUrl: "/profile/mikachen",
+  },
+  body: "This appears to be the original publication. The timestamp and uncropped frame match.",
+  createdAt: "2026-09-05T19:45:00Z",
+  state: "VISIBLE" as const,
+  reaction: { type: "LIKE" as const, count: 31, viewerReacted: true },
+  replies: [
+    {
+      id: "comment-reply",
+      parentCommentId: "comment-source",
+      author: auroraAuthor,
+      body: "That is the exact version I was looking for. Thank you.",
+      createdAt: "2026-09-05T20:02:00Z",
+      state: "VISIBLE" as const,
+      reaction: { type: "LIKE" as const, count: 4, viewerReacted: false },
+      replies: [],
+    },
+  ],
+};
+
+const commentFixtures = [
+  sourceComment,
+  {
+    id: "comment-emote",
+    author: anonymousAuthor,
+    body: "This reply demonstrates an inline custom-emote token.",
+    createdAt: "2026-09-05T19:12:00Z",
+    state: "VISIBLE" as const,
+    reaction: { type: "LIKE" as const, count: 2, viewerReacted: false },
+    attachment: { type: "EMOTE" as const, label: ":source-hunt:" },
+    replies: [],
+  },
+  {
+    id: "comment-gif",
+    author: auroraAuthor,
+    body: "GIF/sticker attachments are provider/catalog references, not ordinary image uploads.",
+    createdAt: "2026-09-05T18:55:00Z",
+    state: "VISIBLE" as const,
+    reaction: { type: "LIKE" as const, count: 1, viewerReacted: false },
+    attachment: { type: "GIF" as const, label: "Reaction GIF preview" },
+    replies: [],
+  },
+  {
+    id: "comment-hidden",
+    author: auroraAuthor,
+    body: "Hidden by moderation",
+    createdAt: "2026-09-05T18:40:00Z",
+    state: "HIDDEN" as const,
+    reaction: { type: "LIKE" as const, count: 0, viewerReacted: false },
+    replies: [],
+  },
+];
+
+export const postDetailFixtures: Record<string, PostDetail> = Object.fromEntries(
+  feedFixtures.map((post) => [
+    post.id,
+    {
+      ...post,
+      comments: post.id === "post-verified" ? commentFixtures : [sourceComment],
+      permissions: {
+        canEdit: post.author.mode === "IDENTIFIED",
+        canArchive: post.author.mode === "IDENTIFIED",
+        canDelete: post.author.mode === "IDENTIFIED",
+        canAcceptSource: true,
+        canModerate: post.id === "post-verified",
+        canVerifySource: post.id === "post-verified",
+        canRevealAnonymous: post.author.mode === "ANONYMOUS",
+        canMarkNsfw: true,
+      },
+    },
+  ]),
+);
+
+export const profileFixtures: PublicProfile[] = [
+  {
+    id: "user-aurora",
+    username: "aurora",
+    displayName: "Aurora Vale",
+    bio: "Tracking original sources, publication dates and context around visual media.",
+    bannerStyle: "midnight-orbit",
+    roleLabel: "Source contributor",
+    points: 1840,
+    reputation: 92,
+    verifiedSources: 17,
+    friendCount: 128,
+    socialLinks: [
+      { label: "Website", url: "https://example.com/aurora" },
+      { label: "Instagram", url: "https://instagram.com/example" },
+    ],
+    achievements: [
+      {
+        id: "achievement-first-source",
+        name: "First Source",
+        description: "Contributed a source that was verified.",
+        icon: "spark",
+        earnedAt: "2026-08-14T12:00:00Z",
+      },
+      {
+        id: "achievement-sleuth",
+        name: "Source Sleuth",
+        description: "Verified-source contribution streak.",
+        icon: "search",
+        progress: 72,
+      },
+    ],
+    recentPosts: feedFixtures.filter((post) => post.author.username === "aurora").slice(0, 3),
+    equippedCosmetics: ["Nebula avatar frame", "Editorial name font"],
+  },
+];
+
+export const friendFixtures: FriendView[] = [
+  {
+    user: { id: "friend-1", username: "mikachen", displayName: "Mika Chen", verified: true },
+    relationship: "FRIEND",
+    mutualFriends: 12,
+  },
+  {
+    user: { id: "friend-2", username: "sol", displayName: "Sol Rivera" },
+    relationship: "INCOMING",
+    mutualFriends: 4,
+  },
+  {
+    user: { id: "friend-3", username: "pixeltrail", displayName: "Pixel Trail" },
+    relationship: "OUTGOING",
+  },
+  {
+    user: { id: "friend-4", username: "blocked-demo", displayName: "Blocked account" },
+    relationship: "BLOCKED",
+  },
+];
+
+export const notificationFixtures: NotificationView[] = [
+  {
+    id: "notification-1",
+    type: "SOURCE_VERIFIED",
+    title: "Source verified",
+    body: "A verifier confirmed the source on your post.",
+    href: "/posts/post-verified",
+    createdAt: "2026-09-06T01:15:00Z",
+    isRead: false,
+  },
+  {
+    id: "notification-2",
+    type: "REPLY",
+    actor: { id: "friend-1", username: "mikachen", displayName: "Mika Chen" },
+    title: "New reply",
+    body: "Mika replied to a source thread you follow.",
+    href: "/posts/post-public",
+    createdAt: "2026-09-05T22:30:00Z",
+    isRead: false,
+  },
+  {
+    id: "notification-3",
+    type: "FRIEND_REQUEST",
+    actor: { id: "friend-2", username: "sol", displayName: "Sol Rivera" },
+    title: "Friend request",
+    body: "Sol sent you a friend request.",
+    href: "/friends",
+    createdAt: "2026-09-05T16:10:00Z",
+    isRead: true,
+  },
+];
+
+export const storeItemFixtures: StoreItemView[] = [
+  {
+    id: "store-frame",
+    name: "Nebula Frame",
+    description: "A restrained animated-looking frame preview for profile avatars.",
+    type: "AVATAR_FRAME",
+    state: "EQUIPPED",
+    price: 500,
+    previewLabel: "Nebula avatar frame",
+  },
+  {
+    id: "store-effect",
+    name: "Glass Aurora",
+    description: "Subtle profile background effect.",
+    type: "PROFILE_EFFECT",
+    state: "OWNED",
+    price: 900,
+    previewLabel: "Glass aurora profile effect",
+  },
+  {
+    id: "store-font",
+    name: "Editorial",
+    description: "Display-name font from the staff-managed catalog.",
+    type: "NAME_FONT",
+    state: "AVAILABLE",
+    price: 240,
+    previewLabel: "Editorial display-name font",
+  },
+  {
+    id: "store-emotes",
+    name: "Source Hunters",
+    description: "Pack of custom inline emotes.",
+    type: "EMOTE_PACK",
+    state: "INSUFFICIENT_POINTS",
+    price: 2400,
+    previewLabel: "Source Hunters emote pack",
+    packSize: 12,
+  },
+  {
+    id: "store-stickers",
+    name: "Evidence Desk",
+    description: "Sticker pack for comment replies.",
+    type: "STICKER_PACK",
+    state: "DISABLED",
+    price: 700,
+    previewLabel: "Evidence Desk sticker pack",
+    packSize: 8,
+  },
+];
+
+export const moderationFixtures: ModerationQueueItem[] = [
+  {
+    id: "moderation-1",
+    postId: "post-nsfw",
+    postTitle: "Source request hidden by NSFW preference",
+    authorLabel: "Anonymous Author",
+    authorMode: "ANONYMOUS",
+    reason: "Potentially sensitive media not marked by author",
+    reportCount: 3,
+    ageLabel: "18 min",
+    isNsfw: true,
+    sourceStatus: "UNREVIEWED",
+    status: "OPEN",
+  },
+  {
+    id: "moderation-2",
+    postId: "post-verified",
+    postTitle: "Original editorial photo found and verified",
+    authorLabel: "Aurora Vale",
+    authorMode: "IDENTIFIED",
+    reason: "Misleading-source report requires review",
+    reportCount: 1,
+    ageLabel: "2 h",
+    isNsfw: false,
+    sourceStatus: "VERIFIED",
+    status: "IN_REVIEW",
+  },
+];

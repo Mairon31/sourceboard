@@ -1,0 +1,1 @@
+ALTER TABLE `moderation_actions` ADD `request_id` text;

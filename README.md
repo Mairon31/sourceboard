@@ -4,7 +4,9 @@ SourceBoard is a Cloudflare-native social forum for finding the public source or
 
 ## Current status
 
-Phase 0 establishes the reproducible full-stack baseline only. Authentication, D1/R2 bindings, the Liquid Glass design system, social features, moderation, and other later-phase functionality are intentionally not implemented yet.
+Phase 0B, Phase 1, Phase 2, Phase 3, Phase 4, Phase 4A and Phase 5 are complete on their stacked branches.
+Phase 6 is next; production secrets/resources remain operator-supplied and no
+fixture data is being promoted to persistence.
 
 See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the authoritative implementation status.
 
@@ -16,6 +18,7 @@ See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the
 - Vite 8
 - Cloudflare Vite Plugin
 - Cloudflare Workers + Static Assets
+- Drizzle ORM + Drizzle Kit for typed SQLite schema/migrations
 - Zod
 - Vitest
 - Playwright
@@ -72,7 +75,21 @@ Example response:
 {
   "status": "ok",
   "service": "sourceboard",
-  "requestId": "..."
+  "requestId": "...",
+  "bindings": {
+    "db": false,
+    "media": false,
+    "cache": false,
+    "events": false,
+    "rateLimits": {
+      "auth": false,
+      "content": false,
+      "reactions": false,
+      "uploads": false
+    },
+    "email": false,
+    "turnstile": false
+  }
 }
 ```
 
@@ -102,7 +119,13 @@ Deploy the Worker and static assets:
 npm run deploy
 ```
 
-Phase 0 deliberately does not create D1, R2, KV, Queue, Durable Object, Turnstile, Email, or Rate Limiting resource identifiers. Those bindings are introduced in the phases defined by the canonical plan.
+Phase 1 keeps local-safe binding declarations in `wrangler.jsonc` and the complete real-resource shape in
+[`wrangler.phase1.example.jsonc`](wrangler.phase1.example.jsonc). No Cloudflare IDs or secrets are
+invented. Provisioning and migration commands are documented in
+[`docs/PHASE_1_INFRASTRUCTURE.md`](docs/PHASE_1_INFRASTRUCTURE.md).
+
+Authentication, security secrets, API endpoints and Phase 2 boundaries are documented in
+[`docs/PHASE_2_AUTH.md`](docs/PHASE_2_AUTH.md).
 
 ## Architecture decisions
 

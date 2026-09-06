@@ -1,0 +1,154 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sourceboard",
+  "main": "./worker/app.ts",
+  "compatibility_date": "2026-09-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "triggers": {
+    "crons": ["17 * * * *"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sourceboard-db",
+      "database_id": "<D1_DATABASE_ID>",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "sourceboard-media",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "<KV_NAMESPACE_ID>",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "EVENTS",
+        "queue": "sourceboard-events",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "sourceboard-events",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "retry_delay": 60,
+        "dead_letter_queue": "sourceboard-events-dlq",
+      },
+    ],
+  },
+  "env": {
+    "ssr": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sourceboard-db",
+          "database_id": "<D1_DATABASE_ID>",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "MEDIA",
+          "bucket_name": "sourceboard-media",
+        },
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "CACHE",
+          "id": "<KV_NAMESPACE_ID>",
+        },
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "EVENTS",
+            "queue": "sourceboard-events",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "sourceboard-events",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "retry_delay": 60,
+            "dead_letter_queue": "sourceboard-events-dlq",
+          },
+        ],
+      },
+      "ratelimits": [
+        {
+          "name": "RATE_LIMIT_AUTH",
+          "namespace_id": "<RATE_LIMIT_AUTH_NAMESPACE_ID>",
+          "simple": { "limit": 10, "period": 60 },
+        },
+        {
+          "name": "RATE_LIMIT_CONTENT",
+          "namespace_id": "<RATE_LIMIT_CONTENT_NAMESPACE_ID>",
+          "simple": { "limit": 60, "period": 60 },
+        },
+        {
+          "name": "RATE_LIMIT_REACTIONS",
+          "namespace_id": "<RATE_LIMIT_REACTIONS_NAMESPACE_ID>",
+          "simple": { "limit": 120, "period": 60 },
+        },
+        {
+          "name": "RATE_LIMIT_UPLOADS",
+          "namespace_id": "<RATE_LIMIT_UPLOADS_NAMESPACE_ID>",
+          "simple": { "limit": 20, "period": 60 },
+        },
+      ],
+      "send_email": [{ "name": "EMAIL" }],
+      "vars": {
+        "TURNSTILE_SITE_KEY": "<TURNSTILE_SITE_KEY>",
+      },
+      "secrets": {
+        "required": [
+          "TURNSTILE_SECRET",
+          "EMAIL_FROM",
+          "EMAIL_LOOKUP_KEY_V1",
+          "DATA_ENCRYPTION_KEY_V1",
+        ],
+      },
+    },
+  },
+  "ratelimits": [
+    {
+      "name": "RATE_LIMIT_AUTH",
+      "namespace_id": "<RATE_LIMIT_AUTH_NAMESPACE_ID>",
+      "simple": { "limit": 10, "period": 60 },
+    },
+    {
+      "name": "RATE_LIMIT_CONTENT",
+      "namespace_id": "<RATE_LIMIT_CONTENT_NAMESPACE_ID>",
+      "simple": { "limit": 60, "period": 60 },
+    },
+    {
+      "name": "RATE_LIMIT_REACTIONS",
+      "namespace_id": "<RATE_LIMIT_REACTIONS_NAMESPACE_ID>",
+      "simple": { "limit": 120, "period": 60 },
+    },
+    {
+      "name": "RATE_LIMIT_UPLOADS",
+      "namespace_id": "<RATE_LIMIT_UPLOADS_NAMESPACE_ID>",
+      "simple": { "limit": 20, "period": 60 },
+    },
+  ],
+  "send_email": [{ "name": "EMAIL" }],
+  "vars": {
+    "TURNSTILE_SITE_KEY": "<TURNSTILE_SITE_KEY>",
+  },
+  "secrets": {
+    "required": ["TURNSTILE_SECRET", "EMAIL_FROM", "EMAIL_LOOKUP_KEY_V1", "DATA_ENCRYPTION_KEY_V1"],
+  },
+}

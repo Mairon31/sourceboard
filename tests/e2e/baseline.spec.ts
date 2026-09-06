@@ -4,7 +4,7 @@ test("home is server-rendered and reachable", async ({ page }) => {
   const response = await page.goto("/");
 
   expect(response?.ok()).toBe(true);
-  await expect(page.getByRole("heading", { name: "SourceBoard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find the original source" })).toBeVisible();
   await expect(page).toHaveTitle("SourceBoard");
 });
 
@@ -19,5 +19,19 @@ test("health endpoint returns JSON and propagates request id", async ({ request 
     status: "ok",
     service: "sourceboard",
     requestId: "e2e-health",
+    bindings: {
+      db: true,
+      media: true,
+      cache: true,
+      events: true,
+      rateLimits: {
+        auth: true,
+        content: true,
+        reactions: true,
+        uploads: true,
+      },
+      email: true,
+      turnstile: false,
+    },
   });
 });

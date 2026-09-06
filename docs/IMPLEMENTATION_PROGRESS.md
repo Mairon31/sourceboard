@@ -6,9 +6,9 @@
 
 ## Current phase
 
-**Phase 0A — Design System, Liquid Glass and Motion Framework**
+**Phase 13 — Hardening, observabilidad, backups y lanzamiento**
 
-Status: **COMPLETED**
+Status: **COMPLETE — verified in CI, stacked PR #16 ready for review**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -52,7 +52,8 @@ The implemented baseline passed every required verification gate in CI runs `339
 - Vite is pinned to the v8 line because the current Cloudflare Vite integration supports it and the baseline uses Vite's native `resolve.tsconfigPaths` option.
 - The React Router v8 request handler receives no legacy arbitrary `AppLoadContext` object in Phase 0. A typed `RouterContextProvider` will be introduced only when a later phase actually requires request-scoped loader context.
 - `compatibility_date` is `2026-09-05` and `nodejs_compat` is enabled.
-- D1/R2/KV/Queues and other resource bindings are intentionally deferred to later resource phases; no fake resource IDs are committed.
+- Phase 1 wires local-safe D1/R2/KV/Queue/Email/Turnstile contracts and
+  documents Rate Limiting bindings without inventing remote resource IDs.
 - CI uses the committed lockfile with `npm ci` and keeps GitHub token permissions read-only.
 
 ## Phase 0A — Design System, Liquid Glass and Motion Framework
@@ -105,17 +106,418 @@ A complete pre-documentation candidate at commit `34e9db957d81f18f0ff73f9488e8d8
 
 Phase 0A intentionally does **not** implement Phase 0B product functionality. The home route is a visual laboratory only. There is no real authentication, persisted feed, persisted comments, likes, product data model or social backend introduced by this phase.
 
+## Phase 0B — UI/UX Experience Pass
+
+Status: **COMPLETED**
+
+### Phase 0B scope
+
+- [x] typed UI DTOs, `UiDataAdapter` contract and fixture-only development adapter
+- [x] component/fixture separation with no direct fixture imports in product components
+- [x] responsive Product Shell, desktop/mobile navigation and context rail
+- [x] auth, home/feed, create post and post detail presentation surfaces
+- [x] comments, replies, reactions, accepted/verified source states
+- [x] anonymous-author and NSFW UX contracts without backend identity or policy simulation
+- [x] profile, achievements, friends/blocks, notifications, store and settings
+- [x] admin overview, moderation queue and reason-gated anonymous identity preview
+- [x] loading, skeleton, empty, error, disabled and presentation-only states
+- [x] keyboard/focus, reduced-motion and responsive coverage at 390, 430, 768, 1024, 1280 and 1440px
+- [x] SSR route smoke coverage for all Phase 0B routes
+
+### Phase 0B verification evidence
+
+GitHub Actions run `#48` (`34020133138`) passed every established gate: `npm ci`, lint/Prettier,
+strict typecheck, 18 unit tests across 7 files, production build, Wrangler deploy dry-run and 65
+Playwright E2E tests with no failures or flakiness. See [`docs/UI_UX_PHASE_0B.md`](UI_UX_PHASE_0B.md)
+for the scope, decisions, evidence and deferred work.
+
+The E2E closure corrected strict locator ownership, added an explicit hydrated-UI signal to the
+admin shell, kept static checks independent of hydration timing and added the missing SSR root title.
+No backend feature or fake persistence was introduced.
+
+## Phase 1 — Cloudflare infrastructure + D1/R2/KV
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-1-cloudflare-infrastructure` branch:
+
+- [x] local-safe D1 `DB`, private R2 `MEDIA`, KV `CACHE`, Queue `EVENTS` and Email `EMAIL` bindings;
+- [x] explicit `ssr` environment binding declarations for the Vite/React Router build artifact;
+- [x] complete non-deployable template for the four Rate Limiting bindings and real resource IDs;
+- [x] public Turnstile site-key variable contract and secret documentation;
+- [x] Drizzle SQLite schema plus Wrangler-compatible first migration;
+- [x] prepared-query D1 system metadata repository;
+- [x] typed R2 media service for put/get/head/delete;
+- [x] boolean-only health binding availability response;
+- [x] local D1 migration and R2 round-trip verification.
+
+See [`docs/PHASE_1_INFRASTRUCTURE.md`](PHASE_1_INFRASTRUCTURE.md) for the exact configuration,
+provisioning commands, verification evidence and rollback boundary. Authentication, sessions, RBAC,
+private media authorization and product persistence remain Phase 2+ work.
+
+### Phase 1 verification evidence
+
+GitHub Actions run `#50` (`34021185627`) passed every established gate: `npm ci`, lint/Prettier,
+strict typecheck, 24 unit tests across 9 files, production build, Wrangler deploy dry-run and 65
+Playwright E2E tests. The only failed candidate was run `#49`, where one baseline E2E assertion still
+expected the Phase 0 health payload; the assertion was updated to the intentional Phase 1 boolean
+binding contract and the full gate then passed. The local Work Mode environment could not launch the
+Playwright web server because its network interface enumeration failed; GitHub Actions provided the
+authoritative browser verification.
+
+## Phase 2 — Authentication, sessions and RBAC
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-2-auth-sessions-rbac` branch:
+
+- [x] users, credentials, sessions, verification/reset tokens, login-failure counters and audit tables;
+- [x] scrypt password records with per-user salt, versioned parameters and constant-time verification;
+- [x] normalized-email HMAC lookup and AES-256-GCM encrypted email with versioned Worker Secrets;
+- [x] 256-bit session tokens with D1-only token hashes and Secure/HttpOnly/SameSite cookies;
+- [x] origin validation, double-submit CSRF tokens and generic login errors;
+- [x] Turnstile and auth Rate Limit binding adapters with fail-closed missing-infrastructure behavior;
+- [x] registration, email verification, login/logout/logout-all and password reset/change services;
+- [x] session inventory/revocation and capability-based role management;
+- [x] seeded owner/admin/moderator/source_verifier/user roles and system capabilities without an owner account;
+- [x] audit records for authentication lifecycle and sensitive security changes;
+- [x] API-backed auth form states and session-management settings surface;
+- [x] unit/security coverage for crypto, token replay, session rotation, CSRF and owner protection;
+- [x] E2E coverage for anonymous auth session state and foreign-origin rejection.
+
+See [`docs/PHASE_2_AUTH.md`](PHASE_2_AUTH.md) for the API contract, secret names, migration and
+security boundaries.
+
+### Phase 2 verification evidence
+
+GitHub Actions run `#52` (`34023295881`) passed every established gate:
+lint/Prettier, strict typecheck, 41 unit tests across 14 files, production
+build, Wrangler deploy dry-run and 67 Playwright E2E tests. The local Work
+Mode environment could not launch the Playwright web server because its
+network-interface enumeration failed; GitHub Actions provided the
+authoritative browser verification.
+
+## Phase 3 — Profile, privacy, friendships and blocks
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-3-profile-privacy-social` branch:
+
+- [x] D1 profile, preference, social-link, friendship, block, notification and private media metadata tables plus migration `0002`;
+- [x] default profile and NSFW/social preference rows for every registered user;
+- [x] server-side `canViewUser`, `canInteractWithUser` and `canViewNsfwPost` policy contracts;
+- [x] public/private profile DTOs and `/u/:username` SSR with email, credentials and session data excluded;
+- [x] profile updates, ordered social links, privacy preferences and default-avatar behavior;
+- [x] pending/accepted/declined/cancelled friendship transitions, duplicate/self/block protections and persistent request/accept notifications;
+- [x] directional blocks that cancel relationships and deny visibility/interactions in both directions;
+- [x] private avatar/banner R2 gateway with authorization, no-store responses, MIME validation and magic-byte checks;
+- [x] D1-backed profile, friends and settings surfaces with honest unauthenticated/private/unavailable states;
+- [x] IDOR, privacy, block, CSRF/origin, media authorization and responsive E2E coverage.
+
+See [`docs/PHASE_3_PROFILE_PRIVACY.md`](PHASE_3_PROFILE_PRIVACY.md) for the API contract,
+privacy rules, deferred scope and implementation decisions.
+
+### Phase 3 verification evidence
+
+GitHub Actions run `#55` (`34026033697`) passed every established gate: lint/Prettier,
+strict typecheck, 50 unit tests across 17 files, production build, Wrangler deploy dry-run
+and 69 Playwright E2E tests (`69 passed`). Fallow's new-only audit against the Phase 2
+branch reported no newly introduced dead code, complexity or duplication. The local Work
+Mode environment still cannot launch the Cloudflare Vite Playwright server because
+`uv_interface_addresses` fails during interface enumeration; GitHub Actions provided the
+authoritative browser verification.
+
+## Phase 4 — Posts, image, feed and SEO
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-4-posts-images-feed-seo` branch and PR #6:
+
+- [x] D1 posts, post revisions and post-image metadata migration `0003`;
+- [x] one-main-image post contract with JPEG/PNG/WebP/AVIF magic-byte, MIME, size, dimension and SHA-256 validation;
+- [x] private random R2 object keys with authorized Worker media gateway and failed-persistence cleanup;
+- [x] PUBLIC, FRIENDS_ONLY, UNLISTED and PRIVATE visibility with OPEN/ANSWERED/VERIFIED/ARCHIVED/LOCKED states;
+- [x] seven-day owner edit window, revision history, reversible archive and soft deletion;
+- [x] D1-backed recent, friends, answered and verified feeds with keyset cursors and block filtering;
+- [x] canonical post detail SSR, redirect from the legacy `/posts/:id`, canonical/meta/OG/Twitter tags and DiscussionForumPosting JSON-LD;
+- [x] public-only robots and sitemap endpoints that exclude private, hidden, deleted and NSFW posts;
+- [x] public anonymous serialization as `Anonymous Author` with no real identity in author DTOs or JSON-LD;
+- [x] honest empty/unavailable/loading boundaries with comments, reactions, source resolution, moderation deanonymization and search deferred to their canonical phases.
+
+### Phase 4 verification evidence
+
+GitHub Actions run `#59` (`34035474983`) passed every established gate: lint/Prettier,
+strict typecheck, 57 unit tests across 19 files, production build, Wrangler deploy dry-run,
+local D1 migration application and Playwright E2E. The first candidate exposed the missing CI
+migration setup (`no such table: posts`) and the next candidate exposed a stale empty-feed
+Design System selector; both were corrected at their causes. Run #59 completed all checks
+successfully.
+
+The local Work Mode environment cannot launch the Cloudflare Vite Playwright server because
+`uv_interface_addresses` fails during interface enumeration. GitHub Actions is the
+authoritative browser verification. The full audited anonymous deanonymization workflow and
+NSFW moderation gates remain deliberately deferred to Phase 4A and Phase 10.
+
+## Phase 4A — Anonymous identity and NSFW classification
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-4a-anonymous-nsfw` branch and PR #7:
+
+- [x] capability-protected anonymous-author reveal with mandatory reason and per-lookup audit log;
+- [x] Admin grant for `anonymous_post.deanonymize` through forward migration `0004`, with Moderator and Source Verifier excluded by default;
+- [x] real admin identity screen with honest denied/unavailable state and no fixture reveal;
+- [x] capability-authorized NSFW moderation with reason/audit and protection against removing moderation marks as an author;
+- [x] continued server-side anonymous serialization and NSFW preference enforcement.
+
+See [`docs/PHASE_4A_ANONYMOUS_NSFW.md`](PHASE_4A_ANONYMOUS_NSFW.md) for the capability,
+audit, privacy and deferred-scope decisions.
+
+### Phase 4A verification evidence
+
+GitHub Actions run `#61` (`34036169581`) passed lint/Prettier, strict typecheck, 60 unit tests
+across 19 files, production build, Wrangler deploy dry-run, local D1 migrations through `0004`
+and 71 Playwright E2E tests. The documentation closure was verified again in run `#62`.
+
+## Phase 5 — Comments, replies, reactions, emotes, GIFs and stickers
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-5-comments-reactions` branch and PR #8:
+
+- [x] D1 comments, comment revisions, extensible LIKE reactions and emote/sticker catalog migration `0005`;
+- [x] arbitrary logical replies with keyset pagination and capped visual indentation;
+- [x] 24-hour author edit window, revision history and soft delete;
+- [x] allowlisted rich-text AST plus searchable plaintext, safe HTTP(S) links and no arbitrary comment image uploads/HTML;
+- [x] server-side comment/post visibility, block and anonymous-author policy enforcement;
+- [x] idempotent LIKE set/toggle API for posts and comments;
+- [x] real discussion composer/reply/like states with honest disabled GIF/sticker controls when provider/catalog configuration is absent.
+
+See [`docs/PHASE_5_COMMENTS.md`](PHASE_5_COMMENTS.md) for the API contract, security boundary
+and deliberate deferrals.
+
+### Phase 5 verification evidence
+
+GitHub Actions run `#63` (`34036893036`) passed lint/Prettier, strict typecheck, 63 unit tests
+across 20 files, production build, Wrangler deploy dry-run, local D1 migrations through `0005`
+and 73 Playwright E2E tests. Local Work Mode Playwright remains blocked by the existing
+`uv_interface_addresses` environment error; CI is authoritative for browser verification.
+
+## Phase 6 — Admin base plus emotes and stickers
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-6-admin-emotes-stickers` branch:
+
+- [x] server-side `admin.access` protection for admin overview, moderation and anonymous identity surfaces;
+- [x] removal of Phase 0B fixture metrics from the administrative dashboard;
+- [x] forward migration `0006` for active/disabled emote and sticker packs and catalog ordering;
+- [x] capability-checked private-R2 catalog upload, listing and status endpoints with image magic-byte validation and failed-write cleanup.
+
+See [`docs/PHASE_6_ADMIN.md`](PHASE_6_ADMIN.md) for the current contract and deliberate boundaries.
+
+### Phase 6 verification evidence
+
+GitHub Actions run `#66` (`34037972333`) passed lint/Prettier, strict TypeScript,
+63 unit tests, production build, Wrangler deploy dry-run, local D1 migrations
+through `0006` and 73 Playwright E2E tests. Phase 6 remains open for review in
+stacked PR #9; no merge was performed.
+
+## Phase 7 — Accepted Source plus Verified Source
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-7-accepted-verified-source` branch and draft
+PR #10:
+
+- [x] D1 source-resolution history with active uniqueness and migration `0007`;
+- [x] author-only Accepted Source with conditional race protection and revoke history;
+- [x] capability-protected Verified Source with HTTPS canonical URL, evidence, verifier and revoke reason;
+- [x] post SSR/cards and discussion action for Accepted/Verified Source;
+- [x] capability-protected `/admin/verifications` review queue;
+- [x] source events emitted after persistence, with points deliberately deferred to Phase 8;
+- [x] IDOR and unauthenticated route coverage.
+
+See [`docs/PHASE_7_ACCEPTED_VERIFIED_SOURCE.md`](PHASE_7_ACCEPTED_VERIFIED_SOURCE.md).
+
+### Phase 7 verification evidence
+
+GitHub Actions run `#73` (`34041951469`) passed lint/Prettier, strict TypeScript,
+63 unit tests, production build, Wrangler deploy dry-run, local D1 migrations
+through `0007` and 75 Playwright E2E tests. No merge was performed.
+
+## Phase 8 — Points, reputation, medals and achievements
+
+Status: **COMPLETED — PR #11 ready for review**
+
+Implemented on the stacked `phase-8-reputation-achievements` branch:
+
+- [x] append-only D1 point ledger with idempotency keys and exact reversal entries;
+- [x] Queue consumer for Phase 7 source events with retry/ack behavior;
+- [x] Accepted Source and Verified Source rewards with self-answer protection;
+- [x] versioned achievement catalog and earned-medal persistence;
+- [x] repeated source-pair anti-farming signals;
+- [x] capability-protected, reason-required manual point adjustments with audit log;
+- [x] persisted profile points, verified-source count and achievements.
+
+See [`docs/PHASE_8_REPUTATION_ACHIEVEMENTS.md`](PHASE_8_REPUTATION_ACHIEVEMENTS.md) for the data contract and deferred scope.
+
+### Phase 8 verification evidence
+
+GitHub Actions run `#74` (`34042939102`) passed lint/Prettier, strict TypeScript, 66 unit tests across 21 files, production build, Wrangler deploy dry-run, local D1 migrations through `0008` and 75 Playwright E2E tests. The PR remains unmerged for review.
+
 ## Next phase
 
-**Phase 0B**
+Phase 9 — Store, inventory, cosmetics, fonts and emote packs starts only after Phase 8 is green and reviewable.
 
-Status: **NOT STARTED**
+## Phase 9 — Store, inventory, cosmetics, fonts and emote packs
 
-Phase 0B may begin only after Phase 0A is reviewed and merged. It should reuse the theme, tokens, shell, primitives and motion contracts documented in `docs/DESIGN_SYSTEM.md` instead of rebuilding visual foundations.
+Status: **COMPLETE — CI green, ready for review**
+
+Implemented on the stacked `phase-9-store-cosmetics` branch:
+
+- [x] scheduled store catalog for the six canonical item types;
+- [x] atomic conditional point debit, purchase history and inventory entitlement;
+- [x] purchase idempotency and no duplicate non-consumable ownership;
+- [x] inventory-only cosmetic equip slots;
+- [x] allowlisted structured configuration for fonts and profile effects;
+- [x] capability-protected admin catalog create/update with audit entries.
+- [x] server-side emote/sticker pack entitlement checks for comment rich text and attachments;
+- [x] Store route reads D1 catalog and preserves disabled/scheduled states.
+- [x] safe cosmetic rendering in public profiles, post authors and comments;
+
+See [`docs/PHASE_9_STORE.md`](PHASE_9_STORE.md) for the contract and deliberate boundaries.
+
+GitHub Actions run `#82` (`34044939144`) passed all required gates, including 71 unit tests and 75 Playwright E2E tests. Phase 9 is complete and remains unmerged for review.
+
+## Phase 10 — Moderación completa, reportes y sanciones
+
+Status: **COMPLETE — CI green, ready for review**
+
+- [x] reportes persistentes para post/comment/user/source con categorías canónicas, deduplicación y estados de cola;
+- [x] cola administrativa protegida por capability;
+- [x] acciones auditadas de hide/restore, lock/unlock, NSFW, revocación de verificación y sanciones de usuario;
+- [x] restricciones temporales de publicar/comentar, suspensión y ban con `expires_at` y evaluación server-side;
+- [x] protección de jerarquía Moderator/Admin/Owner sin confiar en la UI;
+- [x] appeals básicos asociados a sanciones;
+- [x] UI administrativa conectada a la cola persistida.
+
+See [`docs/PHASE_10_MODERATION.md`](PHASE_10_MODERATION.md) for the contract and deliberate boundaries.
+
+GitHub Actions run `#84` (`34045600762`) passed lint/Prettier, strict TypeScript, 74 unit tests across 24 files, production build, Wrangler deploy dry-run, local D1 migrations through `0011` and 75 Playwright E2E tests. The PR remains unmerged for review.
+
+## Phase 11 — Notificaciones y tiempo real
+
+Status: **COMPLETE — verified in CI**
+
+See [`docs/PHASE_11_NOTIFICATIONS.md`](PHASE_11_NOTIFICATIONS.md) for the D1-first notification contract, domain producers, realtime client reconciliation, and deliberate boundaries.
+
+GitHub Actions run `#89` (`34047822984`) passed lint/Prettier, strict TypeScript, 82 unit tests across 26 files, production build, Wrangler deploy dry-run, local D1 migrations through `0012`, and 75 Playwright E2E tests. The PR remains unmerged for review.
+
+## Phase 12 — Búsqueda, discovery y rendimiento D1
+
+Status: **COMPLETE — verified in CI, stacked PR #15 ready for review**
+
+Implemented on the stacked `phase-12-search` branch:
+
+- [x] public FTS5 post/profile projections with migration `0013` and synchronization triggers;
+- [x] public-only predicates repeated in D1 search queries, including lifecycle, account status and block filtering;
+- [x] post filters for recent/open/answered/verified discovery;
+- [x] keyset cursors for post and profile result sets without high `OFFSET` pagination;
+- [x] server-side NSFW preference filtering and blur presentation contract;
+- [x] anonymous-author masking and public-profile-only discovery serialization;
+- [x] `/api/search`, SSR `/search`, functional TopBar query navigation and responsive result cards;
+- [x] unit, migration-contract, responsive route and search-navigation coverage.
+
+See [`docs/PHASE_12_SEARCH.md`](PHASE_12_SEARCH.md) for the index contract, query-plan evidence,
+privacy boundary and deliberate deferrals.
+
+GitHub Actions run `#92` (`34050642460`) passed lint/Prettier, strict TypeScript, 86 unit tests
+across 28 files, production build, Wrangler deploy dry-run, local D1 migrations through `0013`
+and 83 Playwright E2E tests with no failures or flakiness. The initial candidate exposed one real
+hydration race in the TopBar search form; the final form preserves native GET submission until the
+React enhancement is ready. The PR remains unmerged for review.
+
+## Phase 13 — Hardening, observability, backups and production launch
+
+Status: **COMPLETE — application hardening and operational documentation verified in CI; production provisioning remains a release gate**
+
+Implemented on the stacked `phase-13-hardening` branch:
+
+- [x] shared security headers for API, SSR and media responses, including CSP,
+      clickjacking protection, referrer policy, COOP/CORP and HTTPS-only HSTS;
+- [x] per-response CSP nonce propagation through the Worker, React Router SSR,
+      theme bootstrap and hydration scripts;
+- [x] structured route-family/request-ID observability without raw URLs, IPs,
+      cookies, request bodies or exception text;
+- [x] fail-closed Rate Limiting enforcement for content, reactions and image
+      uploads, with separate hashed user/IP keys;
+- [x] D1-batched source resolution and comment-like mutations to remove
+      check-then-write races;
+- [x] bounded hourly cleanup for expired auth state, deleted media and
+      allowlisted orphan R2 objects;
+- [x] Queue retry/DLQ configuration and safe background-failure handling;
+- [x] generic public errors for unexpected internal failures;
+- [x] hydration-safe TopBar search submission using the browser's submitted
+      control value;
+- [x] production checklist, incident runbook, security review and performance
+      measurement plan.
+
+See [`docs/PHASE_13_HARDENING.md`](PHASE_13_HARDENING.md),
+[`docs/SECURITY_REVIEW_PHASE_13.md`](SECURITY_REVIEW_PHASE_13.md),
+[`docs/PRODUCTION_CHECKLIST.md`](PRODUCTION_CHECKLIST.md),
+[`docs/INCIDENT_RUNBOOK.md`](INCIDENT_RUNBOOK.md) and
+[`docs/PERFORMANCE_PHASE_13.md`](PERFORMANCE_PHASE_13.md).
+
+GitHub Actions run `#103` (`34054810407`) passed every required gate:
+lint/Prettier, strict TypeScript, 91 unit tests across 29 files, production
+build, Wrangler deploy dry-run, local D1 migrations through `0013`, and 84
+Playwright E2E tests (`84 passed`, with no failures or flakiness). The run
+also verified the per-response CSP nonce contract and the hydration-sensitive
+TopBar search path. The final fix keeps the search input uncontrolled during
+hydration and reads the browser's submitted form value. Fallow's new-only
+audit passed with zero introduced findings.
+
+The local Playwright server remains unavailable in this container because of
+`uv_interface_addresses`; GitHub Actions is the authoritative browser gate.
+Phase 13 is complete for the repository's application-side hardening and
+operational documentation. Real Cloudflare resource provisioning,
+WAF/custom-domain/Turnstile/Email setup, a backup/restore drill, alert routing,
+external penetration testing and review/removal of the remaining inline-style
+allowance remain explicit production release prerequisites.
+
+### 2026-09-06 production provisioning checkpoint
+
+- [x] Reused Cloudflare D1 `sourceboard-db`, private R2 `sourceboard-media`,
+      existing KV `sourceboard-cache`, and Queue `sourceboard-events`.
+- [x] Created `sourceboard-events-dlq` only after an account-level absence
+      check; no duplicate named resource was created.
+- [x] Bound the verified D1/KV identifiers, Queue/DLQ, Email, Durable Object,
+      and four account-scoped Workers Rate Limiting policies in `wrangler.jsonc`
+      and `env.ssr`; the generated SSR config and deploy dry-run include them.
+- [x] Applied remote D1 migrations `0000` through `0013`.
+- [ ] Turnstile site key/secret and `EMAIL_FROM` are unavailable in the
+      connected account; existing `EMAIL_LOOKUP_KEY_V1` and
+      `DATA_ENCRYPTION_KEY_V1` are present. Custom domain, WAF, backup/restore,
+      alerts and external security review remain pending.
+- [x] The existing Cloudflare Workers Builds trigger was updated idempotently
+      to use `npx wrangler deploy`: the first corrected build reached all
+      bindings but failed because `versions upload` cannot apply a Durable
+      Object migration (`10211`), and the retry is using the supported
+      non-versioned deployment path.
+- [ ] Workers Build deployment remains blocked by the two missing secret names
+      reported by Wrangler: `EMAIL_FROM` and `TURNSTILE_SECRET`. No secret
+      value was invented or written; until those values exist, Cloudflare has
+      not applied the DO namespace, cron trigger, Queue consumer or new Worker
+      bindings.
 
 ## Known limitations
 
-- The Phase 0A home route is intentionally a presentation laboratory and will be replaced or repurposed as real product screens arrive.
+- Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B
+  product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- D1/R2/KV/Queues and product persistence remain outside Phase 0A by design.
+- Search result caching, opaque ranking and external indexing remain deliberately deferred; the
+  current public FTS5 projection is D1-backed and viewer-sensitive results are not cached.
+- Auth and profile mutations remain unavailable until operators provide the required Worker Secrets
+  and real Rate Limit/Email resources; no insecure local bypass is used.

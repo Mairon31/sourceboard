@@ -1,16 +1,88 @@
 import { REQUEST_ID_HEADER, resolveRequestId } from "../shared/http/request-id";
+import type { SourceBoardEnvironment } from "./environment";
+import { handleAuthRequest } from "./auth/api";
+import { handleProfileApiRequest } from "./profile/api";
+import { handlePostApiRequest } from "./posts/api";
+import { handleCommentApiRequest } from "./comments/api";
+import { handleCatalogRequest } from "./catalog/api";
+import { handleSourceRequest } from "./source/api";
+import { handleReputationRequest } from "./reputation/api";
+import { handleStoreRequest } from "./store/api";
+import { handleModerationRequest } from "./moderation/api";
+import { handleSearchRequest } from "./search/api";
 
 export interface HealthPayload {
   status: "ok";
   service: "sourceboard";
   requestId: string;
+  bindings: {
+    db: boolean;
+    media: boolean;
+    cache: boolean;
+    events: boolean;
+    rateLimits: {
+      auth: boolean;
+      content: boolean;
+      reactions: boolean;
+      uploads: boolean;
+    };
+    email: boolean;
+    turnstile: boolean;
+  };
 }
 
 export async function handleApiRequest(
   request: Request,
   requestId = resolveRequestId(request.headers),
+  env?: SourceBoardEnvironment,
 ): Promise<Response | null> {
   const url = new URL(request.url);
+
+  const authResponse = await handleAuthRequest(request, requestId, env ?? {});
+  if (authResponse) {
+    return authResponse;
+  }
+
+  const profileResponse = await handleProfileApiRequest(request, requestId, env ?? {});
+  if (profileResponse) {
+    return profileResponse;
+  }
+
+  const commentResponse = await handleCommentApiRequest(request, requestId, env ?? {});
+  if (commentResponse) {
+    return commentResponse;
+  }
+
+  const catalogResponse = await handleCatalogRequest(request, requestId, env ?? {});
+  if (catalogResponse) {
+    return catalogResponse;
+  }
+
+  const sourceResponse = await handleSourceRequest(request, requestId, env ?? {});
+  if (sourceResponse) {
+    return sourceResponse;
+  }
+
+  const reputationResponse = await handleReputationRequest(request, requestId, env ?? {});
+  if (reputationResponse) {
+    return reputationResponse;
+  }
+
+  const storeResponse = await handleStoreRequest(request, requestId, env ?? {});
+  if (storeResponse) {
+    return storeResponse;
+  }
+
+  const moderationResponse = await handleModerationRequest(request, requestId, env ?? {});
+  if (moderationResponse) return moderationResponse;
+
+  const searchResponse = await handleSearchRequest(request, requestId, env ?? {});
+  if (searchResponse) return searchResponse;
+
+  const postResponse = await handlePostApiRequest(request, requestId, env ?? {});
+  if (postResponse) {
+    return postResponse;
+  }
 
   if (request.method !== "GET" || url.pathname !== "/api/health") {
     return null;
@@ -20,6 +92,20 @@ export async function handleApiRequest(
     status: "ok",
     service: "sourceboard",
     requestId,
+    bindings: {
+      db: Boolean(env?.DB),
+      media: Boolean(env?.MEDIA),
+      cache: Boolean(env?.CACHE),
+      events: Boolean(env?.EVENTS),
+      rateLimits: {
+        auth: Boolean(env?.RATE_LIMIT_AUTH),
+        content: Boolean(env?.RATE_LIMIT_CONTENT),
+        reactions: Boolean(env?.RATE_LIMIT_REACTIONS),
+        uploads: Boolean(env?.RATE_LIMIT_UPLOADS),
+      },
+      email: Boolean(env?.EMAIL),
+      turnstile: Boolean(env?.TURNSTILE_SITE_KEY && env?.TURNSTILE_SECRET),
+    },
   };
 
   return Response.json(payload, {
