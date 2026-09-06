@@ -43,13 +43,17 @@ the top-level and `env.ssr` configurations, plus the four fixed account-scoped
 Workers Rate Limiting identifiers and the production resource names. The
 connected Cloudflare API does not expose Workers Rate Limiting namespace
 creation/listing; their positive integer identifiers are defined by the account
-operator and are not resource UUIDs.
+operator and are not resource UUIDs. The `NotificationHub` migration uses
+`new_sqlite_classes`, which is required for a new Durable Object namespace on
+this account.
 
 Before the first production deploy:
 
 1. Verify the D1 database, private R2 bucket, KV namespace, event queue and
    `sourceboard-events-dlq` queue; the named resources are already present in
    the connected account and the D1 migrations are applied through `0013`.
+   The existing Workers Builds trigger deploys with `npx wrangler deploy`;
+   `versions upload` cannot apply a Durable Object class migration.
 2. Keep the four account-scoped Rate Limiting identifiers stable and unique.
    The current limits are 10 auth,
    60 content, 120 reactions and 20 uploads per 60-second window; tune them

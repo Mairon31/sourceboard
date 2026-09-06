@@ -17,6 +17,9 @@ edge launch controls remain operator prerequisites.
 - KV binding `CACHE` is available only for cache/config work. It is not used
   by the D1 repository or as a source of truth.
 - Queue producer `EVENTS` is declared for later asynchronous work.
+- Durable Object binding `NOTIFICATION_HUB` targets the exported
+  `NotificationHub` class. Its first migration is SQLite-backed, as required
+  for a new Durable Object namespace on the connected account.
 - The runtime config declares separate `RATE_LIMIT_AUTH`,
   `RATE_LIMIT_CONTENT`, `RATE_LIMIT_REACTIONS`, and `RATE_LIMIT_UPLOADS`
   bindings with fixed account-scoped identifiers (`1001`–`1004`) and the
@@ -70,7 +73,8 @@ The checked-in runtime config contains the verified D1 `database_id` and the
 existing KV namespace `id`; do not replace either with a newly created resource.
 Rate Limiting identifiers are configured account-scoped integers rather than
 Cloudflare resource UUIDs, so keep the four identifiers stable and unique to
-this account.
+this account. The Workers Builds trigger uses `npx wrangler deploy` because
+Durable Object migrations cannot be applied by `versions upload`.
 
 Create a Turnstile site in the Cloudflare dashboard and set its public key in
 the deploy configuration. Store its secret through Wrangler:

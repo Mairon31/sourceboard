@@ -500,6 +500,11 @@ allowance remain explicit production release prerequisites.
       connected account; existing `EMAIL_LOOKUP_KEY_V1` and
       `DATA_ENCRYPTION_KEY_V1` are present. Custom domain, WAF, backup/restore,
       alerts and external security review remain pending.
+- [x] The existing Cloudflare Workers Builds trigger was updated idempotently
+      to use `npx wrangler deploy`: the first corrected build reached all
+      bindings but failed because `versions upload` cannot apply a Durable
+      Object migration (`10211`), and the retry is using the supported
+      non-versioned deployment path.
 
 ## Known limitations
 
