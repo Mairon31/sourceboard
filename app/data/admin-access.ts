@@ -17,6 +17,7 @@ export async function loadAdminAccess(
     context,
     () => ({ authorized: false, unavailable: false }),
     async (runtime, userId) => {
+      if (!userId) return { authorized: false, unavailable: false };
       const auth = createAuthService({
         store: createD1AuthStore(runtime.db),
         env: runtime.env,
@@ -25,7 +26,7 @@ export async function loadAdminAccess(
         createAuthContext(request, crypto.randomUUID()),
       );
       return {
-        authorized: Boolean(userId) && hasCapability(authorization, "admin.access"),
+        authorized: hasCapability(authorization, "admin.access"),
         unavailable: false,
       };
     },
