@@ -505,6 +505,11 @@ allowance remain explicit production release prerequisites.
       bindings but failed because `versions upload` cannot apply a Durable
       Object migration (`10211`), and the retry is using the supported
       non-versioned deployment path.
+- [ ] Workers Build deployment remains blocked by the two missing secret names
+      reported by Wrangler: `EMAIL_FROM` and `TURNSTILE_SECRET`. No secret
+      value was invented or written; until those values exist, Cloudflare has
+      not applied the DO namespace, cron trigger, Queue consumer or new Worker
+      bindings.
 
 ## Known limitations
 

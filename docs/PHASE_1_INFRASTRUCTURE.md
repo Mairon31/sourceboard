@@ -1,6 +1,6 @@
 # Phase 1 — Cloudflare infrastructure
 
-Status: **COMPLETED — production resource bindings verified 2026-09-06**
+Status: **COMPLETED — resource inventory and deploy configuration verified 2026-09-06; Worker activation awaits required secrets**
 
 Phase 1 wires the Cloudflare service boundaries required by the canonical plan
 with the production resource names and IDs now bound in `wrangler.jsonc`.
@@ -59,6 +59,11 @@ The following resource checks were completed against the connected account on
 `sourceboard-cache`, and Queue `sourceboard-events` were found and reused;
 `sourceboard-events-dlq` was created only after confirming it was absent. The
 remote D1 migration ledger now contains migrations `0000` through `0013`.
+The generated SSR configuration and Wrangler dry-run include every declared
+binding. The Worker API still reports its earlier deployed settings because
+the non-versioned build is correctly refusing to publish while
+`EMAIL_FROM` and `TURNSTILE_SECRET` are absent; this also leaves the
+Durable Object namespace, cron and Queue consumer unapplied.
 
 Run these commands only for a new account or an explicitly approved resource:
 

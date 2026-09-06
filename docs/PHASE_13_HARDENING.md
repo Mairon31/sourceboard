@@ -45,7 +45,9 @@ connected Cloudflare API does not expose Workers Rate Limiting namespace
 creation/listing; their positive integer identifiers are defined by the account
 operator and are not resource UUIDs. The `NotificationHub` migration uses
 `new_sqlite_classes`, which is required for a new Durable Object namespace on
-this account.
+this account. The current Worker still has its pre-Phase-13 remote settings:
+the new bindings, cron and Queue consumer will be applied by the first
+successful non-versioned deploy.
 
 Before the first production deploy:
 
@@ -163,6 +165,12 @@ contract and the previous candidate's search flake fix. The search fix keeps
 the input uncontrolled during hydration, then reads the submitted form control
 instead of relying on React state. Fallow's new-only audit passed with zero
 introduced findings.
+
+The corrected Workers Build reached the full binding set, but the first
+non-versioned retry stopped before deployment because the connected Worker is
+missing the required `EMAIL_FROM` and `TURNSTILE_SECRET` secrets. The existing
+Worker therefore still has no `NotificationHub` namespace, cron trigger or
+Queue consumer; no placeholder secrets were supplied.
 
 The local container still cannot launch the Cloudflare Vite Playwright server
 because of its `uv_interface_addresses` failure; GitHub Actions remains the
