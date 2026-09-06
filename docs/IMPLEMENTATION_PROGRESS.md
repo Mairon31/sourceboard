@@ -480,11 +480,11 @@ audit passed with zero introduced findings.
 
 The local Playwright server remains unavailable in this container because of
 `uv_interface_addresses`; GitHub Actions is the authoritative browser gate.
-Phase 13 is complete for the repository's application-side hardening and
-operational documentation. Real Cloudflare resource provisioning,
-WAF/custom-domain/Turnstile/Email setup, a backup/restore drill, alert routing,
-external penetration testing and review/removal of the remaining inline-style
-allowance remain explicit production release prerequisites.
+Phase 13 is complete for the repository's application-side hardening and the
+first production deployment. WAF rules, Email Service domain verification,
+backup/restore, alert routing, external penetration testing and
+review/removal of the remaining inline-style allowance remain explicit release
+prerequisites.
 
 ### 2026-09-06 production provisioning checkpoint
 
@@ -496,20 +496,26 @@ allowance remain explicit production release prerequisites.
       and four account-scoped Workers Rate Limiting policies in `wrangler.jsonc`
       and `env.ssr`; the generated SSR config and deploy dry-run include them.
 - [x] Applied remote D1 migrations `0000` through `0013`.
-- [ ] Turnstile site key/secret and `EMAIL_FROM` are unavailable in the
-      connected account; existing `EMAIL_LOOKUP_KEY_V1` and
-      `DATA_ENCRYPTION_KEY_V1` are present. Custom domain, WAF, backup/restore,
-      alerts and external security review remain pending.
+- [x] Production Turnstile widget `sourceboard` is configured for `srcboard.me`;
+      its public site key is checked into the Worker config and the secret is
+      present in Cloudflare. The approved `EMAIL_FROM` sender is stored only as
+      a Worker secret; no secret value is in Git.
+- [x] Custom domain `srcboard.me` is attached to Worker `sourceboard` and HTTPS
+      responds successfully. WAF, backup/restore, alerts and external security
+      review remain pending.
 - [x] The existing Cloudflare Workers Builds trigger was updated idempotently
       to use `npx wrangler deploy`: the first corrected build reached all
       bindings but failed because `versions upload` cannot apply a Durable
       Object migration (`10211`), and the retry is using the supported
       non-versioned deployment path.
-- [ ] Workers Build deployment remains blocked by the two missing secret names
-      reported by Wrangler: `EMAIL_FROM` and `TURNSTILE_SECRET`. No secret
-      value was invented or written; until those values exist, Cloudflare has
-      not applied the DO namespace, cron trigger, Queue consumer or new Worker
-      bindings.
+- [x] Workers Build `e4e08c7a-ccaa-4fa9-b15b-83f0cd2ba18c` deployed commit
+      `b5ea1aa25651a3bd86a78f0c4e12fa9816f5e79e` successfully with
+      `npx wrangler deploy`. Cloudflare now reports the full binding set,
+      `NotificationHub`, cron `17 * * * *`, and the `sourceboard-events`
+      consumer with `sourceboard-events-dlq`.
+- [ ] Email Service onboarding/domain verification could not be read through
+      the connected Cloudflare API (error `2036: Unauthorized`); runtime email
+      delivery still requires that external Cloudflare verification.
 
 ## Known limitations
 

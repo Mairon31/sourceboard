@@ -60,10 +60,9 @@ The following resource checks were completed against the connected account on
 `sourceboard-events-dlq` was created only after confirming it was absent. The
 remote D1 migration ledger now contains migrations `0000` through `0013`.
 The generated SSR configuration and Wrangler dry-run include every declared
-binding. The Worker API still reports its earlier deployed settings because
-the non-versioned build is correctly refusing to publish while
-`EMAIL_FROM` and `TURNSTILE_SECRET` are absent; this also leaves the
-Durable Object namespace, cron and Queue consumer unapplied.
+binding. The successful production build now reports the same binding set from
+the deployed Worker, including the Durable Object namespace, cron and Queue
+consumer.
 
 Run these commands only for a new account or an explicitly approved resource:
 
@@ -81,17 +80,17 @@ Cloudflare resource UUIDs, so keep the four identifiers stable and unique to
 this account. The Workers Builds trigger uses `npx wrangler deploy` because
 Durable Object migrations cannot be applied by `versions upload`.
 
-Create a Turnstile site in the Cloudflare dashboard and set its public key in
-the deploy configuration. Store its secret through Wrangler:
+The production Turnstile widget is named `sourceboard`, is restricted to
+`srcboard.me`, and its public key is set in the deploy configuration. Its secret
+is stored in Cloudflare with the Worker. Store or rotate it through Wrangler:
 
 ```bash
 npx wrangler secret put TURNSTILE_SECRET
 ```
 
-Enable Cloudflare Email Service/Email Routing for an approved, verified sender
-domain before using the `EMAIL` binding. The binding deliberately has no
-invented sender address; restrictions can be added after the real address is
-verified.
+`EMAIL_FROM` is stored only as a Worker secret. Cloudflare Email Service still
+must onboard and verify `srcboard.me` before the binding can deliver mail; the
+connected API lacked permission to verify that dashboard state.
 
 After the real configuration is supplied, regenerate types and inspect the
 result before any deployment:

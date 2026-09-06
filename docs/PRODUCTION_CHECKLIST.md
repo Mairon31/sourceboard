@@ -14,15 +14,15 @@ owner and a recorded exception before production traffic is enabled.
 - [x] `sourceboard-events` and `sourceboard-events-dlq` exist.
 - [x] Four account-scoped Workers Rate Limiting bindings are attached to the
       top-level and `ssr` configurations.
-- [ ] Turnstile production site key is configured; secret is stored with
-      `npx wrangler secret put TURNSTILE_SECRET`.
-- [ ] `EMAIL_FROM`, `EMAIL_LOOKUP_KEY_V1` and `DATA_ENCRYPTION_KEY_V1` are
+- [x] Turnstile production site key is configured for `srcboard.me`; its
+      secret is present in Cloudflare.
+- [x] `EMAIL_FROM`, `EMAIL_LOOKUP_KEY_V1` and `DATA_ENCRYPTION_KEY_V1` are
       supplied as Worker secrets; no secret is in Git.
 - [ ] Email Service sender/domain is verified.
 
 ## Security and edge controls
 
-- [ ] HTTPS custom domain and certificate are active.
+- [x] HTTPS custom domain `srcboard.me` and its Worker certificate are active.
 - [ ] Cloudflare WAF managed rules are enabled in a monitored mode first, then
       promoted after false-positive review.
 - [ ] Login, content, reaction and upload abuse rules have tested thresholds.
@@ -73,9 +73,9 @@ successful responses.
 - [ ] Review the exact commit, generated Worker config, migration list and
       changed files.
 - [ ] Run Wrangler dry-run with the private production config.
-- [ ] Obtain approval for the production deploy; this repository does not deploy
-      automatically as part of a phase PR.
-- [ ] Record the deployed version and migration timestamp.
+- [x] Production deploy completed from `master` through Workers Build; the
+      deployed Worker and migration state were recorded in the progress log.
+- [x] Record the deployed version and migration timestamp.
 - [ ] Keep the previous Worker version available for rollback.
 - [ ] If schema/data incompatibility is suspected, stop traffic changes and
       follow the D1/R2 steps in [`INCIDENT_RUNBOOK.md`](INCIDENT_RUNBOOK.md).

@@ -166,17 +166,20 @@ the input uncontrolled during hydration, then reads the submitted form control
 instead of relying on React state. Fallow's new-only audit passed with zero
 introduced findings.
 
-The corrected Workers Build reached the full binding set, but the first
-non-versioned retry stopped before deployment because the connected Worker is
-missing the required `EMAIL_FROM` and `TURNSTILE_SECRET` secrets. The existing
-Worker therefore still has no `NotificationHub` namespace, cron trigger or
-Queue consumer; no placeholder secrets were supplied.
+Workers Build `e4e08c7a-ccaa-4fa9-b15b-83f0cd2ba18c` successfully deployed
+commit `b5ea1aa25651a3bd86a78f0c4e12fa9816f5e79e` with `npx wrangler deploy`.
+The deployed Worker reports all declared bindings, `NotificationHub`, cron
+`17 * * * *`, and the Queue consumer with `sourceboard-events-dlq`. The
+production Turnstile secret and `EMAIL_FROM` are present as Worker secrets.
+Email Service domain onboarding could not be verified through the connected API
+because it returned `2036: Unauthorized`, so email delivery remains an
+external release gate.
 
 The local container still cannot launch the Cloudflare Vite Playwright server
 because of its `uv_interface_addresses` failure; GitHub Actions remains the
 browser gate.
 
 The following remain explicit production launch prerequisites: WAF configuration,
-custom domain, Turnstile site/secret, Email Service sender and missing Worker
-secrets, backup/restore drill, alert routing, an external penetration test, and
-review/removal of the remaining inline-style `'unsafe-inline'` allowance.
+Email Service sender/domain verification, backup/restore drill, alert routing,
+an external penetration test, and review/removal of the remaining inline-style
+`'unsafe-inline'` allowance.
