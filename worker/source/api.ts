@@ -1,7 +1,7 @@
 import { createIdentifier } from "../auth/crypto";
 import { createAuthContext, createAuthService } from "../auth/service";
 import { hasCapability } from "../auth/rbac";
-import { assertCsrfToken, assertSameOrigin } from "../auth/security";
+import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
@@ -114,7 +114,7 @@ export async function handleSourceRequest(
     if (request.method !== "POST")
       throw new PostError(405, "METHOD_NOT_ALLOWED", "Method not allowed.");
     assertSameOrigin(request);
-    assertCsrfToken(request);
+    if (getSessionToken(request)) assertCsrfToken(request);
     const body = await requestBody(request);
     const database = db(env);
     const target = await database
