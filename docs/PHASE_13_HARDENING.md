@@ -146,13 +146,13 @@ messages are written by the new observability boundary.
 
 ## Verification and deferred work
 
-GitHub Actions run `#97` (`34052879905`) passed lint/Prettier, strict
+GitHub Actions run `#99` (`34053344904`) passed lint/Prettier, strict
 TypeScript, 90 unit tests across 29 files, production build, Wrangler dry-run,
 local D1 migrations through `0013`, and 83 Playwright E2E tests (`83 passed`,
 with no failures or flakiness). Fallow's new-only audit passed with zero
 introduced findings. The previous candidate's search flake was reproduced in
-CI and fixed by reading the submitted form control instead of relying only on
-React state during hydration.
+CI and fixed by keeping the input uncontrolled during hydration, then reading
+the submitted form control instead of relying on React state.
 
 The local container still cannot launch the Cloudflare Vite Playwright server
 because of its `uv_interface_addresses` failure; GitHub Actions remains the

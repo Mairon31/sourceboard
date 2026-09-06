@@ -467,13 +467,14 @@ See [`docs/PHASE_13_HARDENING.md`](PHASE_13_HARDENING.md),
 [`docs/INCIDENT_RUNBOOK.md`](INCIDENT_RUNBOOK.md) and
 [`docs/PERFORMANCE_PHASE_13.md`](PERFORMANCE_PHASE_13.md).
 
-GitHub Actions run `#97` (`34052879905`) passed every required gate: lint/Prettier,
+GitHub Actions run `#99` (`34053344904`) passed every required gate: lint/Prettier,
 strict TypeScript, 90 unit tests across 29 files, production build, Wrangler
 deploy dry-run, local D1 migrations through `0013`, and 83 Playwright E2E tests
 (`83 passed`, with no failures or flakiness). The run also reverified the
 hydration-sensitive TopBar search path after the previous candidate exposed a
-timing-dependent failure. Fallow's new-only audit passed with zero introduced
-findings.
+timing-dependent failure. The final fix keeps the search input uncontrolled
+during hydration and reads the browser's submitted form value. Fallow's
+new-only audit passed with zero introduced findings.
 
 The local Playwright server remains unavailable in this container because of
 `uv_interface_addresses`; GitHub Actions is the authoritative browser gate.
