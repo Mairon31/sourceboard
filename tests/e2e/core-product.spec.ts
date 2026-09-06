@@ -28,6 +28,16 @@ test("feed presents discovery tabs and privacy-sensitive states", async ({ page 
   await expect(page.getByText(/No source requests yet|Feed unavailable/)).toBeVisible();
 });
 
+test("search surface accepts a public discovery query", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("search").getByLabel("Search SourceBoard").fill("source");
+  await page.getByRole("search").getByLabel("Search SourceBoard").press("Enter");
+
+  await expect(page).toHaveURL(/\/search\?q=source/);
+  await expect(page.getByRole("heading", { name: /Search results for/ })).toBeVisible();
+  await expect(page.getByText(/No public matches|Search unavailable/)).toBeVisible();
+});
+
 test("create-post surface exposes anonymous and NSFW controls", async ({ page }) => {
   await page.goto("/post/new");
 

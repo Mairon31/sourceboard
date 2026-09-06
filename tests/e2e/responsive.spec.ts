@@ -9,7 +9,14 @@ const viewports = [
   { width: 1440, height: 900 },
 ];
 
-const routes = ["/", "/posts/post-verified", "/u/aurora", "/store", "/admin/moderation"];
+const routes = [
+  "/",
+  "/search?q=source",
+  "/posts/post-verified",
+  "/u/aurora",
+  "/store",
+  "/admin/moderation",
+];
 
 for (const viewport of viewports) {
   for (const path of routes) {
