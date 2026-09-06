@@ -18,7 +18,9 @@ function createMemoryStorage(initial?: string): ThemeStorage {
   };
 }
 
-function createMediaSource(initialMatches: boolean): ThemeMediaSource & { setMatches(value: boolean): void } {
+function createMediaSource(
+  initialMatches: boolean,
+): ThemeMediaSource & { setMatches(value: boolean): void } {
   let matches = initialMatches;
   const listeners = new Set<(matches: boolean) => void>();
 
