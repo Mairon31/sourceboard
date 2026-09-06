@@ -372,7 +372,7 @@ Phase 9 — Store, inventory, cosmetics, fonts and emote packs starts only after
 
 ## Phase 9 — Store, inventory, cosmetics, fonts and emote packs
 
-Status: **IMPLEMENTED — pending CI and review**
+Status: **IMPLEMENTED — CI green, integration review pending**
 
 Implemented on the stacked `phase-9-store-cosmetics` branch:
 
@@ -382,8 +382,12 @@ Implemented on the stacked `phase-9-store-cosmetics` branch:
 - [x] inventory-only cosmetic equip slots;
 - [x] allowlisted structured configuration for fonts and profile effects;
 - [x] capability-protected admin catalog create/update with audit entries.
+- [x] server-side emote/sticker pack entitlement checks for comment rich text and attachments;
+- [x] Store route reads D1 catalog and preserves disabled/scheduled states.
 
 See [`docs/PHASE_9_STORE.md`](PHASE_9_STORE.md) for the contract and deliberate boundaries.
+
+GitHub Actions run `#80` (`34044334540`) passed all required gates, including 75 Playwright E2E tests. Cosmetic rendering on post/comment/profile surfaces remains deliberately open before Phase 9 closure.
 
 ## Known limitations
 
