@@ -15,5 +15,7 @@ test("store actions disclose their presentation-only boundary", async ({ page })
   await page.goto("/store");
   await page.getByRole("button", { name: "Preview Editorial" }).click();
 
-  await expect(page.getByText("Presentation only")).toBeVisible();
+  await expect(
+    page.getByRole("status").getByText("Presentation only", { exact: true }),
+  ).toBeVisible();
 });

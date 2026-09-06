@@ -45,6 +45,7 @@
 - Modify: `tests/e2e/admin.spec.ts`
 - Modify: `tests/e2e/design-system.spec.ts`
 - Modify: `tests/e2e/navigation.spec.ts`
+- Modify: `tests/e2e/store.spec.ts`
 
 **Steps:**
 
@@ -53,7 +54,8 @@
 3. Locate the Admin Moderation link inside the named administration navigation landmark.
 4. Scope the theme control assertion to the banner that owns the top-bar control.
 5. Scope the Create post navigation assertion to the named primary navigation landmark, preserving the main-page CTA and mobile navigation.
-6. Re-run the affected test files and confirm every locator remains strict; do not use `.first()` merely to suppress ambiguity.
+6. Scope the Store preview assertion to its `status` landmark so it does not collide with the shell's presentation notice.
+7. Re-run the affected test files and confirm every locator remains strict; do not use `.first()` merely to suppress ambiguity.
 
 **Expected result:** all previously duplicated locators identify their intended UI owner while responsive duplicate surfaces remain intact.
 
