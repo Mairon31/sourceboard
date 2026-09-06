@@ -18,6 +18,7 @@ import {
   type ProfileUpdateInput,
   type SocialLinkInput,
 } from "./store";
+import type { ReputationSummary } from "../reputation/read";
 
 const MAX_DISPLAY_NAME_LENGTH = 80;
 const MAX_BIO_LENGTH = 5_000;
@@ -27,6 +28,7 @@ const MAX_SOCIAL_URL_LENGTH = 2_048;
 
 export interface ProfileServiceDependencies {
   store: ProfileStore;
+  reputation?: { getSummary(userId: string): Promise<ReputationSummary> };
   now?: () => number;
 }
 
@@ -131,6 +133,7 @@ function toPublicProfile(
   links: SocialLinkRecord[],
   relationship: Relationship,
   friendCount: number,
+  reputation?: ReputationSummary,
 ): PublicProfileResult {
   return {
     id: profile.userId,
@@ -154,6 +157,7 @@ function toPublicProfile(
     canRemoveFriend: relationship === "FRIEND",
     canBlock: relationship !== "BLOCKED",
     friendCount,
+    ...(reputation ?? {}),
   };
 }
 
@@ -270,12 +274,13 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
     const relationship = viewerId
       ? await dependencies.store.getRelationship(viewerId, profile.userId)
       : "NONE";
-    const [links, friendCount] = await Promise.all([
+    const [links, friendCount, reputation] = await Promise.all([
       dependencies.store.getSocialLinks(profile.userId),
       dependencies.store.countAcceptedFriends(profile.userId),
+      dependencies.reputation?.getSummary(profile.userId),
     ]);
     return applyRelationshipActions(
-      toPublicProfile(profile, links, relationship, friendCount),
+      toPublicProfile(profile, links, relationship, friendCount, reputation),
       viewerId,
     );
   }

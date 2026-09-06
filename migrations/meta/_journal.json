@@ -57,6 +57,13 @@
       "when": 1788703775510,
       "tag": "0007_sturdy_chimera",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788708396410,
+      "tag": "0008_needy_slipstream",
+      "breakpoints": true
     }
   ]
 }
