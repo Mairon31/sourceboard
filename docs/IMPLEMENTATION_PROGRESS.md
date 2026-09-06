@@ -6,9 +6,9 @@
 
 ## Current phase
 
-**Phase 5 — Comments, replies, reactions, emotes, GIFs and stickers**
+**Phase 12 — Búsqueda, discovery y rendimiento D1**
 
-Status: **COMPLETED — PR #8 remains open for review**
+Status: **READY FOR VERIFICATION — implementation complete on stacked PR #15**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -414,12 +414,31 @@ See [`docs/PHASE_11_NOTIFICATIONS.md`](PHASE_11_NOTIFICATIONS.md) for the D1-fir
 
 GitHub Actions run `#89` (`34047822984`) passed lint/Prettier, strict TypeScript, 82 unit tests across 26 files, production build, Wrangler deploy dry-run, local D1 migrations through `0012`, and 75 Playwright E2E tests. The PR remains unmerged for review.
 
+## Phase 12 — Búsqueda, discovery y rendimiento D1
+
+Status: **READY FOR VERIFICATION — implementation complete**
+
+Implemented on the stacked `phase-12-search` branch:
+
+- [x] public FTS5 post/profile projections with migration `0013` and synchronization triggers;
+- [x] public-only predicates repeated in D1 search queries, including lifecycle, account status and block filtering;
+- [x] post filters for recent/open/answered/verified discovery;
+- [x] keyset cursors for post and profile result sets without high `OFFSET` pagination;
+- [x] server-side NSFW preference filtering and blur presentation contract;
+- [x] anonymous-author masking and public-profile-only discovery serialization;
+- [x] `/api/search`, SSR `/search`, functional TopBar query navigation and responsive result cards;
+- [x] unit, migration-contract, responsive route and search-navigation coverage.
+
+See [`docs/PHASE_12_SEARCH.md`](PHASE_12_SEARCH.md) for the index contract, query-plan evidence,
+privacy boundary and deliberate deferrals.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B
   product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- Public search remains deferred to its canonical phase. Auth and
-  profile mutations remain unavailable until operators provide the required Worker Secrets and
-  real Rate Limit/Email resources; no insecure local bypass is used.
+- Search result caching, opaque ranking and external indexing remain deliberately deferred; the
+  current public FTS5 projection is D1-backed and viewer-sensitive results are not cached.
+- Auth and profile mutations remain unavailable until operators provide the required Worker Secrets
+  and real Rate Limit/Email resources; no insecure local bypass is used.

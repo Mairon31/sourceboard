@@ -7,6 +7,7 @@ const productRoutes = [
   "/register",
   "/forgot-password",
   "/verify-email",
+  "/search",
   "/post/new",
   "/posts/post-verified",
   "/u/aurora",

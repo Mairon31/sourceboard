@@ -1,5 +1,5 @@
-import { Link } from "react-router";
-import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { BellIcon, SearchIcon } from "../ui";
 import {
   notificationWebSocketUrl,
@@ -30,10 +30,18 @@ function notificationHref(notification: NotificationPreview): string {
 }
 
 export function TopBar() {
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifications, setRecentNotifications] = useState<NotificationPreview[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationMenuRef = useRef<HTMLDivElement>(null);
+
+  function submitSearch(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const query = searchTerm.trim();
+    navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
+  }
   useEffect(() => {
     let disposed = false;
     let socket: WebSocket | null = null;
@@ -115,17 +123,22 @@ export function TopBar() {
         <span className="sb-brand__name">SourceBoard</span>
       </Link>
 
-      <label className="sb-topbar-search">
+      <form
+        className="sb-topbar-search"
+        onSubmit={submitSearch}
+        role="search"
+        aria-label="Search SourceBoard"
+      >
         <span className="sr-only">Search SourceBoard</span>
         <SearchIcon width="18" height="18" />
         <input
           type="search"
-          readOnly
-          value=""
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
           placeholder="Search SourceBoard"
           aria-label="Search SourceBoard"
         />
-      </label>
+      </form>
 
       <div className="sb-topbar-actions">
         <ThemeControl />

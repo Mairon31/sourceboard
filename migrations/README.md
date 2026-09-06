@@ -41,6 +41,13 @@ Worker endpoints validate image magic bytes, require the corresponding
 `emote.manage` or `sticker.manage` capability, and never accept client-provided
 R2 keys.
 
+Migration `0013` adds the Phase 12 public FTS5 projections for posts and public profiles. The
+projection tables contain only public lifecycle/profile states and are synchronized by explicit D1
+triggers for post, comment, user and profile changes. Search queries still repeat visibility,
+account-status, block and NSFW predicates; the FTS tables are an optimization, not an authorization
+boundary. The migration also adds the comment aggregation and user lookup indexes used by the hot
+queries. Private R2 media remains behind the existing Worker gateway.
+
 Cloudflare D1 migrations are forward-only. Production rollback uses the
 approved backup/restore process or a reviewed corrective migration; no unsafe
 automatic `down` migration is implied. Local reset experiments must use a
