@@ -15,7 +15,7 @@ test("profile renders an explicit privacy-aware empty state without persisted da
 test("friends surface requires an authenticated private account", async ({ page }) => {
   await page.goto("/friends");
 
-  await expect(page.getByRole("heading", { name: "Friends" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Friends", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sign in to manage friends" })).toBeVisible();
   await expect(
     page.getByText("Friend requests and blocks are private account data."),

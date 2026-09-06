@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createIdentifier } from "../auth/crypto";
 import { createAuthService } from "../auth/service";
+import { isAuthError } from "../auth/errors";
 import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
@@ -50,17 +51,18 @@ function jsonResponse(body: unknown, requestId: string, status = 200): Response 
 }
 
 function errorResponse(error: unknown, requestId: string): Response {
-  const profileError = isProfileError(error)
-    ? error
-    : new ProfileError(
-        500,
-        "PROFILE_INTERNAL_ERROR",
-        "Profile service is temporarily unavailable.",
-      );
+  const publicError =
+    isProfileError(error) || isAuthError(error)
+      ? error
+      : new ProfileError(
+          500,
+          "PROFILE_INTERNAL_ERROR",
+          "Profile service is temporarily unavailable.",
+        );
   return jsonResponse(
-    createErrorEnvelope(profileError.code, profileError.publicMessage, requestId),
+    createErrorEnvelope(publicError.code, publicError.publicMessage, requestId),
     requestId,
-    profileError.status,
+    publicError.status,
   );
 }
 
