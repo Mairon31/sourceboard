@@ -39,7 +39,10 @@ export function TopBar() {
 
   function submitSearch(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    const query = searchTerm.trim();
+    // Read the submitted control, not only React state. If a user types before
+    // hydration finishes, the browser's form value is the authoritative value.
+    const submittedValue = new FormData(event.currentTarget).get("q");
+    const query = (typeof submittedValue === "string" ? submittedValue : searchTerm).trim();
     navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
   }
   useEffect(() => {
