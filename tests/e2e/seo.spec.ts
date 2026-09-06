@@ -9,6 +9,22 @@ test("robots exposes only the public sitemap entry point", async ({ request }) =
   expect(body).toContain("Sitemap: http://127.0.0.1:5173/sitemap.xml");
 });
 
+test("home exposes the SourceBoard brand asset in the document and as a public image", async ({
+  request,
+}) => {
+  const [pageResponse, logoResponse] = await Promise.all([
+    request.get("/"),
+    request.get("/sourceboard-logo.png"),
+  ]);
+
+  expect(pageResponse.status()).toBe(200);
+  const html = await pageResponse.text();
+  expect(html).toContain('property="og:image" content="https://srcboard.me/sourceboard-logo.png"');
+  expect(html).toContain('rel="icon"');
+  expect(logoResponse.status()).toBe(200);
+  expect(logoResponse.headers()["content-type"]).toContain("image/png");
+});
+
 test("post API does not allow unauthenticated mutations", async ({ request }) => {
   const response = await request.post("/api/posts", {
     headers: {

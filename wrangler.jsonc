@@ -154,7 +154,7 @@
         },
       ],
       "vars": {
-        "TURNSTILE_SITE_KEY": "",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAEqlOpm_bo6ovKs5",
       },
       "secrets": {
         "required": [
@@ -173,10 +173,7 @@
     },
   ],
   "vars": {
-    // The real public Turnstile site key is supplied during provisioning.
-    // The empty value keeps local type generation deterministic without
-    // pretending that a site has already been registered.
-    "TURNSTILE_SITE_KEY": "",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAEqlOpm_bo6ovKs5",
   },
   "secrets": {
     "required": ["TURNSTILE_SECRET", "EMAIL_FROM", "EMAIL_LOOKUP_KEY_V1", "DATA_ENCRYPTION_KEY_V1"],

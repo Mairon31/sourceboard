@@ -119,9 +119,14 @@ export function TopBar() {
   return (
     <header className="sb-topbar glass-panel glass-panel--strong">
       <Link className="sb-brand focus-ring" to="/" aria-label="SourceBoard">
-        <span className="sb-brand__mark" aria-hidden="true">
-          S
-        </span>
+        <img
+          className="sb-brand__mark"
+          src="/sourceboard-logo.png"
+          alt=""
+          width="34"
+          height="34"
+          decoding="async"
+        />
         <span className="sb-brand__name">SourceBoard</span>
       </Link>
 

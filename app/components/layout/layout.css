@@ -30,15 +30,11 @@
 }
 
 .sb-brand__mark {
-  display: grid;
+  display: block;
   width: 34px;
   height: 34px;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
   border-radius: 11px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 16px;
+  object-fit: cover;
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
 
