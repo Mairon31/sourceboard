@@ -1,30 +1,36 @@
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "connect-src 'self' https://challenges.cloudflare.com wss:",
-  "font-src 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "frame-src https://challenges.cloudflare.com",
-  "img-src 'self' data: blob:",
-  "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
-  "style-src 'self' 'unsafe-inline'",
-].join("; ");
+function contentSecurityPolicy(cspNonce?: string): string {
+  const scriptSource = cspNonce ? `'nonce-${cspNonce}'` : "'unsafe-inline'";
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "connect-src 'self' https://challenges.cloudflare.com wss:",
+    "font-src 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "frame-src https://challenges.cloudflare.com",
+    "img-src 'self' data: blob:",
+    "object-src 'none'",
+    `script-src 'self' ${scriptSource} https://challenges.cloudflare.com`,
+    "style-src 'self' 'unsafe-inline'",
+  ].join("; ");
+}
 
 /**
  * Applies the response boundary shared by API, SSR and media responses.
  *
- * The theme bootstrap is currently an inline script and Turnstile is an
- * explicitly allowlisted Cloudflare dependency, so the CSP is intentionally
- * documented rather than pretending to be nonce-based before the SSR entry
- * can pass a nonce through the complete React Router document.
+ * SSR supplies a per-response nonce for inline scripts, including the theme
+ * bootstrap and React Router's hydration scripts. Inline style attributes are
+ * still required by the existing cosmetic surfaces and remain documented.
  */
-export function withSecurityHeaders(response: Response, secureTransport = false): Response {
+export function withSecurityHeaders(
+  response: Response,
+  secureTransport = false,
+  cspNonce?: string,
+): Response {
   if (response.status === 101) return response;
 
   const headers = new Headers(response.headers);
-  headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+  headers.set("Content-Security-Policy", contentSecurityPolicy(cspNonce));
   headers.set("Permissions-Policy", "camera=(), geolocation=(), microphone=()");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("X-Content-Type-Options", "nosniff");

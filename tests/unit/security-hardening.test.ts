@@ -15,6 +15,14 @@ describe("production security boundaries", () => {
     expect(response.headers.get("etag")).toBe("test");
   });
 
+  it("binds inline scripts to the per-response CSP nonce", () => {
+    const response = withSecurityHeaders(new Response("ok"), false, "nonce-test");
+    const policy = response.headers.get("content-security-policy") ?? "";
+
+    expect(policy).toContain("script-src 'self' 'nonce-nonce-test'");
+    expect(policy).not.toContain("script-src 'self' 'unsafe-inline'");
+  });
+
   it("fails closed when a rate-limit binding is unavailable or errors", async () => {
     const unavailable = vi.fn(() => new Error("binding unavailable"));
     await expect(

@@ -4,6 +4,7 @@ import type { SourceBoardEnvironment } from "../worker/environment";
 export interface SourceBoardRequestContext {
   env: SourceBoardEnvironment;
   requestId: string;
+  cspNonce: string;
 }
 
 export const sourceBoardRequestContext = createContext<SourceBoardRequestContext | null>(null);

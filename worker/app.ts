@@ -21,8 +21,13 @@ const requestHandler = createRequestHandler(
 export default {
   async fetch(request, env) {
     const startedAt = Date.now();
+    const cspNonce = crypto.randomUUID().replaceAll("-", "");
     const finish = (response: Response): Response => {
-      const secured = withSecurityHeaders(response, new URL(request.url).protocol === "https:");
+      const secured = withSecurityHeaders(
+        response,
+        new URL(request.url).protocol === "https:",
+        cspNonce,
+      );
       observeRequest(request, secured, startedAt);
       return secured;
     };
@@ -50,7 +55,7 @@ export default {
     }
 
     const routerContext = new RouterContextProvider();
-    routerContext.set(sourceBoardRequestContext, { env, requestId });
+    routerContext.set(sourceBoardRequestContext, { env, requestId, cspNonce });
     const response = await requestHandler(request, routerContext);
     const headers = new Headers(response.headers);
     headers.set(REQUEST_ID_HEADER, requestId);
