@@ -16,12 +16,8 @@ test.beforeEach(async ({ page }) => {
 test("renders the Phase 0A visual laboratory", async ({ page }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", { name: "SourceBoard", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Phase 0A visual laboratory" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "SourceBoard", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Phase 0A visual laboratory" })).toBeVisible();
   await expect(
     page.getByText("Presentation only — product persistence arrives in later phases."),
   ).toBeVisible();
@@ -67,9 +63,7 @@ test("interactive primitives support keyboard use", async ({ page }) => {
 
   const tooltipTrigger = page.getByRole("button", { name: "Why Liquid Glass?" });
   await tooltipTrigger.focus();
-  await expect(
-    page.getByText("Glass is reserved for elevated chrome and overlays."),
-  ).toBeVisible();
+  await expect(page.getByText("Glass is reserved for elevated chrome and overlays.")).toBeVisible();
 
   const surfaceTab = page.getByRole("tab", { name: "Surface" });
   await surfaceTab.focus();

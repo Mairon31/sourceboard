@@ -146,8 +146,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
   );
 });
 
-export interface SwitchProps
-  extends Omit<React.ComponentProps<typeof BaseSwitch.Root>, "children" | "className"> {
+export interface SwitchProps extends Omit<
+  React.ComponentProps<typeof BaseSwitch.Root>,
+  "children" | "className"
+> {
   label: string;
   description?: string;
   className?: string;
@@ -167,8 +169,10 @@ export function Switch({ label, description, className, ...props }: SwitchProps)
   );
 }
 
-export interface CheckboxProps
-  extends Omit<React.ComponentProps<typeof BaseCheckbox.Root>, "children" | "className"> {
+export interface CheckboxProps extends Omit<
+  React.ComponentProps<typeof BaseCheckbox.Root>,
+  "children" | "className"
+> {
   label: string;
   description?: string;
   className?: string;

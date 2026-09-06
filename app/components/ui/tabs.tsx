@@ -19,10 +19,7 @@ export function Tabs({ items, defaultValue, className }: TabsProps) {
   if (!firstValue) return null;
 
   return (
-    <BaseTabs.Root
-      className={joinClassNames("sb-tabs", className)}
-      defaultValue={firstValue}
-    >
+    <BaseTabs.Root className={joinClassNames("sb-tabs", className)} defaultValue={firstValue}>
       <BaseTabs.List className="sb-tabs__list">
         {items.map((item) => (
           <BaseTabs.Tab key={item.value} value={item.value} className="sb-tabs__tab focus-ring">

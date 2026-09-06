@@ -66,8 +66,8 @@ function SamplePostCard() {
       <div className="demo-post-copy">
         <h3>Which public post did this crop come from?</h3>
         <p>
-          A representative SourceBoard content card for judging hierarchy, spacing and contrast.
-          It is static presentation data, not a live post.
+          A representative SourceBoard content card for judging hierarchy, spacing and contrast. It
+          is static presentation data, not a live post.
         </p>
       </div>
 
@@ -206,7 +206,8 @@ function DemoContent() {
           <div className="demo-preview-panel">
             <Badge tone="success">Accessible dialog</Badge>
             <p>
-              Focus is managed by the headless primitive, while SourceBoard owns the visual language.
+              Focus is managed by the headless primitive, while SourceBoard owns the visual
+              language.
             </p>
           </div>
           <OverlayActionRow>
@@ -220,7 +221,8 @@ function DemoContent() {
           description="A touch-friendly bottom drawer primitive for compact screens."
         >
           <p>
-            The drawer uses the same spacing, elevation and motion tokens as the rest of SourceBoard.
+            The drawer uses the same spacing, elevation and motion tokens as the rest of
+            SourceBoard.
           </p>
         </Drawer>
 

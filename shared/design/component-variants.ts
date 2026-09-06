@@ -2,9 +2,7 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 export type BadgeTone = "neutral" | "accent" | "success" | "warning" | "danger" | "nsfw";
 
-export function joinClassNames(
-  ...values: Array<string | false | null | undefined>
-): string {
+export function joinClassNames(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(" ");
 }
 
