@@ -1,0 +1,247 @@
+import { createIdentifier } from "../auth/crypto";
+import { createAuthContext, createAuthService } from "../auth/service";
+import { hasCapability } from "../auth/rbac";
+import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/security";
+import { createD1AuthStore } from "../auth/store";
+import type { SourceBoardEnvironment } from "../environment";
+import { createErrorEnvelope } from "../../shared/http/error-envelope";
+import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { PostError } from "../posts/errors";
+
+function json(body: unknown, requestId: string, status = 200): Response {
+  return Response.json(body, {
+    status,
+    headers: { "cache-control": "no-store", [REQUEST_ID_HEADER]: requestId },
+  });
+}
+function fail(error: unknown, requestId: string): Response {
+  const e =
+    error instanceof PostError
+      ? error
+      : new PostError(
+          500,
+          "SOURCE_INTERNAL_ERROR",
+          "Source resolution is temporarily unavailable.",
+        );
+  return json(createErrorEnvelope(e.code, e.publicMessage, requestId), requestId, e.status);
+}
+function db(env: SourceBoardEnvironment): D1Database {
+  if (!env.DB)
+    throw new PostError(
+      503,
+      "SOURCE_INFRASTRUCTURE_UNAVAILABLE",
+      "Source resolution is temporarily unavailable.",
+    );
+  return env.DB;
+}
+async function actor(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+  capability?: "source.verify",
+) {
+  const database = db(env);
+  const session = await createAuthService({ store: createD1AuthStore(database), env }).getSession(
+    request,
+  );
+  if (!session) throw new PostError(401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
+  const auth = createAuthService({ store: createD1AuthStore(database), env });
+  if (
+    capability &&
+    !hasCapability(await auth.getAuthorization(createAuthContext(request, requestId)), capability)
+  ) {
+    throw new PostError(403, "CAPABILITY_REQUIRED", "You are not allowed to verify sources.");
+  }
+  return { id: session.user.id, store: createD1AuthStore(database) };
+}
+function postId(pathname: string): string | null {
+  return (
+    pathname.match(/^\/api\/posts\/([^/]+)\/source\/(accept|revoke|verify|unverify)$/)?.[1] ?? null
+  );
+}
+function action(pathname: string): string | null {
+  return (
+    pathname.match(/^\/api\/posts\/[^/]+\/source\/(accept|revoke|verify|unverify)$/)?.[1] ?? null
+  );
+}
+async function requestBody(request: Request): Promise<Record<string, unknown>> {
+  const value: unknown = await request.json();
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new PostError(400, "INVALID_REQUEST", "The request body is invalid.");
+  return value as Record<string, unknown>;
+}
+function url(value: unknown): string {
+  if (typeof value !== "string" || value.length > 2048)
+    throw new PostError(400, "INVALID_SOURCE_URL", "A valid source URL is required.");
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "https:") throw new Error();
+    return parsed.toString();
+  } catch {
+    throw new PostError(400, "INVALID_SOURCE_URL", "The source URL must use HTTPS.");
+  }
+}
+function reason(value: unknown): string {
+  if (typeof value !== "string" || value.trim().length < 10 || value.trim().length > 500)
+    throw new PostError(
+      400,
+      "AUDIT_REASON_REQUIRED",
+      "A reason between 10 and 500 characters is required.",
+    );
+  return value.trim();
+}
+async function emit(
+  env: SourceBoardEnvironment,
+  type: string,
+  payload: Record<string, string>,
+): Promise<void> {
+  if (env.EVENTS) await env.EVENTS.send({ type, ...payload });
+}
+
+export function isSourceRoute(pathname: string): boolean {
+  return postId(pathname) !== null;
+}
+
+export async function handleSourceRequest(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response | null> {
+  const id = postId(new URL(request.url).pathname);
+  const kind = action(new URL(request.url).pathname);
+  if (!id || !kind) return null;
+  try {
+    if (request.method !== "POST")
+      throw new PostError(405, "METHOD_NOT_ALLOWED", "Method not allowed.");
+    assertSameOrigin(request);
+    if (getSessionToken(request)) assertCsrfToken(request);
+    const body = await requestBody(request);
+    const database = db(env);
+    const target = await database
+      .prepare(
+        `SELECT p.author_id AS post_author_id, p.accepted_comment_id, p.verified_source_id, c.id AS comment_id, c.author_id AS comment_author_id, c.state AS comment_state FROM posts p LEFT JOIN comments c ON c.id = ? AND c.post_id = p.id WHERE p.id = ?`,
+      )
+      .bind(String(body.commentId ?? ""), id)
+      .first<Record<string, unknown>>();
+    if (!target || !target.comment_id || target.comment_state !== "VISIBLE")
+      throw new PostError(
+        400,
+        "INVALID_SOURCE_COMMENT",
+        "The comment must belong to this post and be visible.",
+      );
+    const needsVerification = kind === "verify" || kind === "unverify";
+    const current = await actor(
+      request,
+      requestId,
+      env,
+      needsVerification ? "source.verify" : undefined,
+    );
+    if (!needsVerification && current.id !== target.post_author_id)
+      throw new PostError(403, "POST_AUTHOR_REQUIRED", "Only the post author can accept a source.");
+    if (kind === "accept") {
+      const result = await database
+        .prepare(
+          "UPDATE posts SET accepted_comment_id = ?, status = 'ANSWERED', updated_at = ? WHERE id = ? AND (accepted_comment_id IS NULL OR accepted_comment_id = ?)",
+        )
+        .bind(String(target.comment_id), Date.now(), id, String(target.comment_id))
+        .run();
+      if (!result.meta.changes)
+        throw new PostError(
+          409,
+          "SOURCE_ALREADY_ACCEPTED",
+          "This post already has another accepted source.",
+        );
+      await database
+        .prepare(
+          "INSERT INTO source_resolutions (id, post_id, comment_id, resolution_type, state, actor_user_id, created_at) VALUES (?, ?, ?, 'ACCEPTED', 'ACTIVE', ?, ?)",
+        )
+        .bind(createIdentifier(), id, target.comment_id, current.id, Date.now())
+        .run();
+      await emit(env, "source.accepted", { postId: id, commentId: String(target.comment_id) });
+      return json({ accepted: true }, requestId, 201);
+    }
+    if (kind === "revoke") {
+      const result = await database
+        .prepare(
+          "UPDATE posts SET accepted_comment_id = NULL, status = 'OPEN', updated_at = ? WHERE id = ? AND accepted_comment_id = ?",
+        )
+        .bind(Date.now(), id, target.comment_id)
+        .run();
+      if (!result.meta.changes)
+        throw new PostError(
+          409,
+          "SOURCE_NOT_ACTIVE",
+          "That source is not the active accepted source.",
+        );
+      await database
+        .prepare(
+          "UPDATE source_resolutions SET state = 'REVOKED', revoked_at = ?, revoked_by_user_id = ?, revoke_reason = ? WHERE post_id = ? AND comment_id = ? AND resolution_type = 'ACCEPTED' AND state = 'ACTIVE'",
+        )
+        .bind(Date.now(), current.id, reason(body.reason), id, target.comment_id)
+        .run();
+      await emit(env, "source.accepted.revoked", {
+        postId: id,
+        commentId: String(target.comment_id),
+      });
+      return json({ revoked: true }, requestId);
+    }
+    if (kind === "verify") {
+      const canonicalUrl = url(body.canonicalSourceUrl);
+      const evidence = reason(body.evidenceNote);
+      const result = await database
+        .prepare(
+          "UPDATE posts SET verified_source_id = ?, status = 'VERIFIED', updated_at = ? WHERE id = ? AND verified_source_id IS NULL",
+        )
+        .bind(String(target.comment_id), Date.now(), id)
+        .run();
+      if (!result.meta.changes)
+        throw new PostError(
+          409,
+          "SOURCE_ALREADY_VERIFIED",
+          "This post already has an active verified source.",
+        );
+      await database
+        .prepare(
+          "INSERT INTO source_resolutions (id, post_id, comment_id, resolution_type, state, canonical_source_url, evidence_note, actor_user_id, created_at) VALUES (?, ?, ?, 'VERIFIED', 'ACTIVE', ?, ?, ?, ?)",
+        )
+        .bind(
+          createIdentifier(),
+          id,
+          target.comment_id,
+          canonicalUrl,
+          evidence,
+          current.id,
+          Date.now(),
+        )
+        .run();
+      await emit(env, "source.verified", { postId: id, commentId: String(target.comment_id) });
+      return json({ verified: true, canonicalSourceUrl: canonicalUrl }, requestId, 201);
+    }
+    const revokeReason = reason(body.reason);
+    const result = await database
+      .prepare(
+        "UPDATE posts SET verified_source_id = NULL, status = 'ANSWERED', updated_at = ? WHERE id = ? AND verified_source_id = ?",
+      )
+      .bind(Date.now(), id, target.comment_id)
+      .run();
+    if (!result.meta.changes)
+      throw new PostError(
+        409,
+        "SOURCE_NOT_ACTIVE",
+        "That source is not the active verified source.",
+      );
+    await database
+      .prepare(
+        "UPDATE source_resolutions SET state = 'REVOKED', revoked_at = ?, revoked_by_user_id = ?, revoke_reason = ? WHERE post_id = ? AND comment_id = ? AND resolution_type = 'VERIFIED' AND state = 'ACTIVE'",
+      )
+      .bind(Date.now(), current.id, revokeReason, id, target.comment_id)
+      .run();
+    await emit(env, "source.verification.revoked", {
+      postId: id,
+      commentId: String(target.comment_id),
+    });
+    return json({ revoked: true }, requestId);
+  } catch (error) {
+    return fail(error, requestId);
+  }
+}

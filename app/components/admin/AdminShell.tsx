@@ -6,6 +6,7 @@ import { ThemeControl } from "../layout/ThemeControl";
 const adminLinks = [
   { href: "/admin", label: "Overview", end: true },
   { href: "/admin/moderation", label: "Moderation", end: false },
+  { href: "/admin/verifications", label: "Verifications", end: false },
   { href: "/admin#users", label: "Users", end: false },
   { href: "/admin#roles", label: "Roles", end: false },
   { href: "/admin#source-verification", label: "Source verification", end: false },

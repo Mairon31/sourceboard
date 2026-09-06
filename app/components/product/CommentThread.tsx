@@ -14,10 +14,14 @@ function CommentItem({
   comment,
   depth = 0,
   onReply,
+  canAcceptSource,
+  onAcceptSource,
 }: {
   comment: CommentView;
   depth?: number;
   onReply: (commentId: string) => void;
+  canAcceptSource?: boolean;
+  onAcceptSource?: (commentId: string) => void;
 }) {
   const [showReplies, setShowReplies] = useState(depth === 0);
   const [liked, setLiked] = useState(comment.reaction.viewerReacted);
@@ -91,6 +95,11 @@ function CommentItem({
           <button type="button" onClick={() => onReply(comment.id)}>
             Reply
           </button>
+          {canAcceptSource && comment.state === "VISIBLE" ? (
+            <button type="button" onClick={() => onAcceptSource?.(comment.id)}>
+              Accept source
+            </button>
+          ) : null}
           {comment.editedAt ? <span>Edited</span> : null}
           {hidden ? <span>{comment.state === "HIDDEN" ? "Moderated" : "Deleted"}</span> : null}
         </div>
@@ -112,6 +121,8 @@ function CommentItem({
                     comment={reply}
                     depth={Math.min(depth + 1, 2)}
                     onReply={onReply}
+                    canAcceptSource={canAcceptSource}
+                    onAcceptSource={onAcceptSource}
                   />
                 ))}
               </div>
@@ -123,7 +134,17 @@ function CommentItem({
   );
 }
 
-export function CommentThread({ postId, comments }: { postId: string; comments: CommentView[] }) {
+export function CommentThread({
+  postId,
+  comments,
+  canAcceptSource,
+  onAcceptSource,
+}: {
+  postId: string;
+  comments: CommentView[];
+  canAcceptSource?: boolean;
+  onAcceptSource?: (commentId: string) => void;
+}) {
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -202,7 +223,13 @@ export function CommentThread({ postId, comments }: { postId: string; comments: 
 
       <div className="product-comments__list">
         {comments.map((comment) => (
-          <CommentItem key={comment.id} comment={comment} onReply={setReplyTo} />
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            onReply={setReplyTo}
+            canAcceptSource={canAcceptSource}
+            onAcceptSource={onAcceptSource}
+          />
         ))}
       </div>
     </section>

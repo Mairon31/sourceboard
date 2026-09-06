@@ -216,6 +216,24 @@ async function toPostSummary(
     imageUrl: isMediaVisible ? `/api/media/post/${encodeURIComponent(post.media.id)}` : undefined,
     imageWidth: post.media.width ?? undefined,
     imageHeight: post.media.height ?? undefined,
+    acceptedSource: post.acceptedSource
+      ? {
+          commentId: post.acceptedSource.commentId,
+          canonicalUrl: post.acceptedSource.canonicalUrl ?? undefined,
+          acceptedAt: new Date(post.acceptedSource.acceptedAt).toISOString(),
+          label: "Accepted Source",
+        }
+      : undefined,
+    verifiedSource: post.verifiedSource
+      ? {
+          commentId: post.verifiedSource.commentId,
+          canonicalUrl: post.verifiedSource.canonicalUrl,
+          evidenceSummary: post.verifiedSource.evidenceSummary,
+          verifiedAt: new Date(post.verifiedSource.verifiedAt).toISOString(),
+          verifierLabel: post.verifiedSource.verifierLabel,
+          label: "Verified Source",
+        }
+      : undefined,
   };
 }
 
@@ -235,7 +253,7 @@ async function toPostDetail(
       canEdit,
       canArchive: isOwner && !post.post.deletedAt,
       canDelete: isOwner && !post.post.deletedAt,
-      canAcceptSource: false,
+      canAcceptSource: isOwner && !post.post.deletedAt && post.post.status !== "LOCKED",
       canModerate: false,
       canVerifySource: false,
       canRevealAnonymous: false,

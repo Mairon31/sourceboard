@@ -76,6 +76,14 @@ interface PostWithAuthorRow {
   media_status: string;
   media_created_at: number;
   media_deleted_at: number | null;
+  accepted_comment_resolution_id: string | null;
+  accepted_resolution_url: string | null;
+  accepted_resolution_at: number | null;
+  verified_comment_resolution_id: string | null;
+  verified_resolution_url: string | null;
+  verified_evidence_note: string | null;
+  verified_resolution_at: number | null;
+  verified_by_username: string | null;
 }
 
 interface NsfwRow {
@@ -112,7 +120,15 @@ const POST_COLUMNS = `
   m.r2_key AS media_r2_key, m.content_type AS media_content_type,
   m.byte_size AS media_byte_size, m.width AS media_width, m.height AS media_height,
   m.checksum_sha256 AS media_checksum_sha256, m.status AS media_status,
-  m.created_at AS media_created_at, m.deleted_at AS media_deleted_at
+  m.created_at AS media_created_at, m.deleted_at AS media_deleted_at,
+  (SELECT sr.comment_id FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'ACCEPTED' AND sr.state = 'ACTIVE' LIMIT 1) AS accepted_comment_resolution_id,
+  (SELECT sr.canonical_source_url FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'ACCEPTED' AND sr.state = 'ACTIVE' LIMIT 1) AS accepted_resolution_url,
+  (SELECT sr.created_at FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'ACCEPTED' AND sr.state = 'ACTIVE' LIMIT 1) AS accepted_resolution_at,
+  (SELECT sr.comment_id FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_comment_resolution_id,
+  (SELECT sr.canonical_source_url FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_resolution_url,
+  (SELECT sr.evidence_note FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_evidence_note,
+  (SELECT sr.created_at FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_resolution_at,
+  (SELECT u2.username FROM source_resolutions sr JOIN users u2 ON u2.id = sr.actor_user_id WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_by_username
 `;
 
 function toPost(row: PostWithAuthorRow): PostWithAuthor {
@@ -162,6 +178,26 @@ function toPost(row: PostWithAuthorRow): PostWithAuthor {
       createdAt: row.media_created_at,
       deletedAt: row.media_deleted_at,
     },
+    acceptedSource: row.accepted_comment_resolution_id
+      ? {
+          commentId: row.accepted_comment_resolution_id,
+          canonicalUrl: row.accepted_resolution_url,
+          acceptedAt: row.accepted_resolution_at ?? 0,
+        }
+      : null,
+    verifiedSource:
+      row.verified_comment_resolution_id &&
+      row.verified_resolution_url &&
+      row.verified_evidence_note &&
+      row.verified_resolution_at
+        ? {
+            commentId: row.verified_comment_resolution_id,
+            canonicalUrl: row.verified_resolution_url,
+            evidenceSummary: row.verified_evidence_note,
+            verifiedAt: row.verified_resolution_at,
+            verifierLabel: row.verified_by_username ?? "Source verifier",
+          }
+        : null,
   };
 }
 

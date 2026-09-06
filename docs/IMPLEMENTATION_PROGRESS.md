@@ -323,6 +323,34 @@ GitHub Actions run `#66` (`34037972333`) passed lint/Prettier, strict TypeScript
 through `0006` and 73 Playwright E2E tests. Phase 6 remains open for review in
 stacked PR #9; no merge was performed.
 
+## Phase 7 — Accepted Source plus Verified Source
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-7-accepted-verified-source` branch and draft
+PR #10:
+
+- [x] D1 source-resolution history with active uniqueness and migration `0007`;
+- [x] author-only Accepted Source with conditional race protection and revoke history;
+- [x] capability-protected Verified Source with HTTPS canonical URL, evidence, verifier and revoke reason;
+- [x] post SSR/cards and discussion action for Accepted/Verified Source;
+- [x] capability-protected `/admin/verifications` review queue;
+- [x] source events emitted after persistence, with points deliberately deferred to Phase 8;
+- [x] IDOR and unauthenticated route coverage.
+
+See [`docs/PHASE_7_ACCEPTED_VERIFIED_SOURCE.md`](PHASE_7_ACCEPTED_VERIFIED_SOURCE.md).
+
+### Phase 7 verification evidence
+
+GitHub Actions run `#72` (`34041818059`) passed lint/Prettier, strict TypeScript,
+63 unit tests, production build, Wrangler deploy dry-run, local D1 migrations
+through `0007` and 75 Playwright E2E tests. No merge was performed.
+
+## Next phase
+
+Phase 8 — Points, reputation, medals and achievements is next, stacked on
+Phase 7 and constrained by its source event contracts.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B

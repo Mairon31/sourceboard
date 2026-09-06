@@ -55,6 +55,14 @@ export interface PostWithAuthor {
   post: PostRecord;
   author: PostAuthorRecord;
   media: PostMediaRecord;
+  acceptedSource?: { commentId: string; canonicalUrl: string | null; acceptedAt: number } | null;
+  verifiedSource?: {
+    commentId: string;
+    canonicalUrl: string;
+    evidenceSummary: string;
+    verifiedAt: number;
+    verifierLabel: string;
+  } | null;
 }
 
 export interface PostRevisionRecord {

@@ -17,6 +17,7 @@ import { PostCard } from "../components/product/PostCard";
 import { CommentThread } from "../components/product/CommentThread";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { Badge, Button, Card, Input, Textarea } from "../components/ui";
+import { SourceResolution } from "../components/product/SourceResolution";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { postId?: string; slug?: string };
@@ -256,6 +257,16 @@ function UnavailablePost({ unavailable }: { unavailable: boolean }) {
 export default function PostDetailRoute() {
   const { post, unavailable } = useLoaderData<LoaderData>();
   if (!post) return <UnavailablePost unavailable={unavailable} />;
+  const currentPost = post;
+
+  async function acceptSource(commentId: string) {
+    const response = await fetch(`/api/posts/${encodeURIComponent(currentPost.id)}/source/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+      body: JSON.stringify({ commentId }),
+    });
+    if (response.ok) window.location.reload();
+  }
 
   return (
     <ProductShell>
@@ -265,10 +276,16 @@ export default function PostDetailRoute() {
         description="One image, one focused question and an auditable path to the original source."
       />
       <PostCard post={post} />
+      <SourceResolution accepted={post.acceptedSource} verified={post.verifiedSource} />
       {post.permissions.canEdit || post.permissions.canArchive ? (
         <PostOwnerControls post={post} />
       ) : null}
-      <CommentThread postId={post.id} comments={post.comments} />
+      <CommentThread
+        postId={post.id}
+        comments={post.comments}
+        canAcceptSource={post.permissions.canAcceptSource}
+        onAcceptSource={(commentId) => void acceptSource(commentId)}
+      />
     </ProductShell>
   );
 }

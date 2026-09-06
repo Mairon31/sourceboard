@@ -50,6 +50,13 @@
       "when": 1788702753649,
       "tag": "0006_milky_skreet",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788703775510,
+      "tag": "0007_sturdy_chimera",
+      "breakpoints": true
     }
   ]
 }
