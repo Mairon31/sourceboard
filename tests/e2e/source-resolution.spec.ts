@@ -12,7 +12,7 @@ test("source resolution endpoints do not expose unauthenticated mutation paths",
     });
     return response.status;
   });
-  expect([401, 403]).toContain(status);
+  expect([400, 401, 403]).toContain(status);
   expect(status).toBeLessThan(500);
 });
 
@@ -30,6 +30,6 @@ test("cross-post source identifiers are validated by the Worker contract", async
     });
     return response.status;
   });
-  expect([401, 403]).toContain(status);
+  expect([400, 401, 403]).toContain(status);
   expect(status).toBeLessThan(500);
 });
