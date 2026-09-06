@@ -4,8 +4,8 @@ SourceBoard is a Cloudflare-native social forum for finding the public source or
 
 ## Current status
 
-Phase 0B, Phase 1, Phase 2 and Phase 3 are complete on their stacked branches.
-Phase 4 is next; production secrets/resources remain operator-supplied and no
+Phase 0B, Phase 1, Phase 2, Phase 3 and Phase 4 are complete on their stacked branches.
+Phase 4A is next; production secrets/resources remain operator-supplied and no
 fixture data is being promoted to persistence.
 
 See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the authoritative implementation status.
