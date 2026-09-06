@@ -1,6 +1,6 @@
 # Phase 6 — Admin base, emotes and stickers
 
-Status: **in progress on `phase-6-admin-emotes-stickers`**
+Status: **COMPLETED on `phase-6-admin-emotes-stickers`**
 
 Phase 6 establishes the first operational admin boundary without turning the
 Phase 0B fixtures into a fake backend.
@@ -37,5 +37,8 @@ Local verification completed so far:
 - `npm run lint`
 - `npm test -- --run` — 63 tests passing
 
-The remaining release gate is the full production build, Wrangler dry-run,
-local migration application and GitHub Actions Playwright run.
+GitHub Actions run `#66` (`34037972333`) passed lint/Prettier, strict TypeScript,
+63 unit tests, production build, Wrangler deploy dry-run, local D1 migrations
+through `0006` and 73 Playwright E2E tests. The preceding run `#65` exposed an
+SSR authorization lookup bug for unauthenticated admin requests; the fix was
+verified in `#66` without weakening the tests.
