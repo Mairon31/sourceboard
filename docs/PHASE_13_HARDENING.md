@@ -1,6 +1,6 @@
 # Phase 13 — Hardening, observability, backups and production launch
 
-Status: **IN PROGRESS — implementation and operational review**
+Status: **COMPLETE — application hardening verified in CI; production provisioning remains a release gate**
 
 This phase closes the application-side production boundary without provisioning a
 Cloudflare account, inventing resource IDs, or deploying to production. The
@@ -8,7 +8,7 @@ canonical implementation remains D1-first, keeps R2 private, and treats missing
 production bindings as an unavailable service rather than silently weakening a
 control.
 
-## Implemented in the candidate
+## Implemented in Phase 13
 
 - shared security headers for API, SSR, media and error responses;
 - CSP, `nosniff`, clickjacking protection, referrer policy, COOP/CORP and
@@ -28,6 +28,8 @@ control.
   delay and `sourceboard-events-dlq`;
 - generic public errors for unexpected catalog, moderation, store, points and
   SSR failures;
+- hydration-safe TopBar search submission that preserves the browser's native
+  form value while React is hydrating;
 - unit coverage for the new security boundary, fail-closed limiter, safe route
   logging and maintenance SQL contract.
 
@@ -144,14 +146,20 @@ messages are written by the new observability boundary.
 
 ## Verification and deferred work
 
-The candidate gate is recorded in `docs/IMPLEMENTATION_PROGRESS.md`. It covers
-lint/Prettier, strict TypeScript, unit tests, production build, Wrangler
-dry-run, local migrations and the existing Playwright suite. The local
-container still cannot launch the Cloudflare Vite Playwright server because of
-its `uv_interface_addresses` failure; GitHub Actions remains the browser gate.
+GitHub Actions run `#97` (`34052879905`) passed lint/Prettier, strict
+TypeScript, 90 unit tests across 29 files, production build, Wrangler dry-run,
+local D1 migrations through `0013`, and 83 Playwright E2E tests (`83 passed`,
+with no failures or flakiness). Fallow's new-only audit passed with zero
+introduced findings. The previous candidate's search flake was reproduced in
+CI and fixed by reading the submitted form control instead of relying only on
+React state during hydration.
 
-The following remain explicit launch prerequisites rather than pretending to be
-complete locally: real Cloudflare resources, WAF configuration, custom domain,
-Turnstile and Email Service verification, backup/restore drill, alert routing,
-an external penetration test, and removal of the current CSP
-`'unsafe-inline'` allowance after the theme bootstrap is nonce-based.
+The local container still cannot launch the Cloudflare Vite Playwright server
+because of its `uv_interface_addresses` failure; GitHub Actions remains the
+browser gate.
+
+The following remain explicit production launch prerequisites: real Cloudflare
+resources, WAF configuration, custom domain, Turnstile and Email Service
+verification, backup/restore drill, alert routing, an external penetration
+test, and removal of the current CSP `'unsafe-inline'` allowance after the
+theme bootstrap is nonce-based.

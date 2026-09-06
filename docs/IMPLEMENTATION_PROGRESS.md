@@ -8,7 +8,7 @@
 
 **Phase 13 — Hardening, observabilidad, backups y lanzamiento**
 
-Status: **IN PROGRESS — Phase 12 complete on stacked PR #15**
+Status: **COMPLETE — verified in CI, stacked PR #16 ready for review**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -440,7 +440,7 @@ React enhancement is ready. The PR remains unmerged for review.
 
 ## Phase 13 — Hardening, observability, backups and production launch
 
-Status: **IN PROGRESS — application hardening implemented; production provisioning and final CI review pending**
+Status: **COMPLETE — application hardening and operational documentation verified in CI; production provisioning remains a release gate**
 
 Implemented on the stacked `phase-13-hardening` branch:
 
@@ -456,6 +456,8 @@ Implemented on the stacked `phase-13-hardening` branch:
       allowlisted orphan R2 objects;
 - [x] Queue retry/DLQ configuration and safe background-failure handling;
 - [x] generic public errors for unexpected internal failures;
+- [x] hydration-safe TopBar search submission using the browser's submitted
+      control value;
 - [x] production checklist, incident runbook, security review and performance
       measurement plan.
 
@@ -465,11 +467,21 @@ See [`docs/PHASE_13_HARDENING.md`](PHASE_13_HARDENING.md),
 [`docs/INCIDENT_RUNBOOK.md`](INCIDENT_RUNBOOK.md) and
 [`docs/PERFORMANCE_PHASE_13.md`](PERFORMANCE_PHASE_13.md).
 
-The application-side candidate still requires real Cloudflare resource
-provisioning, WAF/custom-domain/Turnstile/Email setup, a backup/restore drill,
-alert routing, external penetration testing and a final Playwright CI run
-before this phase can be marked complete. The CSP inline theme bootstrap is a
-documented residual launch item until it can use a nonce.
+GitHub Actions run `#97` (`34052879905`) passed every required gate: lint/Prettier,
+strict TypeScript, 90 unit tests across 29 files, production build, Wrangler
+deploy dry-run, local D1 migrations through `0013`, and 83 Playwright E2E tests
+(`83 passed`, with no failures or flakiness). The run also reverified the
+hydration-sensitive TopBar search path after the previous candidate exposed a
+timing-dependent failure. Fallow's new-only audit passed with zero introduced
+findings.
+
+The local Playwright server remains unavailable in this container because of
+`uv_interface_addresses`; GitHub Actions is the authoritative browser gate.
+Phase 13 is complete for the repository's application-side hardening and
+operational documentation. Real Cloudflare resource provisioning,
+WAF/custom-domain/Turnstile/Email setup, a backup/restore drill, alert routing,
+external penetration testing and the CSP nonce migration remain explicit
+production release prerequisites.
 
 ## Known limitations
 
