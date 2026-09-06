@@ -15,6 +15,13 @@
       "when": 1788682982209,
       "tag": "0001_useful_invisible_woman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788685674779,
+      "tag": "0002_tiny_machine_man",
+      "breakpoints": true
     }
   ]
 }

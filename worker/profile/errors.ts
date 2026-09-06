@@ -1,6 +1,6 @@
 import { PublicHttpError } from "../http/error";
 
-export class AuthError extends PublicHttpError {
+export class ProfileError extends PublicHttpError {
   constructor(
     status: number,
     code: string,
@@ -8,10 +8,10 @@ export class AuthError extends PublicHttpError {
     options: { retryAfter?: number } = {},
   ) {
     super(status, code, publicMessage, options);
-    this.name = "AuthError";
+    this.name = "ProfileError";
   }
 }
 
-export function isAuthError(error: unknown): error is AuthError {
-  return error instanceof AuthError;
+export function isProfileError(error: unknown): error is ProfileError {
+  return error instanceof ProfileError;
 }

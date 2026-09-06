@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { Link } from "react-router";
-import { ProductShell, PageHeader, PresentationNotice } from "../components/product/ProductShell";
+import { Link, useLoaderData } from "react-router";
+import { createD1ProfileStore } from "../../worker/profile/store";
+import { createProfileService } from "../../worker/profile/service";
+import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { ThemeControl } from "../components/layout/ThemeControl";
 import { Button, Card, Switch } from "../components/ui";
 
@@ -13,12 +16,213 @@ interface SessionSummary {
   current: boolean;
 }
 
+export async function loader({ request, context }: ServerLoaderArgs) {
+  return withServerSession(
+    request,
+    context,
+    (unavailable) => ({ authenticated: false, unavailable, preferences: null }),
+    async (runtime, userId) => {
+      const preferences = (
+        await createProfileService({ store: createD1ProfileStore(runtime.db) }).getMyProfile(userId)
+      ).preferences;
+      return { authenticated: true, unavailable: false, preferences };
+    },
+  );
+}
+
 function readCookie(name: string): string | undefined {
   const entry = document.cookie
     .split(";")
     .map((part) => part.trim())
     .find((part) => part.startsWith(`${name}=`));
   return entry ? decodeURIComponent(entry.slice(name.length + 1)) : undefined;
+}
+
+type SettingsData = Awaited<ReturnType<typeof loader>>;
+type PreferenceUpdate = {
+  hideNsfw: boolean;
+  blurNsfw: boolean;
+  allowFriendRequests: boolean;
+};
+
+function createInitialPreferenceValues(data: SettingsData): PreferenceUpdate {
+  const preferences = data.preferences;
+  if (!preferences) {
+    return { hideNsfw: true, blurNsfw: true, allowFriendRequests: true };
+  }
+  return {
+    hideNsfw: preferences.hideNsfw,
+    blurNsfw: preferences.blurNsfw,
+    allowFriendRequests: preferences.allowFriendRequests,
+  };
+}
+
+type PreferenceValueSetter = (value: (current: PreferenceUpdate) => PreferenceUpdate) => void;
+
+function createPreferenceValueUpdater(
+  setValues: PreferenceValueSetter,
+): (key: keyof PreferenceUpdate, value: boolean) => void {
+  return (key, value) => setValues((current) => ({ ...current, [key]: value }));
+}
+
+function createPreferenceUpdater(
+  data: SettingsData,
+  allowNsfwDirectOverride: boolean,
+  setStatus: (value: string | null) => void,
+): (next: PreferenceUpdate) => Promise<void> {
+  return async (next) => {
+    if (!data.authenticated) return;
+    setStatus(null);
+    const saved = await persistPreferences(next, allowNsfwDirectOverride);
+    setStatus(saved ? "Saved" : "Could not save this preference.");
+  };
+}
+
+async function persistPreferences(
+  next: PreferenceUpdate,
+  allowNsfwDirectOverride: boolean,
+): Promise<boolean> {
+  try {
+    const response = await fetch("/api/profile/me/preferences", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        "x-csrf-token": readCookie("__Host-sourceboard_csrf") ?? "",
+      },
+      body: JSON.stringify({ ...next, allowNsfwDirectOverride }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+function SensitiveContentCard({
+  authenticated,
+  hideNsfw,
+  blurNsfw,
+  allowFriendRequests,
+  preferenceStatus,
+  onUpdate,
+  onValueChange,
+}: {
+  authenticated: boolean;
+  hideNsfw: boolean;
+  blurNsfw: boolean;
+  allowFriendRequests: boolean;
+  preferenceStatus: string | null;
+  onUpdate: (next: PreferenceUpdate) => void;
+  onValueChange: (key: keyof PreferenceUpdate, value: boolean) => void;
+}) {
+  return (
+    <Card className="product-settings-section">
+      <span className="product-eyebrow">Sensitive content</span>
+      <h2>NSFW preferences</h2>
+      <p>These settings later feed server-side visibility, search and media-gateway enforcement.</p>
+      <Switch
+        label="Hide NSFW posts"
+        checked={hideNsfw}
+        disabled={!authenticated}
+        onCheckedChange={(checked) => {
+          onValueChange("hideNsfw", checked);
+          onUpdate({ hideNsfw: checked, blurNsfw, allowFriendRequests });
+        }}
+      />
+      <Switch
+        label="Blur NSFW media"
+        checked={blurNsfw}
+        disabled={!authenticated}
+        onCheckedChange={(checked) => {
+          onValueChange("blurNsfw", checked);
+          onUpdate({ hideNsfw, blurNsfw: checked, allowFriendRequests });
+        }}
+      />
+      {preferenceStatus ? (
+        <span className="product-store-preview-status">{preferenceStatus}</span>
+      ) : null}
+    </Card>
+  );
+}
+
+function FriendRequestsCard({
+  authenticated,
+  allowFriendRequests,
+  hideNsfw,
+  blurNsfw,
+  onUpdate,
+  onValueChange,
+}: {
+  authenticated: boolean;
+  allowFriendRequests: boolean;
+  hideNsfw: boolean;
+  blurNsfw: boolean;
+  onUpdate: (next: PreferenceUpdate) => void;
+  onValueChange: (key: keyof PreferenceUpdate, value: boolean) => void;
+}) {
+  return (
+    <Card className="product-settings-section">
+      <span className="product-eyebrow">Privacy</span>
+      <h2>Profile visibility</h2>
+      <p>Profile visibility and friend-request preferences are enforced server-side.</p>
+      <Switch
+        label="Allow friend requests"
+        checked={allowFriendRequests}
+        disabled={!authenticated}
+        onCheckedChange={(checked) => {
+          onValueChange("allowFriendRequests", checked);
+          onUpdate({ hideNsfw, blurNsfw, allowFriendRequests: checked });
+        }}
+      />
+    </Card>
+  );
+}
+
+function PreferencesPanel({ data }: { data: SettingsData }) {
+  const [values, setValues] = useState<PreferenceUpdate>(() => createInitialPreferenceValues(data));
+  const [preferenceStatus, setPreferenceStatus] = useState<string | null>(null);
+  const allowNsfwDirectOverride = data.preferences?.allowNsfwDirectOverride ?? false;
+  const setPreferenceValue = createPreferenceValueUpdater(setValues);
+  const updatePreferences = createPreferenceUpdater(
+    data,
+    allowNsfwDirectOverride,
+    setPreferenceStatus,
+  );
+
+  return (
+    <>
+      <SensitiveContentCard
+        authenticated={data.authenticated}
+        hideNsfw={values.hideNsfw}
+        blurNsfw={values.blurNsfw}
+        allowFriendRequests={values.allowFriendRequests}
+        preferenceStatus={preferenceStatus}
+        onUpdate={updatePreferences}
+        onValueChange={setPreferenceValue}
+      />
+      <FriendRequestsCard
+        authenticated={data.authenticated}
+        allowFriendRequests={values.allowFriendRequests}
+        hideNsfw={values.hideNsfw}
+        blurNsfw={values.blurNsfw}
+        onUpdate={updatePreferences}
+        onValueChange={setPreferenceValue}
+      />
+    </>
+  );
+}
+
+function SettingsNotice({ data }: { data: SettingsData }) {
+  if (data.authenticated) return null;
+  return (
+    <Card className="product-presentation-notice" role="note">
+      <strong>{data.unavailable ? "Service unavailable" : "Sign in required"}</strong>
+      <span>
+        {data.unavailable
+          ? "Preferences could not be loaded from D1."
+          : "Sign in to persist content and social preferences."}
+      </span>
+    </Card>
+  );
 }
 
 function SessionSecurityPanel() {
@@ -94,8 +298,7 @@ function SessionSecurityPanel() {
 }
 
 export default function SettingsRoute() {
-  const [hideNsfw, setHideNsfw] = useState(true);
-  const [blurNsfw, setBlurNsfw] = useState(true);
+  const data = useLoaderData<SettingsData>();
 
   return (
     <ProductShell wide>
@@ -104,36 +307,16 @@ export default function SettingsRoute() {
         title="Settings"
         description="Profile, privacy, content and appearance preferences."
       />
-      <PresentationNotice>
-        Preference changes are local presentation state in Phase 0B.
-      </PresentationNotice>
+      <SettingsNotice data={data} />
 
       <div className="product-settings-grid">
-        <Card className="product-settings-section">
-          <span className="product-eyebrow">Sensitive content</span>
-          <h2>NSFW preferences</h2>
-          <p>
-            These settings later feed server-side visibility, search and media-gateway enforcement.
-          </p>
-          <Switch label="Hide NSFW posts" checked={hideNsfw} onCheckedChange={setHideNsfw} />
-          <Switch label="Blur NSFW media" checked={blurNsfw} onCheckedChange={setBlurNsfw} />
-        </Card>
+        <PreferencesPanel data={data} />
 
         <Card className="product-settings-section">
           <span className="product-eyebrow">Interface</span>
           <h2>Appearance</h2>
           <p>Use your operating-system theme by default or override it for SourceBoard.</p>
           <ThemeControl />
-        </Card>
-
-        <Card className="product-settings-section">
-          <span className="product-eyebrow">Privacy</span>
-          <h2>Profile visibility</h2>
-          <p>
-            Public social links and friendship controls will connect to persisted preferences later.
-          </p>
-          <Switch label="Show social links publicly" defaultChecked />
-          <Switch label="Allow friend requests" defaultChecked />
         </Card>
 
         <SessionSecurityPanel />

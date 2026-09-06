@@ -1,5 +1,6 @@
-import { createRequestHandler } from "react-router";
+import { createRequestHandler, RouterContextProvider } from "react-router";
 import { REQUEST_ID_HEADER, resolveRequestId } from "../shared/http/request-id";
+import { sourceBoardRequestContext } from "../shared/router-context";
 import { handleApiRequest } from "./api";
 
 const requestHandler = createRequestHandler(
@@ -16,7 +17,9 @@ export default {
       return apiResponse;
     }
 
-    const response = await requestHandler(request);
+    const routerContext = new RouterContextProvider();
+    routerContext.set(sourceBoardRequestContext, { env, requestId });
+    const response = await requestHandler(request, routerContext);
     const headers = new Headers(response.headers);
     headers.set(REQUEST_ID_HEADER, requestId);
 

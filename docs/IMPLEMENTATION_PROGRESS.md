@@ -6,7 +6,7 @@
 
 ## Current phase
 
-**Phase 3 — Profile, privacy, friendships and blocks**
+**Phase 4 — Posts, image, feed and SEO**
 
 Status: **PLANNED — next stacked phase**
 
@@ -197,10 +197,40 @@ Mode environment could not launch the Playwright web server because its
 network-interface enumeration failed; GitHub Actions provided the
 authoritative browser verification.
 
+## Phase 3 — Profile, privacy, friendships and blocks
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-3-profile-privacy-social` branch:
+
+- [x] D1 profile, preference, social-link, friendship, block, notification and private media metadata tables plus migration `0002`;
+- [x] default profile and NSFW/social preference rows for every registered user;
+- [x] server-side `canViewUser`, `canInteractWithUser` and `canViewNsfwPost` policy contracts;
+- [x] public/private profile DTOs and `/u/:username` SSR with email, credentials and session data excluded;
+- [x] profile updates, ordered social links, privacy preferences and default-avatar behavior;
+- [x] pending/accepted/declined/cancelled friendship transitions, duplicate/self/block protections and persistent request/accept notifications;
+- [x] directional blocks that cancel relationships and deny visibility/interactions in both directions;
+- [x] private avatar/banner R2 gateway with authorization, no-store responses, MIME validation and magic-byte checks;
+- [x] D1-backed profile, friends and settings surfaces with honest unauthenticated/private/unavailable states;
+- [x] IDOR, privacy, block, CSRF/origin, media authorization and responsive E2E coverage.
+
+See [`docs/PHASE_3_PROFILE_PRIVACY.md`](PHASE_3_PROFILE_PRIVACY.md) for the API contract,
+privacy rules, deferred scope and implementation decisions.
+
+### Phase 3 verification evidence
+
+GitHub Actions run `#55` (`34026033697`) passed every established gate: lint/Prettier,
+strict typecheck, 50 unit tests across 17 files, production build, Wrangler deploy dry-run
+and 69 Playwright E2E tests (`69 passed`). Fallow's new-only audit against the Phase 2
+branch reported no newly introduced dead code, complexity or duplication. The local Work
+Mode environment still cannot launch the Cloudflare Vite Playwright server because
+`uv_interface_addresses` fails during interface enumeration; GitHub Actions provided the
+authoritative browser verification.
+
 ## Next phase
 
-Phase 3 — Profile, privacy, friendships and blocks is next. It must remain on
-a new stacked branch/PR targeting the Phase 2 branch and preserve the
+Phase 4 — Posts, image, feed and SEO is next. It must remain on a new stacked
+branch/PR targeting the Phase 3 branch and preserve the profile/privacy
 capability boundary.
 
 ## Known limitations
@@ -209,6 +239,6 @@ capability boundary.
   product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- Profile/privacy persistence, friendships, posts, product persistence and authorized media gateways
-  remain outside Phase 2 by design. Auth mutations remain unavailable until operators provide the
-  required Worker Secrets and real Rate Limit/Email resources; no insecure local bypass is used.
+- Post/feed persistence, post image uploads, product persistence and public search remain deferred
+  to their canonical phases. Auth and profile mutations remain unavailable until operators provide
+  the required Worker Secrets and real Rate Limit/Email resources; no insecure local bypass is used.

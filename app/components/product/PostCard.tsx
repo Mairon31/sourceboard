@@ -27,7 +27,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           {post.author.mode === "ANONYMOUS" ? (
             <strong>Anonymous Author</strong>
           ) : (
-            <Link to={post.author.profileUrl ?? `/profile/${post.author.username ?? "aurora"}`}>
+            <Link to={post.author.profileUrl ?? `/u/${post.author.username ?? "aurora"}`}>
               {post.author.displayName}
             </Link>
           )}

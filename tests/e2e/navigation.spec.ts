@@ -9,7 +9,7 @@ const productRoutes = [
   "/verify-email",
   "/post/new",
   "/posts/post-verified",
-  "/profile/aurora",
+  "/u/aurora",
   "/friends",
   "/notifications",
   "/store",

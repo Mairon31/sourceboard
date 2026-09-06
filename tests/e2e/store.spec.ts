@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForUiReady } from "./test-helpers";
 
 test("store presents catalog categories and ownership states", async ({ page }) => {
   await page.goto("/store");
@@ -13,6 +14,7 @@ test("store presents catalog categories and ownership states", async ({ page }) 
 
 test("store actions disclose their presentation-only boundary", async ({ page }) => {
   await page.goto("/store");
+  await waitForUiReady(page);
   await page.getByRole("button", { name: "Preview Editorial" }).click();
 
   await expect(

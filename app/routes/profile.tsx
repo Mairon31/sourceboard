@@ -1,101 +1,183 @@
-import { useLoaderData } from "react-router";
-import { fixtureUiDataAdapter } from "../data/ui-adapter";
-import { PostCard } from "../components/product/PostCard";
+import { Link, useLoaderData } from "react-router";
+import { createD1ProfileStore } from "../../worker/profile/store";
+import { createProfileService } from "../../worker/profile/service";
+import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
-import { Avatar, Badge, Button, Card } from "../components/ui";
+import { SocialActionButton } from "../components/product/SocialActionButton";
+import { Avatar, Badge, Card } from "../components/ui";
 
-export async function loader({ params }: { params: { username?: string } }) {
-  const profile = await fixtureUiDataAdapter.getProfile(params.username ?? "");
-  if (!profile) throw new Response("Profile not found", { status: 404 });
-  return { profile };
+interface LoaderArgs extends ServerLoaderArgs {
+  params: { username?: string };
+}
+
+export async function loader({ params, request, context }: LoaderArgs) {
+  return withServerSession(
+    request,
+    context,
+    (unavailable) => ({ profile: null, unavailable }),
+    async (runtime, userId) => ({
+      profile: await createProfileService({
+        store: createD1ProfileStore(runtime.db),
+      }).getPublicProfile(params.username ?? "", userId),
+      unavailable: false,
+    }),
+  );
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
+type PublicProfile = NonNullable<LoaderData["profile"]>;
 
-export default function ProfileRoute() {
-  const { profile } = useLoaderData<LoaderData>();
+const relationshipLabel = {
+  NONE: "Not connected",
+  FRIEND: "Friends",
+  INCOMING: "Incoming request",
+  OUTGOING: "Request sent",
+  BLOCKED: "Blocked",
+} as const;
 
+function UnavailableProfile({ unavailable }: { unavailable: boolean }) {
   return (
     <ProductShell wide>
-      <Card className="product-profile-hero">
-        <div
-          className="product-profile-banner"
-          aria-label={`${profile.displayName} profile banner`}
+      <Card className="product-empty-state">
+        <PageHeader
+          eyebrow="Profile"
+          title="Profile unavailable"
+          description={
+            unavailable
+              ? "The profile service is not available in this environment yet."
+              : "This profile is private, blocked or does not exist."
+          }
         />
-        <div className="product-profile-content">
-          <div className="product-profile-identity">
-            <div className="product-list-row__identity">
-              <Avatar name={profile.displayName} src={profile.avatarUrl} size="xl" />
-              <div className="product-profile-name">
-                <span className="product-eyebrow">{profile.roleLabel}</span>
-                <h1>{profile.displayName}</h1>
-                <p>@{profile.username}</p>
-              </div>
-            </div>
-            <Button variant="secondary">Add friend</Button>
-          </div>
-          <p>{profile.bio}</p>
-          <div className="product-profile-stats">
-            <div className="product-stat">
-              <strong>{profile.points}</strong>
-              <span>Points</span>
-            </div>
-            <div className="product-stat">
-              <strong>{profile.reputation}</strong>
-              <span>Reputation</span>
-            </div>
-            <div className="product-stat">
-              <strong>{profile.verifiedSources}</strong>
-              <span>Verified sources</span>
-            </div>
-            <div className="product-stat">
-              <strong>{profile.friendCount}</strong>
-              <span>Friends</span>
-            </div>
-          </div>
-          <div className="product-social-links">
-            {profile.socialLinks.map((link) => (
-              <a key={link.label} href={link.url} target="_blank" rel="noreferrer">
-                {link.label}
-              </a>
-            ))}
-          </div>
-          <div className="product-chip-row">
-            {profile.equippedCosmetics.map((item) => (
-              <span key={item} className="product-chip">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
+        <p>Public profile data is shown only after server-side privacy checks succeed.</p>
       </Card>
+    </ProductShell>
+  );
+}
 
+function ProfileSocialLinks({ profile }: { profile: PublicProfile }) {
+  if (!profile.socialLinks.length) {
+    return <p className="product-store-preview-status">No public social links.</p>;
+  }
+  return (
+    <div className="product-social-links">
+      {profile.socialLinks.map((link) => (
+        <a key={`${link.platform}-${link.url}`} href={link.url} target="_blank" rel="noreferrer">
+          {link.platform}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function ProfileBanner({ profile }: { profile: PublicProfile }) {
+  return (
+    <div
+      className="product-profile-banner"
+      aria-label={`${profile.displayName} profile banner`}
+      style={profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined}
+    />
+  );
+}
+
+function ProfileRelationshipBadge({ profile }: { profile: PublicProfile }) {
+  return (
+    <Badge tone={profile.relationship === "BLOCKED" ? "warning" : "neutral"}>
+      {relationshipLabel[profile.relationship]}
+    </Badge>
+  );
+}
+
+function ProfileRelationshipAction({ profile }: { profile: PublicProfile }) {
+  if (!profile.canRequestFriend) return null;
+  return (
+    <SocialActionButton
+      endpoint={`/api/friends/${encodeURIComponent(profile.id)}/request`}
+      method="POST"
+      variant="secondary"
+      onSuccess={() => undefined}
+      successLabel="Request sent"
+    >
+      Send friend request
+    </SocialActionButton>
+  );
+}
+
+function ProfileIdentity({ profile }: { profile: PublicProfile }) {
+  return (
+    <div className="product-profile-identity">
+      <div className="product-list-row__identity">
+        <Avatar name={profile.displayName} src={profile.avatarUrl} size="xl" />
+        <div className="product-profile-name">
+          <span className="product-eyebrow">Public profile</span>
+          <h1>{profile.displayName}</h1>
+          <p>@{profile.username}</p>
+        </div>
+      </div>
+      <div className="product-chip-row">
+        <ProfileRelationshipBadge profile={profile} />
+        <ProfileRelationshipAction profile={profile} />
+      </div>
+    </div>
+  );
+}
+
+function ProfileStats({ profile }: { profile: PublicProfile }) {
+  return (
+    <div className="product-profile-stats">
+      <div className="product-stat">
+        <strong>{profile.friendCount}</strong>
+        <span>Friends</span>
+      </div>
+      <div className="product-stat">
+        <strong>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends"}</strong>
+        <span>Visibility</span>
+      </div>
+    </div>
+  );
+}
+
+function ProfileHero({ profile }: { profile: PublicProfile }) {
+  return (
+    <Card className="product-profile-hero">
+      <ProfileBanner profile={profile} />
+      <div className="product-profile-content">
+        <ProfileIdentity profile={profile} />
+        <p>{profile.bio || "This contributor has not added a bio yet."}</p>
+        <ProfileStats profile={profile} />
+        <ProfileSocialLinks profile={profile} />
+      </div>
+    </Card>
+  );
+}
+
+function ContributionHistory() {
+  return (
+    <>
       <PageHeader
-        eyebrow="Reputation"
-        title="Achievements"
-        description="Recognition earned from useful source contributions."
+        eyebrow="Contribution history"
+        title="Reputation is earned in SourceBoard"
+        description="Achievements and public source activity will appear as those phases add persisted contribution data."
       />
-      <div className="product-achievement-grid">
-        {profile.achievements.map((achievement) => (
-          <Card key={achievement.id} className="product-achievement">
-            <Badge tone={achievement.earnedAt ? "success" : "accent"}>
-              {achievement.earnedAt ? "Earned" : "Progress"}
-            </Badge>
-            <h3>{achievement.name}</h3>
-            <p>{achievement.description}</p>
-            {achievement.progress !== undefined ? (
-              <span>{achievement.progress}% complete</span>
-            ) : null}
-          </Card>
-        ))}
-      </div>
+      <Card className="product-empty-state">
+        <p>
+          Profile identity and social privacy are live. Contribution points, achievements and source
+          history remain server-authoritative work for their later phases.
+        </p>
+        <Link className="product-text-action" to="/">
+          Return to feed
+        </Link>
+      </Card>
+    </>
+  );
+}
 
-      <PageHeader eyebrow="Public activity" title="Recent source requests" />
-      <div className="product-feed-list">
-        {profile.recentPosts.map((post) => (
-          <PostCard key={post.id} post={post} compact />
-        ))}
-      </div>
+export default function ProfileRoute() {
+  const { profile, unavailable } = useLoaderData<LoaderData>();
+  if (!profile) return <UnavailableProfile unavailable={unavailable} />;
+  return (
+    <ProductShell wide>
+      <ProfileHero profile={profile} />
+      <ContributionHistory />
     </ProductShell>
   );
 }

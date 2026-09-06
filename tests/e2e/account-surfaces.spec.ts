@@ -1,23 +1,25 @@
 import { expect, test } from "@playwright/test";
 import { waitForUiReady } from "./test-helpers";
 
-test("profile presents identity, reputation and achievements", async ({ page }) => {
-  await page.goto("/profile/aurora");
+test("profile renders an explicit privacy-aware empty state without persisted data", async ({
+  page,
+}) => {
+  await page.goto("/u/aurora");
 
-  await expect(page.getByRole("heading", { name: "Aurora Vale" })).toBeVisible();
-  await expect(page.getByText("Source contributor")).toBeVisible();
-  await expect(page.getByText("First Source")).toBeVisible();
-  await expect(page.getByText("Source Sleuth")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Instagram" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Profile unavailable" })).toBeVisible();
+  await expect(
+    page.getByText("Public profile data is shown only after server-side privacy checks succeed."),
+  ).toBeVisible();
 });
 
-test("friends surface distinguishes relationship states", async ({ page }) => {
+test("friends surface requires an authenticated private account", async ({ page }) => {
   await page.goto("/friends");
 
-  await expect(page.getByRole("heading", { name: "Friends" })).toBeVisible();
-  await expect(page.getByText("Incoming request")).toBeVisible();
-  await expect(page.getByText("Request sent")).toBeVisible();
-  await expect(page.getByRole("main").getByText("Blocked", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Friends", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in to manage friends" })).toBeVisible();
+  await expect(
+    page.getByText("Friend requests and blocks are private account data."),
+  ).toBeVisible();
 });
 
 test("notifications surface presents unread state", async ({ page }) => {
