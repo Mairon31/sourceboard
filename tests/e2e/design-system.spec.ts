@@ -110,9 +110,9 @@ for (const viewport of viewports) {
       return { overflow, offenders };
     });
 
-    expect(
-      diagnostic.overflow,
-      JSON.stringify(diagnostic.offenders, null, 2),
-    ).toBeLessThanOrEqual(1);
+    if (diagnostic.overflow > 1) {
+      console.log(`Overflow diagnostics at ${viewport.width}px:`, diagnostic.offenders);
+    }
+    expect(diagnostic.overflow).toBeLessThanOrEqual(1);
   });
 }
