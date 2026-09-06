@@ -33,7 +33,7 @@
 
 1. Add a client-ready `data-ui-ready="true"` state to `AdminShell`, matching the existing `AppShell` readiness contract and without changing its visual layout.
 2. Add `waitForUiReady(page)` in `tests/e2e/test-helpers.ts`, asserting the readiness marker is visible rather than sleeping for a fixed duration.
-3. Call the helper after navigation and before interactive assertions in admin, design-system, and account-surface tests. Keep navigation-only assertions unchanged unless they interact with hydrated controls.
+3. Call the helper after navigation and before interactive assertions in admin, design-system, and the Settings account-surface test. Keep static account and navigation assertions independent of hydration timing.
 4. Run the focused Playwright files if a browser is available; otherwise run TypeScript/lint checks and record the environment limitation for CI verification.
 
 **Expected result:** the identity-reveal and keyboard-tab assertions observe hydrated React controls instead of racing the initial document.

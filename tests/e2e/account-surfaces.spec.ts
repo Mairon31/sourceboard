@@ -3,7 +3,6 @@ import { waitForUiReady } from "./test-helpers";
 
 test("profile presents identity, reputation and achievements", async ({ page }) => {
   await page.goto("/profile/aurora");
-  await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Aurora Vale" })).toBeVisible();
   await expect(page.getByText("Source contributor")).toBeVisible();
@@ -14,7 +13,6 @@ test("profile presents identity, reputation and achievements", async ({ page }) 
 
 test("friends surface distinguishes relationship states", async ({ page }) => {
   await page.goto("/friends");
-  await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Friends" })).toBeVisible();
   await expect(page.getByText("Incoming request")).toBeVisible();
@@ -24,7 +22,6 @@ test("friends surface distinguishes relationship states", async ({ page }) => {
 
 test("notifications surface presents unread state", async ({ page }) => {
   await page.goto("/notifications");
-  await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
   await expect(page.getByRole("main").getByText("Source verified", { exact: true })).toBeVisible();
