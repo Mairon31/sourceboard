@@ -68,9 +68,12 @@ invent a post table or pretend that client-side CSS is security enforcement.
 - Fallow `new-only` audit against `phase-2-auth-sessions-rbac` passes with no
   introduced dead code, complexity or duplication. The inherited
   `HealthPayload` finding is unchanged from Phase 2.
+- GitHub Actions run `#55` (`34026033697`) passes the complete stacked-PR gate:
+  lint/Prettier, strict typecheck, 50 unit tests, production build, Wrangler
+  deploy dry-run and 69 Playwright E2E tests.
 - The local Work Mode environment cannot start the Cloudflare Vite dev server
   because `uv_interface_addresses` fails during interface enumeration;
-  Playwright remains an authoritative GitHub Actions check for the stacked PR.
+  GitHub Actions remains the authoritative browser check for the stacked PR.
 
 ## Deliberate deferrals
 
