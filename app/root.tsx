@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import "./styles/base.css";
+import "./components/ui/ui.css";
+import "./components/layout/layout.css";
+import "./components/demo/demo.css";
 
 export function Layout({ children }: { children: ReactNode }) {
   return (
