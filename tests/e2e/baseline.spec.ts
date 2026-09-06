@@ -4,7 +4,7 @@ test("home is server-rendered and reachable", async ({ page }) => {
   const response = await page.goto("/");
 
   expect(response?.ok()).toBe(true);
-  await expect(page.getByRole("heading", { name: "SourceBoard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find the original source" })).toBeVisible();
   await expect(page).toHaveTitle("SourceBoard");
 });
 

@@ -1,16 +1,24 @@
 import { expect, test } from "@playwright/test";
+import { waitForUiReady } from "./test-helpers";
 
 test("admin dashboard uses the moderation-focused shell", async ({ page }) => {
   await page.goto("/admin");
+  await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Administration" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Moderation" })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Administration navigation" }).getByRole("link", {
+      name: "Moderation",
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Audit" })).toBeVisible();
   await expect(page.getByText("Open reports")).toBeVisible();
 });
 
 test("moderation queue presents NSFW and source-review context", async ({ page }) => {
   await page.goto("/admin/moderation");
+  await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Moderation queue" })).toBeVisible();
   await expect(page.getByText("Potentially sensitive media not marked by author")).toBeVisible();
@@ -20,6 +28,7 @@ test("moderation queue presents NSFW and source-review context", async ({ page }
 
 test("anonymous identity reveal is reason-gated", async ({ page }) => {
   await page.goto("/admin/anonymous/post-anonymous");
+  await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Anonymous author" })).toBeVisible();
   const reveal = page.getByRole("button", { name: "Reveal identity" });

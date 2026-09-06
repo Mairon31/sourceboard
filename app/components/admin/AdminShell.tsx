@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router";
 import { ThemeControl } from "../layout/ThemeControl";
 
@@ -13,8 +14,14 @@ const adminLinks = [
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {
+  const [uiReady, setUiReady] = useState(false);
+
+  useEffect(() => {
+    setUiReady(true);
+  }, []);
+
   return (
-    <div className="admin-shell">
+    <div className="admin-shell" data-ui-ready={uiReady ? "true" : "false"}>
       <aside className="admin-sidebar">
         <a href="/" className="admin-brand">
           <span aria-hidden="true">S</span>

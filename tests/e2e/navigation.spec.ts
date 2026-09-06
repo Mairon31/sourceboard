@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForUiReady } from "./test-helpers";
 
 const productRoutes = [
   "/",
@@ -20,12 +21,18 @@ const productRoutes = [
 
 test("home exposes the SourceBoard product navigation", async ({ page }) => {
   await page.goto("/");
+  await waitForUiReady(page);
 
   await expect(page.getByRole("link", { name: "SourceBoard" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Friends" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Store" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Create post" })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", {
+      name: "Create post",
+      exact: true,
+    }),
+  ).toBeVisible();
 });
 
 for (const path of productRoutes) {
