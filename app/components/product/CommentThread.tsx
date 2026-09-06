@@ -41,10 +41,20 @@ function CommentItem({
 
   return (
     <article className={`product-comment${depth ? " product-comment--reply" : ""}`}>
-      <Avatar name={comment.author.displayName} size="sm" />
+      <Avatar
+        name={comment.author.displayName}
+        size="sm"
+        className={
+          comment.author.avatarFrame ? `sb-avatar--frame-${comment.author.avatarFrame}` : undefined
+        }
+      />
       <div className="product-comment__body">
         <div className="product-comment__heading">
-          <strong>{comment.author.displayName}</strong>
+          <strong
+            style={comment.author.nameFont ? { fontFamily: comment.author.nameFont } : undefined}
+          >
+            {comment.author.displayName}
+          </strong>
           {comment.author.mode === "ANONYMOUS" ? <Badge>Anonymous Author</Badge> : null}
           <span>
             {new Date(comment.createdAt).toLocaleDateString("en-US", {

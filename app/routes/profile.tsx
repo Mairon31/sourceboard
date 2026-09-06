@@ -74,7 +74,7 @@ function ProfileSocialLinks({ profile }: { profile: PublicProfile }) {
 function ProfileBanner({ profile }: { profile: PublicProfile }) {
   return (
     <div
-      className="product-profile-banner"
+      className={`product-profile-banner${profile.cosmetics?.profileBanner ? " product-profile-banner--nebula" : ""}`}
       aria-label={`${profile.displayName} profile banner`}
       style={profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined}
     />
@@ -108,10 +108,25 @@ function ProfileIdentity({ profile }: { profile: PublicProfile }) {
   return (
     <div className="product-profile-identity">
       <div className="product-list-row__identity">
-        <Avatar name={profile.displayName} src={profile.avatarUrl} size="xl" />
+        <Avatar
+          name={profile.displayName}
+          src={profile.avatarUrl}
+          size="xl"
+          className={
+            profile.cosmetics?.avatarFrame
+              ? `sb-avatar--frame-${profile.cosmetics.avatarFrame}`
+              : undefined
+          }
+        />
         <div className="product-profile-name">
           <span className="product-eyebrow">Public profile</span>
-          <h1>{profile.displayName}</h1>
+          <h1
+            style={
+              profile.cosmetics?.nameFont ? { fontFamily: profile.cosmetics.nameFont } : undefined
+            }
+          >
+            {profile.displayName}
+          </h1>
           <p>@{profile.username}</p>
         </div>
       </div>
@@ -154,7 +169,9 @@ function ProfileHero({ profile }: { profile: PublicProfile }) {
   return (
     <Card className="product-profile-hero">
       <ProfileBanner profile={profile} />
-      <div className="product-profile-content">
+      <div
+        className={`product-profile-content${profile.cosmetics?.profileEffect ? ` product-profile-content--${profile.cosmetics.profileEffect}` : ""}`}
+      >
         <ProfileIdentity profile={profile} />
         <p>{profile.bio || "This contributor has not added a bio yet."}</p>
         <ProfileStats profile={profile} />

@@ -49,14 +49,22 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
         {post.author.mode === "ANONYMOUS" ? (
           <Avatar name="Anonymous Author" />
         ) : (
-          <Avatar name={post.author.displayName} src={post.author.avatarUrl} />
+          <Avatar
+            name={post.author.displayName}
+            src={post.author.avatarUrl}
+            className={
+              post.author.avatarFrame ? `sb-avatar--frame-${post.author.avatarFrame}` : undefined
+            }
+          />
         )}
         <div className="product-post__author">
           {post.author.mode === "ANONYMOUS" ? (
             <strong>Anonymous Author</strong>
           ) : (
             <Link to={post.author.profileUrl ?? `/u/${post.author.username ?? "aurora"}`}>
-              {post.author.displayName}
+              <span style={post.author.nameFont ? { fontFamily: post.author.nameFont } : undefined}>
+                {post.author.displayName}
+              </span>
             </Link>
           )}
           <span>

@@ -134,6 +134,7 @@ function toPublicProfile(
   relationship: Relationship,
   friendCount: number,
   reputation?: ReputationSummary,
+  cosmetics?: Awaited<ReturnType<ProfileStore["getEquippedCosmetics"]>>,
 ): PublicProfileResult {
   return {
     id: profile.userId,
@@ -146,6 +147,7 @@ function toPublicProfile(
     bannerUrl: profile.bannerAssetId
       ? `/api/media/profile/${encodeURIComponent(profile.bannerAssetId)}`
       : undefined,
+    cosmetics,
     profileVisibility: profile.profileVisibility,
     socialLinks: links
       .filter((link) => link.isVisible)
@@ -274,13 +276,14 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
     const relationship = viewerId
       ? await dependencies.store.getRelationship(viewerId, profile.userId)
       : "NONE";
-    const [links, friendCount, reputation] = await Promise.all([
+    const [links, friendCount, reputation, cosmetics] = await Promise.all([
       dependencies.store.getSocialLinks(profile.userId),
       dependencies.store.countAcceptedFriends(profile.userId),
       dependencies.reputation?.getSummary(profile.userId),
+      dependencies.store.getEquippedCosmetics?.(profile.userId) ?? {},
     ]);
     return applyRelationshipActions(
-      toPublicProfile(profile, links, relationship, friendCount, reputation),
+      toPublicProfile(profile, links, relationship, friendCount, reputation, cosmetics),
       viewerId,
     );
   }

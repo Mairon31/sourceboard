@@ -3,7 +3,12 @@ export type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
 export type PostStatus = "OPEN" | "ANSWERED" | "VERIFIED" | "ARCHIVED" | "LOCKED";
 export type CommentState = "VISIBLE" | "DELETED" | "HIDDEN";
 export type StoreItemType =
-  "AVATAR_FRAME" | "PROFILE_EFFECT" | "NAME_FONT" | "EMOTE_PACK" | "STICKER_PACK";
+  | "AVATAR_FRAME"
+  | "PROFILE_BANNER"
+  | "PROFILE_EFFECT"
+  | "NAME_FONT"
+  | "EMOTE_PACK"
+  | "STICKER_PACK";
 export type StoreItemState =
   "AVAILABLE" | "OWNED" | "EQUIPPED" | "DISABLED" | "INSUFFICIENT_POINTS";
 
@@ -22,6 +27,8 @@ export interface PublicPostAuthor {
   username?: string;
   avatarUrl?: string;
   profileUrl?: string;
+  avatarFrame?: "nebula";
+  nameFont?: "InterVariable" | "AtkinsonHyperlegible" | "Georgia";
 }
 
 export interface ReactionSummary {
