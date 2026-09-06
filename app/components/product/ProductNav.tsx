@@ -29,7 +29,7 @@ export function ProductNav() {
       </NavLink>
 
       <div className="product-nav__account">
-        <NavLink className={navClass} to="/profile/aurora">
+        <NavLink className={navClass} to="/u/aurora">
           <span className="product-nav__avatar" aria-hidden="true">
             AV
           </span>

@@ -1,0 +1,100 @@
+export type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY";
+
+export type FriendshipStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
+
+export type Relationship = "NONE" | "FRIEND" | "INCOMING" | "OUTGOING" | "BLOCKED";
+
+export interface ProfileRecord {
+  userId: string;
+  username: string;
+  usernameNormalized: string;
+  displayName: string;
+  bio: string;
+  avatarAssetId: string | null;
+  bannerAssetId: string | null;
+  profileVisibility: ProfileVisibility;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UserPreferenceRecord {
+  userId: string;
+  hideNsfw: boolean;
+  blurNsfw: boolean;
+  allowNsfwDirectOverride: boolean;
+  allowFriendRequests: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SocialLinkRecord {
+  id: string;
+  userId: string;
+  platform: string;
+  url: string;
+  sortOrder: number;
+  isVisible: boolean;
+}
+
+export interface FriendshipRecord {
+  id: string;
+  requesterId: string;
+  addresseeId: string;
+  pairKey: string;
+  status: FriendshipStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SocialUserRecord {
+  profile: ProfileRecord;
+  relationship: Relationship;
+  friendship: FriendshipRecord | null;
+  blockedByViewer: boolean;
+  blockingViewer: boolean;
+}
+
+export interface NotificationRecord {
+  id: string;
+  userId: string;
+  type: "FRIEND_REQUEST" | "FRIEND_ACCEPTED";
+  actorUserId: string | null;
+  entityType: "USER" | "FRIENDSHIP" | null;
+  entityId: string | null;
+  payloadJson: string | null;
+  readAt: number | null;
+  createdAt: number;
+}
+
+export interface PublicProfileDto {
+  id: string;
+  username: string;
+  displayName: string;
+  bio: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  profileVisibility: ProfileVisibility;
+  socialLinks: Array<{ platform: string; url: string }>;
+  relationship: Relationship;
+  canRequestFriend: boolean;
+  canAcceptFriend: boolean;
+  canCancelFriend: boolean;
+  canRemoveFriend: boolean;
+  canBlock: boolean;
+  friendCount: number;
+}
+
+export interface FriendsListDto {
+  friends: Array<{
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl?: string;
+    relationship: Relationship;
+    friendshipId?: string;
+  }>;
+}
+
+export function createPairKey(firstUserId: string, secondUserId: string): string {
+  return [firstUserId, secondUserId].sort().join(":");
+}

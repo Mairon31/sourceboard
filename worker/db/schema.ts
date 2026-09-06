@@ -180,3 +180,137 @@ export const auditLogs = sqliteTable(
     index("audit_logs_created_at_index").on(table.createdAt),
   ],
 );
+
+export const mediaAssets = sqliteTable(
+  "media_assets",
+  {
+    id: text("id").primaryKey(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    purpose: text("purpose").notNull(),
+    r2Key: text("r2_key").notNull(),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size", { mode: "number" }).notNull(),
+    checksumSha256: text("checksum_sha256").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    deletedAt: integer("deleted_at", { mode: "number" }),
+  },
+  (table) => [
+    uniqueIndex("media_assets_r2_key_unique").on(table.r2Key),
+    index("media_assets_owner_purpose_index").on(table.ownerUserId, table.purpose),
+  ],
+);
+
+export const userProfiles = sqliteTable(
+  "user_profiles",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
+    bio: text("bio").notNull().default(""),
+    avatarAssetId: text("avatar_asset_id").references(() => mediaAssets.id, {
+      onDelete: "set null",
+    }),
+    bannerAssetId: text("banner_asset_id").references(() => mediaAssets.id, {
+      onDelete: "set null",
+    }),
+    profileVisibility: text("profile_visibility").notNull().default("PUBLIC"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [index("user_profiles_visibility_index").on(table.profileVisibility)],
+);
+
+export const userPreferences = sqliteTable("user_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  hideNsfw: integer("hide_nsfw", { mode: "boolean" }).notNull().default(true),
+  blurNsfw: integer("blur_nsfw", { mode: "boolean" }).notNull().default(true),
+  allowNsfwDirectOverride: integer("allow_nsfw_direct_override", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  allowFriendRequests: integer("allow_friend_requests", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  createdAt: integer("created_at", { mode: "number" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+});
+
+export const userSocialLinks = sqliteTable(
+  "user_social_links",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    url: text("url").notNull(),
+    sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
+    isVisible: integer("is_visible", { mode: "boolean" }).notNull().default(true),
+  },
+  (table) => [index("user_social_links_user_order_index").on(table.userId, table.sortOrder)],
+);
+
+export const friendships = sqliteTable(
+  "friendships",
+  {
+    id: text("id").primaryKey(),
+    requesterId: text("requester_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    addresseeId: text("addressee_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    pairKey: text("pair_key").notNull(),
+    status: text("status").notNull(),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("friendships_pair_key_unique").on(table.pairKey),
+    index("friendships_requester_status_index").on(table.requesterId, table.status),
+    index("friendships_addressee_status_index").on(table.addresseeId, table.status),
+  ],
+);
+
+export const userBlocks = sqliteTable(
+  "user_blocks",
+  {
+    blockerId: text("blocker_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockedId: text("blocked_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.blockerId, table.blockedId] }),
+    index("user_blocks_blocked_id_index").on(table.blockedId),
+  ],
+);
+
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    actorUserId: text("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    entityType: text("entity_type"),
+    entityId: text("entity_id"),
+    payloadJson: text("payload_json"),
+    readAt: integer("read_at", { mode: "number" }),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("notifications_user_created_index").on(table.userId, table.createdAt),
+    index("notifications_user_unread_index").on(table.userId, table.readAt),
+  ],
+);

@@ -313,6 +313,20 @@ export function createD1AuthStore(db: D1Database): AuthStore {
           .bind(user.id, user.createdAt),
         db
           .prepare(
+            `INSERT INTO user_profiles
+               (user_id, display_name, bio, avatar_asset_id, banner_asset_id, profile_visibility, created_at, updated_at)
+             VALUES (?, ?, '', NULL, NULL, 'PUBLIC', ?, ?)`,
+          )
+          .bind(user.id, user.username, user.createdAt, user.createdAt),
+        db
+          .prepare(
+            `INSERT INTO user_preferences
+               (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests, created_at, updated_at)
+             VALUES (?, 1, 1, 0, 1, ?, ?)`,
+          )
+          .bind(user.id, user.createdAt, user.createdAt),
+        db
+          .prepare(
             `INSERT INTO email_verification_tokens (id, user_id, token_hash, created_at, expires_at, used_at)
              VALUES (?, ?, ?, ?, ?, NULL)`,
           )
