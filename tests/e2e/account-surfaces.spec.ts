@@ -22,12 +22,13 @@ test("friends surface requires an authenticated private account", async ({ page 
   ).toBeVisible();
 });
 
-test("notifications surface presents unread state", async ({ page }) => {
+test("notifications surface keeps private activity empty for signed-out visitors", async ({
+  page,
+}) => {
   await page.goto("/notifications");
 
   await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
-  await expect(page.getByRole("main").getByText("Source verified", { exact: true })).toBeVisible();
-  await expect(page.getByText("Unread").first()).toBeVisible();
+  await expect(page.getByText("No notifications yet.", { exact: true })).toBeVisible();
 });
 
 test("settings surface includes NSFW and appearance preferences", async ({ page }) => {
