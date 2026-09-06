@@ -2,7 +2,12 @@ import { createIdentifier } from "../auth/crypto";
 import { createAuthContext, createAuthService } from "../auth/service";
 import { isAuthError } from "../auth/errors";
 import { hasCapability, type Capability } from "../auth/rbac";
-import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/security";
+import {
+  assertCsrfToken,
+  assertSameOrigin,
+  getRequestSecurityContext,
+  getSessionToken,
+} from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
@@ -15,6 +20,7 @@ import { createD1PostStore } from "./store";
 import { createPostService } from "./service";
 import type { FeedKind, PostAuthorMode, PostVisibility } from "./types";
 import { createModerationService } from "../moderation/service";
+import { enforceRateLimit } from "../security/rate-limit";
 
 function jsonResponse(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -178,20 +184,38 @@ function requireContentRateLimit(
   viewerId: string,
   request: Request,
 ): Promise<void> {
-  if (!env.RATE_LIMIT_CONTENT) {
-    throw new PostError(
-      503,
-      "POST_RATE_LIMIT_UNAVAILABLE",
-      "Post creation is temporarily unavailable.",
-    );
-  }
-  const ip = request.headers.get("cf-connecting-ip")?.trim() || "unknown";
-  return env.RATE_LIMIT_CONTENT.limit({ key: `post:${viewerId}:${ip}` }).then((result) => {
-    if (!result.success) {
-      throw new PostError(429, "POST_RATE_LIMITED", "Too many posts. Try again later.", {
+  const key = getRequestSecurityContext(request).ipPrefixHash;
+  return enforceRateLimit(env.RATE_LIMIT_CONTENT, `post:${viewerId}:${key}`, {
+    unavailable: () =>
+      new PostError(
+        503,
+        "POST_RATE_LIMIT_UNAVAILABLE",
+        "Post creation is temporarily unavailable.",
+      ),
+    limited: () =>
+      new PostError(429, "POST_RATE_LIMITED", "Too many posts. Try again later.", {
         retryAfter: 60,
-      });
-    }
+      }),
+  });
+}
+
+function requireUploadRateLimit(
+  env: SourceBoardEnvironment,
+  viewerId: string,
+  request: Request,
+): Promise<void> {
+  const key = getRequestSecurityContext(request).ipPrefixHash;
+  return enforceRateLimit(env.RATE_LIMIT_UPLOADS, `post-upload:${viewerId}:${key}`, {
+    unavailable: () =>
+      new PostError(
+        503,
+        "UPLOAD_RATE_LIMIT_UNAVAILABLE",
+        "Image uploads are temporarily unavailable.",
+      ),
+    limited: () =>
+      new PostError(429, "UPLOAD_RATE_LIMITED", "Too many image uploads. Try again later.", {
+        retryAfter: 60,
+      }),
   });
 }
 
@@ -209,6 +233,7 @@ async function createPostFromForm(
     );
   }
   await requireContentRateLimit(env, viewerId, request);
+  await requireUploadRateLimit(env, viewerId, request);
   const form = await request.formData();
   const fileEntry = form.get("file") ?? form.get("image");
   if (!(fileEntry instanceof File)) {

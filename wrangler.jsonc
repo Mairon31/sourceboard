@@ -7,6 +7,9 @@
   "observability": {
     "enabled": true,
   },
+  "triggers": {
+    "crons": ["17 * * * *"],
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -41,6 +44,9 @@
         "queue": "sourceboard-events",
         "max_batch_size": 10,
         "max_batch_timeout": 5,
+        "max_retries": 5,
+        "retry_delay": 60,
+        "dead_letter_queue": "sourceboard-events-dlq",
       },
     ],
   },
@@ -77,6 +83,16 @@
             "binding": "EVENTS",
             "queue": "sourceboard-events",
             "remote": false,
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "sourceboard-events",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 5,
+            "retry_delay": 60,
+            "dead_letter_queue": "sourceboard-events-dlq",
           },
         ],
       },

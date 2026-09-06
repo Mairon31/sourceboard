@@ -1,5 +1,10 @@
 import { createAuthService } from "../auth/service";
-import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/security";
+import {
+  assertCsrfToken,
+  assertSameOrigin,
+  getRequestSecurityContext,
+  getSessionToken,
+} from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import { isAuthError } from "../auth/errors";
 import type { SourceBoardEnvironment } from "../environment";
@@ -12,6 +17,7 @@ import { createD1CommentStore } from "./store";
 import { createCommentService } from "./service";
 import { createEntitlementChecker } from "../store/entitlements";
 import { createModerationService } from "../moderation/service";
+import { enforceRateLimit } from "../security/rate-limit";
 
 function isCommentRoute(pathname: string): boolean {
   return (
@@ -123,6 +129,22 @@ export async function handleCommentApiRequest(
           "Your commenting access is temporarily restricted.",
         );
       }
+      await enforceRateLimit(
+        env.RATE_LIMIT_CONTENT,
+        `comment:${authorId}:${getRequestSecurityContext(request).ipPrefixHash}`,
+        {
+          unavailable: () =>
+            new PostError(
+              503,
+              "COMMENT_RATE_LIMIT_UNAVAILABLE",
+              "Commenting is temporarily unavailable.",
+            ),
+          limited: () =>
+            new PostError(429, "COMMENT_RATE_LIMITED", "Too many comments. Try again later.", {
+              retryAfter: 60,
+            }),
+        },
+      );
       const input = await body(request);
       const postId = decodeURIComponent(postMatch[1] ?? "");
       const parentCommentId =
@@ -183,6 +205,22 @@ export async function handleCommentApiRequest(
     if (reactionMatch && (request.method === "POST" || request.method === "DELETE")) {
       mutationSecurity(request);
       const userId = await requiredViewer(request, env);
+      await enforceRateLimit(
+        env.RATE_LIMIT_REACTIONS,
+        `reaction:${userId}:${getRequestSecurityContext(request).ipPrefixHash}`,
+        {
+          unavailable: () =>
+            new PostError(
+              503,
+              "REACTION_RATE_LIMIT_UNAVAILABLE",
+              "Reactions are temporarily unavailable.",
+            ),
+          limited: () =>
+            new PostError(429, "REACTION_RATE_LIMITED", "Too many reactions. Try again later.", {
+              retryAfter: 60,
+            }),
+        },
+      );
       const liked = await commentService.setLike(
         reactionMatch[1] as "POST" | "COMMENT",
         decodeURIComponent(reactionMatch[2] ?? ""),

@@ -91,6 +91,76 @@ function reason(value: unknown): string {
     );
   return value.trim();
 }
+
+async function revokeResolution(
+  database: D1Database,
+  input: {
+    postId: string;
+    commentId: string;
+    actorUserId: string;
+    resolutionType: "ACCEPTED" | "VERIFIED";
+    postSourceColumn: "accepted_comment_id" | "verified_source_id";
+    postStatus: "OPEN" | "ANSWERED";
+    revokeReason: string;
+    revokedAt: number;
+  },
+): Promise<boolean> {
+  const {
+    postId,
+    commentId,
+    actorUserId,
+    resolutionType,
+    postSourceColumn,
+    postStatus,
+    revokeReason,
+    revokedAt,
+  } = input;
+  const results = await database.batch([
+    database
+      .prepare(
+        `UPDATE source_resolutions
+         SET state = 'REVOKED', revoked_at = ?, revoked_by_user_id = ?, revoke_reason = ?
+         WHERE post_id = ? AND comment_id = ? AND resolution_type = ? AND state = 'ACTIVE'
+           AND EXISTS (
+             SELECT 1 FROM posts WHERE id = ? AND ${postSourceColumn} = ?
+           )`,
+      )
+      .bind(
+        revokedAt,
+        actorUserId,
+        revokeReason,
+        postId,
+        commentId,
+        resolutionType,
+        postId,
+        commentId,
+      ),
+    database
+      .prepare(
+        `UPDATE posts
+         SET ${postSourceColumn} = NULL, status = ?, updated_at = ?
+         WHERE id = ? AND ${postSourceColumn} = ?
+           AND EXISTS (
+             SELECT 1 FROM source_resolutions
+             WHERE post_id = ? AND comment_id = ? AND resolution_type = ?
+               AND state = 'REVOKED' AND revoked_at = ? AND revoked_by_user_id = ?
+           )`,
+      )
+      .bind(
+        postStatus,
+        revokedAt,
+        postId,
+        commentId,
+        postId,
+        commentId,
+        resolutionType,
+        revokedAt,
+        actorUserId,
+      ),
+  ]);
+  return Boolean(results[0]?.meta.changes && results[1]?.meta.changes);
+}
+
 async function emit(
   env: SourceBoardEnvironment,
   type: string,
@@ -156,46 +226,63 @@ export async function handleSourceRequest(
     if (!needsVerification && current.id !== target.post_author_id)
       throw new PostError(403, "POST_AUTHOR_REQUIRED", "Only the post author can accept a source.");
     if (kind === "accept") {
-      const result = await database
-        .prepare(
-          "UPDATE posts SET accepted_comment_id = ?, status = 'ANSWERED', updated_at = ? WHERE id = ? AND (accepted_comment_id IS NULL OR accepted_comment_id = ?)",
-        )
-        .bind(String(target.comment_id), Date.now(), id, String(target.comment_id))
-        .run();
-      if (!result.meta.changes)
+      const resolvedAt = Date.now();
+      const results = await database.batch([
+        database
+          .prepare(
+            `INSERT INTO source_resolutions
+             (id, post_id, comment_id, resolution_type, state, actor_user_id, created_at)
+             SELECT ?, ?, ?, 'ACCEPTED', 'ACTIVE', ?, ?
+             WHERE EXISTS (
+               SELECT 1 FROM posts
+               WHERE id = ? AND accepted_comment_id IS NULL
+             )
+               AND NOT EXISTS (
+                 SELECT 1 FROM source_resolutions
+                 WHERE post_id = ? AND resolution_type = 'ACCEPTED' AND state = 'ACTIVE'
+               )`,
+          )
+          .bind(createIdentifier(), id, target.comment_id, current.id, resolvedAt, id, id),
+        database
+          .prepare(
+            `UPDATE posts
+             SET accepted_comment_id = ?, status = 'ANSWERED', updated_at = ?
+             WHERE id = ? AND accepted_comment_id IS NULL
+               AND EXISTS (
+                 SELECT 1 FROM source_resolutions
+                 WHERE post_id = ? AND comment_id = ? AND resolution_type = 'ACCEPTED' AND state = 'ACTIVE'
+               )`,
+          )
+          .bind(String(target.comment_id), resolvedAt, id, id, String(target.comment_id)),
+      ]);
+      if (!results[0]?.meta.changes || !results[1]?.meta.changes)
         throw new PostError(
           409,
           "SOURCE_ALREADY_ACCEPTED",
           "This post already has another accepted source.",
         );
-      await database
-        .prepare(
-          "INSERT INTO source_resolutions (id, post_id, comment_id, resolution_type, state, actor_user_id, created_at) VALUES (?, ?, ?, 'ACCEPTED', 'ACTIVE', ?, ?)",
-        )
-        .bind(createIdentifier(), id, target.comment_id, current.id, Date.now())
-        .run();
       await emit(env, "source.accepted", { postId: id, commentId: String(target.comment_id) });
       return json({ accepted: true }, requestId, 201);
     }
     if (kind === "revoke") {
-      const result = await database
-        .prepare(
-          "UPDATE posts SET accepted_comment_id = NULL, status = 'OPEN', updated_at = ? WHERE id = ? AND accepted_comment_id = ?",
-        )
-        .bind(Date.now(), id, target.comment_id)
-        .run();
-      if (!result.meta.changes)
+      const revokedAt = Date.now();
+      if (
+        !(await revokeResolution(database, {
+          postId: id,
+          commentId: String(target.comment_id),
+          actorUserId: current.id,
+          resolutionType: "ACCEPTED",
+          postSourceColumn: "accepted_comment_id",
+          postStatus: "OPEN",
+          revokeReason: reason(body.reason),
+          revokedAt,
+        }))
+      )
         throw new PostError(
           409,
           "SOURCE_NOT_ACTIVE",
           "That source is not the active accepted source.",
         );
-      await database
-        .prepare(
-          "UPDATE source_resolutions SET state = 'REVOKED', revoked_at = ?, revoked_by_user_id = ?, revoke_reason = ? WHERE post_id = ? AND comment_id = ? AND resolution_type = 'ACCEPTED' AND state = 'ACTIVE'",
-        )
-        .bind(Date.now(), current.id, reason(body.reason), id, target.comment_id)
-        .run();
       await emit(env, "source.accepted.revoked", {
         postId: id,
         commentId: String(target.comment_id),
@@ -205,54 +292,72 @@ export async function handleSourceRequest(
     if (kind === "verify") {
       const canonicalUrl = url(body.canonicalSourceUrl);
       const evidence = reason(body.evidenceNote);
-      const result = await database
-        .prepare(
-          "UPDATE posts SET verified_source_id = ?, status = 'VERIFIED', updated_at = ? WHERE id = ? AND verified_source_id IS NULL",
-        )
-        .bind(String(target.comment_id), Date.now(), id)
-        .run();
-      if (!result.meta.changes)
+      const verifiedAt = Date.now();
+      const results = await database.batch([
+        database
+          .prepare(
+            `INSERT INTO source_resolutions
+             (id, post_id, comment_id, resolution_type, state, canonical_source_url, evidence_note, actor_user_id, created_at)
+             SELECT ?, ?, ?, 'VERIFIED', 'ACTIVE', ?, ?, ?, ?
+             WHERE EXISTS (
+               SELECT 1 FROM posts WHERE id = ? AND verified_source_id IS NULL
+             )
+               AND NOT EXISTS (
+                 SELECT 1 FROM source_resolutions
+                 WHERE post_id = ? AND resolution_type = 'VERIFIED' AND state = 'ACTIVE'
+               )`,
+          )
+          .bind(
+            createIdentifier(),
+            id,
+            target.comment_id,
+            canonicalUrl,
+            evidence,
+            current.id,
+            verifiedAt,
+            id,
+            id,
+          ),
+        database
+          .prepare(
+            `UPDATE posts
+             SET verified_source_id = ?, status = 'VERIFIED', updated_at = ?
+             WHERE id = ? AND verified_source_id IS NULL
+               AND EXISTS (
+                 SELECT 1 FROM source_resolutions
+                 WHERE post_id = ? AND comment_id = ? AND resolution_type = 'VERIFIED' AND state = 'ACTIVE'
+               )`,
+          )
+          .bind(String(target.comment_id), verifiedAt, id, id, String(target.comment_id)),
+      ]);
+      if (!results[0]?.meta.changes || !results[1]?.meta.changes)
         throw new PostError(
           409,
           "SOURCE_ALREADY_VERIFIED",
           "This post already has an active verified source.",
         );
-      await database
-        .prepare(
-          "INSERT INTO source_resolutions (id, post_id, comment_id, resolution_type, state, canonical_source_url, evidence_note, actor_user_id, created_at) VALUES (?, ?, ?, 'VERIFIED', 'ACTIVE', ?, ?, ?, ?)",
-        )
-        .bind(
-          createIdentifier(),
-          id,
-          target.comment_id,
-          canonicalUrl,
-          evidence,
-          current.id,
-          Date.now(),
-        )
-        .run();
       await emit(env, "source.verified", { postId: id, commentId: String(target.comment_id) });
       return json({ verified: true, canonicalSourceUrl: canonicalUrl }, requestId, 201);
     }
     const revokeReason = reason(body.reason);
-    const result = await database
-      .prepare(
-        "UPDATE posts SET verified_source_id = NULL, status = 'ANSWERED', updated_at = ? WHERE id = ? AND verified_source_id = ?",
-      )
-      .bind(Date.now(), id, target.comment_id)
-      .run();
-    if (!result.meta.changes)
+    const revokedAt = Date.now();
+    if (
+      !(await revokeResolution(database, {
+        postId: id,
+        commentId: String(target.comment_id),
+        actorUserId: current.id,
+        resolutionType: "VERIFIED",
+        postSourceColumn: "verified_source_id",
+        postStatus: "ANSWERED",
+        revokeReason,
+        revokedAt,
+      }))
+    )
       throw new PostError(
         409,
         "SOURCE_NOT_ACTIVE",
         "That source is not the active verified source.",
       );
-    await database
-      .prepare(
-        "UPDATE source_resolutions SET state = 'REVOKED', revoked_at = ?, revoked_by_user_id = ?, revoke_reason = ? WHERE post_id = ? AND comment_id = ? AND resolution_type = 'VERIFIED' AND state = 'ACTIVE'",
-      )
-      .bind(Date.now(), current.id, revokeReason, id, target.comment_id)
-      .run();
     await emit(env, "source.verification.revoked", {
       postId: id,
       commentId: String(target.comment_id),

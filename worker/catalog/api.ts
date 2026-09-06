@@ -1,12 +1,14 @@
 import { createIdentifier } from "../auth/crypto";
 import { createAuthContext, createAuthService } from "../auth/service";
 import { hasCapability, type Capability } from "../auth/rbac";
-import { assertCsrfToken, assertSameOrigin } from "../auth/security";
+import { assertCsrfToken, assertSameOrigin, getRequestSecurityContext } from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { assertPostImage, sha256Hex } from "../posts/image";
+import { enforceRateLimit } from "../security/rate-limit";
+import { resolvePublicFailure } from "../http/public-failure";
 
 type CatalogKind = "emote" | "sticker";
 const CAPABILITIES: Record<CatalogKind, Capability> = {
@@ -175,25 +177,43 @@ export async function handleCatalogRequest(
   const kind = routeKind(url.pathname);
   if (!kind) return null;
   try {
-    await requireCapability(request, requestId, env, CAPABILITIES[kind]);
+    const actorUserId = await requireCapability(request, requestId, env, CAPABILITIES[kind]);
     if (request.method === "GET" && url.pathname === `/api/admin/catalog/${kind}s`)
       return handleList(kind, env, requestId);
-    if (request.method === "POST" && url.pathname === `/api/admin/catalog/${kind}s`)
+    if (request.method === "POST" && url.pathname === `/api/admin/catalog/${kind}s`) {
+      await enforceRateLimit(
+        env.RATE_LIMIT_UPLOADS,
+        `catalog-upload:${actorUserId}:${getRequestSecurityContext(request).ipPrefixHash}`,
+        {
+          unavailable: () =>
+            Object.assign(new Error("Catalog uploads are temporarily unavailable."), {
+              status: 503,
+            }),
+          limited: () =>
+            Object.assign(new Error("Too many catalog uploads. Try again later."), {
+              status: 429,
+            }),
+        },
+      );
       return await handleCreate(kind, request, requestId, env);
+    }
     const match = url.pathname.match(new RegExp(`^/api/admin/catalog/${kind}s/([^/]+)$`));
     if (request.method === "PATCH" && match)
       return await handleStatus(kind, decodeURIComponent(match[1] ?? ""), request, requestId, env);
     return failure("NOT_FOUND", "Catalog endpoint not found.", requestId, 404);
   } catch (error) {
-    const status =
-      typeof error === "object" && error && "status" in error ? Number(error.status) : 500;
+    const { status, message } = resolvePublicFailure(
+      error,
+      "Catalog request failed.",
+      "You are not allowed to manage this catalog.",
+    );
     return failure(
       status === 401
         ? "AUTHENTICATION_REQUIRED"
         : status === 403
           ? "CAPABILITY_REQUIRED"
           : "CATALOG_ERROR",
-      error instanceof Error ? error.message : "Catalog request failed.",
+      message,
       requestId,
       status,
     );

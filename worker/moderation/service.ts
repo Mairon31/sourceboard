@@ -1,5 +1,13 @@
 import { createIdentifier } from "../auth/crypto";
 import type { AuthorizationSnapshot, RoleSlug } from "../auth/rbac";
+import { PublicHttpError } from "../http/error";
+
+export class ModerationError extends PublicHttpError {
+  constructor(status: number, code: string, message: string) {
+    super(status, code, message);
+    this.name = "ModerationError";
+  }
+}
 
 export const REPORT_TARGETS = ["POST", "COMMENT", "USER", "SOURCE"] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
@@ -69,15 +77,21 @@ export function assertReportInput(input: {
   detail?: string | null;
 } {
   if (!(REPORT_TARGETS as readonly string[]).includes(input.targetType))
-    throw new Error("Invalid report target.");
+    throw new ModerationError(400, "INVALID_REPORT_TARGET", "Invalid report target.");
   if (!(REPORT_CATEGORIES as readonly string[]).includes(input.category))
-    throw new Error("Invalid report category.");
-  if (input.detail && input.detail.length > 2_000) throw new Error("Report detail is too long.");
+    throw new ModerationError(400, "INVALID_REPORT_CATEGORY", "Invalid report category.");
+  if (input.detail && input.detail.length > 2_000)
+    throw new ModerationError(400, "REPORT_DETAIL_TOO_LONG", "Report detail is too long.");
 }
 
 export function assertReason(reason: string): string {
   const value = reason.trim();
-  if (value.length < 3 || value.length > 2_000) throw new Error("A moderation reason is required.");
+  if (value.length < 3 || value.length > 2_000)
+    throw new ModerationError(
+      400,
+      "MODERATION_REASON_REQUIRED",
+      "A moderation reason is required.",
+    );
   return value;
 }
 
@@ -126,7 +140,12 @@ export function createModerationService(db: D1Database, options: { events?: Queu
         now,
       )
       .run();
-    if (!result.meta.changes) throw new Error("You already reported this item with that category.");
+    if (!result.meta.changes)
+      throw new ModerationError(
+        409,
+        "REPORT_ALREADY_EXISTS",
+        "You already reported this item with that category.",
+      );
     return { id, status: "OPEN" as const };
   }
 
@@ -317,7 +336,7 @@ export function createModerationService(db: D1Database, options: { events?: Queu
       .bind(input.sanctionId)
       .first<{ userId: string }>();
     if (!sanction || sanction.userId !== input.appellantUserId)
-      throw new Error("The sanction cannot be appealed.");
+      throw new ModerationError(409, "SANCTION_NOT_APPEALABLE", "The sanction cannot be appealed.");
     const id = createIdentifier();
     await db
       .prepare(

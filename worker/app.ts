@@ -7,6 +7,9 @@ import { persistNotification, type NotificationEvent } from "./notifications/ser
 import { NotificationHub } from "./notifications/hub";
 import { createAuthService } from "./auth/service";
 import { createD1AuthStore } from "./auth/store";
+import { withSecurityHeaders } from "./security/headers";
+import { runMaintenance } from "./maintenance/service";
+import { observeBackgroundFailure, observeRequest } from "./observability";
 
 export { NotificationHub };
 
@@ -17,26 +20,33 @@ const requestHandler = createRequestHandler(
 
 export default {
   async fetch(request, env) {
+    const startedAt = Date.now();
+    const finish = (response: Response): Response => {
+      const secured = withSecurityHeaders(response, new URL(request.url).protocol === "https:");
+      observeRequest(request, secured, startedAt);
+      return secured;
+    };
     const requestId = resolveRequestId(request.headers);
     if (
       new URL(request.url).pathname === "/api/notifications/realtime" &&
       request.headers.get("upgrade")?.toLowerCase() === "websocket"
     ) {
-      if (!env.DB || !env.NOTIFICATION_HUB)
-        return new Response("Realtime unavailable", { status: 503 });
+      if (!env.DB || !env.NOTIFICATION_HUB) {
+        return finish(new Response("Realtime unavailable", { status: 503 }));
+      }
       const session = await createAuthService({ store: createD1AuthStore(env.DB), env }).getSession(
         request,
       );
-      if (!session) return new Response("Authentication required", { status: 401 });
+      if (!session) return finish(new Response("Authentication required", { status: 401 }));
       const target = new URL("https://notification.internal/api/notifications/realtime");
       target.search = new URL(request.url).search;
       const stub = env.NOTIFICATION_HUB.get(env.NOTIFICATION_HUB.idFromName(session.user.id));
-      return stub.fetch(new Request(target, request));
+      return finish(await stub.fetch(new Request(target, request)));
     }
     const apiResponse = await handleApiRequest(request, requestId, env);
 
     if (apiResponse) {
-      return apiResponse;
+      return finish(apiResponse);
     }
 
     const routerContext = new RouterContextProvider();
@@ -44,12 +54,26 @@ export default {
     const response = await requestHandler(request, routerContext);
     const headers = new Headers(response.headers);
     headers.set(REQUEST_ID_HEADER, requestId);
+    if (!headers.has("cache-control")) headers.set("cache-control", "private, no-store");
 
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    });
+    return finish(
+      new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      }),
+    );
+  },
+  async scheduled(controller, env, ctx) {
+    if (!env.DB) {
+      observeBackgroundFailure("maintenance_missing_database");
+      return;
+    }
+    ctx.waitUntil(
+      runMaintenance({ db: env.DB, media: env.MEDIA, now: () => controller.scheduledTime }).catch(
+        () => observeBackgroundFailure("maintenance"),
+      ),
+    );
   },
   async queue(batch, env) {
     for (const message of batch.messages) {
@@ -71,6 +95,7 @@ export default {
           }
           message.ack();
         } catch {
+          observeBackgroundFailure("queue_notification");
           message.retry();
         }
         continue;
@@ -90,6 +115,7 @@ export default {
         await processReputationEvent(env.DB, body as ReputationEvent, Date.now(), env.EVENTS);
         message.ack();
       } catch {
+        observeBackgroundFailure("queue_reputation");
         message.retry();
       }
     }

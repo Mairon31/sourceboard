@@ -27,6 +27,13 @@ export interface CommentStore {
     targetId: string;
     now: number;
   }): Promise<boolean>;
+  setLike(input: {
+    userId: string;
+    targetType: "POST" | "COMMENT";
+    targetId: string;
+    liked: boolean;
+    now: number;
+  }): Promise<boolean>;
   hasLike(userId: string, targetType: "POST" | "COMMENT", targetId: string): Promise<boolean>;
 }
 
@@ -117,6 +124,47 @@ function toRecord(row: CommentRow): CommentWithAuthor {
 }
 
 export function createD1CommentStore(db: D1Database): CommentStore {
+  async function persistLike({
+    userId,
+    targetType,
+    targetId,
+    liked,
+    now,
+  }: {
+    userId: string;
+    targetType: "POST" | "COMMENT";
+    targetId: string;
+    liked: boolean;
+    now: number;
+  }): Promise<boolean> {
+    const targetTable = targetType === "POST" ? "posts" : "comments";
+    await db.batch([
+      liked
+        ? db
+            .prepare(
+              `INSERT OR IGNORE INTO reactions (id, user_id, target_type, target_id, reaction_type, created_at)
+               VALUES (?, ?, ?, ?, 'LIKE', ?)`,
+            )
+            .bind(crypto.randomUUID(), userId, targetType, targetId, now)
+        : db
+            .prepare(
+              `DELETE FROM reactions
+               WHERE user_id = ? AND target_type = ? AND target_id = ? AND reaction_type = 'LIKE'`,
+            )
+            .bind(userId, targetType, targetId),
+      db
+        .prepare(
+          `UPDATE ${targetTable}
+           SET like_count = (
+             SELECT COUNT(*) FROM reactions WHERE target_type = ? AND target_id = ?
+           ), updated_at = ?
+           WHERE id = ?`,
+        )
+        .bind(targetType, targetId, now, targetId),
+    ]);
+    return liked;
+  }
+
   return {
     async listForPost({ postId, cursor, limit }) {
       const conditions = ["c.post_id = ?", "c.deleted_at IS NULL"];
@@ -253,28 +301,9 @@ export function createD1CommentStore(db: D1Database): CommentStore {
         .bind(userId, targetType, targetId)
         .first<{ id: string }>();
       const liked = !existing;
-      const countColumn = targetType === "POST" ? "like_count" : "like_count";
-      const targetTable = targetType === "POST" ? "posts" : "comments";
-      await db.batch([
-        liked
-          ? db
-              .prepare(
-                `INSERT OR IGNORE INTO reactions (id, user_id, target_type, target_id, reaction_type, created_at)
-                 VALUES (?, ?, ?, ?, 'LIKE', ?)`,
-              )
-              .bind(crypto.randomUUID(), userId, targetType, targetId, now)
-          : db
-              .prepare(
-                `DELETE FROM reactions WHERE user_id = ? AND target_type = ? AND target_id = ? AND reaction_type = 'LIKE'`,
-              )
-              .bind(userId, targetType, targetId),
-        db
-          .prepare(
-            `UPDATE ${targetTable} SET ${countColumn} = (SELECT COUNT(*) FROM reactions WHERE target_type = ? AND target_id = ?), updated_at = ? WHERE id = ?`,
-          )
-          .bind(targetType, targetId, now, targetId),
-      ]);
-      return liked;
+      return persistLike({ userId, targetType, targetId, liked, now });
     },
+
+    setLike: persistLike,
   };
 }
