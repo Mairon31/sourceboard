@@ -90,7 +90,12 @@
         "TURNSTILE_SITE_KEY": "<TURNSTILE_SITE_KEY>",
       },
       "secrets": {
-        "required": ["TURNSTILE_SECRET"],
+        "required": [
+          "TURNSTILE_SECRET",
+          "EMAIL_FROM",
+          "EMAIL_LOOKUP_KEY_V1",
+          "DATA_ENCRYPTION_KEY_V1",
+        ],
       },
     },
   },
@@ -121,6 +126,6 @@
     "TURNSTILE_SITE_KEY": "<TURNSTILE_SITE_KEY>",
   },
   "secrets": {
-    "required": ["TURNSTILE_SECRET"],
+    "required": ["TURNSTILE_SECRET", "EMAIL_FROM", "EMAIL_LOOKUP_KEY_V1", "DATA_ENCRYPTION_KEY_V1"],
   },
 }

@@ -784,6 +784,33 @@
   line-height: 1.55;
 }
 
+.product-auth-security-note,
+.product-auth-feedback {
+  margin: 0;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.product-auth-security-note {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-app-secondary);
+  color: var(--text-secondary);
+}
+
+.product-auth-feedback--status {
+  border: 1px solid color-mix(in srgb, var(--success) 42%, var(--border-subtle));
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--text-primary);
+}
+
+.product-auth-feedback--error {
+  border: 1px solid color-mix(in srgb, var(--danger) 42%, var(--border-subtle));
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--text-primary);
+}
+
 .product-auth-links {
   display: flex;
   flex-wrap: wrap;

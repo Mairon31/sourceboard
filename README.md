@@ -4,10 +4,10 @@ SourceBoard is a Cloudflare-native social forum for finding the public source or
 
 ## Current status
 
-Phase 0B is complete as the pre-backend product and UI/UX experience pass. Phase 1 is complete on its
-stacked branch with local-safe Cloudflare infrastructure contracts and the first D1 migration, without
-provisioning remote resources or turning fixtures into persistence. Authentication, sessions, RBAC and
-later product behavior remain deferred to their canonical phases.
+Phase 0B and Phase 1 are complete on their stacked branches. Phase 2 is now in
+development with D1-backed authentication, sessions and capability-based RBAC;
+production secrets/resources remain operator-supplied and no fixture data is
+being promoted to persistence.
 
 See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the authoritative implementation status.
 
@@ -124,6 +124,9 @@ Phase 1 keeps local-safe binding declarations in `wrangler.jsonc` and the comple
 [`wrangler.phase1.example.jsonc`](wrangler.phase1.example.jsonc). No Cloudflare IDs or secrets are
 invented. Provisioning and migration commands are documented in
 [`docs/PHASE_1_INFRASTRUCTURE.md`](docs/PHASE_1_INFRASTRUCTURE.md).
+
+Authentication, security secrets, API endpoints and Phase 2 boundaries are documented in
+[`docs/PHASE_2_AUTH.md`](docs/PHASE_2_AUTH.md).
 
 ## Architecture decisions
 

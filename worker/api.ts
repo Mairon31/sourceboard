@@ -1,5 +1,6 @@
 import { REQUEST_ID_HEADER, resolveRequestId } from "../shared/http/request-id";
 import type { SourceBoardEnvironment } from "./environment";
+import { handleAuthRequest } from "./auth/api";
 
 export interface HealthPayload {
   status: "ok";
@@ -27,6 +28,11 @@ export async function handleApiRequest(
   env?: SourceBoardEnvironment,
 ): Promise<Response | null> {
   const url = new URL(request.url);
+
+  const authResponse = await handleAuthRequest(request, requestId, env ?? {});
+  if (authResponse) {
+    return authResponse;
+  }
 
   if (request.method !== "GET" || url.pathname !== "/api/health") {
     return null;
