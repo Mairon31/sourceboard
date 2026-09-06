@@ -1,6 +1,6 @@
 # Phase 11 — Notificaciones persistentes y tiempo real
 
-Status: **READY FOR VERIFICATION — canonical Phase 11 implementation complete**
+Status: **COMPLETE — verified in CI**
 
 ## Implemented
 
@@ -29,4 +29,4 @@ Status: **READY FOR VERIFICATION — canonical Phase 11 implementation complete*
 
 ## Verification
 
-Local verification passed lint/Prettier, strict TypeScript, unit tests, production build, Wrangler deploy dry-run, and local D1 migration checks. Playwright is executed by the pull-request workflow; the local container cannot start the Cloudflare Vite dev server because `uv_interface_addresses` is unavailable in this environment.
+Local verification passed lint/Prettier, strict TypeScript, 82 unit tests, production build, Wrangler deploy dry-run, and local D1 migration checks. GitHub Actions run `#89` (`34047822984`) also passed the complete gate, including 75 Playwright E2E tests and D1 migrations through `0012`. Playwright remains unavailable in the local container because the Cloudflare Vite dev server cannot start when `uv_interface_addresses` is unavailable.

@@ -408,9 +408,11 @@ GitHub Actions run `#84` (`34045600762`) passed lint/Prettier, strict TypeScript
 
 ## Phase 11 — Notificaciones y tiempo real
 
-Status: **READY FOR VERIFICATION — canonical Phase 11 implementation complete**
+Status: **COMPLETE — verified in CI**
 
 See [`docs/PHASE_11_NOTIFICATIONS.md`](PHASE_11_NOTIFICATIONS.md) for the D1-first notification contract, domain producers, realtime client reconciliation, and deliberate boundaries.
+
+GitHub Actions run `#89` (`34047822984`) passed lint/Prettier, strict TypeScript, 82 unit tests across 26 files, production build, Wrangler deploy dry-run, local D1 migrations through `0012`, and 75 Playwright E2E tests. The PR remains unmerged for review.
 
 ## Known limitations
 
