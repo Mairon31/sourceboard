@@ -31,7 +31,12 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
               {post.author.displayName}
             </Link>
           )}
-          <span>{new Date(post.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+          <span>
+            {new Date(post.createdAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
         </div>
         <div className="product-post__badges">
           {post.author.mode === "ANONYMOUS" ? <Badge>Anonymous</Badge> : null}

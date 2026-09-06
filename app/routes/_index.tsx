@@ -12,20 +12,39 @@ type LoaderData = Awaited<ReturnType<typeof loader>>;
 
 export default function HomeRoute() {
   const { posts } = useLoaderData<LoaderData>();
-  const recent = <div className="product-feed-list">{posts.map((post) => <PostCard key={post.id} post={post} />)}</div>;
+  const recent = (
+    <div className="product-feed-list">
+      {posts.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </div>
+  );
   const friends = (
     <div className="product-feed-list">
-      {posts.filter((post) => post.author.mode === "IDENTIFIED").slice(0, 3).map((post) => <PostCard key={post.id} post={post} />)}
+      {posts
+        .filter((post) => post.author.mode === "IDENTIFIED")
+        .slice(0, 3)
+        .map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))}
     </div>
   );
   const answered = (
     <div className="product-feed-list">
-      {posts.filter((post) => post.status === "ANSWERED" || post.status === "VERIFIED").map((post) => <PostCard key={post.id} post={post} />)}
+      {posts
+        .filter((post) => post.status === "ANSWERED" || post.status === "VERIFIED")
+        .map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))}
     </div>
   );
   const verified = (
     <div className="product-feed-list">
-      {posts.filter((post) => post.status === "VERIFIED").map((post) => <PostCard key={post.id} post={post} />)}
+      {posts
+        .filter((post) => post.status === "VERIFIED")
+        .map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))}
     </div>
   );
 

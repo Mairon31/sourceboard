@@ -14,13 +14,17 @@ export default function SettingsRoute() {
         title="Settings"
         description="Profile, privacy, content and appearance preferences."
       />
-      <PresentationNotice>Preference changes are local presentation state in Phase 0B.</PresentationNotice>
+      <PresentationNotice>
+        Preference changes are local presentation state in Phase 0B.
+      </PresentationNotice>
 
       <div className="product-settings-grid">
         <Card className="product-settings-section">
           <span className="product-eyebrow">Sensitive content</span>
           <h2>NSFW preferences</h2>
-          <p>These settings later feed server-side visibility, search and media-gateway enforcement.</p>
+          <p>
+            These settings later feed server-side visibility, search and media-gateway enforcement.
+          </p>
           <Switch label="Hide NSFW posts" checked={hideNsfw} onCheckedChange={setHideNsfw} />
           <Switch label="Blur NSFW media" checked={blurNsfw} onCheckedChange={setBlurNsfw} />
         </Card>
@@ -35,7 +39,9 @@ export default function SettingsRoute() {
         <Card className="product-settings-section">
           <span className="product-eyebrow">Privacy</span>
           <h2>Profile visibility</h2>
-          <p>Public social links and friendship controls will connect to persisted preferences later.</p>
+          <p>
+            Public social links and friendship controls will connect to persisted preferences later.
+          </p>
           <Switch label="Show social links publicly" defaultChecked />
           <Switch label="Allow friend requests" defaultChecked />
         </Card>

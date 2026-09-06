@@ -20,12 +20,18 @@ export default function AdminModerationRoute() {
         title="Moderation queue"
         description="Review reports with enough context to make a decision without exposing privileged data unnecessarily."
       />
-      <PresentationNotice>Moderation buttons are visual states only; no sanctions or post mutations are performed.</PresentationNotice>
+      <PresentationNotice>
+        Moderation buttons are visual states only; no sanctions or post mutations are performed.
+      </PresentationNotice>
 
       <section className="admin-section">
         <div className="admin-table">
           <div className="admin-table__row admin-table__row--header">
-            <span>Report</span><span>Source</span><span>Reports</span><span>Age</span><span>Action</span>
+            <span>Report</span>
+            <span>Source</span>
+            <span>Reports</span>
+            <span>Age</span>
+            <span>Action</span>
           </div>
           {queue.map((item) => (
             <div key={item.id} className="admin-table__row">
@@ -37,14 +43,20 @@ export default function AdminModerationRoute() {
                   {item.authorMode === "ANONYMOUS" ? <Badge>Anonymous</Badge> : null}
                 </div>
               </div>
-              <Badge tone={item.sourceStatus === "VERIFIED" ? "success" : "neutral"}>{item.sourceStatus.toLowerCase()}</Badge>
+              <Badge tone={item.sourceStatus === "VERIFIED" ? "success" : "neutral"}>
+                {item.sourceStatus.toLowerCase()}
+              </Badge>
               <span>{item.reportCount}</span>
               <span>{item.ageLabel}</span>
               <div className="product-chip-row">
                 {item.authorMode === "ANONYMOUS" ? (
-                  <Link to={`/admin/anonymous/${item.postId}`} className="product-text-action">Identity</Link>
+                  <Link to={`/admin/anonymous/${item.postId}`} className="product-text-action">
+                    Identity
+                  </Link>
                 ) : null}
-                <Button size="sm" variant="secondary">Review</Button>
+                <Button size="sm" variant="secondary">
+                  Review
+                </Button>
               </div>
             </div>
           ))}

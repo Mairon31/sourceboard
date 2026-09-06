@@ -31,7 +31,9 @@ test("product tabs retain keyboard activation behavior from Phase 0A", async ({ 
   await expect(page.getByRole("tab", { name: "Friends" })).toHaveAttribute("aria-selected", "true");
 });
 
-test("Liquid Glass remains restricted to product chrome rather than every content card", async ({ page }) => {
+test("Liquid Glass remains restricted to product chrome rather than every content card", async ({
+  page,
+}) => {
   await page.goto("/");
 
   await expect(page.getByRole("banner")).toHaveClass(/glass-panel/);

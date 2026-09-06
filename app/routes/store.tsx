@@ -30,11 +30,14 @@ export default function StoreRoute() {
         title="Personalization store"
         description="Spend contribution points on profile cosmetics and community expression packs."
       />
-      <PresentationNotice>Purchases and inventory writes are not active in Phase 0B.</PresentationNotice>
+      <PresentationNotice>
+        Purchases and inventory writes are not active in Phase 0B.
+      </PresentationNotice>
 
       {preview ? (
         <div className="product-store-preview-status" role="status">
-          <strong>Presentation only</strong> — previewing {preview}. Nothing was purchased or equipped.
+          <strong>Presentation only</strong> — previewing {preview}. Nothing was purchased or
+          equipped.
         </div>
       ) : null}
 
@@ -45,7 +48,15 @@ export default function StoreRoute() {
               {item.previewLabel}
             </div>
             <div className="product-chip-row">
-              <Badge tone={item.state === "EQUIPPED" ? "success" : item.state === "DISABLED" ? "warning" : "neutral"}>
+              <Badge
+                tone={
+                  item.state === "EQUIPPED"
+                    ? "success"
+                    : item.state === "DISABLED"
+                      ? "warning"
+                      : "neutral"
+                }
+              >
                 {item.type.replaceAll("_", " ").toLowerCase()}
               </Badge>
               {item.packSize ? <Badge>{item.packSize} items</Badge> : null}

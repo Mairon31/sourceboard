@@ -44,7 +44,9 @@ test("create-post surface exposes anonymous and NSFW controls", async ({ page })
 test("post detail presents comments and source resolution", async ({ page }) => {
   await page.goto("/posts/post-verified");
 
-  await expect(page.getByRole("heading", { name: "Original editorial photo found and verified" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Original editorial photo found and verified" }),
+  ).toBeVisible();
   await expect(page.getByText("Accepted Source").first()).toBeVisible();
   await expect(page.getByText("Verified Source").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Comments" })).toBeVisible();

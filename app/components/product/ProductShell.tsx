@@ -49,7 +49,9 @@ export function PresentationNotice({ children }: { children?: ReactNode }) {
   return (
     <div className="product-presentation-notice" role="note">
       <strong>Presentation only</strong>
-      <span>{children ?? "This interaction is not persisted until the relevant backend phase."}</span>
+      <span>
+        {children ?? "This interaction is not persisted until the relevant backend phase."}
+      </span>
     </div>
   );
 }

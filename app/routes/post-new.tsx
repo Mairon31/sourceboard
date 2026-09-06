@@ -64,7 +64,9 @@ export default function NewPostRoute() {
           </Button>
         </form>
         {submitted ? (
-          <div className="product-store-preview-status">Presentation only — request validated locally but was not published.</div>
+          <div className="product-store-preview-status">
+            Presentation only — request validated locally but was not published.
+          </div>
         ) : null}
       </Card>
     </ProductShell>

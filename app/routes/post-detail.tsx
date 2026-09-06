@@ -19,7 +19,11 @@ export default function PostDetailRoute() {
 
   return (
     <ProductShell>
-      <PageHeader eyebrow="Source request" title={post.title} description="Post detail and source evidence" />
+      <PageHeader
+        eyebrow="Source request"
+        title={post.title}
+        description="Post detail and source evidence"
+      />
       <PostCard post={post} />
 
       <SourceResolution accepted={post.acceptedSource} verified={post.verifiedSource} />
@@ -35,10 +39,14 @@ export default function PostDetailRoute() {
           </div>
           <div className="product-chip-row">
             {post.permissions.canMarkNsfw ? <Button variant="secondary">Mark NSFW</Button> : null}
-            {post.permissions.canVerifySource ? <Button variant="secondary">Verify source</Button> : null}
+            {post.permissions.canVerifySource ? (
+              <Button variant="secondary">Verify source</Button>
+            ) : null}
             {post.permissions.canModerate ? <Button variant="ghost">Moderate post</Button> : null}
           </div>
-          <PresentationNotice>These controls do not perform moderation writes in Phase 0B.</PresentationNotice>
+          <PresentationNotice>
+            These controls do not perform moderation writes in Phase 0B.
+          </PresentationNotice>
         </Card>
       ) : null}
 

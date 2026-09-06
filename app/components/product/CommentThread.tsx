@@ -13,12 +13,25 @@ function CommentItem({ comment, depth = 0 }: { comment: CommentView; depth?: num
         <div className="product-comment__heading">
           <strong>{comment.author.displayName}</strong>
           {comment.author.mode === "ANONYMOUS" ? <Badge>Anonymous Author</Badge> : null}
-          <span>{new Date(comment.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+          <span>
+            {new Date(comment.createdAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
         </div>
-        <div className={hidden ? "product-comment__bubble product-comment__bubble--muted" : "product-comment__bubble"}>
+        <div
+          className={
+            hidden
+              ? "product-comment__bubble product-comment__bubble--muted"
+              : "product-comment__bubble"
+          }
+        >
           <p>{comment.body}</p>
           {comment.attachment ? (
-            <div className={`product-comment-attachment product-comment-attachment--${comment.attachment.type.toLowerCase()}`}>
+            <div
+              className={`product-comment-attachment product-comment-attachment--${comment.attachment.type.toLowerCase()}`}
+            >
               <span>{comment.attachment.type}</span>
               <strong>{comment.attachment.label}</strong>
             </div>

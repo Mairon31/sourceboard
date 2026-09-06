@@ -46,7 +46,10 @@ export function ProductNav() {
 
 export function MobileProductNav() {
   return (
-    <nav className="product-mobile-nav glass-panel glass-panel--strong" aria-label="Mobile navigation">
+    <nav
+      className="product-mobile-nav glass-panel glass-panel--strong"
+      aria-label="Mobile navigation"
+    >
       {primaryLinks.slice(0, 2).map((item) => (
         <NavLink key={item.href} to={item.href} className={navClass} end={item.href === "/"}>
           {item.short}

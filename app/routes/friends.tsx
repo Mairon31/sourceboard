@@ -26,7 +26,9 @@ export default function FriendsRoute() {
         title="Friends"
         description="Manage friend relationships used by friends-only publication visibility."
       />
-      <PresentationNotice>Friend requests are fixture-backed and do not persist yet.</PresentationNotice>
+      <PresentationNotice>
+        Friend requests are fixture-backed and do not persist yet.
+      </PresentationNotice>
       <div className="product-list">
         {friends.map((friend) => (
           <article key={friend.user.id} className="product-list-row">
@@ -34,15 +36,30 @@ export default function FriendsRoute() {
               <Avatar name={friend.user.displayName} src={friend.user.avatarUrl} />
               <div className="product-list-row__copy">
                 <strong>{friend.user.displayName}</strong>
-                <span>@{friend.user.username}{friend.mutualFriends ? ` · ${friend.mutualFriends} mutual` : ""}</span>
+                <span>
+                  @{friend.user.username}
+                  {friend.mutualFriends ? ` · ${friend.mutualFriends} mutual` : ""}
+                </span>
               </div>
             </div>
             <div className="product-chip-row">
-              <Badge tone={friend.relationship === "BLOCKED" ? "warning" : friend.relationship === "FRIEND" ? "success" : "neutral"}>
+              <Badge
+                tone={
+                  friend.relationship === "BLOCKED"
+                    ? "warning"
+                    : friend.relationship === "FRIEND"
+                      ? "success"
+                      : "neutral"
+                }
+              >
                 {relationshipLabel[friend.relationship]}
               </Badge>
               {friend.relationship === "INCOMING" ? <Button size="sm">Accept</Button> : null}
-              {friend.relationship === "FRIEND" ? <Button size="sm" variant="ghost">Message</Button> : null}
+              {friend.relationship === "FRIEND" ? (
+                <Button size="sm" variant="ghost">
+                  Message
+                </Button>
+              ) : null}
             </div>
           </article>
         ))}
