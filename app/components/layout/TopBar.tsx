@@ -31,7 +31,6 @@ function notificationHref(notification: NotificationPreview): string {
 
 export function TopBar() {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifications, setRecentNotifications] = useState<NotificationPreview[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -39,10 +38,10 @@ export function TopBar() {
 
   function submitSearch(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    // Read the submitted control, not only React state. If a user types before
-    // hydration finishes, the browser's form value is the authoritative value.
+    // Keep this form natively owned. If a user types before hydration finishes,
+    // the browser's submitted control value is authoritative.
     const submittedValue = new FormData(event.currentTarget).get("q");
-    const query = (typeof submittedValue === "string" ? submittedValue : searchTerm).trim();
+    const query = typeof submittedValue === "string" ? submittedValue.trim() : "";
     navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
   }
   useEffect(() => {
@@ -139,8 +138,7 @@ export function TopBar() {
         <input
           type="search"
           name="q"
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
+          defaultValue=""
           placeholder="Search SourceBoard"
           aria-label="Search SourceBoard"
         />
