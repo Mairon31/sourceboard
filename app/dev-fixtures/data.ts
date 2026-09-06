@@ -85,7 +85,8 @@ export const feedFixtures: PostSummary[] = [
   {
     id: "post-nsfw",
     title: "Source request hidden by NSFW preference",
-    description: "This fixture proves the hidden-content state without rendering sensitive imagery.",
+    description:
+      "This fixture proves the hidden-content state without rendering sensitive imagery.",
     author: anonymousAuthor,
     createdAt: "2026-09-05T15:30:00Z",
     status: "OPEN",
