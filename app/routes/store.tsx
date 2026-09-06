@@ -33,6 +33,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
               : ("AVAILABLE" as const),
           price: Number(item.pricePoints),
           previewLabel: String(item.name),
+          packSize: undefined,
         })),
       };
     },
