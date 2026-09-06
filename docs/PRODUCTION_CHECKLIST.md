@@ -29,8 +29,8 @@ owner and a recorded exception before production traffic is enabled.
 - [ ] Anonymous post, friends-only, private, deleted and NSFW privacy cases are
       tested through public HTML, metadata, JSON-LD, cache and search paths.
 - [ ] R2 bucket is not public and direct object access is denied.
-- [ ] CSP `'unsafe-inline'` migration/exception has been reviewed and accepted,
-      or the theme bootstrap has been converted to a nonce.
+- [ ] The remaining CSP inline-style allowance has been reviewed and accepted,
+      or all React style attributes have been migrated to a stricter policy.
 
 ## Data safety and operations
 

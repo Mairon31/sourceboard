@@ -13,6 +13,8 @@ control.
 - shared security headers for API, SSR, media and error responses;
 - CSP, `nosniff`, clickjacking protection, referrer policy, COOP/CORP and
   HTTPS-only HSTS;
+- per-response CSP nonce propagation through React Router SSR, the theme
+  bootstrap and hydration scripts;
 - structured request and background-failure logs containing route families,
   method, status, duration and request ID, but no URL identifiers, email,
   cookie, IP or exception text;
@@ -146,13 +148,14 @@ messages are written by the new observability boundary.
 
 ## Verification and deferred work
 
-GitHub Actions run `#99` (`34053344904`) passed lint/Prettier, strict
-TypeScript, 90 unit tests across 29 files, production build, Wrangler dry-run,
-local D1 migrations through `0013`, and 83 Playwright E2E tests (`83 passed`,
-with no failures or flakiness). Fallow's new-only audit passed with zero
-introduced findings. The previous candidate's search flake was reproduced in
-CI and fixed by keeping the input uncontrolled during hydration, then reading
-the submitted form control instead of relying on React state.
+GitHub Actions run `#103` (`34054810407`) passed lint/Prettier, strict
+TypeScript, 91 unit tests across 29 files, production build, Wrangler dry-run,
+local D1 migrations through `0013`, and 84 Playwright E2E tests (`84 passed`,
+with no failures or flakiness). It verifies the per-response CSP nonce
+contract and the previous candidate's search flake fix. The search fix keeps
+the input uncontrolled during hydration, then reads the submitted form control
+instead of relying on React state. Fallow's new-only audit passed with zero
+introduced findings.
 
 The local container still cannot launch the Cloudflare Vite Playwright server
 because of its `uv_interface_addresses` failure; GitHub Actions remains the
@@ -161,5 +164,5 @@ browser gate.
 The following remain explicit production launch prerequisites: real Cloudflare
 resources, WAF configuration, custom domain, Turnstile and Email Service
 verification, backup/restore drill, alert routing, an external penetration
-test, and removal of the current CSP `'unsafe-inline'` allowance after the
-theme bootstrap is nonce-based.
+test, and review/removal of the remaining inline-style `'unsafe-inline'`
+allowance.

@@ -446,6 +446,8 @@ Implemented on the stacked `phase-13-hardening` branch:
 
 - [x] shared security headers for API, SSR and media responses, including CSP,
       clickjacking protection, referrer policy, COOP/CORP and HTTPS-only HSTS;
+- [x] per-response CSP nonce propagation through the Worker, React Router SSR,
+      theme bootstrap and hydration scripts;
 - [x] structured route-family/request-ID observability without raw URLs, IPs,
       cookies, request bodies or exception text;
 - [x] fail-closed Rate Limiting enforcement for content, reactions and image
@@ -467,22 +469,22 @@ See [`docs/PHASE_13_HARDENING.md`](PHASE_13_HARDENING.md),
 [`docs/INCIDENT_RUNBOOK.md`](INCIDENT_RUNBOOK.md) and
 [`docs/PERFORMANCE_PHASE_13.md`](PERFORMANCE_PHASE_13.md).
 
-GitHub Actions run `#99` (`34053344904`) passed every required gate: lint/Prettier,
-strict TypeScript, 90 unit tests across 29 files, production build, Wrangler
-deploy dry-run, local D1 migrations through `0013`, and 83 Playwright E2E tests
-(`83 passed`, with no failures or flakiness). The run also reverified the
-hydration-sensitive TopBar search path after the previous candidate exposed a
-timing-dependent failure. The final fix keeps the search input uncontrolled
-during hydration and reads the browser's submitted form value. Fallow's
-new-only audit passed with zero introduced findings.
+GitHub Actions run `#103` (`34054810407`) passed every required gate:
+lint/Prettier, strict TypeScript, 91 unit tests across 29 files, production
+build, Wrangler deploy dry-run, local D1 migrations through `0013`, and 84
+Playwright E2E tests (`84 passed`, with no failures or flakiness). The run
+also verified the per-response CSP nonce contract and the hydration-sensitive
+TopBar search path. The final fix keeps the search input uncontrolled during
+hydration and reads the browser's submitted form value. Fallow's new-only
+audit passed with zero introduced findings.
 
 The local Playwright server remains unavailable in this container because of
 `uv_interface_addresses`; GitHub Actions is the authoritative browser gate.
 Phase 13 is complete for the repository's application-side hardening and
 operational documentation. Real Cloudflare resource provisioning,
 WAF/custom-domain/Turnstile/Email setup, a backup/restore drill, alert routing,
-external penetration testing and the CSP nonce migration remain explicit
-production release prerequisites.
+external penetration testing and review/removal of the remaining inline-style
+allowance remain explicit production release prerequisites.
 
 ## Known limitations
 
