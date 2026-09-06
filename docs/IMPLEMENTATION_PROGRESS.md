@@ -493,6 +493,9 @@ Implemented on the stacked `phase-13-hardening` branch:
 - [x] After configuring those secrets, Workers Build
       `ed650526-2eed-4ef6-acd6-654e67c3b773` deployed commit `5655d80` and the
       live HTML no longer contains the presentation build or fixture account.
+- [x] Workers Build `b0a4fb28-96ca-4326-8bb4-c6af8b6a8994` deployed commit
+      `c3b7227` with explicit Firebase callback URLs for verification and
+      password-reset emails; the build log confirms the deploy completed.
 
 See [`docs/PHASE_13_HARDENING.md`](PHASE_13_HARDENING.md),
 [`docs/SECURITY_REVIEW_PHASE_13.md`](SECURITY_REVIEW_PHASE_13.md),
