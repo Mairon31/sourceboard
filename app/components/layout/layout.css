@@ -83,6 +83,96 @@
   position: relative;
 }
 
+.sb-topbar-notification {
+  position: relative;
+}
+
+.sb-topbar-notification-trigger {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.sb-topbar-notification-trigger:hover {
+  background: var(--surface-glass-soft);
+  color: var(--text-primary);
+}
+
+.sb-topbar-notification-menu {
+  position: absolute;
+  z-index: var(--z-dropdown);
+  top: calc(100% + var(--space-3));
+  right: 0;
+  width: min(360px, calc(100vw - 24px));
+  padding: var(--space-3);
+}
+
+.sb-topbar-notification-menu__header,
+.sb-topbar-notification-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.sb-topbar-notification-menu__header {
+  padding: var(--space-1) var(--space-1) var(--space-3);
+}
+
+.sb-topbar-notification-menu__all {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sb-topbar-notification-menu__list {
+  display: grid;
+  gap: 2px;
+}
+
+.sb-topbar-notification-menu__item {
+  align-items: flex-start;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.sb-topbar-notification-menu__item:hover,
+.sb-topbar-notification-menu__item.is-unread {
+  background: var(--surface-glass-soft);
+}
+
+.sb-topbar-notification-menu__item strong,
+.sb-topbar-notification-menu__item span {
+  display: block;
+}
+
+.sb-topbar-notification-menu__item strong {
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
+.sb-topbar-notification-menu__item span,
+.sb-topbar-notification-menu__empty {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.sb-topbar-notification-menu__empty {
+  margin: 0;
+  padding: var(--space-4) var(--space-2);
+  text-align: center;
+}
+
 .sb-topbar-notification-count {
   position: absolute;
   top: -5px;

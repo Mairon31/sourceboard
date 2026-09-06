@@ -408,9 +408,9 @@ GitHub Actions run `#84` (`34045600762`) passed lint/Prettier, strict TypeScript
 
 ## Phase 11 — Notificaciones y tiempo real
 
-Status: **IN PROGRESS — D1 and realtime foundation implemented**
+Status: **READY FOR VERIFICATION — canonical Phase 11 implementation complete**
 
-See [`docs/PHASE_11_NOTIFICATIONS.md`](PHASE_11_NOTIFICATIONS.md) for the implemented foundation and remaining canonical event wiring.
+See [`docs/PHASE_11_NOTIFICATIONS.md`](PHASE_11_NOTIFICATIONS.md) for the D1-first notification contract, domain producers, realtime client reconciliation, and deliberate boundaries.
 
 ## Known limitations
 
@@ -418,7 +418,6 @@ See [`docs/PHASE_11_NOTIFICATIONS.md`](PHASE_11_NOTIFICATIONS.md) for the implem
   product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- Source resolution, full moderation, notifications and public search remain deferred to their
-  canonical phases. Auth and
+- Public search remains deferred to its canonical phase. Auth and
   profile mutations remain unavailable until operators provide the required Worker Secrets and
   real Rate Limit/Email resources; no insecure local bypass is used.

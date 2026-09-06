@@ -194,9 +194,9 @@ interface MediaAssetRow {
 interface NotificationRow {
   id: string;
   user_id: string;
-  type: "FRIEND_REQUEST" | "FRIEND_ACCEPTED";
+  type: string;
   actor_user_id: string | null;
-  entity_type: "USER" | "FRIENDSHIP" | null;
+  entity_type: string | null;
   entity_id: string | null;
   payload_json: string | null;
   read_at: number | null;
@@ -640,9 +640,10 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
           .prepare(
             `INSERT INTO notifications
                (id, user_id, type, actor_user_id, entity_type, entity_id, payload_json, read_at, created_at)
-             VALUES (?, ?, 'FRIEND_REQUEST', ?, 'FRIENDSHIP', ?, NULL, NULL, ?)`,
+             SELECT ?, ?, 'FRIEND_REQUEST', ?, 'FRIENDSHIP', ?, NULL, NULL, ?
+             WHERE COALESCE((SELECT notify_friendships FROM user_preferences WHERE user_id = ?), 1) = 1`,
           )
-          .bind(`friend-request-${id}`, addresseeId, requesterId, id, createdAt),
+          .bind(`friend-request-${id}`, addresseeId, requesterId, id, createdAt, addresseeId),
       ]);
       return {
         id,
@@ -673,7 +674,8 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
           .prepare(
             `INSERT INTO notifications
                (id, user_id, type, actor_user_id, entity_type, entity_id, payload_json, read_at, created_at)
-             VALUES (?, ?, 'FRIEND_REQUEST', ?, 'FRIENDSHIP', ?, NULL, NULL, ?)`,
+             SELECT ?, ?, 'FRIEND_REQUEST', ?, 'FRIENDSHIP', ?, NULL, NULL, ?
+             WHERE COALESCE((SELECT notify_friendships FROM user_preferences WHERE user_id = ?), 1) = 1`,
           )
           .bind(
             `friend-request-${existing.id}-${createdAt}`,
@@ -681,6 +683,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
             requesterId,
             existing.id,
             createdAt,
+            addresseeId,
           ),
       ]);
       const reopened = await getFriendship(requesterId, addresseeId);
@@ -709,7 +712,8 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
           .prepare(
             `INSERT INTO notifications
                (id, user_id, type, actor_user_id, entity_type, entity_id, payload_json, read_at, created_at)
-             VALUES (?, ?, 'FRIEND_ACCEPTED', ?, 'FRIENDSHIP', ?, NULL, NULL, ?)`,
+             SELECT ?, ?, 'FRIEND_ACCEPTED', ?, 'FRIENDSHIP', ?, NULL, NULL, ?
+             WHERE COALESCE((SELECT notify_friendships FROM user_preferences WHERE user_id = ?), 1) = 1`,
           )
           .bind(
             `friend-accepted-${friendshipId}`,
@@ -717,6 +721,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
             addresseeId,
             friendshipId,
             now,
+            row.requester_id,
           ),
       ]);
       return results[0]?.meta.changes === 1;

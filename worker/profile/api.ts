@@ -167,6 +167,7 @@ type ProfileRouteContext = {
   requestId: string;
   env: SourceBoardEnvironment;
   service: ReturnType<typeof createProfileService>;
+  store: ProfileStore;
 };
 
 function notFoundResponse(requestId: string): Response {
@@ -249,18 +250,47 @@ async function handleFriendshipAction(
   const viewerId = await requireViewerId(ctx.request, ctx.env);
   if (ctx.request.method !== "POST") return notFoundResponse(ctx.requestId);
   if (action === "request") {
-    return jsonResponse(
-      { friendship: await ctx.service.requestFriend(viewerId, targetId) },
-      ctx.requestId,
-      201,
-    );
+    const existing = await ctx.store.getFriendship(viewerId, targetId);
+    const friendship = await ctx.service.requestFriend(viewerId, targetId);
+    if (ctx.env.EVENTS) {
+      const notificationId =
+        existing?.status === "DECLINED" || existing?.status === "CANCELLED"
+          ? `friend-request-${friendship.id}-${friendship.updatedAt}`
+          : `friend-request-${friendship.id}`;
+      await ctx.env.EVENTS.send({
+        notification: {
+          type: "friend.request",
+          eventId: `friend.request:${notificationId}`,
+          notificationId,
+          recipientUserId: friendship.addresseeId,
+          actorUserId: friendship.requesterId,
+          entityType: "FRIENDSHIP",
+          entityId: friendship.id,
+        },
+      });
+    }
+    return jsonResponse({ friendship }, ctx.requestId, 201);
   }
+  const friendship = action === "accept" ? await ctx.store.getFriendship(viewerId, targetId) : null;
   const actions = {
     accept: () => ctx.service.acceptFriend(viewerId, targetId),
     decline: () => ctx.service.declineFriend(viewerId, targetId),
     cancel: () => ctx.service.cancelFriend(viewerId, targetId),
   };
   await actions[action]();
+  if (action === "accept" && friendship && ctx.env.EVENTS) {
+    await ctx.env.EVENTS.send({
+      notification: {
+        type: "friend.accepted",
+        eventId: `friend.accepted:${friendship.id}`,
+        notificationId: `friend-accepted-${friendship.id}`,
+        recipientUserId: friendship.requesterId,
+        actorUserId: viewerId,
+        entityType: "FRIENDSHIP",
+        entityId: friendship.id,
+      },
+    });
+  }
   const resultKey = { accept: "accepted", decline: "declined", cancel: "cancelled" }[action];
   return jsonResponse({ [resultKey]: true }, ctx.requestId);
 }
@@ -348,8 +378,8 @@ async function handleProfileRequest(
   requestId: string,
   env: SourceBoardEnvironment,
 ): Promise<Response> {
-  const { service } = createService(env);
-  const ctx: ProfileRouteContext = { request, requestId, env, service };
+  const { service, store } = createService(env);
+  const ctx: ProfileRouteContext = { request, requestId, env, service, store };
   const staticHandlers: Record<string, () => Promise<Response>> = {
     "GET /api/profile/me": () => handleProfileGet(ctx),
     "PATCH /api/profile/me": () => handleProfilePatch(ctx),

@@ -153,6 +153,7 @@ export async function handleCommentApiRequest(
             actorUserId: authorId,
             entityType: "COMMENT",
             entityId: comment.id,
+            payload: { postId, parentCommentId },
           },
         });
       }

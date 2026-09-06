@@ -60,7 +60,7 @@ export default {
           const event = (body as { notification: NotificationEvent }).notification;
           const notificationId = await persistNotification(env.DB, event);
           const hub = env.NOTIFICATION_HUB;
-          if (hub) {
+          if (hub && notificationId) {
             await hub
               .get(hub.idFromName(event.recipientUserId))
               .fetch("https://notification.internal", {
@@ -87,7 +87,7 @@ export default {
         continue;
       }
       try {
-        await processReputationEvent(env.DB, body as ReputationEvent);
+        await processReputationEvent(env.DB, body as ReputationEvent, Date.now(), env.EVENTS);
         message.ack();
       } catch {
         message.retry();

@@ -44,6 +44,8 @@ const ACHIEVEMENTS = [
   },
 ] as const;
 
+type EarnedAchievement = (typeof ACHIEVEMENTS)[number];
+
 interface SourceTarget {
   post_author_id: string;
   comment_author_id: string;
@@ -86,7 +88,11 @@ async function ensureAchievementCatalog(db: D1Database, now: number): Promise<vo
   );
 }
 
-async function grantAchievements(db: D1Database, userId: string, now: number): Promise<void> {
+async function grantAchievements(
+  db: D1Database,
+  userId: string,
+  now: number,
+): Promise<EarnedAchievement[]> {
   const verifiedCount = await db
     .prepare(
       `SELECT COALESCE(SUM(CASE WHEN reward_type = 'VERIFIED_SOURCE' AND amount > 0 THEN 1 ELSE 0 END), 0) AS count
@@ -95,16 +101,18 @@ async function grantAchievements(db: D1Database, userId: string, now: number): P
     .bind(userId)
     .first<{ count: number }>();
   const count = Number(verifiedCount?.count ?? 0);
-  const statements = ACHIEVEMENTS.filter((achievement) => count >= achievement.threshold).map(
-    (achievement) =>
-      db
-        .prepare(
-          `INSERT OR IGNORE INTO user_achievements (id, user_id, achievement_id, earned_at)
+  const eligible = ACHIEVEMENTS.filter((achievement) => count >= achievement.threshold);
+  const statements = eligible.map((achievement) =>
+    db
+      .prepare(
+        `INSERT OR IGNORE INTO user_achievements (id, user_id, achievement_id, earned_at)
            VALUES (?, ?, ?, ?)`,
-        )
-        .bind(createIdentifier(), userId, achievement.id, now),
+      )
+      .bind(createIdentifier(), userId, achievement.id, now),
   );
-  if (statements.length) await db.batch(statements);
+  if (!statements.length) return [];
+  const results = await db.batch(statements);
+  return eligible.filter((_, index) => Number(results[index]?.meta.changes ?? 0) > 0);
 }
 
 async function recordSignal(
@@ -192,9 +200,13 @@ async function awardAccepted(db: D1Database, event: ReputationEvent, now: number
   if (inserted) await recordSignal(db, event, target, now);
 }
 
-async function awardVerified(db: D1Database, event: ReputationEvent, now: number): Promise<void> {
+async function awardVerified(
+  db: D1Database,
+  event: ReputationEvent,
+  now: number,
+): Promise<{ userId: string; achievements: EarnedAchievement[] } | null> {
   const target = await sourceTarget(db, event);
-  if (!target) return;
+  if (!target) return null;
   const inserted = await insertLedgerEntry(db, {
     userId: target.comment_author_id,
     amount: 100,
@@ -206,10 +218,12 @@ async function awardVerified(db: D1Database, event: ReputationEvent, now: number
     metadata: { postId: event.postId, commentId: event.commentId },
     now,
   });
-  if (inserted) {
-    await ensureAchievementCatalog(db, now);
-    await grantAchievements(db, target.comment_author_id, now);
-  }
+  if (!inserted) return null;
+  await ensureAchievementCatalog(db, now);
+  return {
+    userId: target.comment_author_id,
+    achievements: await grantAchievements(db, target.comment_author_id, now),
+  };
 }
 
 async function reverse(
@@ -243,9 +257,29 @@ export async function processReputationEvent(
   db: D1Database,
   event: ReputationEvent,
   now = Date.now(),
+  events?: Queue,
 ): Promise<void> {
   if (event.type === "source.accepted") return awardAccepted(db, event, now);
-  if (event.type === "source.verified") return awardVerified(db, event, now);
+  if (event.type === "source.verified") {
+    const result = await awardVerified(db, event, now);
+    if (events && result) {
+      await Promise.all(
+        result.achievements.map((achievement) =>
+          events.send({
+            notification: {
+              type: "achievement.earned",
+              eventId: `achievement:${achievement.id}:${result.userId}`,
+              recipientUserId: result.userId,
+              entityType: "ACHIEVEMENT",
+              entityId: achievement.id,
+              payload: { slug: achievement.slug, name: achievement.name },
+            },
+          }),
+        ),
+      );
+    }
+    return;
+  }
   if (event.type === "source.accepted.revoked")
     return reverse(db, event, "ACCEPTED_SOURCE", 10, now);
   return reverse(db, event, "VERIFIED_SOURCE", 100, now);

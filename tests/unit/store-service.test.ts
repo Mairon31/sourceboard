@@ -57,4 +57,16 @@ describe("store service", () => {
       "not in your inventory",
     );
   });
+
+  it("records admin grants in the authoritative inventory source", async () => {
+    const { db, queries } = createDb();
+    await expect(createStoreService(db).grant("user", "item", 100)).resolves.toEqual({
+      userId: "user",
+      storeItemId: "item",
+      created: true,
+    });
+    expect(
+      queries.find((query) => query.includes("INSERT OR IGNORE INTO user_inventory")),
+    ).toContain("'ADMIN_GRANT'");
+  });
 });

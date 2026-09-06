@@ -61,7 +61,7 @@ export interface NotificationRecord {
   userId: string;
   type: string;
   actorUserId: string | null;
-  entityType: "USER" | "FRIENDSHIP" | null;
+  entityType: string | null;
   entityId: string | null;
   payloadJson: string | null;
   readAt: number | null;

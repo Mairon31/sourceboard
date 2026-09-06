@@ -81,7 +81,7 @@ export function assertReason(reason: string): string {
   return value;
 }
 
-export function createModerationService(db: D1Database) {
+export function createModerationService(db: D1Database, options: { events?: Queue } = {}) {
   async function hasActiveSanction(
     userId: string,
     kind: "POSTING" | "COMMENT" | "SUSPENSION" | "BAN",
@@ -157,6 +157,20 @@ export function createModerationService(db: D1Database) {
     const now = input.now ?? Date.now();
     const reason = assertReason(input.reason);
     const expiresAt = input.durationMs ? now + Math.max(1, Math.floor(input.durationMs)) : null;
+    const moderationActionId = createIdentifier();
+    const recipientUserId =
+      input.targetType === "USER"
+        ? input.targetId
+        : ((
+            await db
+              .prepare(
+                input.targetType === "POST"
+                  ? "SELECT author_id AS userId FROM posts WHERE id = ?"
+                  : "SELECT author_id AS userId FROM comments WHERE id = ?",
+              )
+              .bind(input.targetId)
+              .first<{ userId: string }>()
+          )?.userId ?? null);
     const statements: D1PreparedStatement[] = [
       db
         .prepare(
@@ -165,7 +179,7 @@ export function createModerationService(db: D1Database) {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
-          createIdentifier(),
+          moderationActionId,
           input.actorUserId,
           input.targetType,
           input.targetId,
@@ -274,7 +288,20 @@ export function createModerationService(db: D1Database) {
         now,
       )
       .run();
-    return { action: input.action, expiresAt };
+    if (options.events && recipientUserId && recipientUserId !== input.actorUserId) {
+      await options.events.send({
+        notification: {
+          type: "moderation.action",
+          eventId: `moderation:${moderationActionId}`,
+          recipientUserId,
+          actorUserId: input.actorUserId,
+          entityType: input.targetType,
+          entityId: input.targetId,
+          payload: { action: input.action, reason, expiresAt },
+        },
+      });
+    }
+    return { id: moderationActionId, action: input.action, expiresAt };
   }
 
   async function submitAppeal(input: {
