@@ -36,6 +36,8 @@ const preferencesSchema = z.object({
   blurNsfw: z.boolean(),
   allowNsfwDirectOverride: z.boolean(),
   allowFriendRequests: z.boolean(),
+  notifyActivity: z.boolean().default(true),
+  notifyFriendships: z.boolean().default(true),
 });
 
 type InputRecord = Record<string, unknown>;
@@ -218,6 +220,26 @@ async function handlePreferencesPatch(ctx: ProfileRouteContext): Promise<Respons
   );
 }
 
+async function handleNotificationMutation(ctx: ProfileRouteContext, url: URL): Promise<Response> {
+  requireSameOriginAndCsrf(ctx.request);
+  const viewerId = await requireViewerId(ctx.request, ctx.env);
+  if (ctx.request.method === "POST" && url.pathname === "/api/notifications/read-all") {
+    return jsonResponse(
+      { read: await ctx.service.markAllNotificationsRead(viewerId) },
+      ctx.requestId,
+    );
+  }
+  const match = url.pathname.match(/^\/api\/notifications\/([^/]+)\/read$/);
+  if (ctx.request.method === "POST" && match) {
+    const read = await ctx.service.markNotificationRead(
+      viewerId,
+      decodeURIComponent(match[1] ?? ""),
+    );
+    return jsonResponse({ read }, ctx.requestId);
+  }
+  return notFoundResponse(ctx.requestId);
+}
+
 async function handleFriendshipAction(
   ctx: ProfileRouteContext,
   targetId: string,
@@ -343,6 +365,12 @@ async function handleProfileRequest(
   };
   const staticHandler = staticHandlers[`${request.method} ${url.pathname}`];
   if (staticHandler) return staticHandler();
+  if (
+    url.pathname === "/api/notifications/read-all" ||
+    /^\/api\/notifications\/[^/]+\/read$/.test(url.pathname)
+  ) {
+    return handleNotificationMutation(ctx, url);
+  }
 
   return handleDynamicProfileRequest(ctx, url);
 }

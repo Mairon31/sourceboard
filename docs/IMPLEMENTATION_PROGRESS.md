@@ -406,6 +406,12 @@ See [`docs/PHASE_10_MODERATION.md`](PHASE_10_MODERATION.md) for the contract and
 
 GitHub Actions run `#84` (`34045600762`) passed lint/Prettier, strict TypeScript, 74 unit tests across 24 files, production build, Wrangler deploy dry-run, local D1 migrations through `0011` and 75 Playwright E2E tests. The PR remains unmerged for review.
 
+## Phase 11 — Notificaciones y tiempo real
+
+Status: **IN PROGRESS — D1 and realtime foundation implemented**
+
+See [`docs/PHASE_11_NOTIFICATIONS.md`](PHASE_11_NOTIFICATIONS.md) for the implemented foundation and remaining canonical event wiring.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B

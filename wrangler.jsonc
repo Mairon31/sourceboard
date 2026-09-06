@@ -44,6 +44,10 @@
       },
     ],
   },
+  "durable_objects": {
+    "bindings": [{ "name": "NOTIFICATION_HUB", "class_name": "NotificationHub" }],
+  },
+  "migrations": [{ "tag": "notification-hub-v1", "new_classes": ["NotificationHub"] }],
   "env": {
     "ssr": {
       "d1_databases": [

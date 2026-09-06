@@ -324,6 +324,8 @@ export const userPreferences = sqliteTable("user_preferences", {
   allowFriendRequests: integer("allow_friend_requests", { mode: "boolean" })
     .notNull()
     .default(true),
+  notifyActivity: integer("notify_activity", { mode: "boolean" }).notNull().default(true),
+  notifyFriendships: integer("notify_friendships", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "number" }).notNull(),
   updatedAt: integer("updated_at", { mode: "number" }).notNull(),
 });

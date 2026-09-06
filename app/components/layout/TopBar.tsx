@@ -1,8 +1,20 @@
 import { Link } from "react-router";
+import { useEffect, useState } from "react";
 import { BellIcon, SearchIcon } from "../ui";
 import { ThemeControl } from "./ThemeControl";
 
 export function TopBar() {
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    void fetch("/api/notifications")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: unknown) => {
+        if (payload && typeof payload === "object" && "unreadCount" in payload) {
+          setUnreadCount(Number(payload.unreadCount) || 0);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
   return (
     <header className="sb-topbar glass-panel glass-panel--strong">
       <Link className="sb-brand focus-ring" to="/" aria-label="SourceBoard">
@@ -32,6 +44,14 @@ export function TopBar() {
           className="sb-topbar-notification-link focus-ring"
         >
           <BellIcon width="18" height="18" />
+          {unreadCount ? (
+            <span
+              className="sb-topbar-notification-count"
+              aria-label={`${unreadCount} unread notifications`}
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          ) : null}
         </Link>
       </div>
     </header>

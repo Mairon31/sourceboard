@@ -79,6 +79,25 @@
   gap: var(--space-2);
 }
 
+.sb-topbar-notification-link {
+  position: relative;
+}
+
+.sb-topbar-notification-count {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 17px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--text-inverse);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+}
+
 .sb-theme-control {
   display: inline-flex;
   gap: 2px;

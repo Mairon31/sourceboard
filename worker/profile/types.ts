@@ -23,6 +23,8 @@ export interface UserPreferenceRecord {
   blurNsfw: boolean;
   allowNsfwDirectOverride: boolean;
   allowFriendRequests: boolean;
+  notifyActivity?: boolean;
+  notifyFriendships?: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -57,7 +59,7 @@ export interface SocialUserRecord {
 export interface NotificationRecord {
   id: string;
   userId: string;
-  type: "FRIEND_REQUEST" | "FRIEND_ACCEPTED";
+  type: string;
   actorUserId: string | null;
   entityType: "USER" | "FRIENDSHIP" | null;
   entityId: string | null;
