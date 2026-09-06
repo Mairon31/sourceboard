@@ -13,6 +13,9 @@ export interface SourceBoardEnvironment {
   RATE_LIMIT_REACTIONS?: RateLimit;
   RATE_LIMIT_UPLOADS?: RateLimit;
   EMAIL?: SendEmail;
+  EMAIL_FROM?: string;
+  EMAIL_LOOKUP_KEY_V1?: string;
+  DATA_ENCRYPTION_KEY_V1?: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
 }

@@ -6,9 +6,9 @@
 
 ## Current phase
 
-**Phase 1 — Cloudflare infrastructure + D1/R2/KV**
+**Phase 3 — Profile, privacy, friendships and blocks**
 
-Status: **COMPLETED**
+Status: **PLANNED — next stacked phase**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -137,7 +137,7 @@ No backend feature or fake persistence was introduced.
 
 ## Phase 1 — Cloudflare infrastructure + D1/R2/KV
 
-Status: **IN PROGRESS**
+Status: **COMPLETED**
 
 Implemented on the stacked `phase-1-cloudflare-infrastructure` branch:
 
@@ -165,11 +165,43 @@ binding contract and the full gate then passed. The local Work Mode environment 
 Playwright web server because its network interface enumeration failed; GitHub Actions provided the
 authoritative browser verification.
 
+## Phase 2 — Authentication, sessions and RBAC
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-2-auth-sessions-rbac` branch:
+
+- [x] users, credentials, sessions, verification/reset tokens, login-failure counters and audit tables;
+- [x] scrypt password records with per-user salt, versioned parameters and constant-time verification;
+- [x] normalized-email HMAC lookup and AES-256-GCM encrypted email with versioned Worker Secrets;
+- [x] 256-bit session tokens with D1-only token hashes and Secure/HttpOnly/SameSite cookies;
+- [x] origin validation, double-submit CSRF tokens and generic login errors;
+- [x] Turnstile and auth Rate Limit binding adapters with fail-closed missing-infrastructure behavior;
+- [x] registration, email verification, login/logout/logout-all and password reset/change services;
+- [x] session inventory/revocation and capability-based role management;
+- [x] seeded owner/admin/moderator/source_verifier/user roles and system capabilities without an owner account;
+- [x] audit records for authentication lifecycle and sensitive security changes;
+- [x] API-backed auth form states and session-management settings surface;
+- [x] unit/security coverage for crypto, token replay, session rotation, CSRF and owner protection;
+- [x] E2E coverage for anonymous auth session state and foreign-origin rejection.
+
+See [`docs/PHASE_2_AUTH.md`](PHASE_2_AUTH.md) for the API contract, secret names, migration and
+security boundaries.
+
+### Phase 2 verification evidence
+
+GitHub Actions run `#52` (`34023295881`) passed every established gate:
+lint/Prettier, strict typecheck, 41 unit tests across 14 files, production
+build, Wrangler deploy dry-run and 67 Playwright E2E tests. The local Work
+Mode environment could not launch the Playwright web server because its
+network-interface enumeration failed; GitHub Actions provided the
+authoritative browser verification.
+
 ## Next phase
 
-Phase 2 — Auth, sessions and RBAC, following the canonical plan. It must remain on a new stacked
-branch/PR and preserve D1 as the source of truth; no Phase 2 implementation is included in this
-Phase 1 closure.
+Phase 3 — Profile, privacy, friendships and blocks is next. It must remain on
+a new stacked branch/PR targeting the Phase 2 branch and preserve the
+capability boundary.
 
 ## Known limitations
 
@@ -177,5 +209,6 @@ Phase 1 closure.
   product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- Authentication, sessions, RBAC, product persistence and authorized media gateways remain outside
-  Phase 1 by design.
+- Profile/privacy persistence, friendships, posts, product persistence and authorized media gateways
+  remain outside Phase 2 by design. Auth mutations remain unavailable until operators provide the
+  required Worker Secrets and real Rate Limit/Email resources; no insecure local bypass is used.
