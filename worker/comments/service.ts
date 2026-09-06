@@ -17,6 +17,10 @@ export interface CommentServiceDependencies {
   store: CommentStore;
   postStore: PostStore;
   profileStore: ProfileStore;
+  assertEntitlements?: (
+    userId: string,
+    body: ReturnType<typeof normalizeCommentBody>,
+  ) => Promise<void>;
   now?: () => number;
 }
 
@@ -157,6 +161,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         }
       }
       const body = normalizeCommentBody(input);
+      await dependencies.assertEntitlements?.(input.authorId, body);
       const createdAt = now();
       const record = {
         id: createIdentifier(),
@@ -217,6 +222,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         );
       }
       const body = normalizeCommentBody(input);
+      await dependencies.assertEntitlements?.(authorId, body);
       const updated = {
         ...current.comment,
         richtext: body.richtext,
