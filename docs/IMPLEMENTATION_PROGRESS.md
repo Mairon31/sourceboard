@@ -484,6 +484,14 @@ Implemented on the stacked `phase-13-hardening` branch:
 - [ ] Verify one real registration, email verification, login and password
       reset after Firebase domain configuration; do not mark auth production
       complete from local mocks or REST-contract tests alone.
+- [x] Local verification after the migration passed lint, typecheck, 97 unit
+      tests, build, Wrangler dry-run, local migrations and 87 Playwright E2E
+      tests. GitHub Actions run `#113` (`34064604349`) also passed.
+- [ ] Workers Build `2f685773-e457-4679-b083-30f373ed915f` for commit
+      `0db7e212aa9f0db236b0d9d15acd318900719cab` stopped before deployment
+      because `FIREBASE_API_KEY` and `FIREBASE_PROJECT_ID` are not set. The
+      live Worker therefore remains on the previous version until Firebase is
+      configured; no placeholder values were supplied.
 
 See [`docs/PHASE_13_HARDENING.md`](PHASE_13_HARDENING.md),
 [`docs/SECURITY_REVIEW_PHASE_13.md`](SECURITY_REVIEW_PHASE_13.md),

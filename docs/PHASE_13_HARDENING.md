@@ -174,9 +174,10 @@ previous deployment used the paid Cloudflare Email Service path; the current
 Firebase migration removes that binding and requires the Firebase project
 configuration before the next production deployment.
 
-The local container still cannot launch the Cloudflare Vite Playwright server
-because of its `uv_interface_addresses` failure; GitHub Actions remains the
-browser gate.
+The current local run passed 87 Playwright E2E tests, and GitHub Actions run
+`#113` passed its repository gate. The latest Workers Build stopped before
+deployment because the two Firebase Worker secrets are not configured, so the
+live Worker still serves the previous deployed version.
 
 The following remain explicit production launch prerequisites: Firebase project
 and custom authentication-email domain verification, WAF configuration,
