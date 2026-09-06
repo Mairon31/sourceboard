@@ -1,6 +1,6 @@
 # Phase 1 — Cloudflare infrastructure
 
-Status: **COMPLETED — resource inventory and deploy configuration verified 2026-09-06; Worker activation awaits required secrets**
+Status: **COMPLETED — resource inventory, deploy configuration and Firebase-backed Worker verified 2026-09-06**
 
 Phase 1 wires the Cloudflare service boundaries required by the canonical plan
 with the production resource names and IDs now bound in `wrangler.jsonc`.

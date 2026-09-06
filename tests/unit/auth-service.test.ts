@@ -190,7 +190,37 @@ describe("authentication service", () => {
       email: "firebase@example.com",
       password: "correct horse battery staple",
     });
-    expect(firebase.sendEmailVerification).toHaveBeenCalledWith("firebase-id-token");
+    expect(firebase.sendEmailVerification).toHaveBeenCalledWith(
+      "firebase-id-token",
+      "https://sourceboard.test/verify-email",
+    );
+  });
+
+  it("uses the SourceBoard callback URL for Firebase password reset emails", async () => {
+    const store = {
+      findUserByEmailLookupHash: vi.fn(async () => null),
+      writeAuditLog: vi.fn(async () => undefined),
+    } as unknown as AuthStore;
+    const firebase = {
+      sendPasswordReset: vi.fn(async () => undefined),
+    } as unknown as FirebaseAuthClient;
+    const service = createAuthService({
+      store,
+      env: { ...baseEnvironment, FIREBASE_API_KEY: "api-key", FIREBASE_PROJECT_ID: "project" },
+      firebase,
+      verifyTurnstile: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      service.forgotPassword(
+        { email: "Alice@example.com", turnstileToken: "turnstile-token" },
+        context(),
+      ),
+    ).resolves.toEqual({ accepted: true });
+    expect(firebase.sendPasswordReset).toHaveBeenCalledWith(
+      "alice@example.com",
+      "https://sourceboard.test/forgot-password",
+    );
   });
 
   it("uses a generic login failure, rotates an existing session, and stores only token hashes", async () => {

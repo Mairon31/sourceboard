@@ -18,9 +18,10 @@ owner and a recorded exception before production traffic is enabled.
       secret is present in Cloudflare.
 - [x] `EMAIL_LOOKUP_KEY_V1` and `DATA_ENCRYPTION_KEY_V1` are supplied as Worker
       secrets; no secret is in Git.
-- [ ] Firebase Authentication email/password is enabled and
-      `FIREBASE_API_KEY` plus `FIREBASE_PROJECT_ID` are supplied as Worker
-      secrets.
+- [x] `FIREBASE_API_KEY` plus `FIREBASE_PROJECT_ID` are supplied as Worker
+      secrets for Firebase project `sourceboardapp`.
+- [ ] Firebase Authentication email/password is enabled and verified with a
+      real account flow.
 - [ ] Firebase Authentication custom email domain and the
       `https://srcboard.me/verify-email` action URL are verified.
 

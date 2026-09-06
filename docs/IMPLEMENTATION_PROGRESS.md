@@ -8,7 +8,7 @@
 
 **Phase 13 — Hardening, observabilidad, backups y lanzamiento**
 
-Status: **COMPLETE — verified in CI, stacked PR #16 ready for review**
+Status: **IN PROGRESS — Firebase-backed deployment is live; launch gates remain**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -477,21 +477,22 @@ Implemented on the stacked `phase-13-hardening` branch:
 - [x] The paid Cloudflare Email Sending binding and `EMAIL_FROM` requirement
       were removed from `wrangler.jsonc`; Firebase project secrets are now
       required instead.
-- [ ] Create/configure the Firebase project, enable Email/Password, verify the
-      custom authentication-email domain and set `FIREBASE_API_KEY` and
-      `FIREBASE_PROJECT_ID` in the Worker. No Firebase project was available in
-      the connected workspace to query or configure automatically.
+- [x] Firebase project `sourceboardapp` was configured in Cloudflare with
+      `FIREBASE_API_KEY` and `FIREBASE_PROJECT_ID`; no values are stored in Git.
+- [ ] Enable/confirm Firebase Email/Password and verify the custom
+      authentication-email domain and action URL.
 - [ ] Verify one real registration, email verification, login and password
       reset after Firebase domain configuration; do not mark auth production
       complete from local mocks or REST-contract tests alone.
 - [x] Local verification after the migration passed lint, typecheck, 97 unit
       tests, build, Wrangler dry-run, local migrations and 87 Playwright E2E
       tests. GitHub Actions run `#113` (`34064604349`) also passed.
-- [ ] Workers Build `2f685773-e457-4679-b083-30f373ed915f` for commit
-      `0db7e212aa9f0db236b0d9d15acd318900719cab` stopped before deployment
-      because `FIREBASE_API_KEY` and `FIREBASE_PROJECT_ID` are not set. The
-      live Worker therefore remains on the previous version until Firebase is
-      configured; no placeholder values were supplied.
+- [x] Previous Workers Build `2f685773-e457-4679-b083-30f373ed915f` stopped
+      before deployment because the Firebase secrets were not yet configured;
+      no placeholder values were supplied.
+- [x] After configuring those secrets, Workers Build
+      `ed650526-2eed-4ef6-acd6-654e67c3b773` deployed commit `5655d80` and the
+      live HTML no longer contains the presentation build or fixture account.
 
 See [`docs/PHASE_13_HARDENING.md`](PHASE_13_HARDENING.md),
 [`docs/SECURITY_REVIEW_PHASE_13.md`](SECURITY_REVIEW_PHASE_13.md),
@@ -543,8 +544,9 @@ prerequisites.
       `npx wrangler deploy`. Cloudflare now reports the full binding set,
       `NotificationHub`, cron `17 * * * *`, and the `sourceboard-events`
       consumer with `sourceboard-events-dlq`.
-- [ ] Firebase project configuration, Email/Password enablement, custom
-      authentication-email domain and Worker Firebase secrets remain pending.
+- [x] Firebase project configuration and Worker Firebase secrets are present.
+- [ ] Email/Password enablement, custom authentication-email domain/action URL,
+      and one real auth-flow verification remain pending.
 
 ## Known limitations
 
@@ -554,5 +556,5 @@ prerequisites.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
 - Search result caching, opaque ranking and external indexing remain deliberately deferred; the
   current public FTS5 projection is D1-backed and viewer-sensitive results are not cached.
-- Auth and profile mutations remain unavailable until operators provide the required Worker Secrets
-  and Firebase project configuration; no insecure local bypass is used.
+- Auth and profile mutations require the configured Firebase provider and the
+  remaining real-flow verification; no insecure local bypass is used.

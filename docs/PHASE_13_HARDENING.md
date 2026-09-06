@@ -1,12 +1,11 @@
 # Phase 13 — Hardening, observability, backups and production launch
 
-Status: **COMPLETE — application hardening verified in CI; production provisioning remains a release gate**
+Status: **IN PROGRESS — hardening and Firebase-backed deployment verified; release gates remain**
 
-This phase closes the application-side production boundary without provisioning a
-Cloudflare account, inventing resource IDs, or deploying to production. The
-canonical implementation remains D1-first, keeps R2 private, and treats missing
-production bindings as an unavailable service rather than silently weakening a
-control.
+This phase closes the application-side production boundary while reusing the
+verified Cloudflare resources and keeping R2 private. The canonical
+implementation remains D1-first and treats missing production bindings as an
+unavailable service rather than silently weakening a control.
 
 ## Implemented in Phase 13
 
@@ -174,13 +173,15 @@ previous deployment used the paid Cloudflare Email Service path; the current
 Firebase migration removes that binding and requires the Firebase project
 configuration before the next production deployment.
 
-The current local run passed 87 Playwright E2E tests, and GitHub Actions run
-`#113` passed its repository gate. The latest Workers Build stopped before
-deployment because the two Firebase Worker secrets are not configured, so the
-live Worker still serves the previous deployed version.
+The current local run passed 87 Playwright E2E tests, and GitHub Actions runs
+`#113` and `#114` passed their repository gates. After the Firebase secrets
+were configured, Workers Build `ed650526-2eed-4ef6-acd6-654e67c3b773` deployed
+the new `master` commit; live HTML no longer serves the presentation build or
+fixture account.
 
-The following remain explicit production launch prerequisites: Firebase project
-and custom authentication-email domain verification, WAF configuration,
+The following remain explicit production launch prerequisites: Firebase
+Email/Password enablement and custom authentication-email domain verification,
+WAF configuration,
 backup/restore drill, alert routing, an external penetration test, and
 review/removal of the remaining inline-style `'unsafe-inline'` allowance.
 
@@ -189,8 +190,7 @@ review/removal of the remaining inline-style `'unsafe-inline'` allowance.
 The Worker now calls Firebase Authentication's REST API for new email/password
 accounts, login, verification action codes, password reset and password
 changes. D1 remains the owner of SourceBoard profiles, roles, encrypted email
-lookup data and application sessions. No Firebase project was available in the
-connected workspace, so the project ID/API key, Email/Password provider,
-custom action URL and custom email domain remain operator configuration. The
-first real registration and password-reset flow must be verified after those
-values are supplied.
+lookup data and application sessions. Project `sourceboardapp` is configured in
+the Worker without storing its values in Git. Firebase Email/Password,
+custom action URL/domain verification and the first real registration and
+password-reset flow still require explicit verification.

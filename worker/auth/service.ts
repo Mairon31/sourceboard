@@ -518,7 +518,10 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     try {
       await dependencies.store.createExternalUser({ user });
       persisted = true;
-      await activeFirebase.sendEmailVerification(remote.idToken);
+      await activeFirebase.sendEmailVerification(
+        remote.idToken,
+        new URL("/verify-email", requestContext.request.url).toString(),
+      );
     } catch (error) {
       if (persisted) {
         try {
@@ -811,7 +814,10 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
 
     if (firebase) {
       try {
-        await firebase.sendPasswordReset(normalizedEmail);
+        await firebase.sendPasswordReset(
+          normalizedEmail,
+          new URL("/forgot-password", requestContext.request.url).toString(),
+        );
       } catch (error) {
         if (
           isFirebaseAuthError(error) &&

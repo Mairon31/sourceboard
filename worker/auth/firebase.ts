@@ -24,8 +24,8 @@ export interface FirebaseAuthClient {
     password: string;
   }): Promise<FirebasePasswordAuthResult>;
   getAccountInfo(idToken: string): Promise<FirebaseAccountInfo>;
-  sendEmailVerification(idToken: string): Promise<void>;
-  sendPasswordReset(email: string): Promise<void>;
+  sendEmailVerification(idToken: string, continueUrl?: string): Promise<void>;
+  sendPasswordReset(email: string, continueUrl?: string): Promise<void>;
   confirmEmailVerification(oobCode: string): Promise<FirebaseActionCodeInfo>;
   getPasswordResetInfo(oobCode: string): Promise<FirebaseActionCodeInfo>;
   confirmPasswordReset(oobCode: string, password: string): Promise<FirebaseActionCodeInfo>;
@@ -155,12 +155,20 @@ export function createFirebaseAuthClient({ apiKey, fetcher = fetch }: FirebaseAu
       };
     },
 
-    async sendEmailVerification(idToken) {
-      await request("accounts:sendOobCode", { requestType: "VERIFY_EMAIL", idToken });
+    async sendEmailVerification(idToken, continueUrl) {
+      await request("accounts:sendOobCode", {
+        requestType: "VERIFY_EMAIL",
+        idToken,
+        ...(continueUrl ? { continueUrl } : {}),
+      });
     },
 
-    async sendPasswordReset(email) {
-      await request("accounts:sendOobCode", { requestType: "PASSWORD_RESET", email });
+    async sendPasswordReset(email, continueUrl) {
+      await request("accounts:sendOobCode", {
+        requestType: "PASSWORD_RESET",
+        email,
+        ...(continueUrl ? { continueUrl } : {}),
+      });
     },
 
     async confirmEmailVerification(oobCode) {

@@ -113,9 +113,9 @@ verification.
 
 The Firebase adapter and D1 external-profile bridge are additionally covered
 by the current local unit and E2E gates recorded in
-`docs/IMPLEMENTATION_PROGRESS.md`. Production Firebase project configuration,
-custom email-domain verification and existing-user migration remain release
-work.
+`docs/IMPLEMENTATION_PROGRESS.md`. The Firebase project and Worker secrets are
+configured; Email/Password/domain verification and existing-user migration
+remain release work.
 
 ## Deliberately deferred
 

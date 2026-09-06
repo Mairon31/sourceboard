@@ -20,13 +20,16 @@ describe("Firebase Authentication REST client", () => {
           refreshToken: "refresh-token",
         }),
       )
+      .mockResolvedValueOnce(response({ email: "alice@example.com" }))
       .mockResolvedValueOnce(response({ email: "alice@example.com" }));
     const client = createFirebaseAuthClient({ apiKey: "firebase-api-key", fetcher });
 
     await expect(
       client.createUser({ email: "alice@example.com", password: "correct horse battery staple" }),
     ).resolves.toMatchObject({ localId: "firebase-user", idToken: "id-token" });
-    await expect(client.sendEmailVerification("id-token")).resolves.toBeUndefined();
+    await expect(
+      client.sendEmailVerification("id-token", "https://srcboard.me/verify-email"),
+    ).resolves.toBeUndefined();
 
     expect(fetcher).toHaveBeenNthCalledWith(
       1,
@@ -38,6 +41,24 @@ describe("Firebase Authentication REST client", () => {
       "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=firebase-api-key",
       expect.objectContaining({ method: "POST" }),
     );
+    expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body as string)).toEqual({
+      requestType: "VERIFY_EMAIL",
+      idToken: "id-token",
+      continueUrl: "https://srcboard.me/verify-email",
+    });
+    await expect(
+      client.sendPasswordReset("alice@example.com", "https://srcboard.me/forgot-password"),
+    ).resolves.toBeUndefined();
+    expect(fetcher).toHaveBeenNthCalledWith(
+      3,
+      "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=firebase-api-key",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(JSON.parse(fetcher.mock.calls[2]?.[1]?.body as string)).toEqual({
+      requestType: "PASSWORD_RESET",
+      email: "alice@example.com",
+      continueUrl: "https://srcboard.me/forgot-password",
+    });
   });
 
   it("maps provider errors without exposing Firebase response details", async () => {
