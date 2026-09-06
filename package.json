@@ -21,7 +21,9 @@
     "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run deploy:dry-run"
   },
   "dependencies": {
+    "@base-ui/react": "1.8.0",
     "isbot": "5.1.32",
+    "motion": "13.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router": "8.3.1",
