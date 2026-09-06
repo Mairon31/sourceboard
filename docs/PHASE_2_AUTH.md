@@ -1,6 +1,6 @@
 # Phase 2 — Authentication, sessions and RBAC
 
-Status: **IN PROGRESS**
+Status: **COMPLETED**
 
 Phase 2 adds the security boundary required by the canonical plan on top of
 the Phase 1 Cloudflare bindings. D1 remains the source of truth; no auth state
@@ -95,6 +95,16 @@ npx wrangler d1 execute DB --local --command \
 
 Production migration remains a reviewed forward-only operation. No remote
 database or secret was changed during this phase.
+
+## Verification evidence
+
+GitHub Actions run `#52` (`34023295881`) passed the complete repository gate:
+lint/Prettier, strict typecheck, 41 unit tests across 14 files, production
+build, Wrangler deploy dry-run and 67 Playwright E2E tests. The local Work
+Mode environment still cannot launch the Playwright web server because the
+Cloudflare Vite Plugin's network-interface enumeration fails with
+`uv_interface_addresses`; the GitHub runner provided the authoritative browser
+verification.
 
 ## Deliberately deferred
 

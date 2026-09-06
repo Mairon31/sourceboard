@@ -6,9 +6,9 @@
 
 ## Current phase
 
-**Phase 2 — Authentication, sessions and RBAC**
+**Phase 3 — Profile, privacy, friendships and blocks**
 
-Status: **IN PROGRESS**
+Status: **PLANNED — next stacked phase**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -167,7 +167,7 @@ authoritative browser verification.
 
 ## Phase 2 — Authentication, sessions and RBAC
 
-Status: **IN PROGRESS**
+Status: **COMPLETED**
 
 Implemented on the stacked `phase-2-auth-sessions-rbac` branch:
 
@@ -186,13 +186,22 @@ Implemented on the stacked `phase-2-auth-sessions-rbac` branch:
 - [x] E2E coverage for anonymous auth session state and foreign-origin rejection.
 
 See [`docs/PHASE_2_AUTH.md`](PHASE_2_AUTH.md) for the API contract, secret names, migration and
-security boundaries. The Phase 2 CI gate and final completion evidence are pending after the initial
-stacked PR is published.
+security boundaries.
+
+### Phase 2 verification evidence
+
+GitHub Actions run `#52` (`34023295881`) passed every established gate:
+lint/Prettier, strict typecheck, 41 unit tests across 14 files, production
+build, Wrangler deploy dry-run and 67 Playwright E2E tests. The local Work
+Mode environment could not launch the Playwright web server because its
+network-interface enumeration failed; GitHub Actions provided the
+authoritative browser verification.
 
 ## Next phase
 
-Phase 3 — Profile, privacy, friendships and blocks, only after Phase 2 is green and reviewed. It must
-remain on a new stacked branch/PR and preserve the capability boundary.
+Phase 3 — Profile, privacy, friendships and blocks is next. It must remain on
+a new stacked branch/PR targeting the Phase 2 branch and preserve the
+capability boundary.
 
 ## Known limitations
 
