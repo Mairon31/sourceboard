@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fixtureUiDataAdapter } from "../../../app/data/ui-adapter";
 
-
 describe("fixture UI adapter", () => {
   it("exposes representative feed states without leaking anonymous identity", async () => {
     const feed = await fixtureUiDataAdapter.getFeed();
