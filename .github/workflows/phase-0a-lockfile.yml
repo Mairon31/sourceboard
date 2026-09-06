@@ -1,0 +1,32 @@
+name: Phase 0A Lockfile Bootstrap
+
+on:
+  push:
+    branches: [phase-0a-design-system]
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: phase-0a-design-system
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Refresh lockfile
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Commit lockfile when changed
+        run: |
+          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore: refresh phase 0a dependency lockfile"
+            git push origin HEAD:phase-0a-design-system
+          fi
