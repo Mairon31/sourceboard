@@ -37,6 +37,7 @@ test("anonymous identity reveal is reason-gated", async ({ page }) => {
   await page.getByLabel("Reason for access").fill("Investigating coordinated abuse report");
   await expect(reveal).toBeEnabled();
   await reveal.click();
-  await expect(page.getByText("Presentation-only identity preview")).toBeVisible();
-  await expect(page.getByText("Access would be audited in the production system.")).toBeVisible();
+  await expect(
+    page.getByText("Identity access is unavailable or not authorized for this account."),
+  ).toBeVisible();
 });

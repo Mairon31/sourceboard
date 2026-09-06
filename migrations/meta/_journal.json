@@ -29,6 +29,13 @@
       "when": 1788689181209,
       "tag": "0003_tranquil_nick_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788701046658,
+      "tag": "0004_phase4a-anonymous-admin-capability",
+      "breakpoints": true
     }
   ]
 }

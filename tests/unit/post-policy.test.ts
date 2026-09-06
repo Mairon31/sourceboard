@@ -60,6 +60,7 @@ function dependencies() {
   const getRelationship = vi.fn(async (): Promise<Relationship> => "NONE");
   const getBlock = vi.fn(async () => false);
   const listFeed = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
+  const getPost = vi.fn(async () => post());
   const profileStore = {
     getProfileByUserId: vi.fn(async () => ({
       userId: "author-1",
@@ -86,9 +87,14 @@ function dependencies() {
     })),
   } as unknown as ProfileStore;
   const store = {
-    getPost: vi.fn(async () => post()),
+    getPost,
     getPostForMedia: vi.fn(async () => post()),
-    getNsfwPost: vi.fn(async () => ({ id: "post-1", authorUserId: "author-1", isNsfw: false })),
+    getNsfwPost: vi.fn(async () => ({
+      id: "post-1",
+      authorUserId: "author-1",
+      isNsfw: false,
+      nsfwMarkedBy: null,
+    })),
     listFeed,
     createPost: vi.fn(async () => undefined),
     updatePost: vi.fn(async () => true),
@@ -97,7 +103,7 @@ function dependencies() {
     getMediaAsset: vi.fn(async () => null),
     listIndexablePosts: vi.fn(async () => []),
   } as unknown as PostStore;
-  return { profileStore, store, getRelationship, getBlock, listFeed };
+  return { profileStore, store, getRelationship, getBlock, listFeed, getPost };
 }
 
 describe("Phase 4 post policy", () => {
@@ -172,5 +178,38 @@ describe("Phase 4 post policy", () => {
       }),
     ).rejects.toMatchObject({ code: "ANONYMOUS_FRIENDS_ONLY_UNSUPPORTED" });
     expect(store.createPost).not.toHaveBeenCalled();
+  });
+
+  it("serializes anonymous posts without identity-bearing public fields", async () => {
+    const { profileStore, store, getPost } = dependencies();
+    getPost.mockResolvedValue(post({ authorMode: "ANONYMOUS" }));
+    const service = createPostService({ store, profileStore, now: () => 2 });
+
+    const publicPost = await service.getPost("post-1", "viewer-1");
+    expect(publicPost?.author).toEqual({ mode: "ANONYMOUS", displayName: "Anonymous Author" });
+    expect(publicPost?.author.username).toBeUndefined();
+    expect(publicPost?.author.profileUrl).toBeUndefined();
+    expect(publicPost?.permissions.canRevealAnonymous).toBe(false);
+  });
+
+  it("keeps the real anonymous author behind an explicit internal service seam", async () => {
+    const { profileStore, store, getPost } = dependencies();
+    getPost.mockResolvedValue(post({ authorMode: "ANONYMOUS" }));
+    const service = createPostService({ store, profileStore, now: () => 2 });
+
+    await expect(service.getAnonymousAuthorForAdmin("post-1")).resolves.toEqual({
+      userId: "author-1",
+      username: "aurora",
+    });
+  });
+
+  it("allows a capability-authorized moderation seam without changing ownership", async () => {
+    const { profileStore, store } = dependencies();
+    const service = createPostService({ store, profileStore, now: () => 2 });
+
+    await service.setNsfw("post-1", "moderator-1", true, { allowModeration: true });
+    expect(store.updatePost).toHaveBeenCalledWith(
+      expect.objectContaining({ allowNonOwner: true, editorUserId: "moderator-1" }),
+    );
   });
 });

@@ -30,6 +30,7 @@ export interface PostStore {
     next: PostUpdateInput;
     previous: PostRevisionRecord;
     now: number;
+    allowNonOwner?: boolean;
   }): Promise<boolean>;
   archivePost(postId: string, authorId: string, now: number, archived: boolean): Promise<boolean>;
   deletePost(postId: string, authorId: string, now: number): Promise<boolean>;
@@ -81,6 +82,7 @@ interface NsfwRow {
   id: string;
   author_id: string;
   is_nsfw: number;
+  nsfw_marked_by: string | null;
 }
 
 interface MediaRow {
@@ -268,10 +270,17 @@ export function createD1PostStore(db: D1Database): PostStore {
 
     async getNsfwPost(postId) {
       const row = await db
-        .prepare(`SELECT id, author_id, is_nsfw FROM posts WHERE id = ?`)
+        .prepare(`SELECT id, author_id, is_nsfw, nsfw_marked_by FROM posts WHERE id = ?`)
         .bind(postId)
         .first<NsfwRow>();
-      return row ? { id: row.id, authorUserId: row.author_id, isNsfw: row.is_nsfw === 1 } : null;
+      return row
+        ? {
+            id: row.id,
+            authorUserId: row.author_id,
+            isNsfw: row.is_nsfw === 1,
+            nsfwMarkedBy: row.nsfw_marked_by,
+          }
+        : null;
     },
 
     async listFeed({ viewerId, kind, cursor, limit }) {
@@ -335,13 +344,22 @@ export function createD1PostStore(db: D1Database): PostStore {
       };
     },
 
-    async updatePost({ postId, editorUserId, revisionId, next, previous, now }) {
+    async updatePost({
+      postId,
+      editorUserId,
+      revisionId,
+      next,
+      previous,
+      now,
+      allowNonOwner = false,
+    }) {
       const result = await db
         .prepare(
           `UPDATE posts
            SET author_mode = ?, is_nsfw = ?, nsfw_marked_by = ?, nsfw_marked_at = ?,
                title = ?, slug = ?, description = ?, visibility = ?, updated_at = ?
-           WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND edit_deadline_at >= ?`,
+           WHERE id = ? AND (author_id = ? OR ? = 1) AND deleted_at IS NULL
+             AND (? = 1 OR edit_deadline_at >= ?)`,
         )
         .bind(
           next.authorMode,
@@ -355,6 +373,8 @@ export function createD1PostStore(db: D1Database): PostStore {
           now,
           postId,
           editorUserId,
+          allowNonOwner ? 1 : 0,
+          allowNonOwner ? 1 : 0,
           now,
         )
         .run();

@@ -117,4 +117,5 @@ export interface PostNsfwRecord {
   id: string;
   authorUserId: string;
   isNsfw: boolean;
+  nsfwMarkedBy: string | null;
 }
