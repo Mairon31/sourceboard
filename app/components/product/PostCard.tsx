@@ -12,7 +12,36 @@ function statusTone(status: PostSummary["status"]) {
 
 export function PostCard({ post, compact = false }: { post: PostSummary; compact?: boolean }) {
   const [showNsfw, setShowNsfw] = useState(post.nsfwPresentation === "VISIBLE");
-  const likes = post.reaction.count;
+  const [liked, setLiked] = useState(post.reaction.viewerReacted);
+  const [likes, setLikes] = useState(post.reaction.count);
+  const [reactionStatus, setReactionStatus] = useState<string | null>(null);
+
+  async function toggleLike() {
+    setReactionStatus(null);
+    const csrf = document.cookie
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith("__Host-sourceboard_csrf="));
+    try {
+      const response = await fetch(`/api/reactions/POST/${encodeURIComponent(post.id)}`, {
+        method: liked ? "DELETE" : "POST",
+        headers: {
+          "x-csrf-token": csrf
+            ? decodeURIComponent(csrf.slice("__Host-sourceboard_csrf=".length))
+            : "",
+        },
+      });
+      if (!response.ok) {
+        setReactionStatus(response.status === 401 ? "Sign in to like posts." : "Like unavailable.");
+        return;
+      }
+      const result = (await response.json()) as { liked: boolean };
+      setLiked(result.liked);
+      setLikes((count) => count + (result.liked ? 1 : -1));
+    } catch {
+      setReactionStatus("Like unavailable.");
+    }
+  }
 
   return (
     <Card className={`product-post${compact ? " product-post--compact" : ""}`}>
@@ -101,13 +130,12 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
 
       <footer className="product-post__actions">
         <Button
-          variant={post.reaction.viewerReacted ? "secondary" : "ghost"}
+          variant={liked ? "secondary" : "ghost"}
           size="sm"
-          aria-pressed={post.reaction.viewerReacted}
-          disabled
-          title="Reactions become available in Phase 5"
+          aria-pressed={liked}
+          onClick={() => void toggleLike()}
         >
-          {post.reaction.viewerReacted ? "Liked" : "Like"}
+          {liked ? "Liked" : "Like"}
         </Button>
         <Link className="product-text-action" to={`/posts/${post.id}`}>
           Comment
@@ -116,6 +144,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           Share
         </button>
       </footer>
+      {reactionStatus ? <span role="status">{reactionStatus}</span> : null}
     </Card>
   );
 }
