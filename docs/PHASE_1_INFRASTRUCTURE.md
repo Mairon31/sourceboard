@@ -26,7 +26,8 @@ edge launch controls remain operator prerequisites.
   canonical 60-second limits. Workers Rate Limiting uses positive integer
   identifiers defined by the account operator; it does not expose a
   list/create namespace resource through the connected Cloudflare API.
-- Email binding `EMAIL` is declared without a fabricated sender or destination.
+- Firebase Authentication is the managed identity and email-action provider;
+  the paid Cloudflare Email Sending binding is not required by the Worker.
 - `TURNSTILE_SITE_KEY` is a public variable; `TURNSTILE_SECRET` is a Worker
   secret and is never committed.
 - `/api/health` reports only boolean binding availability. It does not return
@@ -88,9 +89,13 @@ is stored in Cloudflare with the Worker. Store or rotate it through Wrangler:
 npx wrangler secret put TURNSTILE_SECRET
 ```
 
-`EMAIL_FROM` is stored only as a Worker secret. Cloudflare Email Service still
-must onboard and verify `srcboard.me` before the binding can deliver mail; the
-connected API lacked permission to verify that dashboard state.
+Firebase must be configured before Worker activation. Store the Firebase Web
+API key and project ID as Worker secrets named `FIREBASE_API_KEY` and
+`FIREBASE_PROJECT_ID`; configure email/password sign-in and the custom action
+URL for `https://srcboard.me/verify-email` in Firebase Authentication. Verify
+the sending domain in Firebase's Authentication email templates and publish
+the DNS records it provides. No Firebase project or secret value is fabricated
+in this repository.
 
 After the real configuration is supplied, regenerate types and inspect the
 result before any deployment:

@@ -30,7 +30,7 @@ test("health endpoint returns JSON and propagates request id", async ({ request 
         reactions: true,
         uploads: true,
       },
-      email: true,
+      email: false,
       turnstile: false,
     },
   });

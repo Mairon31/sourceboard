@@ -16,9 +16,13 @@ owner and a recorded exception before production traffic is enabled.
       top-level and `ssr` configurations.
 - [x] Turnstile production site key is configured for `srcboard.me`; its
       secret is present in Cloudflare.
-- [x] `EMAIL_FROM`, `EMAIL_LOOKUP_KEY_V1` and `DATA_ENCRYPTION_KEY_V1` are
-      supplied as Worker secrets; no secret is in Git.
-- [ ] Email Service sender/domain is verified.
+- [x] `EMAIL_LOOKUP_KEY_V1` and `DATA_ENCRYPTION_KEY_V1` are supplied as Worker
+      secrets; no secret is in Git.
+- [ ] Firebase Authentication email/password is enabled and
+      `FIREBASE_API_KEY` plus `FIREBASE_PROJECT_ID` are supplied as Worker
+      secrets.
+- [ ] Firebase Authentication custom email domain and the
+      `https://srcboard.me/verify-email` action URL are verified.
 
 ## Security and edge controls
 

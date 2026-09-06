@@ -8,15 +8,17 @@ is stored in KV, R2, browser storage or an in-process fallback.
 
 ## Implemented boundary
 
-- Registration creates a pending user, scrypt credential, user role and
-  single-use email-verification token in D1.
+- Registration creates a pending SourceBoard profile and role in D1 while
+  Firebase Authentication owns the password and verification email for new
+  accounts. Legacy D1 credentials remain readable during the transition.
 - Login uses normalized-email HMAC lookup, generic credential failures, an
   adaptive Turnstile challenge after repeated failures and separate auth rate
   limit keys for IP/account.
-- Email verification activates the account only after an unexpired token is
-  consumed atomically.
-- Password reset uses a single-use, expiring D1 token. Reset and password
-  change replace the credential and revoke all prior sessions.
+- Firebase email verification activates the D1 account only after Firebase
+  accepts the action code; legacy D1 verification tokens remain supported.
+- Firebase password reset and password change update the managed credential and
+  revoke all prior D1 sessions. Legacy D1 reset tokens remain supported when
+  Firebase is not configured.
 - Session tokens contain 32 random bytes. Only their SHA-256 hashes are stored
   in D1. The browser receives a Secure, HttpOnly, SameSite cookie plus a
   separate Secure CSRF double-submit cookie.
@@ -31,6 +33,8 @@ is stored in KV, R2, browser storage or an in-process fallback.
 - The Phase 0B auth forms now submit to the real API and display honest
   loading/error/success states. Turnstile renders only when its public key is
   configured; missing production security bindings fail closed.
+- Firebase provider failures return stable retryable errors and remove a newly
+  created pending D1/Firebase account so an operator can retry safely.
 
 ## Secret configuration
 
@@ -39,9 +43,10 @@ then set these Worker Secrets in the target environment:
 
 ```bash
 npx wrangler secret put TURNSTILE_SECRET
-npx wrangler secret put EMAIL_FROM
 npx wrangler secret put EMAIL_LOOKUP_KEY_V1
 npx wrangler secret put DATA_ENCRYPTION_KEY_V1
+npx wrangler secret put FIREBASE_API_KEY
+npx wrangler secret put FIREBASE_PROJECT_ID
 ```
 
 `EMAIL_LOOKUP_KEY_V1` must decode from base64 to at least 32 bytes.
@@ -49,10 +54,10 @@ npx wrangler secret put DATA_ENCRYPTION_KEY_V1
 AES-256-GCM. Key versions are part of the stored credential envelope so later
 rotation can decrypt old values during a reviewed migration.
 
-The `EMAIL` binding still requires an approved Cloudflare Email Service sender;
-`EMAIL_FROM` is deliberately operator-supplied. Rate-limit namespace IDs and
-all other Cloudflare resource IDs remain in the operator-owned configuration
-template and are never guessed in source control.
+Firebase's email/password provider and custom authentication-email domain must
+be enabled in the Firebase console. Rate-limit namespace IDs and all other
+Cloudflare resource IDs remain in the operator-owned configuration template
+and are never guessed in source control.
 
 ## API surface
 
@@ -94,7 +99,7 @@ npx wrangler d1 execute DB --local --command \
 ```
 
 Production migration remains a reviewed forward-only operation. No remote
-database or secret was changed during this phase.
+database or Firebase configuration was changed during this phase.
 
 ## Verification evidence
 
@@ -105,6 +110,12 @@ Mode environment still cannot launch the Playwright web server because the
 Cloudflare Vite Plugin's network-interface enumeration fails with
 `uv_interface_addresses`; the GitHub runner provided the authoritative browser
 verification.
+
+The Firebase adapter and D1 external-profile bridge are additionally covered
+by the current local unit and E2E gates recorded in
+`docs/IMPLEMENTATION_PROGRESS.md`. Production Firebase project configuration,
+custom email-domain verification and existing-user migration remain release
+work.
 
 ## Deliberately deferred
 

@@ -1,5 +1,6 @@
-import { NavLink } from "react-router";
+import { NavLink, useRouteLoaderData } from "react-router";
 import { ThemeControl } from "../layout/ThemeControl";
+import type { RootLoaderData } from "../../root";
 
 const primaryLinks = [
   { href: "/", label: "Home", short: "Home" },
@@ -13,6 +14,9 @@ function navClass({ isActive }: { isActive: boolean }) {
 }
 
 export function ProductNav() {
+  const rootData = useRouteLoaderData<RootLoaderData>("root");
+  const user = rootData?.session?.user ?? null;
+
   return (
     <nav className="product-nav" aria-label="Primary navigation">
       <div className="product-nav__links">
@@ -29,12 +33,19 @@ export function ProductNav() {
       </NavLink>
 
       <div className="product-nav__account">
-        <NavLink className={navClass} to="/u/aurora">
-          <span className="product-nav__avatar" aria-hidden="true">
-            AV
-          </span>
-          <span>Aurora Vale</span>
-        </NavLink>
+        {user ? (
+          <NavLink className={navClass} to={`/u/${encodeURIComponent(user.username)}`}>
+            <span className="product-nav__avatar" aria-hidden="true">
+              {user.username.slice(0, 2).toUpperCase()}
+            </span>
+            <span>{user.username}</span>
+          </NavLink>
+        ) : (
+          <NavLink className={navClass} to="/login">
+            <span className="product-nav__dot" aria-hidden="true" />
+            <span>Sign in</span>
+          </NavLink>
+        )}
         <NavLink className={navClass} to="/settings">
           <span className="product-nav__dot" aria-hidden="true" />
           <span>Settings</span>
@@ -79,8 +90,8 @@ export function ProductContextRail() {
         </p>
       </section>
       <section className="product-context-card product-context-card--quiet">
-        <h2>Presentation build</h2>
-        <p>Phase 0B uses typed fixture data. Authentication and persistence are not active yet.</p>
+        <h2>Production community</h2>
+        <p>Source requests are connected to the community service.</p>
       </section>
       <div className="product-context-theme">
         <span>Appearance</span>

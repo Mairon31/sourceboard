@@ -14,6 +14,12 @@ import {
 } from "./crypto";
 import { enforceAuthRateLimit, requireTurnstile, sendTransactionalEmail } from "./bindings";
 import { AuthError } from "./errors";
+import {
+  createFirebaseAuthClient,
+  isFirebaseAuthError,
+  type FirebaseAuthClient,
+  type FirebasePasswordAuthResult,
+} from "./firebase";
 import { assertCanChangeRole, type AuthorizationSnapshot, type RoleSlug } from "./rbac";
 import {
   CSRF_COOKIE_NAME,
@@ -59,6 +65,7 @@ export interface PublicAuthUser {
 export interface AuthServiceDependencies {
   store: AuthStore;
   env: SourceBoardEnvironment;
+  firebase?: FirebaseAuthClient;
   now?: () => number;
   verifyTurnstile?: (token: string | undefined) => Promise<void>;
   sendEmail?: (message: {
@@ -151,6 +158,71 @@ function requireEmailDelivery(env: SourceBoardEnvironment): void {
   }
 }
 
+function configuredFirebaseAuth(env: SourceBoardEnvironment): FirebaseAuthClient | null {
+  if (!env.FIREBASE_API_KEY || !env.FIREBASE_PROJECT_ID) return null;
+  return createFirebaseAuthClient({ apiKey: env.FIREBASE_API_KEY });
+}
+
+function providerUnavailable(error: unknown): boolean {
+  return isFirebaseAuthError(error) && error.status >= 500;
+}
+
+function authenticationError(error: unknown): AuthError {
+  if (providerUnavailable(error)) {
+    return new AuthError(
+      503,
+      "AUTH_INFRASTRUCTURE_UNAVAILABLE",
+      "Authentication is temporarily unavailable.",
+    );
+  }
+  return new AuthError(401, "AUTHENTICATION_FAILED", "Email or password is incorrect.");
+}
+
+function registrationError(error: unknown): AuthError {
+  if (isFirebaseAuthError(error) && error.code === "EMAIL_EXISTS") {
+    return new AuthError(
+      409,
+      "ACCOUNT_UNAVAILABLE",
+      "Unable to create an account with those details.",
+    );
+  }
+  if (isFirebaseAuthError(error) && error.code === "INVALID_EMAIL") {
+    return new AuthError(400, "INVALID_EMAIL", "Enter a valid email address.");
+  }
+  if (providerUnavailable(error)) {
+    return new AuthError(
+      503,
+      "AUTH_INFRASTRUCTURE_UNAVAILABLE",
+      "Authentication is temporarily unavailable.",
+    );
+  }
+  return new AuthError(
+    503,
+    "AUTH_INFRASTRUCTURE_UNAVAILABLE",
+    "Authentication is temporarily unavailable.",
+  );
+}
+
+function actionCodeError(
+  error: unknown,
+  code: "VERIFICATION_TOKEN_INVALID" | "RESET_TOKEN_INVALID",
+) {
+  if (providerUnavailable(error)) {
+    return new AuthError(
+      503,
+      "AUTH_INFRASTRUCTURE_UNAVAILABLE",
+      "Authentication is temporarily unavailable.",
+    );
+  }
+  return new AuthError(
+    400,
+    code,
+    code === "RESET_TOKEN_INVALID"
+      ? "The reset link is invalid or expired."
+      : "The verification link is invalid or expired.",
+  );
+}
+
 function toPublicUser(user: Pick<UserRecord, "id" | "username">): PublicAuthUser {
   return { id: user.id, username: user.username };
 }
@@ -240,6 +312,7 @@ function validationContext(context: AuthServiceContext): AuthServiceContext {
 
 export function createAuthService(dependencies: AuthServiceDependencies): AuthService {
   const now = dependencies.now ?? (() => Date.now());
+  const firebase = dependencies.firebase ?? configuredFirebaseAuth(dependencies.env);
   const verifyTurnstile =
     dependencies.verifyTurnstile ??
     ((token: string | undefined) => requireTurnstile(dependencies.env, token));
@@ -313,12 +386,32 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     }
   }
 
+  // fallow-ignore-next-line complexity -- provider and legacy credential paths must preserve identical security checks.
   async function authenticateLogin(
     input: { email: string; password: string },
     emailLookupHash: string,
   ) {
     const user = await dependencies.store.findUserByEmailLookupHash(emailLookupHash);
     const credentials = user ? await dependencies.store.getCredentials(user.id) : null;
+    if (firebase && !credentials) {
+      try {
+        const remote = await firebase.signInWithPassword(input);
+        const account = await firebase.getAccountInfo(remote.idToken);
+        if (!user || remote.localId !== user.id || account.disabled || !account.emailVerified) {
+          throw new AuthError(401, "AUTHENTICATION_FAILED", "Email or password is incorrect.");
+        }
+        return { user, credentials: null, firebaseResult: remote };
+      } catch (error) {
+        await dependencies.store.recordLoginFailure(
+          emailLookupHash,
+          now(),
+          LOGIN_FAILURE_WINDOW_MS,
+        );
+        if (error instanceof AuthError) throw error;
+        throw authenticationError(error);
+      }
+    }
+
     const passwordValid = credentials
       ? await verifyPassword(input.password, credentials)
       : await hashPassword("sourceboard-invalid-login-dummy", Buffer.alloc(16, 0)).then(
@@ -343,6 +436,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     password: string,
     credentials: Awaited<ReturnType<typeof authenticateLogin>>["credentials"],
   ): Promise<void> {
+    if (!credentials) return;
     if (needsPasswordRehash(credentials)) {
       await dependencies.store.updatePasswordRecord(user.id, await hashPassword(password), now());
     }
@@ -387,6 +481,69 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     });
   }
 
+  async function registerWithFirebase(
+    input: { username: string; email: string; password: string },
+    requestContext: AuthServiceContext,
+    emailLookupHash: string,
+    encryptionKey: string,
+    usernameNormalized: string,
+  ): Promise<{ verificationRequired: true }> {
+    const activeFirebase = firebase!;
+    let remote: FirebasePasswordAuthResult;
+    try {
+      remote = await activeFirebase.createUser({
+        email: normalizeEmail(input.email),
+        password: input.password,
+      });
+    } catch (error) {
+      throw registrationError(error);
+    }
+
+    const createdAt = now();
+    const user: UserRecord = {
+      id: remote.localId,
+      username: input.username.trim(),
+      usernameNormalized,
+      emailLookupHash,
+      emailEncrypted: encryptEmail(normalizeEmail(input.email), encryptionKey),
+      emailKeyVersion: "v1",
+      status: "PENDING_VERIFICATION",
+      emailVerifiedAt: null,
+      createdAt,
+      updatedAt: createdAt,
+      lastSeenAt: null,
+    };
+
+    let persisted = false;
+    try {
+      await dependencies.store.createExternalUser({ user });
+      persisted = true;
+      await activeFirebase.sendEmailVerification(remote.idToken);
+    } catch (error) {
+      if (persisted) {
+        try {
+          await dependencies.store.deletePendingUser(user.id);
+        } catch {
+          // Keep the public response stable even if cleanup is unavailable.
+        }
+      }
+      try {
+        await activeFirebase.deleteUser(remote.idToken);
+      } catch {
+        // Firebase cleanup is best effort; no credential is ever stored locally.
+      }
+      throw registrationError(error);
+    }
+
+    await writeAudit(requestContext, {
+      actorUserId: user.id,
+      action: "auth.register",
+      targetType: "user",
+      targetId: user.id,
+    });
+    return { verificationRequired: true };
+  }
+
   async function register(
     input: { username: string; email: string; password: string; turnstileToken?: string },
     context: AuthServiceContext,
@@ -398,7 +555,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       `register:ip:${requestContext.security.ipAddress}`,
     );
     await verifyTurnstile(input.turnstileToken);
-    requireEmailDelivery(dependencies.env);
+    if (!firebase) requireEmailDelivery(dependencies.env);
 
     const normalizedEmail = normalizeEmail(input.email);
     const emailLookupKey = requireSecret(dependencies.env, "EMAIL_LOOKUP_KEY_V1");
@@ -415,6 +572,16 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
         409,
         "ACCOUNT_UNAVAILABLE",
         "Unable to create an account with those details.",
+      );
+    }
+
+    if (firebase) {
+      return registerWithFirebase(
+        input,
+        requestContext,
+        emailLookupHash,
+        encryptionKey,
+        usernameNormalized,
       );
     }
 
@@ -449,11 +616,24 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       `/verify-email?token=${encodeURIComponent(verificationToken)}`,
       requestContext.request.url,
     ).toString();
-    await sendEmail({
-      to: normalizedEmail,
-      subject: "Verify your SourceBoard email",
-      text: `Verify your SourceBoard email by opening this link:\n\n${verificationUrl}\n\nThis link expires in 24 hours.`,
-    });
+    try {
+      await sendEmail({
+        to: normalizedEmail,
+        subject: "Verify your SourceBoard email",
+        text: `Verify your SourceBoard email by opening this link:\n\n${verificationUrl}\n\nThis link expires in 24 hours.`,
+      });
+    } catch {
+      try {
+        await dependencies.store.deletePendingUser(user.id);
+      } catch {
+        // Keep the public response stable even if cleanup itself is unavailable.
+      }
+      throw new AuthError(
+        503,
+        "EMAIL_DELIVERY_UNAVAILABLE",
+        "Email delivery is temporarily unavailable. Try again shortly.",
+      );
+    }
     await writeAudit(requestContext, {
       actorUserId: user.id,
       action: "auth.register",
@@ -538,10 +718,44 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     return { user: current!.user, cookies: clearSessionCookies() };
   }
 
+  // fallow-ignore-next-line complexity -- Firebase action codes fall back to legacy tokens for existing accounts.
   async function verifyEmail(
     token: string,
     context: AuthServiceContext,
   ): Promise<{ verified: true }> {
+    if (firebase) {
+      try {
+        const remote = await firebase.confirmEmailVerification(token);
+        const emailLookupKey = requireSecret(dependencies.env, "EMAIL_LOOKUP_KEY_V1");
+        const user = await dependencies.store.findUserByEmailLookupHash(
+          createEmailLookupHash(normalizeEmail(remote.email), emailLookupKey),
+        );
+        if (!user || (remote.localId && remote.localId !== user.id)) {
+          throw new AuthError(
+            400,
+            "VERIFICATION_TOKEN_INVALID",
+            "The verification link is invalid or expired.",
+          );
+        }
+        await dependencies.store.markEmailVerified(user.id, now());
+        await writeAudit(context, {
+          actorUserId: user.id,
+          action: "auth.email_verified",
+          targetType: "user",
+          targetId: user.id,
+        });
+        return { verified: true };
+      } catch (error) {
+        const canTryLegacyToken =
+          isFirebaseAuthError(error) &&
+          ["INVALID_OOB_CODE", "EXPIRED_OOB_CODE", "INVALID_ACTION_CODE"].includes(error.code);
+        if (!canTryLegacyToken) {
+          if (error instanceof AuthError) throw error;
+          throw actionCodeError(error, "VERIFICATION_TOKEN_INVALID");
+        }
+      }
+    }
+
     if (!token || token.length < 32 || token.length > 256) {
       throw new AuthError(
         400,
@@ -570,6 +784,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     return { verified: true };
   }
 
+  // fallow-ignore-next-line complexity -- Firebase and legacy reset delivery share enumeration-safe behavior.
   async function forgotPassword(
     input: { email: string; turnstileToken?: string },
     context: AuthServiceContext,
@@ -583,7 +798,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       `password-reset:ip:${requestContext.security.ipAddress}`,
     );
     await verifyTurnstile(input.turnstileToken);
-    requireEmailDelivery(dependencies.env);
+    if (!firebase) requireEmailDelivery(dependencies.env);
     const emailLookupKey = requireSecret(dependencies.env, "EMAIL_LOOKUP_KEY_V1");
     const encryptionKey = requireSecret(dependencies.env, "DATA_ENCRYPTION_KEY_V1");
     const normalizedEmail = normalizeEmail(input.email);
@@ -593,6 +808,37 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       `password-reset:account:${emailLookupHash}`,
     );
     const user = await dependencies.store.findUserByEmailLookupHash(emailLookupHash);
+
+    if (firebase) {
+      try {
+        await firebase.sendPasswordReset(normalizedEmail);
+      } catch (error) {
+        if (
+          isFirebaseAuthError(error) &&
+          ["EMAIL_NOT_FOUND", "USER_NOT_FOUND"].includes(error.code)
+        ) {
+          return { accepted: true };
+        }
+        if (isFirebaseAuthError(error) && error.code === "TOO_MANY_ATTEMPTS_TRY_LATER") {
+          throw new AuthError(429, "AUTH_RATE_LIMITED", "Too many attempts. Try again later.");
+        }
+        throw new AuthError(
+          503,
+          "AUTH_INFRASTRUCTURE_UNAVAILABLE",
+          "Authentication is temporarily unavailable.",
+        );
+      }
+      if (user && user.status !== "DELETED") {
+        await writeAudit(requestContext, {
+          actorUserId: user.id,
+          action: "auth.password_reset_requested",
+          targetType: "user",
+          targetId: user.id,
+        });
+      }
+      return { accepted: true };
+    }
+
     if (!user || user.status === "DELETED") {
       return { accepted: true };
     }
@@ -624,6 +870,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     return { accepted: true };
   }
 
+  // fallow-ignore-next-line complexity -- Firebase action-code validation and legacy token handling remain compatible.
   async function resetPassword(
     input: { token: string; password: string; turnstileToken?: string },
     context: AuthServiceContext,
@@ -637,6 +884,37 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       `password-reset:token:${hashOpaqueToken(input.token)}`,
     );
     await verifyTurnstile(input.turnstileToken);
+    if (firebase) {
+      let actionCode: { email: string; localId?: string };
+      try {
+        actionCode = await firebase.getPasswordResetInfo(input.token);
+      } catch (error) {
+        throw actionCodeError(error, "RESET_TOKEN_INVALID");
+      }
+
+      const emailLookupKey = requireSecret(dependencies.env, "EMAIL_LOOKUP_KEY_V1");
+      const user = await dependencies.store.findUserByEmailLookupHash(
+        createEmailLookupHash(normalizeEmail(actionCode.email), emailLookupKey),
+      );
+      if (!user || (actionCode.localId && actionCode.localId !== user.id)) {
+        throw new AuthError(400, "RESET_TOKEN_INVALID", "The reset link is invalid or expired.");
+      }
+
+      try {
+        await firebase.confirmPasswordReset(input.token, input.password);
+      } catch (error) {
+        throw actionCodeError(error, "RESET_TOKEN_INVALID");
+      }
+      await dependencies.store.revokeAllSessions(user.id, now());
+      await writeAudit(context, {
+        actorUserId: user.id,
+        action: "auth.password_reset_completed",
+        targetType: "user",
+        targetId: user.id,
+      });
+      return { reset: true, cookies: clearSessionCookies() };
+    }
+
     const userId = await dependencies.store.consumePasswordResetToken(
       hashOpaqueToken(input.token),
       now(),
@@ -665,6 +943,35 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     validatePassword(input.newPassword);
     const current = await currentSession(context);
     const credentials = await dependencies.store.getCredentials(current!.user.id);
+    if (!credentials && firebase) {
+      const encryptionKey = requireSecret(dependencies.env, "DATA_ENCRYPTION_KEY_V1");
+      const currentUser = await dependencies.store.getUserById(current!.user.id);
+      if (!currentUser) {
+        throw new AuthError(401, "AUTHENTICATION_FAILED", "The current password is incorrect.");
+      }
+      try {
+        const remote = await firebase.signInWithPassword({
+          email: decryptEmail(currentUser.emailEncrypted, encryptionKey),
+          password: input.currentPassword,
+        });
+        if (remote.localId !== currentUser.id) {
+          throw new AuthError(401, "AUTHENTICATION_FAILED", "The current password is incorrect.");
+        }
+        await firebase.updatePassword(remote.idToken, input.newPassword);
+      } catch (error) {
+        if (error instanceof AuthError) throw error;
+        throw authenticationError(error);
+      }
+      await dependencies.store.revokeAllSessions(currentUser.id, now());
+      await writeAudit(context, {
+        actorUserId: currentUser.id,
+        action: "auth.password_changed",
+        targetType: "user",
+        targetId: currentUser.id,
+      });
+      return { changed: true, cookies: clearSessionCookies() };
+    }
+
     if (!credentials || !(await verifyPassword(input.currentPassword, credentials))) {
       throw new AuthError(401, "AUTHENTICATION_FAILED", "The current password is incorrect.");
     }

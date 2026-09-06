@@ -22,6 +22,8 @@ export interface SourceBoardEnvironment {
   EMAIL_FROM?: string;
   EMAIL_LOOKUP_KEY_V1?: string;
   DATA_ENCRYPTION_KEY_V1?: string;
+  FIREBASE_API_KEY?: string;
+  FIREBASE_PROJECT_ID?: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
 }

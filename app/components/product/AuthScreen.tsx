@@ -315,7 +315,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const content = copy[mode];
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const resetToken = searchParams.get("token");
+  const resetToken = searchParams.get("token") ?? searchParams.get("oobCode");
   const [turnstileToken, setTurnstileToken] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<AuthFeedback | null>(null);

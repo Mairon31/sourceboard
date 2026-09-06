@@ -54,7 +54,8 @@ local container cannot start the Cloudflare Vite server because
    surfaces. SSR inline scripts now use a per-response nonce. The remaining
    style-policy tightening is a documented launch item, not a claim of
    complete XSS containment.
-2. WAF managed rules, custom domain, Turnstile, Email Service, real Rate
+2. WAF managed rules, custom domain, Turnstile, Firebase Authentication email
+   domain, real Rate
    Limiting namespaces and alert destinations cannot be validated without the
    operator's Cloudflare account. No IDs, tokens or secrets are fabricated.
 3. D1 Time Travel and an independent D1-to-R2 archive require a real account

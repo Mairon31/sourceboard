@@ -3,6 +3,7 @@ import { encryptEmail, hashPassword, hashOpaqueToken } from "../../worker/auth/c
 import { createAuthService, type AuthServiceContext } from "../../worker/auth/service";
 import type { SourceBoardEnvironment } from "../../worker/environment";
 import type { AuthStore, SessionRecord, UserRecord } from "../../worker/auth/store";
+import type { FirebaseAuthClient } from "../../worker/auth/firebase";
 
 const rateLimit = { limit: vi.fn(async () => ({ success: true })) } as unknown as RateLimit;
 const baseEnvironment: SourceBoardEnvironment = {
@@ -107,6 +108,89 @@ describe("authentication service", () => {
     await expect(service.verifyEmail(token ?? "", context())).rejects.toMatchObject({
       code: "VERIFICATION_TOKEN_INVALID",
     });
+  });
+
+  it("cleans up a pending registration when verification email delivery fails", async () => {
+    const store = {
+      findUserByEmailLookupHash: vi.fn(async () => null),
+      findUserByUsernameNormalized: vi.fn(async () => null),
+      createUser: vi.fn(async () => undefined),
+      deletePendingUser: vi.fn(async () => undefined),
+      writeAuditLog: vi.fn(async () => undefined),
+    } as unknown as AuthStore;
+    const service = createAuthService({
+      store,
+      env: baseEnvironment,
+      verifyTurnstile: vi.fn(async () => undefined),
+      sendEmail: vi.fn(async () => {
+        throw new Error("Email provider unavailable");
+      }),
+    });
+
+    await expect(
+      service.register(
+        {
+          username: "RetryUser",
+          email: "retry@example.com",
+          password: "correct horse battery staple",
+          turnstileToken: "turnstile-token",
+        },
+        context(),
+      ),
+    ).rejects.toMatchObject({
+      code: "EMAIL_DELIVERY_UNAVAILABLE",
+      status: 503,
+    });
+    expect(store.deletePendingUser).toHaveBeenCalledWith(expect.any(String));
+  });
+
+  it("uses Firebase for new credentials while keeping the SourceBoard user profile in D1", async () => {
+    let createdUser: UserRecord | null = null;
+    const store = {
+      findUserByEmailLookupHash: vi.fn(async () => null),
+      findUserByUsernameNormalized: vi.fn(async () => null),
+      createExternalUser: vi.fn(async ({ user }: { user: UserRecord }) => {
+        createdUser = user;
+      }),
+      deletePendingUser: vi.fn(async () => undefined),
+      writeAuditLog: vi.fn(async () => undefined),
+    } as unknown as AuthStore;
+    const firebase = {
+      createUser: vi.fn(async () => ({
+        localId: "firebase-user",
+        email: "firebase@example.com",
+        idToken: "firebase-id-token",
+        refreshToken: "firebase-refresh-token",
+      })),
+      sendEmailVerification: vi.fn(async () => undefined),
+    } as unknown as FirebaseAuthClient;
+    const service = createAuthService({
+      store,
+      env: { ...baseEnvironment, FIREBASE_API_KEY: "api-key", FIREBASE_PROJECT_ID: "project" },
+      firebase,
+      verifyTurnstile: vi.fn(async () => undefined),
+      sendEmail: vi.fn(async () => {
+        throw new Error("legacy email delivery must not be used");
+      }),
+    });
+
+    await expect(
+      service.register(
+        {
+          username: "FirebaseUser",
+          email: "firebase@example.com",
+          password: "correct horse battery staple",
+          turnstileToken: "turnstile-token",
+        },
+        context(),
+      ),
+    ).resolves.toEqual({ verificationRequired: true });
+    expect(createdUser).toMatchObject({ id: "firebase-user", status: "PENDING_VERIFICATION" });
+    expect(firebase.createUser).toHaveBeenCalledWith({
+      email: "firebase@example.com",
+      password: "correct horse battery staple",
+    });
+    expect(firebase.sendEmailVerification).toHaveBeenCalledWith("firebase-id-token");
   });
 
   it("uses a generic login failure, rotates an existing session, and stores only token hashes", async () => {

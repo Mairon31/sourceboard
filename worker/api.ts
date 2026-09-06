@@ -103,7 +103,7 @@ export async function handleApiRequest(
         reactions: Boolean(env?.RATE_LIMIT_REACTIONS),
         uploads: Boolean(env?.RATE_LIMIT_UPLOADS),
       },
-      email: Boolean(env?.EMAIL),
+      email: Boolean(env?.EMAIL || (env?.FIREBASE_API_KEY && env?.FIREBASE_PROJECT_ID)),
       turnstile: Boolean(env?.TURNSTILE_SITE_KEY && env?.TURNSTILE_SECRET),
     },
   };

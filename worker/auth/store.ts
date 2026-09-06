@@ -80,6 +80,8 @@ export interface AuthStore {
   getUserById(userId: string): Promise<UserRecord | null>;
   getCredentials(userId: string): Promise<PasswordRecord | null>;
   createUser(input: CreateUserInput): Promise<void>;
+  createExternalUser(input: { user: UserRecord }): Promise<void>;
+  deletePendingUser(userId: string): Promise<void>;
   markEmailVerified(userId: string, now: number): Promise<void>;
   createEmailVerificationToken(input: {
     id: string;
@@ -338,6 +340,61 @@ export function createD1AuthStore(db: D1Database): AuthStore {
             verificationToken.expiresAt,
           ),
       ]);
+    },
+
+    async createExternalUser({ user }) {
+      await db.batch([
+        db
+          .prepare(
+            `INSERT INTO users (
+               id, username, username_normalized, email_lookup_hash, email_encrypted,
+               email_key_version, status, email_verified_at, created_at, updated_at, last_seen_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .bind(
+            user.id,
+            user.username,
+            user.usernameNormalized,
+            user.emailLookupHash,
+            user.emailEncrypted,
+            user.emailKeyVersion,
+            user.status,
+            user.emailVerifiedAt,
+            user.createdAt,
+            user.updatedAt,
+            user.lastSeenAt,
+          ),
+        db
+          .prepare(
+            `INSERT INTO user_roles (user_id, role_id, granted_at, granted_by_user_id)
+             VALUES (?, 'user', ?, NULL)`,
+          )
+          .bind(user.id, user.createdAt),
+        db
+          .prepare(
+            `INSERT INTO user_profiles
+               (user_id, display_name, bio, avatar_asset_id, banner_asset_id, profile_visibility, created_at, updated_at)
+             VALUES (?, ?, '', NULL, NULL, 'PUBLIC', ?, ?)`,
+          )
+          .bind(user.id, user.username, user.createdAt, user.createdAt),
+        db
+          .prepare(
+            `INSERT INTO user_preferences
+               (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests, created_at, updated_at)
+             VALUES (?, 1, 1, 0, 1, ?, ?)`,
+          )
+          .bind(user.id, user.createdAt, user.createdAt),
+      ]);
+    },
+
+    async deletePendingUser(userId) {
+      await db
+        .prepare(
+          `DELETE FROM users
+           WHERE id = ? AND status = 'PENDING_VERIFICATION' AND email_verified_at IS NULL`,
+        )
+        .bind(userId)
+        .run();
     },
 
     async markEmailVerified(userId, now) {

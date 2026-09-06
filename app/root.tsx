@@ -11,20 +11,39 @@ import {
 import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import { readSourceBoardRequestContext } from "../shared/router-context";
 import type { ServerLoaderArgs } from "./data/server-request";
+import { createAuthService } from "../worker/auth/service";
+import { createD1AuthStore } from "../worker/auth/store";
 import "./styles/base.css";
 import "./components/ui/ui.css";
 import "./components/layout/layout.css";
 import "./components/product/product.css";
 import "./components/admin/admin.css";
 
-export function loader({ context }: ServerLoaderArgs) {
+// fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
+export async function loader({ request, context }: ServerLoaderArgs) {
+  const requestContext = readSourceBoardRequestContext(context);
+  let session: { user: { id: string; username: string } } | null = null;
+  if (requestContext?.env.DB && request.headers.get("cookie")) {
+    try {
+      const current = await createAuthService({
+        store: createD1AuthStore(requestContext.env.DB),
+        env: requestContext.env,
+      }).getSession(request);
+      session = current ? { user: current.user } : null;
+    } catch {
+      session = null;
+    }
+  }
+
   return {
-    cspNonce: readSourceBoardRequestContext(context)?.cspNonce ?? null,
+    cspNonce: requestContext?.cspNonce ?? null,
     origin: "https://srcboard.me",
+    // fallow-ignore-next-line unused-load-data-key -- ProductNav reads this root loader through useRouteLoaderData.
+    session,
   };
 }
 
-type LoaderData = ReturnType<typeof loader>;
+export type RootLoaderData = Awaited<ReturnType<typeof loader>>;
 
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const origin = loaderData?.origin ?? "https://srcboard.me";
@@ -56,7 +75,7 @@ export const links = () => [
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { cspNonce } = useLoaderData<LoaderData>();
+  const { cspNonce } = useLoaderData<RootLoaderData>();
   const nonce = cspNonce ?? undefined;
 
   return (

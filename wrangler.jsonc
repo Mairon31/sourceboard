@@ -147,35 +147,30 @@
           "simple": { "limit": 20, "period": 60 },
         },
       ],
-      "send_email": [
-        {
-          "name": "EMAIL",
-          "remote": false,
-        },
-      ],
       "vars": {
         "TURNSTILE_SITE_KEY": "0x4AAAAAAEqlOpm_bo6ovKs5",
       },
       "secrets": {
         "required": [
           "TURNSTILE_SECRET",
-          "EMAIL_FROM",
           "EMAIL_LOOKUP_KEY_V1",
           "DATA_ENCRYPTION_KEY_V1",
+          "FIREBASE_API_KEY",
+          "FIREBASE_PROJECT_ID",
         ],
       },
     },
   },
-  "send_email": [
-    {
-      "name": "EMAIL",
-      "remote": false,
-    },
-  ],
   "vars": {
     "TURNSTILE_SITE_KEY": "0x4AAAAAAEqlOpm_bo6ovKs5",
   },
   "secrets": {
-    "required": ["TURNSTILE_SECRET", "EMAIL_FROM", "EMAIL_LOOKUP_KEY_V1", "DATA_ENCRYPTION_KEY_V1"],
+    "required": [
+      "TURNSTILE_SECRET",
+      "EMAIL_LOOKUP_KEY_V1",
+      "DATA_ENCRYPTION_KEY_V1",
+      "FIREBASE_API_KEY",
+      "FIREBASE_PROJECT_ID",
+    ],
   },
 }

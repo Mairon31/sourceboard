@@ -28,6 +28,22 @@ test("feed presents discovery tabs and privacy-sensitive states", async ({ page 
   await expect(page.getByText(/No source requests yet|Feed unavailable/)).toBeVisible();
 });
 
+test("home presents the connected production service", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Presentation build" })).toHaveCount(0);
+  await expect(
+    page.getByText("Source requests are connected to the community service."),
+  ).toBeVisible();
+});
+
+test("signed-out home does not render a fixture account", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByText("Aurora Vale")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+});
+
 test("search surface accepts a public discovery query", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("search").getByLabel("Search SourceBoard").fill("source");

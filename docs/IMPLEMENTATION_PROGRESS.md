@@ -461,7 +461,29 @@ Implemented on the stacked `phase-13-hardening` branch:
 - [x] hydration-safe TopBar search submission using the browser's submitted
       control value;
 - [x] production checklist, incident runbook, security review and performance
-      measurement plan.
+      measurement plan;
+- [x] public navigation reads the real session identity and no longer renders
+      the Phase 0B fixture account or presentation-build notice;
+- [x] failed verification-email delivery returns a stable retryable error and
+      removes the newly created pending account before the caller retries.
+
+### 2026-09-06 Firebase Auth migration checkpoint
+
+- [x] Firebase Authentication REST adapter covers email/password registration,
+      login, account lookup, verification action codes, password reset and
+      password changes without placing Firebase tokens or credentials in D1.
+- [x] New accounts keep SourceBoard profiles, roles, encrypted lookup data and
+      D1 sessions; legacy D1 credentials remain available during migration.
+- [x] The paid Cloudflare Email Sending binding and `EMAIL_FROM` requirement
+      were removed from `wrangler.jsonc`; Firebase project secrets are now
+      required instead.
+- [ ] Create/configure the Firebase project, enable Email/Password, verify the
+      custom authentication-email domain and set `FIREBASE_API_KEY` and
+      `FIREBASE_PROJECT_ID` in the Worker. No Firebase project was available in
+      the connected workspace to query or configure automatically.
+- [ ] Verify one real registration, email verification, login and password
+      reset after Firebase domain configuration; do not mark auth production
+      complete from local mocks or REST-contract tests alone.
 
 See [`docs/PHASE_13_HARDENING.md`](PHASE_13_HARDENING.md),
 [`docs/SECURITY_REVIEW_PHASE_13.md`](SECURITY_REVIEW_PHASE_13.md),
@@ -481,8 +503,8 @@ audit passed with zero introduced findings.
 The local Playwright server remains unavailable in this container because of
 `uv_interface_addresses`; GitHub Actions is the authoritative browser gate.
 Phase 13 is complete for the repository's application-side hardening and the
-first production deployment. WAF rules, Email Service domain verification,
-backup/restore, alert routing, external penetration testing and
+first production deployment. WAF rules, Firebase authentication-email domain
+verification, backup/restore, alert routing, external penetration testing and
 review/removal of the remaining inline-style allowance remain explicit release
 prerequisites.
 
@@ -492,14 +514,14 @@ prerequisites.
       existing KV `sourceboard-cache`, and Queue `sourceboard-events`.
 - [x] Created `sourceboard-events-dlq` only after an account-level absence
       check; no duplicate named resource was created.
-- [x] Bound the verified D1/KV identifiers, Queue/DLQ, Email, Durable Object,
-      and four account-scoped Workers Rate Limiting policies in `wrangler.jsonc`
-      and `env.ssr`; the generated SSR config and deploy dry-run include them.
+- [x] Bound the verified D1/KV identifiers, Queue/DLQ, Durable Object and four
+      account-scoped Workers Rate Limiting policies in `wrangler.jsonc` and
+      `env.ssr`; the generated SSR config and deploy dry-run include them.
 - [x] Applied remote D1 migrations `0000` through `0013`.
 - [x] Production Turnstile widget `sourceboard` is configured for `srcboard.me`;
       its public site key is checked into the Worker config and the secret is
-      present in Cloudflare. The approved `EMAIL_FROM` sender is stored only as
-      a Worker secret; no secret value is in Git.
+      present in Cloudflare. Firebase configuration is now the remaining auth
+      provider setup; no secret value is in Git.
 - [x] Custom domain `srcboard.me` is attached to Worker `sourceboard` and HTTPS
       responds successfully. WAF, backup/restore, alerts and external security
       review remain pending.
@@ -513,9 +535,8 @@ prerequisites.
       `npx wrangler deploy`. Cloudflare now reports the full binding set,
       `NotificationHub`, cron `17 * * * *`, and the `sourceboard-events`
       consumer with `sourceboard-events-dlq`.
-- [ ] Email Service onboarding/domain verification could not be read through
-      the connected Cloudflare API (error `2036: Unauthorized`); runtime email
-      delivery still requires that external Cloudflare verification.
+- [ ] Firebase project configuration, Email/Password enablement, custom
+      authentication-email domain and Worker Firebase secrets remain pending.
 
 ## Known limitations
 
@@ -526,4 +547,4 @@ prerequisites.
 - Search result caching, opaque ranking and external indexing remain deliberately deferred; the
   current public FTS5 projection is D1-backed and viewer-sensitive results are not cached.
 - Auth and profile mutations remain unavailable until operators provide the required Worker Secrets
-  and real Rate Limit/Email resources; no insecure local bypass is used.
+  and Firebase project configuration; no insecure local bypass is used.

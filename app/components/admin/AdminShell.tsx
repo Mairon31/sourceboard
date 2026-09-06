@@ -25,7 +25,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <div className="admin-shell" data-ui-ready={uiReady ? "true" : "false"}>
       <aside className="admin-sidebar">
         <a href="/" className="admin-brand">
-          <span aria-hidden="true">S</span>
+          <span aria-hidden="true">
+            <img src="/sourceboard-logo.png" alt="" width="34" height="34" decoding="async" />
+          </span>
           <strong>SourceBoard</strong>
         </a>
         <div className="admin-sidebar__label">Administration</div>

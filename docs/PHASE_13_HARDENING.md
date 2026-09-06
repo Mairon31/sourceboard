@@ -62,8 +62,8 @@ Before the first production deploy:
    with observed traffic and abuse data.
 3. Register the production Turnstile site. Put only its public site key in the
    `TURNSTILE_SITE_KEY` variable and store `TURNSTILE_SECRET` with Wrangler.
-4. Verify the Email Service sender/domain before supplying `EMAIL_FROM` and
-   binding `EMAIL`.
+4. Configure Firebase Authentication email/password and verify the custom
+   authentication-email domain before supplying its Worker configuration.
 5. Attach the approved custom domain and verify the HTTPS certificate before
    enabling HSTS for that domain. The Worker adds HSTS only when the request is
    already HTTPS.
@@ -168,18 +168,28 @@ introduced findings.
 
 Workers Build `e4e08c7a-ccaa-4fa9-b15b-83f0cd2ba18c` successfully deployed
 commit `b5ea1aa25651a3bd86a78f0c4e12fa9816f5e79e` with `npx wrangler deploy`.
-The deployed Worker reports all declared bindings, `NotificationHub`, cron
-`17 * * * *`, and the Queue consumer with `sourceboard-events-dlq`. The
-production Turnstile secret and `EMAIL_FROM` are present as Worker secrets.
-Email Service domain onboarding could not be verified through the connected API
-because it returned `2036: Unauthorized`, so email delivery remains an
-external release gate.
+The deployed Worker reports all declared Cloudflare bindings, `NotificationHub`,
+cron `17 * * * *`, and the Queue consumer with `sourceboard-events-dlq`. The
+previous deployment used the paid Cloudflare Email Service path; the current
+Firebase migration removes that binding and requires the Firebase project
+configuration before the next production deployment.
 
 The local container still cannot launch the Cloudflare Vite Playwright server
 because of its `uv_interface_addresses` failure; GitHub Actions remains the
 browser gate.
 
-The following remain explicit production launch prerequisites: WAF configuration,
-Email Service sender/domain verification, backup/restore drill, alert routing,
-an external penetration test, and review/removal of the remaining inline-style
-`'unsafe-inline'` allowance.
+The following remain explicit production launch prerequisites: Firebase project
+and custom authentication-email domain verification, WAF configuration,
+backup/restore drill, alert routing, an external penetration test, and
+review/removal of the remaining inline-style `'unsafe-inline'` allowance.
+
+### Firebase migration checkpoint — 2026-09-06
+
+The Worker now calls Firebase Authentication's REST API for new email/password
+accounts, login, verification action codes, password reset and password
+changes. D1 remains the owner of SourceBoard profiles, roles, encrypted email
+lookup data and application sessions. No Firebase project was available in the
+connected workspace, so the project ID/API key, Email/Password provider,
+custom action URL and custom email domain remain operator configuration. The
+first real registration and password-reset flow must be verified after those
+values are supplied.
