@@ -4,7 +4,10 @@ SourceBoard is a Cloudflare-native social forum for finding the public source or
 
 ## Current status
 
-Phase 0 establishes the reproducible full-stack baseline only. Authentication, D1/R2 bindings, the Liquid Glass design system, social features, moderation, and other later-phase functionality are intentionally not implemented yet.
+Phase 0B is complete as the pre-backend product and UI/UX experience pass. The repository now has
+typed adapter-backed product surfaces, responsive navigation, accessibility coverage and fixture-only
+presentation states. Authentication, D1/R2 bindings, persistence and other later-phase backend
+functionality are intentionally not implemented yet.
 
 See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the authoritative implementation status.
 
