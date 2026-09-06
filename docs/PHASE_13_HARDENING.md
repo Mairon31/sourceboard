@@ -174,8 +174,9 @@ Firebase migration removes that binding and requires the Firebase project
 configuration before the next production deployment.
 
 The current local run passed 87 Playwright E2E tests, and GitHub Actions runs
-`#113` and `#114` passed their repository gates. After the Firebase secrets
-were configured, Workers Builds `ed650526-2eed-4ef6-acd6-654e67c3b773` and
+`#113`, `#114`, `#115` and `#116` passed their repository gates. After the
+Firebase secrets were configured, Workers Builds
+`ed650526-2eed-4ef6-acd6-654e67c3b773` and
 `b0a4fb28-96ca-4326-8bb4-c6af8b6a8994` deployed the new `master` commits; the
 latest build includes explicit SourceBoard callback URLs for Firebase
 verification and password-reset emails, and live HTML no longer serves the

@@ -486,7 +486,8 @@ Implemented on the stacked `phase-13-hardening` branch:
       complete from local mocks or REST-contract tests alone.
 - [x] Local verification after the migration passed lint, typecheck, 97 unit
       tests, build, Wrangler dry-run, local migrations and 87 Playwright E2E
-      tests. GitHub Actions run `#113` (`34064604349`) also passed.
+      tests. GitHub Actions runs `#113` (`34064604349`), `#115`
+      (`34066699578`) and `#116` (`34066825473`) also passed.
 - [x] Previous Workers Build `2f685773-e457-4679-b083-30f373ed915f` stopped
       before deployment because the Firebase secrets were not yet configured;
       no placeholder values were supplied.
