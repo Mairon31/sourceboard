@@ -8,7 +8,7 @@ Branch: `phase-0b-ui-ux`
 
 Pull request: [#2 — Phase 0B: pre-backend UI/UX experience](https://github.com/Mairon31/sourceboard/pull/2)
 
-Final CI: run `#47` (`34020005160`), all checks green.
+Final CI: run `#48` (`34020133138`), all checks green.
 
 ## What was implemented
 
@@ -60,7 +60,7 @@ NSFW filtering and private media access remain later-phase responsibilities.
 
 ## Verification evidence
 
-CI run `34020005160` / `#47` passed:
+CI run `34020133138` / `#48` passed:
 
 - `npm ci`;
 - `npm run lint` (ESLint and Prettier check);

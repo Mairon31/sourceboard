@@ -4,10 +4,10 @@ SourceBoard is a Cloudflare-native social forum for finding the public source or
 
 ## Current status
 
-Phase 0B is complete as the pre-backend product and UI/UX experience pass. The repository now has
-typed adapter-backed product surfaces, responsive navigation, accessibility coverage and fixture-only
-presentation states. Authentication, D1/R2 bindings, persistence and other later-phase backend
-functionality are intentionally not implemented yet.
+Phase 0B is complete as the pre-backend product and UI/UX experience pass. Phase 1 is complete on its
+stacked branch with local-safe Cloudflare infrastructure contracts and the first D1 migration, without
+provisioning remote resources or turning fixtures into persistence. Authentication, sessions, RBAC and
+later product behavior remain deferred to their canonical phases.
 
 See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the authoritative implementation status.
 
@@ -19,6 +19,7 @@ See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the
 - Vite 8
 - Cloudflare Vite Plugin
 - Cloudflare Workers + Static Assets
+- Drizzle ORM + Drizzle Kit for typed SQLite schema/migrations
 - Zod
 - Vitest
 - Playwright
@@ -75,7 +76,21 @@ Example response:
 {
   "status": "ok",
   "service": "sourceboard",
-  "requestId": "..."
+  "requestId": "...",
+  "bindings": {
+    "db": false,
+    "media": false,
+    "cache": false,
+    "events": false,
+    "rateLimits": {
+      "auth": false,
+      "content": false,
+      "reactions": false,
+      "uploads": false
+    },
+    "email": false,
+    "turnstile": false
+  }
 }
 ```
 
@@ -105,7 +120,10 @@ Deploy the Worker and static assets:
 npm run deploy
 ```
 
-Phase 0 deliberately does not create D1, R2, KV, Queue, Durable Object, Turnstile, Email, or Rate Limiting resource identifiers. Those bindings are introduced in the phases defined by the canonical plan.
+Phase 1 keeps local-safe binding declarations in `wrangler.jsonc` and the complete real-resource shape in
+[`wrangler.phase1.example.jsonc`](wrangler.phase1.example.jsonc). No Cloudflare IDs or secrets are
+invented. Provisioning and migration commands are documented in
+[`docs/PHASE_1_INFRASTRUCTURE.md`](docs/PHASE_1_INFRASTRUCTURE.md).
 
 ## Architecture decisions
 

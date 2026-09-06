@@ -1,0 +1,126 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sourceboard",
+  "main": "./worker/app.ts",
+  "compatibility_date": "2026-09-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sourceboard-db",
+      "database_id": "<D1_DATABASE_ID>",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "sourceboard-media",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "<KV_NAMESPACE_ID>",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "EVENTS",
+        "queue": "sourceboard-events",
+      },
+    ],
+  },
+  "env": {
+    "ssr": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sourceboard-db",
+          "database_id": "<D1_DATABASE_ID>",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "MEDIA",
+          "bucket_name": "sourceboard-media",
+        },
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "CACHE",
+          "id": "<KV_NAMESPACE_ID>",
+        },
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "EVENTS",
+            "queue": "sourceboard-events",
+          },
+        ],
+      },
+      "ratelimits": [
+        {
+          "name": "RATE_LIMIT_AUTH",
+          "namespace_id": "<RATE_LIMIT_AUTH_NAMESPACE_ID>",
+          "simple": { "limit": 10, "period": 60 },
+        },
+        {
+          "name": "RATE_LIMIT_CONTENT",
+          "namespace_id": "<RATE_LIMIT_CONTENT_NAMESPACE_ID>",
+          "simple": { "limit": 60, "period": 60 },
+        },
+        {
+          "name": "RATE_LIMIT_REACTIONS",
+          "namespace_id": "<RATE_LIMIT_REACTIONS_NAMESPACE_ID>",
+          "simple": { "limit": 120, "period": 60 },
+        },
+        {
+          "name": "RATE_LIMIT_UPLOADS",
+          "namespace_id": "<RATE_LIMIT_UPLOADS_NAMESPACE_ID>",
+          "simple": { "limit": 20, "period": 60 },
+        },
+      ],
+      "send_email": [{ "name": "EMAIL" }],
+      "vars": {
+        "TURNSTILE_SITE_KEY": "<TURNSTILE_SITE_KEY>",
+      },
+      "secrets": {
+        "required": ["TURNSTILE_SECRET"],
+      },
+    },
+  },
+  "ratelimits": [
+    {
+      "name": "RATE_LIMIT_AUTH",
+      "namespace_id": "<RATE_LIMIT_AUTH_NAMESPACE_ID>",
+      "simple": { "limit": 10, "period": 60 },
+    },
+    {
+      "name": "RATE_LIMIT_CONTENT",
+      "namespace_id": "<RATE_LIMIT_CONTENT_NAMESPACE_ID>",
+      "simple": { "limit": 60, "period": 60 },
+    },
+    {
+      "name": "RATE_LIMIT_REACTIONS",
+      "namespace_id": "<RATE_LIMIT_REACTIONS_NAMESPACE_ID>",
+      "simple": { "limit": 120, "period": 60 },
+    },
+    {
+      "name": "RATE_LIMIT_UPLOADS",
+      "namespace_id": "<RATE_LIMIT_UPLOADS_NAMESPACE_ID>",
+      "simple": { "limit": 20, "period": 60 },
+    },
+  ],
+  "send_email": [{ "name": "EMAIL" }],
+  "vars": {
+    "TURNSTILE_SITE_KEY": "<TURNSTILE_SITE_KEY>",
+  },
+  "secrets": {
+    "required": ["TURNSTILE_SECRET"],
+  },
+}

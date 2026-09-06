@@ -19,5 +19,19 @@ test("health endpoint returns JSON and propagates request id", async ({ request 
     status: "ok",
     service: "sourceboard",
     requestId: "e2e-health",
+    bindings: {
+      db: true,
+      media: true,
+      cache: true,
+      events: true,
+      rateLimits: {
+        auth: false,
+        content: false,
+        reactions: false,
+        uploads: false,
+      },
+      email: true,
+      turnstile: false,
+    },
   });
 });

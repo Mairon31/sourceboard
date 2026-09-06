@@ -7,6 +7,95 @@
   "observability": {
     "enabled": true,
   },
-  // Phase 1 adds D1, R2, KV, Queues, Rate Limiting, Email and Turnstile bindings.
-  // Resource IDs are intentionally not invented in Phase 0.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sourceboard-db",
+      "migrations_dir": "migrations",
+      "remote": false,
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "sourceboard-media",
+      "remote": false,
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "remote": false,
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "EVENTS",
+        "queue": "sourceboard-events",
+        "remote": false,
+      },
+    ],
+  },
+  "env": {
+    "ssr": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sourceboard-db",
+          "migrations_dir": "migrations",
+          "remote": false,
+        },
+      ],
+      "r2_buckets": [
+        {
+          "binding": "MEDIA",
+          "bucket_name": "sourceboard-media",
+          "remote": false,
+        },
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "CACHE",
+          "remote": false,
+        },
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "EVENTS",
+            "queue": "sourceboard-events",
+            "remote": false,
+          },
+        ],
+      },
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "remote": false,
+        },
+      ],
+      "vars": {
+        "TURNSTILE_SITE_KEY": "",
+      },
+      "secrets": {
+        "required": ["TURNSTILE_SECRET"],
+      },
+    },
+  },
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "remote": false,
+    },
+  ],
+  "vars": {
+    // The real public Turnstile site key is supplied during provisioning.
+    // The empty value keeps local type generation deterministic without
+    // pretending that a site has already been registered.
+    "TURNSTILE_SITE_KEY": "",
+  },
+  "secrets": {
+    "required": ["TURNSTILE_SECRET"],
+  },
 }

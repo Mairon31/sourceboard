@@ -37,7 +37,11 @@ Durable Objects are reserved for stateful realtime coordination where their sing
 
 ## Consequences
 
-- Phase 0 configures no storage bindings and invents no Cloudflare resource IDs.
-- Phase 1 will create and wire D1, R2, KV, Queues, Rate Limiting, Email, and Turnstile configuration.
+- Phase 0 configured no storage bindings and invented no Cloudflare resource IDs.
+- Phase 1 wires local-safe D1, R2, KV, Queue, Email and Turnstile contracts and
+  documents the separate Rate Limiting bindings. Real IDs and secrets remain
+  operator-supplied; the deploy template contains explicit placeholders only.
+- The React Router SSR named environment repeats non-inheritable binding
+  declarations so the Cloudflare Vite build artifact cannot silently lose them.
 - Later modules must expose clear domain interfaces rather than directly coupling UI components to Cloudflare storage APIs.
 - Realtime delivery may fail without losing authoritative notification data because persistent state remains in D1.
