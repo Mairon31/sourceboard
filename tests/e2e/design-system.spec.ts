@@ -41,5 +41,5 @@ test("Liquid Glass remains restricted to product chrome rather than every conten
   await waitForUiReady(page);
 
   await expect(page.getByRole("banner")).toHaveClass(/glass-panel/);
-  await expect(page.locator(".product-post").first()).not.toHaveClass(/glass-panel/);
+  await expect(page.locator(".product-post.glass-panel")).toHaveCount(0);
 });

@@ -1,52 +1,86 @@
 import { Link, useLoaderData } from "react-router";
-import { fixtureUiDataAdapter } from "../data/ui-adapter";
+import { createD1ProfileStore } from "../../worker/profile/store";
+import { createD1PostStore } from "../../worker/posts/store";
+import { createPostService } from "../../worker/posts/service";
+import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { PostCard } from "../components/product/PostCard";
 import { ProductShell } from "../components/product/ProductShell";
-import { GlassPanel, Tabs } from "../components/ui";
+import { Card, GlassPanel, Tabs } from "../components/ui";
 
-export async function loader() {
-  return { posts: await fixtureUiDataAdapter.getFeed() };
+type LoaderArgs = ServerLoaderArgs;
+
+export async function loader({ request, context }: LoaderArgs) {
+  return withOptionalServerSession(
+    request,
+    context,
+    (unavailable) => ({
+      unavailable,
+      feeds: { recent: [], friends: [], answered: [], verified: [] },
+    }),
+    async (runtime, userId) => {
+      const db = runtime.db;
+      const service = createPostService({
+        store: createD1PostStore(db),
+        profileStore: createD1ProfileStore(db),
+      });
+      const [recent, friends, answered, verified] = await Promise.all(
+        (["recent", "friends", "answered", "verified"] as const).map((kind) =>
+          service.listFeed({ viewerId: userId, kind, cursor: null, limit: 20 }),
+        ),
+      );
+      return {
+        unavailable: false,
+        feeds: {
+          recent: recent.posts,
+          friends: friends.posts,
+          answered: answered.posts,
+          verified: verified.posts,
+        },
+      };
+    },
+  );
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
-export default function HomeRoute() {
-  const { posts } = useLoaderData<LoaderData>();
-  const recent = (
+function FeedCollection({
+  posts,
+  unavailable,
+}: {
+  posts: LoaderData["feeds"]["recent"];
+  unavailable: boolean;
+}) {
+  if (unavailable) {
+    return (
+      <Card className="product-empty-state">
+        <strong>Feed unavailable</strong>
+        <p>The post service is not configured in this environment yet.</p>
+      </Card>
+    );
+  }
+  if (!posts.length) {
+    return (
+      <Card className="product-empty-state">
+        <strong>No source requests yet</strong>
+        <p>Be the first to publish one image and ask the community for its origin.</p>
+      </Card>
+    );
+  }
+  return (
     <div className="product-feed-list">
       {posts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
     </div>
   );
-  const friends = (
-    <div className="product-feed-list">
-      {posts
-        .filter((post) => post.author.mode === "IDENTIFIED")
-        .slice(0, 3)
-        .map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-    </div>
-  );
-  const answered = (
-    <div className="product-feed-list">
-      {posts
-        .filter((post) => post.status === "ANSWERED" || post.status === "VERIFIED")
-        .map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-    </div>
-  );
-  const verified = (
-    <div className="product-feed-list">
-      {posts
-        .filter((post) => post.status === "VERIFIED")
-        .map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-    </div>
-  );
+}
+
+export default function HomeRoute() {
+  const { feeds, unavailable } = useLoaderData<LoaderData>();
+  const recent = <FeedCollection posts={feeds.recent} unavailable={unavailable} />;
+  const friends = <FeedCollection posts={feeds.friends} unavailable={unavailable} />;
+  const answered = <FeedCollection posts={feeds.answered} unavailable={unavailable} />;
+  const verified = <FeedCollection posts={feeds.verified} unavailable={unavailable} />;
 
   return (
     <ProductShell>

@@ -32,5 +32,7 @@ jobs:
         run: npm run deploy:dry-run
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+      - name: Apply local D1 migrations
+        run: npm run db:migrations:apply
       - name: End-to-end tests
         run: npm run test:e2e

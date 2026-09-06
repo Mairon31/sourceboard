@@ -8,7 +8,7 @@
 
 **Phase 4 — Posts, image, feed and SEO**
 
-Status: **PLANNED — next stacked phase**
+Status: **COMPLETED — PR #6 remains open for review**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -227,11 +227,41 @@ Mode environment still cannot launch the Cloudflare Vite Playwright server becau
 `uv_interface_addresses` fails during interface enumeration; GitHub Actions provided the
 authoritative browser verification.
 
+## Phase 4 — Posts, image, feed and SEO
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-4-posts-images-feed-seo` branch and PR #6:
+
+- [x] D1 posts, post revisions and post-image metadata migration `0003`;
+- [x] one-main-image post contract with JPEG/PNG/WebP/AVIF magic-byte, MIME, size, dimension and SHA-256 validation;
+- [x] private random R2 object keys with authorized Worker media gateway and failed-persistence cleanup;
+- [x] PUBLIC, FRIENDS_ONLY, UNLISTED and PRIVATE visibility with OPEN/ANSWERED/VERIFIED/ARCHIVED/LOCKED states;
+- [x] seven-day owner edit window, revision history, reversible archive and soft deletion;
+- [x] D1-backed recent, friends, answered and verified feeds with keyset cursors and block filtering;
+- [x] canonical post detail SSR, redirect from the legacy `/posts/:id`, canonical/meta/OG/Twitter tags and DiscussionForumPosting JSON-LD;
+- [x] public-only robots and sitemap endpoints that exclude private, hidden, deleted and NSFW posts;
+- [x] public anonymous serialization as `Anonymous Author` with no real identity in author DTOs or JSON-LD;
+- [x] honest empty/unavailable/loading boundaries with comments, reactions, source resolution, moderation deanonymization and search deferred to their canonical phases.
+
+### Phase 4 verification evidence
+
+GitHub Actions run `#59` (`34035474983`) passed every established gate: lint/Prettier,
+strict typecheck, 57 unit tests across 19 files, production build, Wrangler deploy dry-run,
+local D1 migration application and Playwright E2E. The first candidate exposed the missing CI
+migration setup (`no such table: posts`) and the next candidate exposed a stale empty-feed
+Design System selector; both were corrected at their causes. Run #59 completed all checks
+successfully.
+
+The local Work Mode environment cannot launch the Cloudflare Vite Playwright server because
+`uv_interface_addresses` fails during interface enumeration. GitHub Actions is the
+authoritative browser verification. The full audited anonymous deanonymization workflow and
+NSFW moderation gates remain deliberately deferred to Phase 4A and Phase 10.
+
 ## Next phase
 
-Phase 4 — Posts, image, feed and SEO is next. It must remain on a new stacked
-branch/PR targeting the Phase 3 branch and preserve the profile/privacy
-capability boundary.
+Phase 4A — Anonymous identity and NSFW classification is next. It must remain on a new
+stacked branch/PR targeting the Phase 4 branch and preserve the post privacy boundary.
 
 ## Known limitations
 
@@ -239,6 +269,7 @@ capability boundary.
   product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- Post/feed persistence, post image uploads, product persistence and public search remain deferred
-  to their canonical phases. Auth and profile mutations remain unavailable until operators provide
-  the required Worker Secrets and real Rate Limit/Email resources; no insecure local bypass is used.
+- Full anonymous deanonymization audit workflow, NSFW moderation gates, comments/reactions,
+  source resolution and public search remain deferred to their canonical phases. Auth and
+  profile mutations remain unavailable until operators provide the required Worker Secrets and
+  real Rate Limit/Email resources; no insecure local bypass is used.
