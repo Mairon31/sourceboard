@@ -1,4 +1,5 @@
 import {
+  check,
   index,
   integer,
   primaryKey,
@@ -6,6 +7,7 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Small, infrastructure-only table used to verify that D1 migrations and
@@ -192,6 +194,8 @@ export const mediaAssets = sqliteTable(
     r2Key: text("r2_key").notNull(),
     contentType: text("content_type").notNull(),
     byteSize: integer("byte_size", { mode: "number" }).notNull(),
+    width: integer("width", { mode: "number" }),
+    height: integer("height", { mode: "number" }),
     checksumSha256: text("checksum_sha256").notNull(),
     status: text("status").notNull().default("ACTIVE"),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
@@ -313,4 +317,73 @@ export const notifications = sqliteTable(
     index("notifications_user_created_index").on(table.userId, table.createdAt),
     index("notifications_user_unread_index").on(table.userId, table.readAt),
   ],
+);
+
+export const posts = sqliteTable(
+  "posts",
+  {
+    id: text("id").primaryKey(),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    authorMode: text("author_mode").notNull().default("IDENTIFIED"),
+    isNsfw: integer("is_nsfw", { mode: "boolean" }).notNull().default(false),
+    nsfwMarkedBy: text("nsfw_marked_by").references(() => users.id, { onDelete: "set null" }),
+    nsfwMarkedAt: integer("nsfw_marked_at", { mode: "number" }),
+    title: text("title").notNull(),
+    slug: text("slug").notNull(),
+    description: text("description").notNull().default(""),
+    imageAssetId: text("image_asset_id")
+      .notNull()
+      .references(() => mediaAssets.id, { onDelete: "restrict" }),
+    visibility: text("visibility").notNull().default("PUBLIC"),
+    status: text("status").notNull().default("OPEN"),
+    commentCount: integer("comment_count", { mode: "number" }).notNull().default(0),
+    likeCount: integer("like_count", { mode: "number" }).notNull().default(0),
+    acceptedCommentId: text("accepted_comment_id"),
+    verifiedSourceId: text("verified_source_id"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+    editDeadlineAt: integer("edit_deadline_at", { mode: "number" }).notNull(),
+    archivedAt: integer("archived_at", { mode: "number" }),
+    deletedAt: integer("deleted_at", { mode: "number" }),
+    hiddenAt: integer("hidden_at", { mode: "number" }),
+    lockedAt: integer("locked_at", { mode: "number" }),
+  },
+  (table) => [
+    index("posts_feed_index").on(table.visibility, table.status, table.createdAt, table.id),
+    index("posts_author_created_index").on(table.authorId, table.createdAt, table.id),
+    index("posts_slug_index").on(table.slug),
+    index("posts_image_asset_index").on(table.imageAssetId),
+    check("posts_author_mode_check", sql`${table.authorMode} IN ('IDENTIFIED', 'ANONYMOUS')`),
+    check(
+      "posts_visibility_check",
+      sql`${table.visibility} IN ('PUBLIC', 'FRIENDS_ONLY', 'UNLISTED', 'PRIVATE')`,
+    ),
+    check(
+      "posts_status_check",
+      sql`${table.status} IN ('OPEN', 'ANSWERED', 'VERIFIED', 'ARCHIVED', 'LOCKED')`,
+    ),
+  ],
+);
+
+export const postRevisions = sqliteTable(
+  "post_revisions",
+  {
+    id: text("id").primaryKey(),
+    postId: text("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    visibility: text("visibility").notNull(),
+    authorMode: text("author_mode").notNull(),
+    isNsfw: integer("is_nsfw", { mode: "boolean" }).notNull(),
+    editorUserId: text("editor_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    reason: text("reason"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [index("post_revisions_post_created_index").on(table.postId, table.createdAt)],
 );

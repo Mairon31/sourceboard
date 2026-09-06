@@ -18,6 +18,13 @@ WebSocket delivery are intentionally deferred to Phase 11. Post/feed tables
 and post-specific NSFW enforcement are intentionally deferred to Phase 4 and
 Phase 4A.
 
+Migration `0003` adds the Phase 4 post, post revision and post-image metadata
+tables/indexes. It stores the public post contract, image dimensions and
+revision history, but does not add comments, reactions, source resolution,
+moderation workflows or anonymous-identity deanonymization. Those remain
+owned by their later phases. The post-image object keys remain private R2
+implementation details and are never exposed as public bucket URLs.
+
 Cloudflare D1 migrations are forward-only. Production rollback uses the
 approved backup/restore process or a reviewed corrective migration; no unsafe
 automatic `down` migration is implied. Local reset experiments must use a

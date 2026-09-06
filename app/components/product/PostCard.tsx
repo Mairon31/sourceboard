@@ -11,9 +11,8 @@ function statusTone(status: PostSummary["status"]) {
 }
 
 export function PostCard({ post, compact = false }: { post: PostSummary; compact?: boolean }) {
-  const [liked, setLiked] = useState(post.reaction.viewerReacted);
   const [showNsfw, setShowNsfw] = useState(post.nsfwPresentation === "VISIBLE");
-  const likes = post.reaction.count + (liked === post.reaction.viewerReacted ? 0 : liked ? 1 : -1);
+  const likes = post.reaction.count;
 
   return (
     <Card className={`product-post${compact ? " product-post--compact" : ""}`}>
@@ -52,24 +51,44 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
         {post.description ? <p>{post.description}</p> : null}
       </div>
 
-      {post.isNsfw && !showNsfw ? (
+      {post.isNsfw && (post.nsfwPresentation === "HIDDEN" || !showNsfw) ? (
         <div className="product-nsfw-gate">
           <div>
             <Badge tone="danger">NSFW</Badge>
-            <strong>Content hidden by your NSFW preference</strong>
-            <p>This presentation does not load or expose sensitive imagery.</p>
+            <strong>
+              {post.nsfwPresentation === "HIDDEN"
+                ? "Content hidden by your NSFW preference"
+                : "Sensitive media blurred by your preference"}
+            </strong>
+            <p>
+              {post.nsfwPresentation === "HIDDEN"
+                ? "This presentation does not load or expose sensitive imagery."
+                : "Reveal it for this view if your server-side preference allows access."}
+            </p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setShowNsfw(true)}>
-            Show once
-          </Button>
+          {post.nsfwPresentation === "BLURRED" ? (
+            <Button variant="secondary" size="sm" onClick={() => setShowNsfw(true)}>
+              Show once
+            </Button>
+          ) : null}
         </div>
       ) : (
-        <div className="product-post__media" role="img" aria-label={post.imageAlt}>
-          <div className="product-post__media-frame" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
+        <div className="product-post__media">
+          {post.imageUrl ? (
+            <img
+              src={post.imageUrl}
+              alt={post.imageAlt}
+              width={post.imageWidth}
+              height={post.imageHeight}
+              loading="lazy"
+            />
+          ) : (
+            <div className="product-post__media-frame" role="img" aria-label={post.imageAlt}>
+              <span />
+              <span />
+              <span />
+            </div>
+          )}
         </div>
       )}
 
@@ -82,12 +101,13 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
 
       <footer className="product-post__actions">
         <Button
-          variant={liked ? "secondary" : "ghost"}
+          variant={post.reaction.viewerReacted ? "secondary" : "ghost"}
           size="sm"
-          aria-pressed={liked}
-          onClick={() => setLiked((value) => !value)}
+          aria-pressed={post.reaction.viewerReacted}
+          disabled
+          title="Reactions become available in Phase 5"
         >
-          {liked ? "Liked" : "Like"}
+          {post.reaction.viewerReacted ? "Liked" : "Like"}
         </Button>
         <Link className="product-text-action" to={`/posts/${post.id}`}>
           Comment

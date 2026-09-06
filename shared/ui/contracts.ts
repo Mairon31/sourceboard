@@ -67,6 +67,7 @@ export interface CommentView {
 
 export interface PostSummary {
   id: string;
+  slug?: string;
   title: string;
   description?: string;
   author: PublicPostAuthor;
@@ -78,6 +79,9 @@ export interface PostSummary {
   reaction: ReactionSummary;
   commentCount: number;
   imageAlt: string;
+  imageUrl?: string;
+  imageWidth?: number;
+  imageHeight?: number;
   acceptedSource?: AcceptedSourceView;
   verifiedSource?: VerifiedSourceView;
 }

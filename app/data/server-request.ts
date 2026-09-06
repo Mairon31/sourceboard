@@ -15,9 +15,12 @@ export interface ServerLoaderArgs {
   context: Readonly<RouterContextProvider>;
 }
 
-export type AuthenticatedServerRequestRuntime = ServerRequestRuntime & {
+export type AvailableServerRequestRuntime = ServerRequestRuntime & {
   env: SourceBoardEnvironment;
   db: D1Database;
+};
+
+export type AuthenticatedServerRequestRuntime = AvailableServerRequestRuntime & {
   authenticatedRequest: true;
 };
 
@@ -42,6 +45,12 @@ function hasAuthenticatedRuntime(
   return runtime.authenticatedRequest && Boolean(runtime.db) && Boolean(runtime.env);
 }
 
+function hasAvailableRuntime(
+  runtime: ServerRequestRuntime,
+): runtime is AvailableServerRequestRuntime {
+  return Boolean(runtime.db) && Boolean(runtime.env);
+}
+
 async function readServerSession(
   request: Request,
   context: Readonly<RouterContextProvider>,
@@ -57,14 +66,6 @@ async function readServerSession(
   return { runtime, userId: session ? session.user.id : null };
 }
 
-function getAuthenticatedServerSession(session: {
-  runtime: ServerRequestRuntime;
-  userId: string | null;
-}): { runtime: AuthenticatedServerRequestRuntime; userId: string } | null {
-  if (!session.userId || !hasAuthenticatedRuntime(session.runtime)) return null;
-  return { runtime: session.runtime, userId: session.userId };
-}
-
 export async function withServerSession<Unauthenticated, Authenticated>(
   request: Request,
   context: Readonly<RouterContextProvider>,
@@ -74,11 +75,22 @@ export async function withServerSession<Unauthenticated, Authenticated>(
     userId: string,
   ) => Promise<Authenticated>,
 ): Promise<Unauthenticated | Authenticated> {
+  return withOptionalServerSession(request, context, unauthenticated, async (runtime, userId) => {
+    if (!userId) return unauthenticated(false);
+    return authenticated({ ...runtime, authenticatedRequest: true }, userId);
+  });
+}
+
+export async function withOptionalServerSession<Unauthenticated, Loaded>(
+  request: Request,
+  context: Readonly<RouterContextProvider>,
+  unauthenticated: (unavailable: boolean) => Unauthenticated,
+  loaded: (runtime: AvailableServerRequestRuntime, userId: string | null) => Promise<Loaded>,
+): Promise<Unauthenticated | Loaded> {
   try {
     const state = await readServerSession(request, context);
-    const session = getAuthenticatedServerSession(state);
-    if (!session) return unauthenticated(!state.runtime.db);
-    return authenticated(session.runtime, session.userId);
+    if (!hasAvailableRuntime(state.runtime)) return unauthenticated(true);
+    return loaded(state.runtime, state.userId);
   } catch {
     return unauthenticated(true);
   }
