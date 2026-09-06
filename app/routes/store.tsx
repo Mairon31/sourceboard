@@ -13,12 +13,14 @@ export async function loader({ request, context }: ServerLoaderArgs) {
     (unavailable) => ({ items: [] as StoreItemView[], unavailable }),
     async (runtime, userId) => {
       const service = createStoreService(runtime.db);
-      const [catalog, points, inventory] = await Promise.all([
+      const [catalog, points, inventory, equipped] = await Promise.all([
         service.list(),
         userId ? service.balance(userId) : Promise.resolve(null),
         userId ? service.inventory(userId) : Promise.resolve([]),
+        userId ? service.equipped(userId) : Promise.resolve([]),
       ]);
       const owned = new Set(inventory.map((item) => String(item.storeItemId)));
+      const equippedIds = new Set(equipped.map((item) => String(item.storeItemId)));
       return {
         unavailable: false,
         items: catalog.map((item) => ({
@@ -26,11 +28,16 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           name: String(item.name),
           description: String(item.description),
           type: item.type as StoreItemView["type"],
-          state: owned.has(String(item.id))
-            ? ("OWNED" as const)
-            : points !== null && Number(item.pricePoints) > points
-              ? ("INSUFFICIENT_POINTS" as const)
-              : ("AVAILABLE" as const),
+          state:
+            Number(item.isActive) !== 1
+              ? ("DISABLED" as const)
+              : equippedIds.has(String(item.id))
+                ? ("EQUIPPED" as const)
+                : owned.has(String(item.id))
+                  ? ("OWNED" as const)
+                  : points !== null && Number(item.pricePoints) > points
+                    ? ("INSUFFICIENT_POINTS" as const)
+                    : ("AVAILABLE" as const),
           price: Number(item.pricePoints),
           previewLabel: String(item.name),
           packSize: undefined,

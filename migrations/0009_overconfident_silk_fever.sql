@@ -55,3 +55,10 @@ CREATE TABLE `user_inventory` (
 );
 --> statement-breakpoint
 CREATE INDEX `user_inventory_user_acquired_index` ON `user_inventory` (`user_id`,`acquired_at`);
+--> statement-breakpoint
+INSERT OR IGNORE INTO store_items (id, type, name, description, price_points, config_json, is_active, sort_order, created_at, updated_at) VALUES
+('store-frame', 'AVATAR_FRAME', 'Nebula Frame', 'A restrained animated-looking frame preview for profile avatars.', 500, '{"preset":"nebula"}', 1, 10, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect', 'PROFILE_EFFECT', 'Glass Aurora', 'Subtle profile background effect.', 900, '{"preset":"soft-glow"}', 1, 20, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-font', 'NAME_FONT', 'Editorial', 'Display-name font from the staff-managed catalog.', 240, '{"family":"Georgia"}', 1, 30, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-emotes', 'EMOTE_PACK', 'Source Hunters', 'Pack of custom inline emotes.', 2400, '{"packId":"source-hunters"}', 1, 40, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-stickers', 'STICKER_PACK', 'Evidence Desk', 'Sticker pack for comment replies.', 700, '{"packId":"evidence-desk"}', 0, 50, unixepoch('now') * 1000, unixepoch('now') * 1000);

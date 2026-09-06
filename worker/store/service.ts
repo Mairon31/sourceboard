@@ -41,7 +41,8 @@ export function createStoreService(db: D1Database) {
           `SELECT id, type, name, description, price_points AS pricePoints, asset_id AS assetId,
                   config_json AS configJson, is_active AS isActive, starts_at AS startsAt,
                   ends_at AS endsAt, sort_order AS sortOrder
-           FROM store_items WHERE ${active.sql} ORDER BY sort_order ASC, created_at DESC`,
+           FROM store_items WHERE (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at > ?)
+           ORDER BY sort_order ASC, created_at DESC`,
         )
         .bind(...active.binds)
         .all();
@@ -124,6 +125,14 @@ export function createStoreService(db: D1Database) {
            FROM user_inventory i JOIN store_items s ON s.id = i.store_item_id
            WHERE i.user_id = ? ORDER BY i.acquired_at DESC`,
         )
+        .bind(userId)
+        .all();
+      return result.results;
+    },
+
+    async equipped(userId: string) {
+      const result = await db
+        .prepare("SELECT slot, store_item_id AS storeItemId FROM user_cosmetics WHERE user_id = ?")
         .bind(userId)
         .all();
       return result.results;

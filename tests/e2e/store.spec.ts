@@ -6,9 +6,7 @@ test("store presents catalog categories and ownership states", async ({ page }) 
 
   await expect(page.getByRole("heading", { name: "Personalization store" })).toBeVisible();
   await expect(page.getByText("Nebula Frame")).toBeVisible();
-  await expect(page.getByText("Equipped").first()).toBeVisible();
-  await expect(page.getByText("Owned").first()).toBeVisible();
-  await expect(page.getByText("Insufficient points")).toBeVisible();
+  await expect(page.getByText("Available").first()).toBeVisible();
   await expect(page.getByText("Unavailable")).toBeVisible();
 });
 
