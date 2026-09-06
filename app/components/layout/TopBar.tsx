@@ -128,11 +128,14 @@ export function TopBar() {
         onSubmit={submitSearch}
         role="search"
         aria-label="Search SourceBoard"
+        action="/search"
+        method="get"
       >
         <span className="sr-only">Search SourceBoard</span>
         <SearchIcon width="18" height="18" />
         <input
           type="search"
+          name="q"
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
           placeholder="Search SourceBoard"
