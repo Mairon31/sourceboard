@@ -1,18 +1,28 @@
 import { useLoaderData } from "react-router";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
-import { PresentationNotice } from "../components/product/ProductShell";
 import { loadAdminAccess } from "../data/admin-access";
-import type { ServerLoaderArgs } from "../data/server-request";
+import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { createModerationService } from "../../worker/moderation/service";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  const access = await loadAdminAccess(request, context);
-  return { access, queue: [] };
+  return withOptionalServerSession(
+    request,
+    context,
+    (unavailable) => ({ access: { authorized: false, unavailable }, queue: [] }),
+    async (runtime) => {
+      const access = await loadAdminAccess(request, context);
+      return {
+        access,
+        queue: access.authorized ? await createModerationService(runtime.db).listQueue() : [],
+      };
+    },
+  );
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
 export default function AdminModerationRoute() {
-  const { access } = useLoaderData<LoaderData>();
+  const { access, queue } = useLoaderData<LoaderData>();
   if (!access.authorized) {
     return (
       <AdminShell>
@@ -32,12 +42,37 @@ export default function AdminModerationRoute() {
         title="Moderation queue"
         description="Review reports with enough context to make a decision without exposing privileged data unnecessarily."
       />
-      <PresentationNotice>
-        Moderation buttons are visual states only; no sanctions or post mutations are performed.
-      </PresentationNotice>
-
       <section className="admin-section">
-        <p className="product-empty-state">No persisted moderation queue is available yet.</p>
+        {queue.length ? (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <caption className="sr-only">Open moderation reports</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Target</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Reported</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queue.map((report) => (
+                  <tr key={String(report.id)}>
+                    <td>
+                      <strong>{String(report.targetType)}</strong>
+                      <small>{String(report.targetId)}</small>
+                    </td>
+                    <td>{String(report.category)}</td>
+                    <td>{String(report.status)}</td>
+                    <td>{new Date(Number(report.createdAt)).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="product-empty-state">No open moderation reports.</p>
+        )}
       </section>
     </AdminShell>
   );
