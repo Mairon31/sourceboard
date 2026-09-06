@@ -30,6 +30,11 @@ matching the Phase 4A capability boundary. Owner already receives all seeded
 capabilities. Moderator and Source Verifier do not receive anonymous identity
 lookup by default.
 
+Migration `0005` adds comments, comment revisions, extensible LIKE reactions
+and first-party emote/sticker catalog tables. Comment rich text is stored as an
+allowlisted AST plus searchable plaintext; arbitrary comment image uploads and
+external HTML are not part of the schema or API contract.
+
 Cloudflare D1 migrations are forward-only. Production rollback uses the
 approved backup/restore process or a reviewed corrective migration; no unsafe
 automatic `down` migration is implied. Local reset experiments must use a

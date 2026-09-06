@@ -52,11 +52,17 @@ export interface CommentAttachmentView {
   preview?: string;
 }
 
+export type CommentRichTextViewNode =
+  | { type: "text"; text: string }
+  | { type: "emote"; shortcode: string }
+  | { type: "link"; url: string; label: string };
+
 export interface CommentView {
   id: string;
   parentCommentId?: string;
   author: PublicPostAuthor;
   body: string;
+  richtext?: CommentRichTextViewNode[];
   createdAt: string;
   editedAt?: string;
   state: CommentState;

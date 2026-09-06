@@ -36,6 +36,13 @@
       "when": 1788701046658,
       "tag": "0004_phase4a-anonymous-admin-capability",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788701585851,
+      "tag": "0005_third_malcolm_colcord",
+      "breakpoints": true
     }
   ]
 }

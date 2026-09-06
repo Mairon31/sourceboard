@@ -6,9 +6,9 @@
 
 ## Current phase
 
-**Phase 4A — Anonymous identity and NSFW classification**
+**Phase 5 — Comments, replies, reactions, emotes, GIFs and stickers**
 
-Status: **COMPLETED — PR #7 remains open for review**
+Status: **COMPLETED — PR #8 remains open for review**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -258,10 +258,55 @@ The local Work Mode environment cannot launch the Cloudflare Vite Playwright ser
 authoritative browser verification. The full audited anonymous deanonymization workflow and
 NSFW moderation gates remain deliberately deferred to Phase 4A and Phase 10.
 
+## Phase 4A — Anonymous identity and NSFW classification
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-4a-anonymous-nsfw` branch and PR #7:
+
+- [x] capability-protected anonymous-author reveal with mandatory reason and per-lookup audit log;
+- [x] Admin grant for `anonymous_post.deanonymize` through forward migration `0004`, with Moderator and Source Verifier excluded by default;
+- [x] real admin identity screen with honest denied/unavailable state and no fixture reveal;
+- [x] capability-authorized NSFW moderation with reason/audit and protection against removing moderation marks as an author;
+- [x] continued server-side anonymous serialization and NSFW preference enforcement.
+
+See [`docs/PHASE_4A_ANONYMOUS_NSFW.md`](PHASE_4A_ANONYMOUS_NSFW.md) for the capability,
+audit, privacy and deferred-scope decisions.
+
+### Phase 4A verification evidence
+
+GitHub Actions run `#61` (`34036169581`) passed lint/Prettier, strict typecheck, 60 unit tests
+across 19 files, production build, Wrangler deploy dry-run, local D1 migrations through `0004`
+and 71 Playwright E2E tests. The documentation closure was verified again in run `#62`.
+
+## Phase 5 — Comments, replies, reactions, emotes, GIFs and stickers
+
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-5-comments-reactions` branch and PR #8:
+
+- [x] D1 comments, comment revisions, extensible LIKE reactions and emote/sticker catalog migration `0005`;
+- [x] arbitrary logical replies with keyset pagination and capped visual indentation;
+- [x] 24-hour author edit window, revision history and soft delete;
+- [x] allowlisted rich-text AST plus searchable plaintext, safe HTTP(S) links and no arbitrary comment image uploads/HTML;
+- [x] server-side comment/post visibility, block and anonymous-author policy enforcement;
+- [x] idempotent LIKE set/toggle API for posts and comments;
+- [x] real discussion composer/reply/like states with honest disabled GIF/sticker controls when provider/catalog configuration is absent.
+
+See [`docs/PHASE_5_COMMENTS.md`](PHASE_5_COMMENTS.md) for the API contract, security boundary
+and deliberate deferrals.
+
+### Phase 5 verification evidence
+
+GitHub Actions run `#63` (`34036893036`) passed lint/Prettier, strict typecheck, 63 unit tests
+across 20 files, production build, Wrangler deploy dry-run, local D1 migrations through `0005`
+and 73 Playwright E2E tests. Local Work Mode Playwright remains blocked by the existing
+`uv_interface_addresses` environment error; CI is authoritative for browser verification.
+
 ## Next phase
 
-Phase 5 — Comments, replies, reactions, emotes, GIFs and stickers is next. It must remain
-on a new stacked branch/PR targeting the Phase 4A branch and preserve the post privacy boundary.
+Phase 6 — Admin base plus emotes and stickers is next. It must remain on a new stacked branch/PR
+targeting the Phase 5 branch and preserve the comment/reaction capability boundary.
 
 ## Known limitations
 
@@ -269,7 +314,7 @@ on a new stacked branch/PR targeting the Phase 4A branch and preserve the post p
   product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- Full anonymous deanonymization audit workflow, NSFW moderation gates, comments/reactions,
-  source resolution and public search remain deferred to their canonical phases. Auth and
+- Source resolution, full moderation, notifications and public search remain deferred to their
+  canonical phases. Auth and
   profile mutations remain unavailable until operators provide the required Worker Secrets and
   real Rate Limit/Email resources; no insecure local bypass is used.

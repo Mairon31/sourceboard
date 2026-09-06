@@ -10,8 +10,11 @@ import {
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
+import { createD1CommentStore } from "../../worker/comments/store";
+import { createCommentService } from "../../worker/comments/service";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { PostCard } from "../components/product/PostCard";
+import { CommentThread } from "../components/product/CommentThread";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { Badge, Button, Card, Input, Textarea } from "../components/ui";
 
@@ -31,8 +34,15 @@ export async function loader({ params, request, context }: LoaderArgs) {
         profileStore: createD1ProfileStore(runtime.db),
       });
       const post = await service.getPost(params.postId ?? "", userId);
+      const comments = post
+        ? await createCommentService({
+            store: createD1CommentStore(runtime.db),
+            postStore: createD1PostStore(runtime.db),
+            profileStore: createD1ProfileStore(runtime.db),
+          }).listForPost(post.id, userId, null, 50)
+        : { comments: [], nextCursor: null };
       return {
-        post,
+        post: post ? { ...post, comments: comments.comments } : post,
         unavailable: false,
         canonicalUrl: requested.toString(),
       };
@@ -258,14 +268,7 @@ export default function PostDetailRoute() {
       {post.permissions.canEdit || post.permissions.canArchive ? (
         <PostOwnerControls post={post} />
       ) : null}
-      <Card className="product-empty-state">
-        <span className="product-eyebrow">Conversation boundary</span>
-        <h2>Comments arrive in Phase 5</h2>
-        <p>
-          Post metadata and media are live. Comments, replies and reactions are intentionally not
-          persisted yet.
-        </p>
-      </Card>
+      <CommentThread postId={post.id} comments={post.comments} />
     </ProductShell>
   );
 }

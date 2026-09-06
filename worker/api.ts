@@ -3,6 +3,7 @@ import type { SourceBoardEnvironment } from "./environment";
 import { handleAuthRequest } from "./auth/api";
 import { handleProfileApiRequest } from "./profile/api";
 import { handlePostApiRequest } from "./posts/api";
+import { handleCommentApiRequest } from "./comments/api";
 
 export interface HealthPayload {
   status: "ok";
@@ -39,6 +40,11 @@ export async function handleApiRequest(
   const profileResponse = await handleProfileApiRequest(request, requestId, env ?? {});
   if (profileResponse) {
     return profileResponse;
+  }
+
+  const commentResponse = await handleCommentApiRequest(request, requestId, env ?? {});
+  if (commentResponse) {
+    return commentResponse;
   }
 
   const postResponse = await handlePostApiRequest(request, requestId, env ?? {});

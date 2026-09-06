@@ -387,3 +387,115 @@ export const postRevisions = sqliteTable(
   },
   (table) => [index("post_revisions_post_created_index").on(table.postId, table.createdAt)],
 );
+
+export const comments = sqliteTable(
+  "comments",
+  {
+    id: text("id").primaryKey(),
+    postId: text("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentCommentId: text("parent_comment_id"),
+    bodyRichtextJson: text("body_richtext_json").notNull(),
+    bodyPlaintext: text("body_plaintext").notNull(),
+    attachmentJson: text("attachment_json"),
+    state: text("state").notNull().default("VISIBLE"),
+    likeCount: integer("like_count", { mode: "number" }).notNull().default(0),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+    editDeadlineAt: integer("edit_deadline_at", { mode: "number" }).notNull(),
+    deletedAt: integer("deleted_at", { mode: "number" }),
+    hiddenAt: integer("hidden_at", { mode: "number" }),
+  },
+  (table) => [
+    index("comments_post_created_index").on(table.postId, table.createdAt, table.id),
+    index("comments_post_parent_created_index").on(
+      table.postId,
+      table.parentCommentId,
+      table.createdAt,
+      table.id,
+    ),
+    index("comments_author_created_index").on(table.authorId, table.createdAt),
+    check("comments_state_check", sql`${table.state} IN ('VISIBLE', 'HIDDEN', 'DELETED')`),
+  ],
+);
+
+export const commentRevisions = sqliteTable(
+  "comment_revisions",
+  {
+    id: text("id").primaryKey(),
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    bodyRichtextJson: text("body_richtext_json").notNull(),
+    bodyPlaintext: text("body_plaintext").notNull(),
+    attachmentJson: text("attachment_json"),
+    editorUserId: text("editor_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("comment_revisions_comment_created_index").on(table.commentId, table.createdAt),
+  ],
+);
+
+export const reactions = sqliteTable(
+  "reactions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    reactionType: text("reaction_type").notNull().default("LIKE"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("reactions_user_target_type_unique").on(
+      table.userId,
+      table.targetType,
+      table.targetId,
+      table.reactionType,
+    ),
+    index("reactions_target_index").on(table.targetType, table.targetId),
+    check("reactions_target_type_check", sql`${table.targetType} IN ('POST', 'COMMENT')`),
+    check("reactions_reaction_type_check", sql`${table.reactionType} = 'LIKE'`),
+  ],
+);
+
+export const emoteCatalog = sqliteTable(
+  "emote_catalog",
+  {
+    id: text("id").primaryKey(),
+    shortcode: text("shortcode").notNull(),
+    label: text("label").notNull(),
+    assetKey: text("asset_key").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("emote_catalog_shortcode_unique").on(table.shortcode),
+    check("emote_catalog_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
+  ],
+);
+
+export const stickerCatalog = sqliteTable(
+  "sticker_catalog",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    assetKey: text("asset_key").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("sticker_catalog_slug_unique").on(table.slug),
+    check("sticker_catalog_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
+  ],
+);
