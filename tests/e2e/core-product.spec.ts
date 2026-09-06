@@ -41,7 +41,11 @@ test("search surface accepts a public discovery query", async ({ page }) => {
 test("SSR inline scripts use the response CSP nonce", async ({ page }) => {
   const response = await page.goto("/");
   const policy = response?.headers()["content-security-policy"] ?? "";
-  const nonce = await page.locator("script[nonce]").first().getAttribute("nonce");
+  const nonce = await page
+    .locator("script")
+    .evaluateAll((scripts) =>
+      scripts.map((script) => (script as HTMLScriptElement).nonce).find(Boolean),
+    );
 
   expect(nonce).toBeTruthy();
   expect(policy).toContain(`'nonce-${nonce}'`);
