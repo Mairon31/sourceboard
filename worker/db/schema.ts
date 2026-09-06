@@ -367,6 +367,41 @@ export const posts = sqliteTable(
   ],
 );
 
+export const sourceResolutions = sqliteTable(
+  "source_resolutions",
+  {
+    id: text("id").primaryKey(),
+    postId: text("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    commentId: text("comment_id").notNull(),
+    resolutionType: text("resolution_type").notNull(),
+    state: text("state").notNull().default("ACTIVE"),
+    canonicalSourceUrl: text("canonical_source_url"),
+    evidenceNote: text("evidence_note"),
+    actorUserId: text("actor_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    revokedAt: integer("revoked_at", { mode: "number" }),
+    revokedByUserId: text("revoked_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    revokeReason: text("revoke_reason"),
+  },
+  (table) => [
+    index("source_resolutions_post_created_index").on(table.postId, table.createdAt),
+    uniqueIndex("source_resolutions_active_post_type_unique")
+      .on(table.postId, table.resolutionType)
+      .where(sql`${table.state} = 'ACTIVE'`),
+    check(
+      "source_resolutions_type_check",
+      sql`${table.resolutionType} IN ('ACCEPTED', 'VERIFIED')`,
+    ),
+    check("source_resolutions_state_check", sql`${table.state} IN ('ACTIVE', 'REVOKED')`),
+  ],
+);
+
 export const postRevisions = sqliteTable(
   "post_revisions",
   {

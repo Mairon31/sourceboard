@@ -5,6 +5,7 @@ import { handleProfileApiRequest } from "./profile/api";
 import { handlePostApiRequest } from "./posts/api";
 import { handleCommentApiRequest } from "./comments/api";
 import { handleCatalogRequest } from "./catalog/api";
+import { handleSourceRequest } from "./source/api";
 
 export interface HealthPayload {
   status: "ok";
@@ -51,6 +52,11 @@ export async function handleApiRequest(
   const catalogResponse = await handleCatalogRequest(request, requestId, env ?? {});
   if (catalogResponse) {
     return catalogResponse;
+  }
+
+  const sourceResponse = await handleSourceRequest(request, requestId, env ?? {});
+  if (sourceResponse) {
+    return sourceResponse;
   }
 
   const postResponse = await handlePostApiRequest(request, requestId, env ?? {});
