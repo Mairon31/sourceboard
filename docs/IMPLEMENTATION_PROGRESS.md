@@ -6,9 +6,9 @@
 
 ## Current phase
 
-**Phase 4 — Posts, image, feed and SEO**
+**Phase 4A — Anonymous identity and NSFW classification**
 
-Status: **COMPLETED — PR #6 remains open for review**
+Status: **COMPLETED — PR #7 remains open for review**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -260,8 +260,8 @@ NSFW moderation gates remain deliberately deferred to Phase 4A and Phase 10.
 
 ## Next phase
 
-Phase 4A — Anonymous identity and NSFW classification is next. It must remain on a new
-stacked branch/PR targeting the Phase 4 branch and preserve the post privacy boundary.
+Phase 5 — Comments, replies, reactions, emotes, GIFs and stickers is next. It must remain
+on a new stacked branch/PR targeting the Phase 4A branch and preserve the post privacy boundary.
 
 ## Known limitations
 
