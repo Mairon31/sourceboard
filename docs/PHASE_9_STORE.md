@@ -1,6 +1,6 @@
 # Phase 9 — Store, inventory and cosmetics
 
-Status: **IMPLEMENTED — CI green, integration review pending**
+Status: **COMPLETE — CI green, ready for review**
 
 Phase 9 adds points-backed personalization without moving the balance authority to the client.
 
@@ -14,6 +14,7 @@ Phase 9 adds points-backed personalization without moving the balance authority 
 - safe structured catalog configuration with allowlisted font families and profile-effect presets;
 - `store.manage` admin create/update routes with audit log entries;
 - pack inventory data and server-side entitlement checks for the composer.
+- allowlisted cosmetic rendering in public profiles, post authors and comments;
 
 ## Routes
 
@@ -28,6 +29,6 @@ All writes require same-origin plus CSRF. Admin writes require `store.manage`.
 
 ## Deliberate boundaries
 
-No arbitrary CSS, font URLs, scripts or external style values are accepted. Media upload/asset provisioning remains behind the existing private-R2 catalog boundary. Cosmetic rendering in every feed surface remains follow-up integration work before Phase 9 is considered fully closed.
+No arbitrary CSS, font URLs, scripts or external style values are accepted. Media upload/asset provisioning remains behind the existing private-R2 catalog boundary. Cosmetic rendering consumes only server-filtered presets and font families; anonymous and privacy-hidden authors never receive cosmetic identity data.
 
-GitHub Actions run `#80` (`34044334540`) passed lint/Prettier, strict TypeScript, 71 unit tests across 23 files, production build, Wrangler deploy dry-run, local D1 migrations through `0009` and 75 Playwright E2E tests.
+GitHub Actions run `#82` (`34044939144`) passed lint/Prettier, strict TypeScript, 71 unit tests across 23 files, production build, Wrangler deploy dry-run, local D1 migrations through `0009` and 75 Playwright E2E tests.
