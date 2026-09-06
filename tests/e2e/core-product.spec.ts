@@ -38,6 +38,20 @@ test("search surface accepts a public discovery query", async ({ page }) => {
   await expect(page.getByText(/No public matches|Search unavailable/)).toBeVisible();
 });
 
+test("SSR inline scripts use the response CSP nonce", async ({ page }) => {
+  const response = await page.goto("/");
+  const policy = response?.headers()["content-security-policy"] ?? "";
+  const nonce = await page
+    .locator("script")
+    .evaluateAll((scripts) =>
+      scripts.map((script) => (script as HTMLScriptElement).nonce).find(Boolean),
+    );
+
+  expect(nonce).toBeTruthy();
+  expect(policy).toContain(`'nonce-${nonce}'`);
+  expect(policy).not.toContain("script-src 'self' 'unsafe-inline'");
+});
+
 test("create-post surface exposes anonymous and NSFW controls", async ({ page }) => {
   await page.goto("/post/new");
 

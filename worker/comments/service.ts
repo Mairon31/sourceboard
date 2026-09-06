@@ -282,9 +282,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           throw new PostError(404, "COMMENT_NOT_FOUND", "The comment was not found.");
         }
       }
-      const current = await dependencies.store.hasLike(userId, targetType, targetId);
-      if (current === liked) return current;
-      return dependencies.store.toggleLike({ userId, targetType, targetId, now: now() });
+      return dependencies.store.setLike({ userId, targetType, targetId, liked, now: now() });
     },
   };
 }

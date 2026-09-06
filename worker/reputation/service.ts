@@ -1,4 +1,12 @@
 import { createIdentifier } from "../auth/crypto";
+import { PublicHttpError } from "../http/error";
+
+class ReputationError extends PublicHttpError {
+  constructor(status: number, code: string, message: string) {
+    super(status, code, message);
+    this.name = "ReputationError";
+  }
+}
 
 export type SourceReputationEvent =
   "source.accepted" | "source.accepted.revoked" | "source.verified" | "source.verification.revoked";
@@ -297,9 +305,17 @@ export async function createManualAdjustment(
   now = Date.now(),
 ): Promise<string> {
   if (!Number.isInteger(input.amount) || input.amount === 0 || Math.abs(input.amount) > 100_000)
-    throw new Error("The adjustment amount is invalid.");
+    throw new ReputationError(
+      400,
+      "INVALID_ADJUSTMENT_AMOUNT",
+      "The adjustment amount is invalid.",
+    );
   if (input.reason.trim().length < 10 || input.reason.trim().length > 500)
-    throw new Error("A reason between 10 and 500 characters is required.");
+    throw new ReputationError(
+      400,
+      "ADJUSTMENT_REASON_REQUIRED",
+      "A reason between 10 and 500 characters is required.",
+    );
   const idempotencyKey = `manual:${input.requestId}`;
   const result = await db
     .prepare(
@@ -317,6 +333,7 @@ export async function createManualAdjustment(
       now,
     )
     .run();
-  if (!result.meta.changes) throw new Error("This adjustment was already recorded.");
+  if (!result.meta.changes)
+    throw new ReputationError(409, "DUPLICATE_ADJUSTMENT", "This adjustment was already recorded.");
   return idempotencyKey;
 }

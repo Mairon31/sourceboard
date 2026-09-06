@@ -5,9 +5,11 @@ import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { resolvePublicFailure } from "../http/public-failure";
 import {
   createStoreService,
   STORE_TYPES,
+  StoreError,
   type CosmeticSlot,
   type StoreType,
   validateStoreConfig,
@@ -51,7 +53,7 @@ async function requireAdmin(
 }
 function parseBody(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("The request body is invalid.");
+    throw new StoreError(400, "INVALID_REQUEST", "The request body is invalid.");
   return value as Record<string, unknown>;
 }
 function isType(value: unknown): value is StoreType {
@@ -269,7 +271,7 @@ export async function handleStoreRequest(
             .bind(id)
             .first<{ type: string }>();
           if (!existing || !isType(existing.type))
-            throw new Error("The store item type is invalid.");
+            throw new StoreError(400, "INVALID_STORE_ITEM", "The store item type is invalid.");
           binds.push(validateStoreConfig(existing.type, body.config));
         }
         if (!updates.length)
@@ -293,15 +295,18 @@ export async function handleStoreRequest(
     }
     return failure("NOT_FOUND", "Store endpoint not found.", requestId, 404);
   } catch (error) {
-    const status =
-      typeof error === "object" && error && "status" in error ? Number(error.status) : 400;
+    const { status, message } = resolvePublicFailure(
+      error,
+      "Store request failed.",
+      "You are not allowed to manage the store.",
+    );
     return failure(
       status === 401
         ? "AUTHENTICATION_REQUIRED"
         : status === 403
           ? "CAPABILITY_REQUIRED"
           : "STORE_ERROR",
-      error instanceof Error ? error.message : "Store request failed.",
+      message,
       requestId,
       status,
     );

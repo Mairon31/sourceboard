@@ -2,7 +2,12 @@ import { z } from "zod";
 import { createIdentifier } from "../auth/crypto";
 import { createAuthService } from "../auth/service";
 import { isAuthError } from "../auth/errors";
-import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/security";
+import {
+  assertCsrfToken,
+  assertSameOrigin,
+  getRequestSecurityContext,
+  getSessionToken,
+} from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
@@ -12,6 +17,7 @@ import { ProfileError, isProfileError } from "./errors";
 import { createD1ProfileStore, type ProfileStore, type SocialLinkInput } from "./store";
 import { createProfileService } from "./service";
 import { createReputationReader } from "../reputation/read";
+import { enforceRateLimit } from "../security/rate-limit";
 
 const profileUpdateSchema = z.object({
   displayName: z.string(),
@@ -491,6 +497,22 @@ async function serveProfileMedia(ctx: MediaRouteContext, assetId: string): Promi
 async function uploadProfileMedia(ctx: MediaRouteContext): Promise<Response> {
   requireSameOriginAndCsrf(ctx.request);
   const viewerId = await requireViewerId(ctx.request, ctx.env);
+  await enforceRateLimit(
+    ctx.env.RATE_LIMIT_UPLOADS,
+    `profile-upload:${viewerId}:${getRequestSecurityContext(ctx.request).ipPrefixHash}`,
+    {
+      unavailable: () =>
+        new ProfileError(
+          503,
+          "UPLOAD_RATE_LIMIT_UNAVAILABLE",
+          "Profile image uploads are temporarily unavailable.",
+        ),
+      limited: () =>
+        new ProfileError(429, "UPLOAD_RATE_LIMITED", "Too many profile uploads. Try again later.", {
+          retryAfter: 60,
+        }),
+    },
+  );
   const { purpose, file } = await readImageFile(ctx.request);
   const assetId = createIdentifier();
   const r2Key = `profile/${viewerId}/${assetId}`;

@@ -1,4 +1,12 @@
 import { createIdentifier } from "../auth/crypto";
+import { PublicHttpError } from "../http/error";
+
+export class StoreError extends PublicHttpError {
+  constructor(status: number, code: string, message: string) {
+    super(status, code, message);
+    this.name = "StoreError";
+  }
+}
 
 export const STORE_TYPES = [
   "AVATAR_FRAME",
@@ -59,7 +67,7 @@ export function createStoreService(db: D1Database) {
 
     async purchase(userId: string, itemId: string, idempotencyKey: string, now = Date.now()) {
       if (!/^[A-Za-z0-9:_-]{16,128}$/.test(idempotencyKey))
-        throw new Error("The idempotency key is invalid.");
+        throw new StoreError(400, "INVALID_IDEMPOTENCY_KEY", "The idempotency key is invalid.");
       const purchaseKey = `store:${userId}:${idempotencyKey}`;
       const ledgerId = createIdentifier();
       const purchaseId = createIdentifier();
@@ -118,7 +126,11 @@ export function createStoreService(db: D1Database) {
           idempotencyKey: string;
         }>();
       if (!purchase)
-        throw new Error("The item is unavailable, already owned, or the balance is insufficient.");
+        throw new StoreError(
+          409,
+          "PURCHASE_UNAVAILABLE",
+          "The item is unavailable, already owned, or the balance is insufficient.",
+        );
       return purchase;
     },
 
@@ -141,7 +153,12 @@ export function createStoreService(db: D1Database) {
           )
           .bind(userId, itemId)
           .first<{ valid: number }>();
-        if (!existing?.valid) throw new Error("The user or store item was not found.");
+        if (!existing?.valid)
+          throw new StoreError(
+            404,
+            "STORE_TARGET_NOT_FOUND",
+            "The user or store item was not found.",
+          );
       }
       return { userId, storeItemId: itemId, created: Number(result.meta.changes ?? 0) > 0 };
     },
@@ -177,7 +194,8 @@ export function createStoreService(db: D1Database) {
         )
         .bind(userId, slot, now, userId, itemId, slot)
         .run();
-      if (!result.meta.changes) throw new Error("That cosmetic is not in your inventory.");
+      if (!result.meta.changes)
+        throw new StoreError(409, "COSMETIC_NOT_OWNED", "That cosmetic is not in your inventory.");
       return { slot, storeItemId: itemId };
     },
   };
@@ -185,13 +203,13 @@ export function createStoreService(db: D1Database) {
 
 export function assertSafeStoreConfig(config: unknown): string {
   if (!config || typeof config !== "object" || Array.isArray(config))
-    throw new Error("A structured config is required.");
+    throw new StoreError(400, "INVALID_STORE_CONFIG", "A structured config is required.");
   const value = config as Record<string, unknown>;
   if (Object.keys(value).some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(key)))
-    throw new Error("The config contains an invalid key.");
+    throw new StoreError(400, "INVALID_STORE_CONFIG", "The config contains an invalid key.");
   const serialized = JSON.stringify(value);
   if (serialized.length > 4_000 || /<|javascript:|url\s*\(/i.test(serialized))
-    throw new Error("The config contains unsafe content.");
+    throw new StoreError(400, "UNSAFE_STORE_CONFIG", "The config contains unsafe content.");
   return serialized;
 }
 
@@ -202,13 +220,21 @@ export function validateStoreConfig(type: StoreType, config: unknown): string {
     type === "NAME_FONT" &&
     !["InterVariable", "AtkinsonHyperlegible", "Georgia"].includes(String(value.family))
   )
-    throw new Error("NAME_FONT family is not allowlisted.");
+    throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "NAME_FONT family is not allowlisted.");
   if (
     type === "PROFILE_EFFECT" &&
     !["soft-glow", "paper-grain", "none"].includes(String(value.preset))
   )
-    throw new Error("PROFILE_EFFECT preset is not allowlisted.");
+    throw new StoreError(
+      400,
+      "STORE_CONFIG_NOT_ALLOWED",
+      "PROFILE_EFFECT preset is not allowlisted.",
+    );
   if (Object.keys(value).some((key) => ["css", "fontUrl", "src", "script", "style"].includes(key)))
-    throw new Error("The config cannot contain executable or external style fields.");
+    throw new StoreError(
+      400,
+      "UNSAFE_STORE_CONFIG",
+      "The config cannot contain executable or external style fields.",
+    );
   return serialized;
 }

@@ -5,12 +5,14 @@ import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { resolvePublicFailure } from "../http/public-failure";
 import {
   assertReason,
   assertReportInput,
   canActOnTarget,
   createModerationService,
   MODERATION_ACTIONS,
+  ModerationError,
   type ModerationAction,
 } from "./service";
 
@@ -27,8 +29,11 @@ function json(body: unknown, requestId: string, status = 200): Response {
 }
 
 function failure(error: unknown, requestId: string): Response {
-  const message = error instanceof Error ? error.message : "Moderation request failed.";
-  const status = (error as { status?: number }).status ?? 400;
+  const { status, message } = resolvePublicFailure(
+    error,
+    "Moderation request failed.",
+    "You are not allowed to perform this action.",
+  );
   return json(
     createErrorEnvelope("MODERATION_REQUEST_FAILED", message, requestId),
     requestId,
@@ -128,8 +133,14 @@ export async function handleModerationRequest(
       const body = (await request.json()) as Record<string, unknown>;
       const targetType = String(body.targetType) as "POST" | "COMMENT" | "USER";
       const action = String(body.action) as ModerationAction;
-      if (!MODERATION_ACTIONS.includes(action)) throw new Error("Invalid moderation action.");
-      if (!String(body.targetId).trim()) throw new Error("A moderation target is required.");
+      if (!MODERATION_ACTIONS.includes(action))
+        throw new ModerationError(400, "INVALID_MODERATION_ACTION", "Invalid moderation action.");
+      if (!String(body.targetId).trim())
+        throw new ModerationError(
+          400,
+          "MODERATION_TARGET_REQUIRED",
+          "A moderation target is required.",
+        );
       const capability: Capability =
         targetType === "USER"
           ? action === "BAN"

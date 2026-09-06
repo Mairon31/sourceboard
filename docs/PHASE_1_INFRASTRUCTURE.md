@@ -1,11 +1,12 @@
 # Phase 1 — Cloudflare infrastructure
 
-Status: **COMPLETED**
+Status: **COMPLETED — resource inventory and deploy configuration verified 2026-09-06; Worker activation awaits required secrets**
 
 Phase 1 wires the Cloudflare service boundaries required by the canonical plan
-without provisioning or mutating a remote account. The runtime configuration is
-local-safe and the complete deploy shape is kept in
-[`wrangler.phase1.example.jsonc`](../wrangler.phase1.example.jsonc).
+with the production resource names and IDs now bound in `wrangler.jsonc`.
+The complete deploy shape remains in
+[`wrangler.phase1.example.jsonc`](../wrangler.phase1.example.jsonc); secrets and
+edge launch controls remain operator prerequisites.
 
 ## Boundaries implemented
 
@@ -16,10 +17,15 @@ local-safe and the complete deploy shape is kept in
 - KV binding `CACHE` is available only for cache/config work. It is not used
   by the D1 repository or as a source of truth.
 - Queue producer `EVENTS` is declared for later asynchronous work.
-- The deploy template declares separate `RATE_LIMIT_AUTH`,
+- Durable Object binding `NOTIFICATION_HUB` targets the exported
+  `NotificationHub` class. Its first migration is SQLite-backed, as required
+  for a new Durable Object namespace on the connected account.
+- The runtime config declares separate `RATE_LIMIT_AUTH`,
   `RATE_LIMIT_CONTENT`, `RATE_LIMIT_REACTIONS`, and `RATE_LIMIT_UPLOADS`
-  bindings. Cloudflare namespace IDs are required and intentionally remain
-  placeholders until real provisioning exists.
+  bindings with fixed account-scoped identifiers (`1001`–`1004`) and the
+  canonical 60-second limits. Workers Rate Limiting uses positive integer
+  identifiers defined by the account operator; it does not expose a
+  list/create namespace resource through the connected Cloudflare API.
 - Email binding `EMAIL` is declared without a fabricated sender or destination.
 - `TURNSTILE_SITE_KEY` is a public variable; `TURNSTILE_SECRET` is a Worker
   secret and is never committed.
@@ -48,9 +54,18 @@ temporary local database without touching a remote resource.
 
 ## Provisioning checklist
 
-Run these commands only when the Cloudflare account and resource names have
-been approved. They are documented here; this Phase 1 implementation does not
-run them against a remote account.
+The following resource checks were completed against the connected account on
+2026-09-06: D1 `sourceboard-db`, private R2 `sourceboard-media`, KV
+`sourceboard-cache`, and Queue `sourceboard-events` were found and reused;
+`sourceboard-events-dlq` was created only after confirming it was absent. The
+remote D1 migration ledger now contains migrations `0000` through `0013`.
+The generated SSR configuration and Wrangler dry-run include every declared
+binding. The Worker API still reports its earlier deployed settings because
+the non-versioned build is correctly refusing to publish while
+`EMAIL_FROM` and `TURNSTILE_SECRET` are absent; this also leaves the
+Durable Object namespace, cron and Queue consumer unapplied.
+
+Run these commands only for a new account or an explicitly approved resource:
 
 ```bash
 npx wrangler d1 create sourceboard-db
@@ -59,11 +74,12 @@ npx wrangler kv namespace create CACHE
 npx wrangler queues create sourceboard-events
 ```
 
-Copy the returned D1 `database_id` and KV namespace `id` into a private deploy
-configuration based on `wrangler.phase1.example.jsonc`. Create the four Rate
-Limiting namespaces in the Cloudflare account/API, then copy their returned
-positive integer namespace IDs into the corresponding template entries. Do
-not replace them with guessed values.
+The checked-in runtime config contains the verified D1 `database_id` and the
+existing KV namespace `id`; do not replace either with a newly created resource.
+Rate Limiting identifiers are configured account-scoped integers rather than
+Cloudflare resource UUIDs, so keep the four identifiers stable and unique to
+this account. The Workers Builds trigger uses `npx wrangler deploy` because
+Durable Object migrations cannot be applied by `versions upload`.
 
 Create a Turnstile site in the Cloudflare dashboard and set its public key in
 the deploy configuration. Store its secret through Wrangler:

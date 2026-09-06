@@ -5,6 +5,7 @@ import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { PublicHttpError } from "../http/error";
 import { createManualAdjustment } from "./service";
 
 function response(body: unknown, requestId: string, status = 200): Response {
@@ -85,17 +86,9 @@ export async function handleReputationRequest(
       .run();
     return response({ adjusted: true, idempotencyKey }, requestId, 201);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Point adjustment failed.";
-    const status = message.includes("already recorded")
-      ? 409
-      : message.includes("required") || message.includes("invalid")
-        ? 400
-        : 500;
-    return failure(
-      status === 400 ? "INVALID_REQUEST" : status === 409 ? "DUPLICATE_ADJUSTMENT" : "POINTS_ERROR",
-      message,
-      requestId,
-      status,
-    );
+    const publicError = error instanceof PublicHttpError ? error : null;
+    const status = publicError?.status ?? 500;
+    const publicMessage = publicError?.publicMessage ?? "Point adjustment failed.";
+    return failure(publicError?.code ?? "POINTS_ERROR", publicMessage, requestId, status);
   }
 }
