@@ -8,7 +8,7 @@
 
 **Phase 1 — Cloudflare infrastructure + D1/R2/KV**
 
-Status: **IN PROGRESS**
+Status: **COMPLETED**
 
 ## Phase 0 — Baseline, decisions and contracts
 
@@ -154,6 +154,22 @@ Implemented on the stacked `phase-1-cloudflare-infrastructure` branch:
 See [`docs/PHASE_1_INFRASTRUCTURE.md`](PHASE_1_INFRASTRUCTURE.md) for the exact configuration,
 provisioning commands, verification evidence and rollback boundary. Authentication, sessions, RBAC,
 private media authorization and product persistence remain Phase 2+ work.
+
+### Phase 1 verification evidence
+
+GitHub Actions run `#50` (`34021185627`) passed every established gate: `npm ci`, lint/Prettier,
+strict typecheck, 24 unit tests across 9 files, production build, Wrangler deploy dry-run and 65
+Playwright E2E tests. The only failed candidate was run `#49`, where one baseline E2E assertion still
+expected the Phase 0 health payload; the assertion was updated to the intentional Phase 1 boolean
+binding contract and the full gate then passed. The local Work Mode environment could not launch the
+Playwright web server because its network interface enumeration failed; GitHub Actions provided the
+authoritative browser verification.
+
+## Next phase
+
+Phase 2 — Auth, sessions and RBAC, following the canonical plan. It must remain on a new stacked
+branch/PR and preserve D1 as the source of truth; no Phase 2 implementation is included in this
+Phase 1 closure.
 
 ## Known limitations
 

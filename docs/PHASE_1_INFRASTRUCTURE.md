@@ -1,6 +1,6 @@
 # Phase 1 — Cloudflare infrastructure
 
-Status: **IN PROGRESS**
+Status: **COMPLETED**
 
 Phase 1 wires the Cloudflare service boundaries required by the canonical plan
 without provisioning or mutating a remote account. The runtime configuration is
@@ -107,6 +107,9 @@ npm run db:migrations:list
 - Unit tests cover bound D1 parameters and health-response non-disclosure.
 - The production build emitted all Phase 1 bindings into the SSR Wrangler
   config, and Wrangler dry-run listed them without publishing anything.
+- GitHub Actions run `#50` (`34021185627`) passed every established gate:
+  `npm ci`, lint/Prettier, strict typecheck, 24 unit tests across 9 files,
+  production build, Wrangler deploy dry-run and 65 Playwright E2E tests.
 
 ## Deliberately deferred
 

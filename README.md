@@ -4,10 +4,10 @@ SourceBoard is a Cloudflare-native social forum for finding the public source or
 
 ## Current status
 
-Phase 0B is complete as the pre-backend product and UI/UX experience pass. Phase 1 now wires the
-Cloudflare infrastructure contracts and first D1 migration without provisioning remote resources or
-turning fixtures into persistence. Authentication, sessions, RBAC and later product behavior remain
-deferred to their canonical phases.
+Phase 0B is complete as the pre-backend product and UI/UX experience pass. Phase 1 is complete on its
+stacked branch with local-safe Cloudflare infrastructure contracts and the first D1 migration, without
+provisioning remote resources or turning fixtures into persistence. Authentication, sessions, RBAC and
+later product behavior remain deferred to their canonical phases.
 
 See [`docs/IMPLEMENTATION_PROGRESS.md`](docs/IMPLEMENTATION_PROGRESS.md) for the authoritative implementation status.
 
