@@ -13,15 +13,21 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.removeItem("sourceboard-theme"));
 });
 
-test("phase 0A visual laboratory exposes the final design language", async ({ page }) => {
+test("renders the Phase 0A visual laboratory", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "SourceBoard", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Phase 0A visual laboratory" })).toBeVisible();
-  await expect(page.getByText("Presentation only — product persistence arrives in later phases.")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "SourceBoard", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Phase 0A visual laboratory" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Presentation only — product persistence arrives in later phases."),
+  ).toBeVisible();
 });
 
-test("theme follows the system by default and supports manual override", async ({ page }) => {
+test("theme follows the system and supports override", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
 
@@ -39,16 +45,20 @@ test("theme follows the system by default and supports manual override", async (
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
-test("dialog, drawer, dropdown, tooltip and tabs are keyboard accessible", async ({ page }) => {
+test("interactive primitives support keyboard use", async ({ page }) => {
   await page.goto("/");
 
   await page.getByRole("button", { name: "Open source preview" }).click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Source preview" })).toBeVisible();
+  await expect(
+    page.getByRole("dialog").getByRole("heading", { name: "Source preview" }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
 
   await page.getByRole("button", { name: "Open mobile drawer" }).click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Drawer preview" })).toBeVisible();
+  await expect(
+    page.getByRole("dialog").getByRole("heading", { name: "Drawer preview" }),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "More demo actions" }).click();
@@ -57,12 +67,17 @@ test("dialog, drawer, dropdown, tooltip and tabs are keyboard accessible", async
 
   const tooltipTrigger = page.getByRole("button", { name: "Why Liquid Glass?" });
   await tooltipTrigger.focus();
-  await expect(page.getByText("Glass is reserved for elevated chrome and overlays.")).toBeVisible();
+  await expect(
+    page.getByText("Glass is reserved for elevated chrome and overlays."),
+  ).toBeVisible();
 
   const surfaceTab = page.getByRole("tab", { name: "Surface" });
   await surfaceTab.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Controls" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Controls" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
 });
 
 test("reduced motion collapses decorative animation", async ({ page }) => {
