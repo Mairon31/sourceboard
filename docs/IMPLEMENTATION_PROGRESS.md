@@ -303,10 +303,25 @@ across 20 files, production build, Wrangler deploy dry-run, local D1 migrations 
 and 73 Playwright E2E tests. Local Work Mode Playwright remains blocked by the existing
 `uv_interface_addresses` environment error; CI is authoritative for browser verification.
 
-## Next phase
+## Phase 6 — Admin base plus emotes and stickers
 
-Phase 6 — Admin base plus emotes and stickers is next. It must remain on a new stacked branch/PR
-targeting the Phase 5 branch and preserve the comment/reaction capability boundary.
+Status: **COMPLETED**
+
+Implemented on the stacked `phase-6-admin-emotes-stickers` branch:
+
+- [x] server-side `admin.access` protection for admin overview, moderation and anonymous identity surfaces;
+- [x] removal of Phase 0B fixture metrics from the administrative dashboard;
+- [x] forward migration `0006` for active/disabled emote and sticker packs and catalog ordering;
+- [x] capability-checked private-R2 catalog upload, listing and status endpoints with image magic-byte validation and failed-write cleanup.
+
+See [`docs/PHASE_6_ADMIN.md`](PHASE_6_ADMIN.md) for the current contract and deliberate boundaries.
+
+### Phase 6 verification evidence
+
+GitHub Actions run `#66` (`34037972333`) passed lint/Prettier, strict TypeScript,
+63 unit tests, production build, Wrangler deploy dry-run, local D1 migrations
+through `0006` and 73 Playwright E2E tests. Phase 6 remains open for review in
+stacked PR #9; no merge was performed.
 
 ## Known limitations
 
