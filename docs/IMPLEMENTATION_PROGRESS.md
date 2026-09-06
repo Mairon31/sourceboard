@@ -348,7 +348,7 @@ through `0007` and 75 Playwright E2E tests. No merge was performed.
 
 ## Phase 8 — Points, reputation, medals and achievements
 
-Status: **IMPLEMENTED — pending CI and PR review**
+Status: **COMPLETED — PR #11 ready for review**
 
 Implemented on the stacked `phase-8-reputation-achievements` branch:
 
@@ -364,7 +364,7 @@ See [`docs/PHASE_8_REPUTATION_ACHIEVEMENTS.md`](PHASE_8_REPUTATION_ACHIEVEMENTS.
 
 ### Phase 8 verification evidence
 
-Local lint, strict TypeScript, 66 unit tests across 21 files, production build and local migration checks pass. Wrangler dry-run and Playwright E2E are pending the stacked PR CI run.
+GitHub Actions run `#74` (`34042939102`) passed lint/Prettier, strict TypeScript, 66 unit tests across 21 files, production build, Wrangler deploy dry-run, local D1 migrations through `0008` and 75 Playwright E2E tests. The PR remains unmerged for review.
 
 ## Next phase
 

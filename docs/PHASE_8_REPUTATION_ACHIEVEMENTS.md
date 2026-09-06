@@ -1,6 +1,6 @@
 # Phase 8 — Points, reputation, medals and achievements
 
-Status: **IMPLEMENTED — stacked PR, pending review**
+Status: **COMPLETED — stacked PR #11, ready for review**
 
 Phase 8 adds server-authoritative contribution accounting on top of the Phase 7 source events. It does not implement store purchases, inventory or cosmetics; those remain Phase 9.
 
@@ -27,8 +27,9 @@ The migration seeds versioned catalog entries for 1, 5, 25 and 100 verified sour
 - `npm test` — 66 tests across 21 files
 - `npm run build`
 - `npm run db:migrations:apply` — local database reports no pending migrations
+- GitHub Actions run `#74` (`34042939102`) — all checks green, including 75 Playwright E2E tests
 
-Wrangler deploy dry-run and Playwright E2E remain CI checks for the stacked branch. No production migration, deploy or merge was performed.
+No production migration, deploy or merge was performed.
 
 ## Deliberately deferred
 
