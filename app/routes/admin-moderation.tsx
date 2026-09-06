@@ -1,17 +1,29 @@
-import { Link, useLoaderData } from "react-router";
-import { fixtureUiDataAdapter } from "../data/ui-adapter";
+import { useLoaderData } from "react-router";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
-import { Badge, Button } from "../components/ui";
 import { PresentationNotice } from "../components/product/ProductShell";
+import { loadAdminAccess } from "../data/admin-access";
+import type { ServerLoaderArgs } from "../data/server-request";
 
-export async function loader() {
-  return { queue: await fixtureUiDataAdapter.getModerationQueue() };
+export async function loader({ request, context }: ServerLoaderArgs) {
+  const access = await loadAdminAccess(request, context);
+  return { access, queue: [] };
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
 export default function AdminModerationRoute() {
-  const { queue } = useLoaderData<LoaderData>();
+  const { access } = useLoaderData<LoaderData>();
+  if (!access.authorized) {
+    return (
+      <AdminShell>
+        <AdminPageHeader
+          eyebrow="Restricted"
+          title="Admin access required"
+          description="This operational surface is protected by the admin.access capability."
+        />
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell>
@@ -25,42 +37,7 @@ export default function AdminModerationRoute() {
       </PresentationNotice>
 
       <section className="admin-section">
-        <div className="admin-table">
-          <div className="admin-table__row admin-table__row--header">
-            <span>Report</span>
-            <span>Source</span>
-            <span>Reports</span>
-            <span>Age</span>
-            <span>Action</span>
-          </div>
-          {queue.map((item) => (
-            <div key={item.id} className="admin-table__row">
-              <div className="admin-table__copy">
-                <strong>{item.postTitle}</strong>
-                <span>{item.reason}</span>
-                <div className="product-chip-row">
-                  {item.isNsfw ? <Badge tone="nsfw">NSFW</Badge> : null}
-                  {item.authorMode === "ANONYMOUS" ? <Badge>Anonymous</Badge> : null}
-                </div>
-              </div>
-              <Badge tone={item.sourceStatus === "VERIFIED" ? "success" : "neutral"}>
-                {item.sourceStatus.toLowerCase()}
-              </Badge>
-              <span>{item.reportCount}</span>
-              <span>{item.ageLabel}</span>
-              <div className="product-chip-row">
-                {item.authorMode === "ANONYMOUS" ? (
-                  <Link to={`/admin/anonymous/${item.postId}`} className="product-text-action">
-                    Identity
-                  </Link>
-                ) : null}
-                <Button size="sm" variant="secondary">
-                  Review
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="product-empty-state">No persisted moderation queue is available yet.</p>
       </section>
     </AdminShell>
   );

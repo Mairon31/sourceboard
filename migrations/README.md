@@ -35,6 +35,12 @@ and first-party emote/sticker catalog tables. Comment rich text is stored as an
 allowlisted AST plus searchable plaintext; arbitrary comment image uploads and
 external HTML are not part of the schema or API contract.
 
+Migration `0006` adds active/disabled emote and sticker packs plus deterministic
+catalog ordering. Catalog assets remain private R2 objects; the Phase 6 admin
+Worker endpoints validate image magic bytes, require the corresponding
+`emote.manage` or `sticker.manage` capability, and never accept client-provided
+R2 keys.
+
 Cloudflare D1 migrations are forward-only. Production rollback uses the
 approved backup/restore process or a reviewed corrective migration; no unsafe
 automatic `down` migration is implied. Local reset experiments must use a

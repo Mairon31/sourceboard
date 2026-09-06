@@ -475,6 +475,8 @@ export const emoteCatalog = sqliteTable(
     shortcode: text("shortcode").notNull(),
     label: text("label").notNull(),
     assetKey: text("asset_key").notNull(),
+    packId: text("pack_id"),
+    sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
     status: text("status").notNull().default("ACTIVE"),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
   },
@@ -491,11 +493,43 @@ export const stickerCatalog = sqliteTable(
     slug: text("slug").notNull(),
     label: text("label").notNull(),
     assetKey: text("asset_key").notNull(),
+    packId: text("pack_id"),
+    sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
     status: text("status").notNull().default("ACTIVE"),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
   },
   (table) => [
     uniqueIndex("sticker_catalog_slug_unique").on(table.slug),
     check("sticker_catalog_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
+  ],
+);
+
+export const emotePacks = sqliteTable(
+  "emote_packs",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("emote_packs_slug_unique").on(table.slug),
+    check("emote_packs_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
+  ],
+);
+
+export const stickerPacks = sqliteTable(
+  "sticker_packs",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("sticker_packs_slug_unique").on(table.slug),
+    check("sticker_packs_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
   ],
 );
