@@ -1,33 +1,26 @@
-import { BellIcon, IconButton, SearchIcon } from "../ui";
+import { Link } from "react-router";
+import { BellIcon, SearchIcon } from "../ui";
 import { ThemeControl } from "./ThemeControl";
 
 export function TopBar() {
   return (
     <header className="sb-topbar glass-panel glass-panel--strong">
-      <a className="sb-brand focus-ring" href="/" aria-label="SourceBoard home">
-        <span className="sb-brand__mark" aria-hidden="true">
-          S
-        </span>
+      <Link className="sb-brand focus-ring" to="/" aria-label="SourceBoard">
+        <span className="sb-brand__mark" aria-hidden="true">S</span>
         <span className="sb-brand__name">SourceBoard</span>
-      </a>
+      </Link>
 
       <label className="sb-topbar-search">
-        <span className="sr-only">Search preview</span>
+        <span className="sr-only">Search SourceBoard</span>
         <SearchIcon width="18" height="18" />
-        <input
-          type="search"
-          readOnly
-          value=""
-          placeholder="Search preview"
-          aria-label="Search preview"
-        />
+        <input type="search" readOnly value="" placeholder="Search SourceBoard" aria-label="Search SourceBoard" />
       </label>
 
       <div className="sb-topbar-actions">
         <ThemeControl />
-        <IconButton label="Notifications preview" disabled>
-          <BellIcon />
-        </IconButton>
+        <Link to="/notifications" aria-label="Notifications" className="sb-topbar-notification-link focus-ring">
+          <BellIcon width="18" height="18" />
+        </Link>
       </div>
     </header>
   );

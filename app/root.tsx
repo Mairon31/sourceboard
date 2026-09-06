@@ -4,7 +4,8 @@ import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import "./styles/base.css";
 import "./components/ui/ui.css";
 import "./components/layout/layout.css";
-import "./components/demo/demo.css";
+import "./components/product/product.css";
+import "./components/admin/admin.css";
 
 export function Layout({ children }: { children: ReactNode }) {
   return (
