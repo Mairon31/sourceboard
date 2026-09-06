@@ -73,6 +73,12 @@ export interface PublicProfileDto {
   bio: string;
   avatarUrl?: string;
   bannerUrl?: string;
+  cosmetics?: {
+    avatarFrame?: "nebula";
+    profileBanner?: "nebula";
+    profileEffect?: "soft-glow" | "paper-grain" | "none";
+    nameFont?: "InterVariable" | "AtkinsonHyperlegible" | "Georgia";
+  };
   profileVisibility: ProfileVisibility;
   socialLinks: Array<{ platform: string; url: string }>;
   relationship: Relationship;

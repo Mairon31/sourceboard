@@ -156,7 +156,11 @@ export async function canViewPost(
   });
 }
 
-function authorForPost(post: PostWithAuthor, profileVisible: boolean): PublicPostAuthor {
+function authorForPost(
+  post: PostWithAuthor,
+  profileVisible: boolean,
+  cosmetics?: Awaited<ReturnType<ProfileStore["getEquippedCosmetics"]>>,
+): PublicPostAuthor {
   if (post.post.authorMode === "ANONYMOUS") {
     return { mode: "ANONYMOUS", displayName: "Anonymous Author" };
   }
@@ -171,6 +175,8 @@ function authorForPost(post: PostWithAuthor, profileVisible: boolean): PublicPos
       ? `/api/media/profile/${encodeURIComponent(post.author.avatarAssetId)}`
       : undefined,
     profileUrl: `/u/${encodeURIComponent(post.author.username)}`,
+    avatarFrame: cosmetics?.avatarFrame,
+    nameFont: cosmetics?.nameFont,
   };
 }
 
@@ -186,6 +192,9 @@ async function toPostSummary(
           now: dependencies.now,
         })
       : false;
+  const cosmetics = profileVisible
+    ? await dependencies.profileStore.getEquippedCosmetics?.(post.post.authorId)
+    : undefined;
   const nsfwVisible = await canViewPost(viewerId, post.post, dependencies);
   const nsfwPresentation = !post.post.isNsfw
     ? "VISIBLE"
@@ -204,7 +213,7 @@ async function toPostSummary(
     slug: post.post.slug,
     title: post.post.title,
     description: post.post.description || undefined,
-    author: authorForPost(post, profileVisible),
+    author: authorForPost(post, profileVisible, cosmetics),
     createdAt: new Date(post.post.createdAt).toISOString(),
     status: post.post.status,
     visibility: post.post.visibility,

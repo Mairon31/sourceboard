@@ -322,6 +322,12 @@
   font-size: var(--text-xs);
 }
 
+.sb-avatar--frame-nebula {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 .product-post__badges {
   display: flex;
   flex-wrap: wrap;
@@ -851,10 +857,41 @@
     var(--bg-app-secondary);
 }
 
+.product-profile-banner--nebula {
+  background:
+    radial-gradient(
+      circle at 72% 28%,
+      color-mix(in srgb, var(--accent) 28%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 18% 70%,
+      color-mix(in srgb, var(--info) 20%, transparent),
+      transparent 34%
+    ),
+    var(--bg-app-secondary);
+}
+
 .product-profile-content {
   display: grid;
   gap: var(--space-4);
   padding: 0 var(--space-5) var(--space-5);
+}
+
+.product-profile-content--soft-glow {
+  background: radial-gradient(
+    circle at 80% 0%,
+    color-mix(in srgb, var(--accent) 10%, transparent),
+    transparent 34%
+  );
+}
+
+.product-profile-content--paper-grain {
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--text-primary) 7%, transparent) 0.6px,
+    transparent 0.6px
+  );
+  background-size: 7px 7px;
 }
 
 .product-profile-identity {

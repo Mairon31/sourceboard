@@ -32,6 +32,13 @@ export interface SocialLinkInput {
   isVisible: boolean;
 }
 
+export interface EquippedCosmetics {
+  avatarFrame?: "nebula";
+  profileBanner?: "nebula";
+  profileEffect?: "soft-glow" | "paper-grain" | "none";
+  nameFont?: "InterVariable" | "AtkinsonHyperlegible" | "Georgia";
+}
+
 export interface MediaAssetRecord {
   id: string;
   ownerUserId: string;
@@ -65,6 +72,7 @@ export interface ProfileStore {
   getProfileByUserId(userId: string, now: number): Promise<ProfileRecord | null>;
   getPreferences(userId: string, now: number): Promise<UserPreferenceRecord>;
   getSocialLinks(userId: string): Promise<SocialLinkRecord[]>;
+  getEquippedCosmetics(userId: string): Promise<EquippedCosmetics>;
   updateProfile(
     userId: string,
     input: ProfileUpdateInput,
@@ -317,6 +325,44 @@ function mapSocialUser(viewerId: string, row: SocialUserRow): SocialUserRecord {
 }
 
 export function createD1ProfileStore(db: D1Database): ProfileStore {
+  async function getEquippedCosmetics(userId: string): Promise<EquippedCosmetics> {
+    const result = await db
+      .prepare(
+        `SELECT c.slot, s.type, s.config_json AS configJson
+         FROM user_cosmetics c JOIN store_items s ON s.id = c.store_item_id
+         WHERE c.user_id = ?`,
+      )
+      .bind(userId)
+      .all<{ slot: string; type: string; configJson: string }>();
+    const cosmetics: EquippedCosmetics = {};
+    for (const row of result.results) {
+      let config: unknown;
+      try {
+        config = JSON.parse(row.configJson);
+      } catch {
+        continue;
+      }
+      const value = config as { preset?: unknown; family?: unknown };
+      if (row.type === "AVATAR_FRAME" && value.preset === "nebula")
+        cosmetics.avatarFrame = "nebula";
+      if (row.type === "PROFILE_BANNER" && value.preset === "nebula")
+        cosmetics.profileBanner = "nebula";
+      if (
+        row.type === "PROFILE_EFFECT" &&
+        ["soft-glow", "paper-grain", "none"].includes(String(value.preset))
+      ) {
+        cosmetics.profileEffect = value.preset as EquippedCosmetics["profileEffect"];
+      }
+      if (
+        row.type === "NAME_FONT" &&
+        ["InterVariable", "AtkinsonHyperlegible", "Georgia"].includes(String(value.family))
+      ) {
+        cosmetics.nameFont = value.family as EquippedCosmetics["nameFont"];
+      }
+    }
+    return cosmetics;
+  }
+
   async function getProfileByUserId(userId: string, now: number): Promise<ProfileRecord | null> {
     const row = await db
       .prepare(
@@ -397,6 +443,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
     },
 
     getProfileByUserId,
+    getEquippedCosmetics,
 
     async getPreferences(userId, now) {
       const row = await db

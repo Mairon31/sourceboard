@@ -17,6 +17,10 @@ export interface CommentServiceDependencies {
   store: CommentStore;
   postStore: PostStore;
   profileStore: ProfileStore;
+  assertEntitlements?: (
+    userId: string,
+    body: ReturnType<typeof normalizeCommentBody>,
+  ) => Promise<void>;
   now?: () => number;
 }
 
@@ -53,7 +57,11 @@ export interface CommentService {
   ): Promise<boolean>;
 }
 
-function publicAuthor(comment: CommentWithAuthor, profileVisible: boolean): PublicPostAuthor {
+function publicAuthor(
+  comment: CommentWithAuthor,
+  profileVisible: boolean,
+  cosmetics?: Awaited<ReturnType<ProfileStore["getEquippedCosmetics"]>>,
+): PublicPostAuthor {
   if (
     comment.post.authorMode === "ANONYMOUS" &&
     comment.comment.authorId === comment.post.authorId
@@ -69,6 +77,8 @@ function publicAuthor(comment: CommentWithAuthor, profileVisible: boolean): Publ
       ? `/api/media/profile/${encodeURIComponent(comment.author.avatarAssetId)}`
       : undefined,
     profileUrl: `/u/${encodeURIComponent(comment.author.username)}`,
+    avatarFrame: cosmetics?.avatarFrame,
+    nameFont: cosmetics?.nameFont,
   };
 }
 
@@ -82,10 +92,13 @@ async function toView(
     record.post.authorMode !== "ANONYMOUS" || record.comment.authorId !== record.post.authorId
       ? await canViewUser(viewerId, record.comment.authorId, { store: profileStore, now })
       : false;
+  const cosmetics = profileVisible
+    ? await profileStore.getEquippedCosmetics?.(record.comment.authorId)
+    : undefined;
   return {
     id: record.comment.id,
     parentCommentId: record.comment.parentCommentId ?? undefined,
-    author: publicAuthor(record, profileVisible),
+    author: publicAuthor(record, profileVisible, cosmetics),
     body: record.comment.state === "DELETED" ? "Comment deleted" : record.comment.plaintext,
     richtext: record.comment.state === "DELETED" ? undefined : record.comment.richtext,
     createdAt: new Date(record.comment.createdAt).toISOString(),
@@ -157,6 +170,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         }
       }
       const body = normalizeCommentBody(input);
+      await dependencies.assertEntitlements?.(input.authorId, body);
       const createdAt = now();
       const record = {
         id: createIdentifier(),
@@ -217,6 +231,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         );
       }
       const body = normalizeCommentBody(input);
+      await dependencies.assertEntitlements?.(authorId, body);
       const updated = {
         ...current.comment,
         richtext: body.richtext,

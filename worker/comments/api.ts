@@ -10,6 +10,7 @@ import { createD1PostStore } from "../posts/store";
 import { createD1ProfileStore } from "../profile/store";
 import { createD1CommentStore } from "./store";
 import { createCommentService } from "./service";
+import { createEntitlementChecker } from "../store/entitlements";
 
 function isCommentRoute(pathname: string): boolean {
   return (
@@ -86,6 +87,7 @@ function service(env: SourceBoardEnvironment) {
     store: createD1CommentStore(db),
     postStore: createD1PostStore(db),
     profileStore: createD1ProfileStore(db),
+    assertEntitlements: createEntitlementChecker(db),
   });
 }
 
