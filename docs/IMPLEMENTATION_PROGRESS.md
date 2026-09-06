@@ -6,7 +6,7 @@
 
 ## Current phase
 
-**Phase 0A — Design System, Liquid Glass and Motion Framework**
+**Phase 0B — UI/UX Experience Pass**
 
 Status: **COMPLETED**
 
@@ -105,17 +105,50 @@ A complete pre-documentation candidate at commit `34e9db957d81f18f0ff73f9488e8d8
 
 Phase 0A intentionally does **not** implement Phase 0B product functionality. The home route is a visual laboratory only. There is no real authentication, persisted feed, persisted comments, likes, product data model or social backend introduced by this phase.
 
+## Phase 0B — UI/UX Experience Pass
+
+Status: **COMPLETED**
+
+### Phase 0B scope
+
+- [x] typed UI DTOs, `UiDataAdapter` contract and fixture-only development adapter
+- [x] component/fixture separation with no direct fixture imports in product components
+- [x] responsive Product Shell, desktop/mobile navigation and context rail
+- [x] auth, home/feed, create post and post detail presentation surfaces
+- [x] comments, replies, reactions, accepted/verified source states
+- [x] anonymous-author and NSFW UX contracts without backend identity or policy simulation
+- [x] profile, achievements, friends/blocks, notifications, store and settings
+- [x] admin overview, moderation queue and reason-gated anonymous identity preview
+- [x] loading, skeleton, empty, error, disabled and presentation-only states
+- [x] keyboard/focus, reduced-motion and responsive coverage at 390, 430, 768, 1024, 1280 and 1440px
+- [x] SSR route smoke coverage for all Phase 0B routes
+
+### Phase 0B verification evidence
+
+GitHub Actions run `#47` (`34020005160`) passed every established gate: `npm ci`, lint/Prettier,
+strict typecheck, 18 unit tests across 7 files, production build, Wrangler deploy dry-run and 65
+Playwright E2E tests with no failures or flakiness. See [`docs/UI_UX_PHASE_0B.md`](UI_UX_PHASE_0B.md)
+for the scope, decisions, evidence and deferred work.
+
+The E2E closure corrected strict locator ownership, added an explicit hydrated-UI signal to the
+admin shell, kept static checks independent of hydration timing and added the missing SSR root title.
+No backend feature or fake persistence was introduced.
+
 ## Next phase
 
-**Phase 0B**
+**Phase 1 — Cloudflare infrastructure + D1/R2/KV**
 
-Status: **NOT STARTED**
+Status: **READY AFTER REVIEW**
 
-Phase 0B may begin only after Phase 0A is reviewed and merged. It should reuse the theme, tokens, shell, primitives and motion contracts documented in `docs/DESIGN_SYSTEM.md` instead of rebuilding visual foundations.
+Phase 1 may begin after the stacked Phase 0B PR is reviewed. It must reuse the existing contracts and
+introduce only the canonical infrastructure scope: D1 as source of truth, private R2 behind Worker
+authorization and KV only for cache/config. No resource IDs or secrets are committed until real
+provisioning exists.
 
 ## Known limitations
 
-- The Phase 0A home route is intentionally a presentation laboratory and will be replaced or repurposed as real product screens arrive.
+- Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B
+  product surfaces now own the product routes.
 - Responsive coverage verifies the canonical viewport set in Chromium; broader browser/device coverage can expand when real product flows justify it.
 - The design system establishes practical rendering constraints rather than a synthetic performance benchmark. Real media/data screens should measure performance once those workloads exist.
-- D1/R2/KV/Queues and product persistence remain outside Phase 0A by design.
+- D1/R2/KV/Queues, authentication and product persistence remain outside Phase 0B by design.
