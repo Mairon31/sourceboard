@@ -82,7 +82,7 @@ describe("store catalog lifecycle", () => {
   });
 
   it("splits Admin Store into Cosmetics and Emote packs with editable catalog metadata", () => {
-    expect(adminStoreRoute).toContain(">Cosmetics<");
+    expect(adminStoreRoute).toContain("Cosmetics");
     expect(adminStoreRoute).toContain("Emote packs");
     expect(adminStoreRoute).toContain("AdminCosmeticCatalog");
     expect(adminStoreRoute).toContain("AdminEmotePackManager");

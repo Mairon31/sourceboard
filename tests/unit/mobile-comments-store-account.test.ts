@@ -11,6 +11,7 @@ const productCss =
   read("../../app/components/product/profile-klipy.css");
 const klipyCss = read("../../app/components/product/profile-klipy.css");
 const storeRoute = read("../../app/routes/store.tsx");
+const storeCard = read("../../app/components/product/StoreItemCard.tsx");
 const storeApi = read("../../worker/store/api.ts");
 const profileRoute = read("../../app/routes/profile.tsx");
 const accountActions = read("../../app/components/product/ProfileAccountActions.tsx");
@@ -32,7 +33,7 @@ describe("mobile comments, store and account regressions", () => {
 
   it("offers an explicit unequip action for equipped cosmetics", () => {
     expect(storeRoute).toContain("async function unequip");
-    expect(storeRoute).toContain('return "Unequip"');
+    expect(storeCard).toContain('return "Unequip"');
     expect(storeRoute).toContain('method: "DELETE"');
     expect(storeApi).toContain('request.method === "DELETE"');
     expect(storeApi).toContain("service.unequip");

@@ -42,13 +42,23 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
         store: createD1PostStore(runtime.db),
         profileStore: createD1ProfileStore(runtime.db),
       });
-      const post = await service.getPost(params.postId ?? "", userId);
-      const comments = post
-        ? await createCommentService({
-            store: createD1CommentStore(runtime.db),
-            postStore: createD1PostStore(runtime.db),
-            profileStore: createD1ProfileStore(runtime.db),
-          }).listForPost(post.id, userId, null, 50)
+      const commentService = createCommentService({
+        store: createD1CommentStore(runtime.db),
+        postStore: createD1PostStore(runtime.db),
+        profileStore: createD1ProfileStore(runtime.db),
+      });
+      const postId = params.postId ?? "";
+      const commentsPromise = commentService.listForPost(postId, userId, null, 50).then(
+        (value) => ({ ok: true as const, value }),
+        (error: unknown) => ({ ok: false as const, error }),
+      );
+      const [post, commentsResult] = await Promise.all([
+        service.getPost(postId, userId),
+        commentsPromise,
+      ]);
+      if (post && !commentsResult.ok) throw commentsResult.error;
+      const comments = commentsResult.ok
+        ? commentsResult.value
         : { comments: [], nextCursor: null };
       return {
         post: post ? { ...post, comments: comments.comments } : post,

@@ -474,6 +474,8 @@ async function createOrRecoverFirebaseRegistration(
   }
 }
 
+const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+
 export function createAuthService(dependencies: AuthServiceDependencies): AuthService {
   const now = dependencies.now ?? (() => Date.now());
   const firebase = dependencies.firebase ?? configuredFirebaseAuth(dependencies.env);
@@ -495,9 +497,10 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       return null;
     }
 
+    const at = now();
     const current = await dependencies.store.findActiveSessionByTokenHash(
       hashOpaqueToken(rawToken),
-      now(),
+      at,
     );
     if (!current || current.status !== "ACTIVE" || !current.emailVerifiedAt) {
       if (required) {
@@ -506,7 +509,9 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       return null;
     }
 
-    await dependencies.store.touchSession(current.id, now());
+    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {
+      await dependencies.store.touchSession(current.id, at);
+    }
     return { session: current, user: { id: current.userId, username: current.username } };
   }
 
@@ -933,7 +938,9 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     if (!current || current.status !== "ACTIVE" || !current.emailVerifiedAt) {
       return null;
     }
-    await dependencies.store.touchSession(current.id, at);
+    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {
+      await dependencies.store.touchSession(current.id, at);
+    }
     return { session: current, user: { id: current.userId, username: current.username } };
   }
 
