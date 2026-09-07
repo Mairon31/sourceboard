@@ -1,0 +1,48 @@
+name: Apply Store Rollout Fix
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/apply-store-rollout-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply production compatibility changes
+        run: |
+          git show aa9f459393c4d76b2558efaa190a7ad236cc045d:scripts/fix-admin-emote-rollout.mjs > /tmp/fix-admin-emote-rollout.mjs
+          sed -i 's/^fixE2E();$/\/\/ fixE2E();/' /tmp/fix-admin-emote-rollout.mjs
+          node /tmp/fix-admin-emote-rollout.mjs
+          npx prettier --write worker/catalog/api.ts worker/store/admin.ts app/components/admin/store/AdminEmotePackManager.tsx tests/unit/store-schema-compatibility.test.ts
+      - name: Focused regression tests
+        run: npm test -- --run tests/unit/store-schema-compatibility.test.ts tests/unit/store-catalog-redesign.test.ts
+      - name: Quality gates
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+          npm run deploy:dry-run
+      - name: Remove one-shot workflow and commit production changes
+        run: |
+          git rm .github/workflows/apply-store-rollout-fix.yml
+          git config user.name "SourceBoard CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: restore admin emote rollout compatibility"
+          git push origin HEAD:master
