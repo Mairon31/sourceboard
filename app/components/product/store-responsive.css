@@ -1,0 +1,14 @@
+.product-store-page {
+  min-width: 0;
+}
+
+.product-store-filter-bar {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.product-store-grid {
+  min-width: 0;
+}
