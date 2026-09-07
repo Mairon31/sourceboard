@@ -564,6 +564,15 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
         if (!user || remote.localId !== user.id || account.disabled || !account.emailVerified) {
           throw new AuthError(401, "AUTHENTICATION_FAILED", "Email or password is incorrect.");
         }
+        if (user.status === "PENDING_VERIFICATION") {
+          const verifiedAt = now();
+          await dependencies.store.markEmailVerified(user.id, verifiedAt);
+          return {
+            user: { ...user, status: "ACTIVE" as const, emailVerifiedAt: verifiedAt },
+            credentials: null,
+            firebaseResult: remote,
+          };
+        }
         return { user, credentials: null, firebaseResult: remote };
       } catch (error) {
         await dependencies.store.recordLoginFailure(

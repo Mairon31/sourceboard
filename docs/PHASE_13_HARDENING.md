@@ -202,12 +202,16 @@ password-reset flow still require explicit verification.
 
 Registration retries repair an orphaned Firebase account only after the
 submitted password proves ownership; pre-existing accounts are never deleted
-during recovery. Google login/register exchanges a Firebase browser ID token
-for a SourceBoard D1 profile and session through `POST /api/auth/google`.
+during recovery. Google login/register uses Firebase redirect authentication and
+exchanges the returned browser ID token for a SourceBoard D1 profile and session
+through `POST /api/auth/google`.
 Signed-out product routes now use a shared accessible sign-in/register screen.
 The visible mark is an animated transparent SVG and metadata uses a separate
-liquid-glass magnifying-glass image. Enabling Google and authorizing `srcboard.me`
-in Firebase, then completing a real Google login/profile-creation check, remain
-external release gates. The CSP includes only the Firebase and Google origins
-required by the popup flow, and signed-out notification refresh is skipped
-before it can call the private endpoint.
+liquid-glass magnifying-glass image. Firebase currently reports Google enabled
+and `srcboard.me` authorized. Email login promotes a pending D1 profile after
+Firebase confirms its email, including the Firebase-hosted action-handler path.
+When an action code returns to SourceBoard, the verify-email screen consumes it
+automatically and keeps the manual fallback available.
+The CSP includes only the Firebase and Google origins required by the redirect
+flow, and signed-out notification refresh is skipped before it can call the
+private endpoint. A real Google login/profile-creation check remains pending.

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import {
+  completeGoogleSignIn,
   getGoogleAuthErrorMessage,
-  signInWithGoogle,
   signOutFirebase,
+  startGoogleSignIn,
   type FirebasePublicConfig,
 } from "../../data/firebase-client";
 import { Button, GlassPanel, Input } from "../ui";
@@ -30,7 +31,8 @@ const copy = {
   verify: {
     eyebrow: "Email verification",
     title: "Verify your email",
-    description: "Use the single-use link sent to your email to activate your account.",
+    description:
+      "Use the single-use link sent to your email. SourceBoard will sync the account after Firebase confirms it.",
   },
 } satisfies Record<AuthMode, { eyebrow: string; title: string; description: string }>;
 
@@ -226,6 +228,96 @@ async function submitAuthForm(
   return { ok: response.ok, body: await response.json() };
 }
 
+async function submitVerificationToken(token: string): Promise<{ ok: boolean; body: unknown }> {
+  const response = await fetch("/api/auth/email/verify", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  return { ok: response.ok, body: await response.json() };
+}
+
+async function completeGoogleSession(
+  idToken: string,
+  navigate: (to: string) => void,
+  setFeedback: (feedback: AuthFeedback) => void,
+): Promise<void> {
+  const response = await fetch("/api/auth/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    await signOutFirebase().catch(() => undefined);
+    setFeedback({ tone: "error", message: getErrorMessage(body) });
+    return;
+  }
+  navigate("/");
+}
+
+function useVerificationAction(
+  mode: AuthMode,
+  token: string | null,
+  navigate: (to: string) => void,
+  setBusy: (busy: boolean) => void,
+  setFeedback: (feedback: AuthFeedback | null) => void,
+): void {
+  const attempted = useRef(false);
+  useEffect(() => {
+    if (mode !== "verify" || !token || attempted.current) return;
+    attempted.current = true;
+    setBusy(true);
+    setFeedback(null);
+    void submitVerificationToken(token)
+      .then((result) => {
+        if (result.ok) {
+          navigate("/login");
+          return;
+        }
+        setFeedback({ tone: "error", message: getErrorMessage(result.body) });
+      })
+      .catch(() => {
+        setFeedback({ tone: "error", message: "The verification link could not be completed." });
+      })
+      .finally(() => setBusy(false));
+  }, [mode, navigate, setBusy, setFeedback, token]);
+}
+
+function useGoogleRedirectSignIn(
+  mode: AuthMode,
+  config: AuthConfig | null,
+  navigate: (to: string) => void,
+  setBusy: (busy: boolean) => void,
+  setFeedback: (feedback: AuthFeedback | null) => void,
+): void {
+  const handled = useRef(false);
+  // fallow-ignore-next-line complexity -- the redirect lifecycle must guard cancellation and provider errors.
+  useEffect(() => {
+    if ((mode !== "login" && mode !== "register") || !config?.firebase || handled.current) {
+      return;
+    }
+    handled.current = true;
+    let cancelled = false;
+    setBusy(true);
+    void completeGoogleSignIn(config.firebase)
+      .then((result) =>
+        result && !cancelled
+          ? completeGoogleSession(result.idToken, navigate, (feedback) => setFeedback(feedback))
+          : undefined,
+      )
+      .catch((error) => {
+        if (!cancelled) setFeedback({ tone: "error", message: getGoogleAuthErrorMessage(error) });
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [config, mode, navigate, setBusy, setFeedback]);
+}
+
 function handleSuccessfulSubmit(
   mode: AuthMode,
   isReset: boolean,
@@ -305,7 +397,8 @@ function AuthSecurityFields({
       {turnstileRequired ? <TurnstileField config={config} onToken={onToken} /> : null}
       {mode === "verify" && !resetToken ? (
         <p className="product-auth-security-note">
-          Open the verification link from your email to continue.
+          Open the verification link from your email to continue. If Firebase already confirmed it,
+          sign in once so SourceBoard can synchronize your account.
         </p>
       ) : null}
     </>
@@ -350,6 +443,8 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
 
   const isReset = mode === "forgot" && Boolean(resetToken);
   const turnstileRequired = mode === "register" || mode === "forgot";
+  useVerificationAction(mode, resetToken, navigate, setBusy, setFeedback);
+  useGoogleRedirectSignIn(mode, authConfig, navigate, setBusy, setFeedback);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -384,19 +479,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
       if (!authConfig?.firebase) {
         throw new Error("FIREBASE_NOT_CONFIGURED");
       }
-      const { idToken } = await signInWithGoogle(authConfig.firebase);
-      const response = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-      const body = await response.json().catch(() => null);
-      if (!response.ok) {
-        await signOutFirebase().catch(() => undefined);
-        setFeedback({ tone: "error", message: getErrorMessage(body) });
-        return;
-      }
-      navigate("/");
+      await startGoogleSignIn(authConfig.firebase);
     } catch (error) {
       setFeedback({
         tone: "error",
@@ -443,6 +526,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
               type="button"
               onClick={() => void handleGoogleSignIn()}
               disabled={busy}
+              aria-busy={busy}
             >
               <span className="product-google-button__icon" aria-hidden="true">
                 G

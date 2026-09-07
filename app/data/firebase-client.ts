@@ -1,5 +1,12 @@
 import { getApp, getApps, initializeApp, type FirebaseOptions } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, type Auth } from "firebase/auth";
+import {
+  getAuth,
+  getRedirectResult,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  signOut,
+  type Auth,
+} from "firebase/auth";
 
 export interface FirebasePublicConfig extends FirebaseOptions {
   apiKey: string;
@@ -17,10 +24,17 @@ function getFirebaseAuth(config: FirebasePublicConfig): Auth {
   return authInstance;
 }
 
-export async function signInWithGoogle(config: FirebasePublicConfig): Promise<{ idToken: string }> {
+export async function startGoogleSignIn(config: FirebasePublicConfig): Promise<void> {
   const auth = getFirebaseAuth(config);
-  const result = await signInWithPopup(auth, new GoogleAuthProvider());
-  return { idToken: await result.user.getIdToken() };
+  await signInWithRedirect(auth, new GoogleAuthProvider());
+}
+
+export async function completeGoogleSignIn(
+  config: FirebasePublicConfig,
+): Promise<{ idToken: string } | null> {
+  const auth = getFirebaseAuth(config);
+  const result = await getRedirectResult(auth);
+  return result ? { idToken: await result.user.getIdToken() } : null;
 }
 
 export async function signOutFirebase(): Promise<void> {
@@ -35,6 +49,15 @@ export function getGoogleAuthErrorMessage(error: unknown): string {
   }
   if (code === "auth/account-exists-with-different-credential") {
     return "This email already uses another sign-in method. Sign in with email and password first.";
+  }
+  if (code === "auth/unauthorized-domain") {
+    return "This site is not authorized in Firebase. Add srcboard.me to Firebase Authentication authorized domains.";
+  }
+  if (code === "auth/operation-not-allowed") {
+    return "Google sign-in is not enabled in Firebase Authentication.";
+  }
+  if (code === "auth/network-request-failed") {
+    return "Firebase could not be reached. Check your connection and try again.";
   }
   return "Google sign-in could not be completed. Try again.";
 }

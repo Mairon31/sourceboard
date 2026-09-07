@@ -549,8 +549,10 @@ prerequisites.
       `NotificationHub`, cron `17 * * * *`, and the `sourceboard-events`
       consumer with `sourceboard-events-dlq`.
 - [x] Firebase project configuration and Worker Firebase secrets are present.
-- [ ] Email/Password enablement, custom authentication-email domain/action URL,
-      and one real auth-flow verification remain pending.
+- [x] Firebase Email/Password and Google providers are enabled; `srcboard.me`
+      is present in Firebase authorized domains.
+- [ ] Custom authentication-email action URL and one real auth-flow verification
+      remain pending.
 
 ### 2026-09-06 auth UX and Google sign-in checkpoint
 
@@ -568,12 +570,20 @@ prerequisites.
 - [x] Replaced the visible brand mark with an animated transparent SVG and
       changed Open Graph/Twitter metadata to the liquid-glass magnifying-glass
       image at `/sourceboard-og.png`.
-- [x] CSP now permits only the Firebase/Google origins required by the browser
-      popup flow, and the signed-out TopBar skips the private notifications
-      request instead of generating an expected 401.
-- [ ] Enable Google as a Firebase provider and authorize `srcboard.me` in the
-      Firebase console, then verify one real Google login and first-profile
-      creation. This remains an external release check.
+- [x] Google authentication uses Firebase redirect flow instead of a popup, so
+      browser popup blockers and the in-app browser do not terminate the OAuth
+      exchange; the returned Firebase ID token is exchanged for a SourceBoard
+      session only after the redirect.
+- [x] CSP permits the Firebase/Google origins required by the redirect flow, and
+      the signed-out TopBar skips the private notifications request instead of
+      generating an expected 401.
+- [x] Firebase confirms Google and `srcboard.me` are configured in the console.
+- [x] Email login synchronizes a D1 pending profile after Firebase has confirmed
+      its email, covering Firebase-hosted action-handler redirects.
+- [x] Verification links that return an `oobCode` are consumed automatically by
+      the verify-email screen; manual fallback remains available.
+- [ ] Verify one real Google login and first-profile creation with a user account.
+      This remains an external release check.
 
 ### 2026-09-06 store previews and comment media checkpoint
 
