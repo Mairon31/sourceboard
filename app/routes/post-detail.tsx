@@ -23,10 +23,11 @@ import { SourceResolution } from "../components/product/SourceResolution";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { postId?: string; slug?: string };
+  url: URL;
 }
 
-export async function loader({ params, request, context }: LoaderArgs) {
-  const requested = new URL(request.url);
+export async function loader({ params, request, context, url }: LoaderArgs) {
+  const requested = url;
   const result = await withOptionalServerSession(
     request,
     context,
@@ -62,7 +63,7 @@ export async function loader({ params, request, context }: LoaderArgs) {
     return result;
   }
   const canonicalPath = `/posts/${encodeURIComponent(result.post.id)}/${encodeURIComponent(result.post.slug ?? "")}`;
-  const canonicalUrl = new URL(canonicalPath, request.url).toString();
+  const canonicalUrl = new URL(canonicalPath, requested).toString();
   if (params.slug !== result.post.slug || requested.pathname !== canonicalPath) {
     throw redirect(canonicalUrl, { status: 301 });
   }
