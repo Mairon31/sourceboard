@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { readCsrfToken } from "../data/csrf";
 import {
   isRouteErrorResponse,
@@ -258,9 +258,19 @@ function UnavailablePost({ unavailable }: { unavailable: boolean }) {
 export default function PostDetailRoute() {
   const { post, unavailable, authenticated } = useLoaderData<LoaderData>();
   const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash !== "#comments") return;
+    document.getElementById("comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!authenticated) return;
+    window.requestAnimationFrame(() => {
+      const composer = document.getElementById("comment-composer");
+      if (composer instanceof HTMLElement) composer.focus({ preventScroll: true });
+    });
+  }, [authenticated, location.hash]);
+
   if (!post) return <UnavailablePost unavailable={unavailable} />;
   const currentPost = post;
-  const focusComments = location.hash === "#comments";
 
   async function acceptSource(commentId: string) {
     const response = await fetch(`/api/posts/${encodeURIComponent(currentPost.id)}/source/accept`, {
@@ -287,7 +297,6 @@ export default function PostDetailRoute() {
         postId={post.id}
         comments={post.comments}
         authenticated={authenticated}
-        focusComposer={focusComments}
         canAcceptSource={post.permissions.canAcceptSource}
         onAcceptSource={(commentId) => void acceptSource(commentId)}
       />
