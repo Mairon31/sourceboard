@@ -22,18 +22,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Reproduce session write regression
+      - name: Reproduce navigation performance regression
         run: |
           if npm test -- --run tests/unit/navigation-performance.test.ts; then
-            echo "Expected the session-write regression to fail before applying the fix."
+            echo "Expected the navigation performance regression to fail before applying the fix."
             exit 1
           fi
-          echo "Session-write regression reproduced."
-      - name: Apply verified session throttling
+          echo "Navigation performance regression reproduced."
+      - name: Apply verified navigation fixes
         run: node scripts/finalize-store.mjs
       - name: Normalize changed implementation
         run: >-
           npx prettier --write
+          scripts/finalize-store.mjs
           worker/auth/service.ts
           shared/router-context.ts
           app/data/server-request.ts
@@ -62,6 +63,9 @@ jobs:
           tests/e2e/navigation.spec.ts
           tests/e2e/admin.spec.ts
           tests/e2e/responsive.spec.ts
+      - name: Verify deployment migration contract
+        run: |
+          node -e "const p=require('./package.json'); if(!p.scripts.deploy.includes('db:migrations:apply:remote')||!p.scripts['db:migrations:apply:remote'].includes('--remote')) process.exit(1)"
       - name: Lint
         run: npm run lint
       - name: Typecheck
@@ -82,5 +86,5 @@ jobs:
             echo "No changes to commit."
             exit 0
           fi
-          git commit -m "perf: persist session throttling and normalize final changes"
+          git commit -m "perf: persist navigation fixes and normalize Store"
           git push origin HEAD:master
