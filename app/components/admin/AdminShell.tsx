@@ -2,17 +2,25 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router";
 import { ThemeControl } from "../layout/ThemeControl";
+import {
+  CheckIcon,
+  FriendsIcon,
+  HomeIcon,
+  InfoIcon,
+  SearchIcon,
+  StoreIcon,
+  UserIcon,
+} from "../ui";
 
 const adminLinks = [
-  { href: "/admin", label: "Overview", end: true },
-  { href: "/admin/moderation", label: "Moderation", end: false },
-  { href: "/admin/verifications", label: "Verifications", end: false },
-  { href: "/admin#users", label: "Users", end: false },
-  { href: "/admin#roles", label: "Roles", end: false },
-  { href: "/admin#source-verification", label: "Source verification", end: false },
-  { href: "/admin/store", label: "Store", end: false },
-  { href: "/admin#audit", label: "Audit", end: false },
-];
+  { href: "/admin", label: "Overview", end: true, icon: HomeIcon },
+  { href: "/admin/moderation", label: "Moderation", end: false, icon: InfoIcon },
+  { href: "/admin/verifications", label: "Verifications", end: false, icon: CheckIcon },
+  { href: "/admin/users", label: "Users", end: false, icon: UserIcon },
+  { href: "/admin/roles", label: "Roles", end: false, icon: FriendsIcon },
+  { href: "/admin/store", label: "Store", end: false, icon: StoreIcon },
+  { href: "/admin/audit", label: "Audit", end: false, icon: SearchIcon },
+] as const;
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const [uiReady, setUiReady] = useState(false);
@@ -28,22 +36,29 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <span aria-hidden="true">
             <img src="/sourceboard-logo.svg" alt="" width="34" height="34" decoding="async" />
           </span>
-          <strong>SourceBoard</strong>
+          <div>
+            <strong>SourceBoard</strong>
+            <small>Control center</small>
+          </div>
         </a>
         <div className="admin-sidebar__label">Administration</div>
         <nav aria-label="Administration navigation">
-          {adminLinks.map((item) => (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              end={item.end}
-              className={({ isActive }) =>
-                `admin-nav-link${isActive ? " admin-nav-link--active" : ""}`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {adminLinks.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.href}
+                to={item.href}
+                end={item.end}
+                className={({ isActive }) =>
+                  `admin-nav-link${isActive ? " admin-nav-link--active" : ""}`
+                }
+              >
+                <Icon width="18" height="18" />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
         <div className="admin-sidebar__footer">
           <ThemeControl />
