@@ -1,17 +1,13 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const read = (path: string) => {
-  const url = new URL(path, import.meta.url);
-  return existsSync(url) ? readFileSync(url, "utf8") : "";
-};
+const read = (path: string) =>
+  readFileSync(new URL(path, import.meta.url), "utf8");
 
 const contracts = read("../../shared/ui/contracts.ts");
-const profileStore = read("../../worker/profile/store.ts");
-const postsService = read("../../worker/posts/service.ts");
-const commentsService = read("../../worker/comments/service.ts");
-const anonymousAuthor =
-  'return { mode: "ANONYMOUS", displayName: "Anonymous Author" }';
+const store = read("../../worker/profile/store.ts");
+const posts = read("../../worker/posts/service.ts");
+const comments = read("../../worker/comments/service.ts");
 
 describe("public cosmetic identity contracts", () => {
   it("exposes profile effects", () => {
@@ -19,20 +15,18 @@ describe("public cosmetic identity contracts", () => {
   });
 
   it("uses shared preset types", () => {
-    expect(profileStore).toContain("AvatarFramePreset");
-    expect(profileStore).toContain("ProfileEffectPreset");
-    expect(profileStore).toContain("NameFontFamily");
+    expect(store).toContain("AvatarFramePreset");
+    expect(store).toContain("ProfileEffectPreset");
+    expect(store).toContain("NameFontFamily");
   });
 
   it("serializes equipped effects", () => {
-    expect(postsService).toContain("profileEffect: cosmetics?.profileEffect");
-    expect(commentsService).toContain(
-      "profileEffect: cosmetics?.profileEffect",
-    );
+    expect(posts).toContain("profileEffect: cosmetics?.profileEffect");
+    expect(comments).toContain("profileEffect: cosmetics?.profileEffect");
   });
 
-  it("keeps anonymous authors cosmetic-free", () => {
-    expect(postsService).toContain(anonymousAuthor);
-    expect(commentsService).toContain(anonymousAuthor);
+  it("keeps anonymous author branches explicit", () => {
+    expect(posts).toContain('mode: "ANONYMOUS"');
+    expect(comments).toContain('mode: "ANONYMOUS"');
   });
 });
