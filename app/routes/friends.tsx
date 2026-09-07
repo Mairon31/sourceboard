@@ -4,6 +4,7 @@ import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
+import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { SocialActionButton } from "../components/product/SocialActionButton";
 import { Avatar, Badge, Card } from "../components/ui";
 
@@ -166,15 +167,13 @@ function FriendsContent({
   onChanged: (friend: Friend) => void;
 }) {
   if (!data.authenticated) {
-    return (
-      <Card className="product-empty-state">
-        <h2>Sign in to manage friends</h2>
-        <p>
-          {data.unavailable
-            ? "The social service is temporarily unavailable."
-            : "Friend requests and blocks are private account data."}
-        </p>
-      </Card>
+    return data.unavailable ? (
+      <AuthRequiredCard unavailable />
+    ) : (
+      <AuthRequiredCard
+        title="Sign in to manage friends"
+        description="Friend requests and blocks are private account data. Sign in or create an account to manage your connections."
+      />
     );
   }
   if (friends.length === 0) {

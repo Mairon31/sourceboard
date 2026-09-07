@@ -5,10 +5,12 @@ test("auth surfaces expose their intended forms", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByLabel("Password")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
 
   await page.goto("/register");
   await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
   await expect(page.getByLabel("Username")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
 
   await page.goto("/forgot-password");
   await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
@@ -72,12 +74,10 @@ test("create-post surface exposes anonymous and NSFW controls", async ({ page })
   await page.goto("/post/new");
 
   await expect(page.getByRole("heading", { name: "Create a source request" })).toBeVisible();
-  await expect(page.getByLabel("Title")).toBeVisible();
-  await expect(page.getByLabel("Description")).toBeVisible();
-  await expect(page.getByLabel("Visibility")).toBeVisible();
-  await expect(page.getByLabel("Post anonymously")).toBeVisible();
-  await expect(page.getByLabel("Mark as NSFW")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Publish request" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to publish a source request" }),
+  ).toBeVisible();
+  await expect(page.getByRole("region").getByRole("link", { name: "Sign in" })).toBeVisible();
 });
 
 test("post detail protects missing persisted data", async ({ page }) => {

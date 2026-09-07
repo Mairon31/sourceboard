@@ -26,7 +26,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <aside className="admin-sidebar">
         <a href="/" className="admin-brand">
           <span aria-hidden="true">
-            <img src="/sourceboard-logo.png" alt="" width="34" height="34" decoding="async" />
+            <img src="/sourceboard-logo.svg" alt="" width="34" height="34" decoding="async" />
           </span>
           <strong>SourceBoard</strong>
         </a>

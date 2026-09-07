@@ -1,14 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { readCsrfToken } from "../../data/csrf";
 import { Button } from "../ui";
-
-function readCsrfToken(): string {
-  const entry = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith("__Host-sourceboard_csrf="));
-  return entry ? decodeURIComponent(entry.slice("__Host-sourceboard_csrf=".length)) : "";
-}
 
 export function SocialActionButton({
   endpoint,

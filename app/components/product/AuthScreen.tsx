@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
+import {
+  getGoogleAuthErrorMessage,
+  signInWithGoogle,
+  signOutFirebase,
+  type FirebasePublicConfig,
+} from "../../data/firebase-client";
 import { Button, GlassPanel, Input } from "../ui";
 
 export type AuthMode = "login" | "register" | "forgot" | "verify";
@@ -28,8 +34,9 @@ const copy = {
   },
 } satisfies Record<AuthMode, { eyebrow: string; title: string; description: string }>;
 
-interface TurnstileConfig {
+interface AuthConfig {
   turnstileSiteKey: string | null;
+  firebase?: FirebasePublicConfig | null;
 }
 
 declare global {
@@ -49,12 +56,12 @@ declare global {
   }
 }
 
-function useTurnstileConfig(): TurnstileConfig | null {
-  const [config, setConfig] = useState<TurnstileConfig | null>(null);
+function useAuthConfig(): AuthConfig | null {
+  const [config, setConfig] = useState<AuthConfig | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const setIfActive = (value: TurnstileConfig | null) => {
+    const setIfActive = (value: AuthConfig | null) => {
       if (!cancelled) {
         setConfig(value);
       }
@@ -62,10 +69,10 @@ function useTurnstileConfig(): TurnstileConfig | null {
     void fetch("/api/auth/config")
       .then(async (response) => {
         if (!response.ok) return null;
-        return (await response.json()) as TurnstileConfig;
+        return (await response.json()) as AuthConfig;
       })
       .then(setIfActive)
-      .catch(() => setIfActive({ turnstileSiteKey: null }));
+      .catch(() => setIfActive({ turnstileSiteKey: null, firebase: null }));
 
     return () => {
       cancelled = true;
@@ -134,7 +141,7 @@ function useTurnstileWidget(
   }, [siteKey, onToken, scriptReady, containerRef]);
 }
 
-function getTurnstileSiteKey(config: TurnstileConfig | null): string | null {
+function getTurnstileSiteKey(config: AuthConfig | null): string | null {
   return config ? config.turnstileSiteKey : null;
 }
 
@@ -154,16 +161,26 @@ function TurnstileContent({
   );
 }
 
-function TurnstileField({ onToken }: { onToken: (token: string | undefined) => void }) {
+function TurnstileField({
+  config,
+  onToken,
+}: {
+  config: AuthConfig | null;
+  onToken: (token: string | undefined) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const siteKey = getTurnstileSiteKey(useTurnstileConfig());
+  const siteKey = getTurnstileSiteKey(config);
   const scriptReady = useTurnstileScript(siteKey);
   useTurnstileWidget(siteKey, scriptReady, containerRef, onToken);
   return <TurnstileContent enabled={Boolean(siteKey)} containerRef={containerRef} />;
 }
 
 function getErrorMessage(value: unknown): string {
-  const message = (value as { error?: { message?: unknown } } | null)?.error?.message;
+  const error = (value as { error?: { code?: unknown; message?: unknown } } | null)?.error;
+  if (error?.code === "ACCOUNT_UNAVAILABLE") {
+    return "We couldn't create that account. If you already registered this email, sign in or reset your password.";
+  }
+  const message = error?.message;
   return typeof message === "string" ? message : "The request could not be completed. Try again.";
 }
 
@@ -212,6 +229,7 @@ async function submitAuthForm(
 function handleSuccessfulSubmit(
   mode: AuthMode,
   isReset: boolean,
+  body: unknown,
   navigate: (to: string) => void,
   setFeedback: (feedback: AuthFeedback) => void,
 ): void {
@@ -222,6 +240,13 @@ function handleSuccessfulSubmit(
   const redirect = redirectByMode[mode];
   if (redirect) {
     navigate(redirect);
+    return;
+  }
+  if (
+    mode === "register" &&
+    (body as { verificationRequired?: unknown } | null)?.verificationRequired === false
+  ) {
+    navigate("/");
     return;
   }
   setFeedback({
@@ -266,16 +291,18 @@ function AuthPasswordField({ mode, isReset }: { mode: AuthMode; isReset: boolean
 function AuthSecurityFields({
   mode,
   resetToken,
+  config,
   onToken,
 }: {
   mode: AuthMode;
   resetToken: string | null;
+  config: AuthConfig | null;
   onToken: (token: string | undefined) => void;
 }) {
   const turnstileRequired = new Set<AuthMode>(["register", "forgot"]).has(mode);
   return (
     <>
-      {turnstileRequired ? <TurnstileField onToken={onToken} /> : null}
+      {turnstileRequired ? <TurnstileField config={config} onToken={onToken} /> : null}
       {mode === "verify" && !resetToken ? (
         <p className="product-auth-security-note">
           Open the verification link from your email to continue.
@@ -315,6 +342,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const content = copy[mode];
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const authConfig = useAuthConfig();
   const resetToken = searchParams.get("token") ?? searchParams.get("oobCode");
   const [turnstileToken, setTurnstileToken] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -340,9 +368,43 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
         return;
       }
 
-      handleSuccessfulSubmit(mode, isReset, navigate, setFeedback);
+      handleSuccessfulSubmit(mode, isReset, result.body, navigate, setFeedback);
     } catch {
       setFeedback({ tone: "error", message: "The request could not be completed. Try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (busy) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      if (!authConfig?.firebase) {
+        throw new Error("FIREBASE_NOT_CONFIGURED");
+      }
+      const { idToken } = await signInWithGoogle(authConfig.firebase);
+      const response = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        await signOutFirebase().catch(() => undefined);
+        setFeedback({ tone: "error", message: getErrorMessage(body) });
+        return;
+      }
+      navigate("/");
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message:
+          error instanceof Error && error.message === "FIREBASE_NOT_CONFIGURED"
+            ? "Google sign-in is not configured yet."
+            : getGoogleAuthErrorMessage(error),
+      });
     } finally {
       setBusy(false);
     }
@@ -360,11 +422,35 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
         <form className="product-form-grid" onSubmit={handleSubmit}>
           <AuthIdentityFields mode={mode} isReset={isReset} />
           <AuthPasswordField mode={mode} isReset={isReset} />
-          <AuthSecurityFields mode={mode} resetToken={resetToken} onToken={setTurnstileToken} />
+          <AuthSecurityFields
+            mode={mode}
+            resetToken={resetToken}
+            config={authConfig}
+            onToken={setTurnstileToken}
+          />
           <Button type="submit" loading={busy} disabled={turnstileRequired && !turnstileToken}>
             {getSubmitLabel(mode, isReset)}
           </Button>
         </form>
+
+        {mode === "login" || mode === "register" ? (
+          <>
+            <div className="product-auth-divider" role="separator">
+              <span>or</span>
+            </div>
+            <button
+              className="product-google-button"
+              type="button"
+              onClick={() => void handleGoogleSignIn()}
+              disabled={busy}
+            >
+              <span className="product-google-button__icon" aria-hidden="true">
+                G
+              </span>
+              Continue with Google
+            </button>
+          </>
+        ) : null}
 
         {feedback ? (
           <p

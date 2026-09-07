@@ -31,8 +31,7 @@
   height: 36px;
   place-items: center;
   border-radius: 12px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: transparent;
   font-weight: 900;
 }
 

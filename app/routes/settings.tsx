@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { Link, useLoaderData } from "react-router";
+import { useLoaderData } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
+import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { ThemeControl } from "../components/layout/ThemeControl";
 import { Button, Card, Switch } from "../components/ui";
 
@@ -213,15 +214,13 @@ function PreferencesPanel({ data }: { data: SettingsData }) {
 
 function SettingsNotice({ data }: { data: SettingsData }) {
   if (data.authenticated) return null;
-  return (
-    <Card className="product-presentation-notice" role="note">
-      <strong>{data.unavailable ? "Service unavailable" : "Sign in required"}</strong>
-      <span>
-        {data.unavailable
-          ? "Preferences could not be loaded from D1."
-          : "Sign in to persist content and social preferences."}
-      </span>
-    </Card>
+  return data.unavailable ? (
+    <AuthRequiredCard unavailable />
+  ) : (
+    <AuthRequiredCard
+      title="Sign in to save your preferences"
+      description="Your privacy and social settings are private account data. Sign in or create an account to manage them."
+    />
   );
 }
 
@@ -271,12 +270,10 @@ function SessionSecurityPanel() {
         <div className="product-store-preview-status">Loading sessions…</div>
       ) : null}
       {authenticated === false ? (
-        <>
-          <p>Active sessions are stored in D1 and can be reviewed after signing in.</p>
-          <Link className="product-text-action" to="/login">
-            Sign in to manage sessions
-          </Link>
-        </>
+        <AuthRequiredCard
+          title="Sign in to manage sessions"
+          description="Active sessions are stored securely and can be reviewed after signing in."
+        />
       ) : null}
       {authenticated ? (
         <>

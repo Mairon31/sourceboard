@@ -17,6 +17,7 @@ import { AuthError } from "./errors";
 import {
   createFirebaseAuthClient,
   isFirebaseAuthError,
+  type FirebaseAccountInfo,
   type FirebaseAuthClient,
   type FirebasePasswordAuthResult,
 } from "./firebase";
@@ -90,13 +91,21 @@ export interface AuthService {
       turnstileToken?: string;
     },
     context: AuthServiceContext,
-  ): Promise<{ verificationRequired: true }>;
+  ): Promise<{ verificationRequired: boolean }>;
   login(
     input: {
       email: string;
       password: string;
       turnstileToken?: string;
     },
+    context: AuthServiceContext,
+  ): Promise<{
+    user: PublicAuthUser;
+    sessionExpiresAt: number;
+    cookies: AuthCookie[];
+  }>;
+  loginWithFirebaseToken(
+    input: { idToken: string },
     context: AuthServiceContext,
   ): Promise<{
     user: PublicAuthUser;
@@ -176,6 +185,111 @@ function authenticationError(error: unknown): AuthError {
     );
   }
   return new AuthError(401, "AUTHENTICATION_FAILED", "Email or password is incorrect.");
+}
+
+function googleAuthenticationError(error: unknown): AuthError {
+  if (providerUnavailable(error)) {
+    return new AuthError(
+      503,
+      "AUTH_INFRASTRUCTURE_UNAVAILABLE",
+      "Authentication is temporarily unavailable.",
+    );
+  }
+  return new AuthError(
+    401,
+    "AUTHENTICATION_FAILED",
+    "Google sign-in could not be completed. Try again.",
+  );
+}
+
+function assertGoogleAccount(account: FirebaseAccountInfo): void {
+  if (
+    account.disabled ||
+    !account.emailVerified ||
+    !account.providerUserInfo?.some((provider) => provider.providerId === "google.com")
+  ) {
+    throw googleAuthenticationError(new Error("GOOGLE_PROVIDER_REQUIRED"));
+  }
+}
+
+function createGoogleUsername(
+  account: FirebaseAccountInfo,
+  email: string,
+): {
+  username: string;
+  usernameNormalized: string;
+} {
+  const base = (account.displayName ?? email.split("@", 1)[0] ?? "SourceUser")
+    .normalize("NFKC")
+    .replace(/[^A-Za-z0-9_]/g, "")
+    .slice(0, 23);
+  const suffix = account.localId.replace(/[^A-Za-z0-9_]/g, "").slice(0, 8) || "account";
+  const username = `${base || "SourceUser"}_${suffix}`.slice(0, 32);
+  return { username, usernameNormalized: normalizeUsername(username) };
+}
+
+function createGoogleUser(
+  account: FirebaseAccountInfo,
+  email: string,
+  emailLookupHash: string,
+  encryptionKey: string,
+  createdAt: number,
+): UserRecord {
+  const { username, usernameNormalized } = createGoogleUsername(account, email);
+  return {
+    id: account.localId,
+    username,
+    usernameNormalized,
+    emailLookupHash,
+    emailEncrypted: encryptEmail(email, encryptionKey),
+    emailKeyVersion: "v1",
+    status: "ACTIVE",
+    emailVerifiedAt: createdAt,
+    createdAt,
+    updatedAt: createdAt,
+    lastSeenAt: null,
+  };
+}
+
+async function resolveGoogleUser(
+  store: AuthStore,
+  account: FirebaseAccountInfo,
+  email: string,
+  emailLookupHash: string,
+  encryptionKey: string,
+  at: number,
+): Promise<UserRecord> {
+  const [userByEmail, userById] = await Promise.all([
+    store.findUserByEmailLookupHash(emailLookupHash),
+    store.getUserById(account.localId),
+  ]);
+  if (userByEmail && userByEmail.id !== account.localId) {
+    throw googleAuthenticationError(new Error("EMAIL_PROFILE_MISMATCH"));
+  }
+
+  const user = userById ?? userByEmail;
+  if (!user) {
+    const created = createGoogleUser(account, email, emailLookupHash, encryptionKey, at);
+    const usernameOwner = await store.findUserByUsernameNormalized(created.usernameNormalized);
+    if (usernameOwner) {
+      throw googleAuthenticationError(new Error("USERNAME_COLLISION"));
+    }
+    try {
+      await store.createExternalUser({ user: created });
+    } catch (error) {
+      throw googleAuthenticationError(error);
+    }
+    return created;
+  }
+
+  if (user.status === "SUSPENDED" || user.status === "BANNED" || user.status === "DELETED") {
+    throw googleAuthenticationError(new Error("USER_UNAVAILABLE"));
+  }
+  if (user.status !== "ACTIVE" || !user.emailVerifiedAt) {
+    await store.markEmailVerified(user.id, at);
+    return { ...user, status: "ACTIVE", emailVerifiedAt: at };
+  }
+  return user;
 }
 
 function registrationError(error: unknown): AuthError {
@@ -308,6 +422,56 @@ function validationContext(context: AuthServiceContext): AuthServiceContext {
     request: context.request,
     requestId: context.requestId,
   };
+}
+
+async function createOrRecoverFirebaseRegistration(
+  input: { email: string; password: string },
+  activeFirebase: FirebaseAuthClient,
+): Promise<{
+  remote: FirebasePasswordAuthResult;
+  account: FirebaseAccountInfo;
+  cleanupRemote: boolean;
+}> {
+  try {
+    const remote = await activeFirebase.createUser({
+      email: normalizeEmail(input.email),
+      password: input.password,
+    });
+    return {
+      remote,
+      account: {
+        localId: remote.localId,
+        email: remote.email,
+        emailVerified: false,
+        disabled: false,
+      },
+      cleanupRemote: true,
+    };
+  } catch (error) {
+    if (!isFirebaseAuthError(error) || error.code !== "EMAIL_EXISTS") {
+      throw registrationError(error);
+    }
+    try {
+      const remote = await activeFirebase.signInWithPassword({
+        email: normalizeEmail(input.email),
+        password: input.password,
+      });
+      const account = await activeFirebase.getAccountInfo(remote.idToken);
+      if (
+        account.disabled ||
+        account.localId !== remote.localId ||
+        normalizeEmail(account.email) !== normalizeEmail(input.email)
+      ) {
+        throw registrationError(error);
+      }
+      return { remote, account, cleanupRemote: false };
+    } catch (recoveryError) {
+      if (recoveryError instanceof AuthError) throw recoveryError;
+      throw providerUnavailable(recoveryError)
+        ? registrationError(recoveryError)
+        : registrationError(error);
+    }
+  }
 }
 
 export function createAuthService(dependencies: AuthServiceDependencies): AuthService {
@@ -487,18 +651,30 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     emailLookupHash: string,
     encryptionKey: string,
     usernameNormalized: string,
-  ): Promise<{ verificationRequired: true }> {
-    const activeFirebase = firebase!;
-    let remote: FirebasePasswordAuthResult;
-    try {
-      remote = await activeFirebase.createUser({
-        email: normalizeEmail(input.email),
-        password: input.password,
-      });
-    } catch (error) {
-      throw registrationError(error);
-    }
+  ): Promise<{ verificationRequired: boolean }> {
+    const registration = await createOrRecoverFirebaseRegistration(input, firebase!);
+    return persistFirebaseRegistration(
+      input,
+      requestContext,
+      emailLookupHash,
+      encryptionKey,
+      usernameNormalized,
+      registration.remote,
+      registration.account,
+      registration.cleanupRemote,
+    );
+  }
 
+  async function persistFirebaseRegistration(
+    input: { username: string; email: string; password: string },
+    requestContext: AuthServiceContext,
+    emailLookupHash: string,
+    encryptionKey: string,
+    usernameNormalized: string,
+    remote: FirebasePasswordAuthResult,
+    account: FirebaseAccountInfo,
+    cleanupRemote: boolean,
+  ): Promise<{ verificationRequired: boolean }> {
     const createdAt = now();
     const user: UserRecord = {
       id: remote.localId,
@@ -507,8 +683,8 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       emailLookupHash,
       emailEncrypted: encryptEmail(normalizeEmail(input.email), encryptionKey),
       emailKeyVersion: "v1",
-      status: "PENDING_VERIFICATION",
-      emailVerifiedAt: null,
+      status: account.emailVerified ? "ACTIVE" : "PENDING_VERIFICATION",
+      emailVerifiedAt: account.emailVerified ? createdAt : null,
       createdAt,
       updatedAt: createdAt,
       lastSeenAt: null,
@@ -518,10 +694,12 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     try {
       await dependencies.store.createExternalUser({ user });
       persisted = true;
-      await activeFirebase.sendEmailVerification(
-        remote.idToken,
-        new URL("/verify-email", requestContext.request.url).toString(),
-      );
+      if (!account.emailVerified) {
+        await firebase!.sendEmailVerification(
+          remote.idToken,
+          new URL("/verify-email", requestContext.request.url).toString(),
+        );
+      }
     } catch (error) {
       if (persisted) {
         try {
@@ -530,10 +708,12 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
           // Keep the public response stable even if cleanup is unavailable.
         }
       }
-      try {
-        await activeFirebase.deleteUser(remote.idToken);
-      } catch {
-        // Firebase cleanup is best effort; no credential is ever stored locally.
+      if (cleanupRemote) {
+        try {
+          await firebase!.deleteUser(remote.idToken);
+        } catch {
+          // Firebase cleanup is best effort; no credential is ever stored locally.
+        }
       }
       throw registrationError(error);
     }
@@ -544,13 +724,13 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       targetType: "user",
       targetId: user.id,
     });
-    return { verificationRequired: true };
+    return { verificationRequired: !account.emailVerified };
   }
 
   async function register(
     input: { username: string; email: string; password: string; turnstileToken?: string },
     context: AuthServiceContext,
-  ): Promise<{ verificationRequired: true }> {
+  ): Promise<{ verificationRequired: boolean }> {
     const requestContext = validationContext(context);
     validateRegistrationInput(input.username, input.email, input.password);
     await enforceAuthRateLimit(
@@ -666,6 +846,61 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     await writeAudit(preparation.requestContext, {
       actorUserId: user.id,
       action: "auth.login",
+      targetType: "user",
+      targetId: user.id,
+    });
+
+    return {
+      user: toPublicUser(user),
+      sessionExpiresAt: session.expiresAt,
+      cookies: createSessionCookies(session.rawSessionToken, session.csrfToken),
+    };
+  }
+
+  async function loginWithFirebaseToken(
+    input: { idToken: string },
+    context: AuthServiceContext,
+  ): Promise<{ user: PublicAuthUser; sessionExpiresAt: number; cookies: AuthCookie[] }> {
+    if (!firebase || !input.idToken || input.idToken.length > 8192) {
+      throw new AuthError(
+        503,
+        "AUTH_INFRASTRUCTURE_UNAVAILABLE",
+        "Authentication is temporarily unavailable.",
+      );
+    }
+
+    const requestContext = validationContext(context);
+    await enforceAuthRateLimit(
+      dependencies.env.RATE_LIMIT_AUTH,
+      `google:ip:${requestContext.security.ipAddress}`,
+    );
+
+    let account: FirebaseAccountInfo;
+    try {
+      account = await firebase.getAccountInfo(input.idToken);
+    } catch (error) {
+      throw googleAuthenticationError(error);
+    }
+    assertGoogleAccount(account);
+
+    const emailLookupKey = requireSecret(dependencies.env, "EMAIL_LOOKUP_KEY_V1");
+    const encryptionKey = requireSecret(dependencies.env, "DATA_ENCRYPTION_KEY_V1");
+    const email = normalizeEmail(account.email);
+    const emailLookupHash = createEmailLookupHash(email, emailLookupKey);
+    const user = await resolveGoogleUser(
+      dependencies.store,
+      account,
+      email,
+      emailLookupHash,
+      encryptionKey,
+      now(),
+    );
+
+    await revokePreviousLoginSession(requestContext, user.id);
+    const session = await createLoginSession(user, requestContext);
+    await writeAudit(requestContext, {
+      actorUserId: user.id,
+      action: "auth.login_google",
       targetType: "user",
       targetId: user.id,
     });
@@ -1063,6 +1298,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
   return {
     register,
     login,
+    loginWithFirebaseToken,
     getSession,
     logout,
     logoutAll,

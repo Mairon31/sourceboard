@@ -27,6 +27,10 @@ const loginSchema = z.object({
   turnstileToken: z.string().optional(),
 });
 
+const firebaseTokenSchema = z.object({
+  idToken: z.string().min(1).max(8192),
+});
+
 const forgotPasswordSchema = z.object({
   email: z.string(),
   turnstileToken: z.string().optional(),
@@ -52,6 +56,25 @@ const roleChangeSchema = z.object({
 });
 
 type InputRecord = Record<string, unknown>;
+
+function firebasePublicConfig(env: SourceBoardEnvironment) {
+  const apiKey = env.FIREBASE_API_KEY?.trim();
+  const projectId = env.FIREBASE_PROJECT_ID?.trim();
+  const appId = env.FIREBASE_APP_ID?.trim();
+  if (!apiKey || !projectId || !appId) return null;
+  return {
+    apiKey,
+    authDomain: env.FIREBASE_AUTH_DOMAIN?.trim() || `${projectId}.firebaseapp.com`,
+    projectId,
+    ...(env.FIREBASE_STORAGE_BUCKET?.trim()
+      ? { storageBucket: env.FIREBASE_STORAGE_BUCKET.trim() }
+      : {}),
+    ...(env.FIREBASE_MESSAGING_SENDER_ID?.trim()
+      ? { messagingSenderId: env.FIREBASE_MESSAGING_SENDER_ID.trim() }
+      : {}),
+    appId,
+  };
+}
 
 async function parseInput(request: Request): Promise<InputRecord> {
   const contentType = request.headers.get("content-type") ?? "";
@@ -157,6 +180,13 @@ const authRouteHandlers: Record<string, AuthRouteHandler> = {
   "POST /api/auth/login": async ({ request, requestId, service, context }) => {
     const result = await service.login(
       parseSchema(loginSchema, await parseInput(request)),
+      context,
+    );
+    return jsonResponse(result, requestId, { cookies: result.cookies });
+  },
+  "POST /api/auth/google": async ({ request, requestId, service, context }) => {
+    const result = await service.loginWithFirebaseToken(
+      parseSchema(firebaseTokenSchema, await parseInput(request)),
       context,
     );
     return jsonResponse(result, requestId, { cookies: result.cookies });
@@ -269,7 +299,13 @@ export async function handleAuthRequest(
 
   try {
     if (request.method === "GET" && url.pathname === "/api/auth/config") {
-      return jsonResponse({ turnstileSiteKey: env.TURNSTILE_SITE_KEY?.trim() || null }, requestId);
+      return jsonResponse(
+        {
+          turnstileSiteKey: env.TURNSTILE_SITE_KEY?.trim() || null,
+          firebase: firebasePublicConfig(env),
+        },
+        requestId,
+      );
     }
 
     if (request.method === "GET" && url.pathname === "/api/auth/session") {

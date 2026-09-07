@@ -47,7 +47,7 @@ export type RootLoaderData = Awaited<ReturnType<typeof loader>>;
 
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const origin = loaderData?.origin ?? "https://srcboard.me";
-  const logoUrl = new URL("/sourceboard-logo.png", origin).toString();
+  const logoUrl = new URL("/sourceboard-og.png", origin).toString();
   return [
     { title: "SourceBoard" },
     {
@@ -70,8 +70,8 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
 };
 
 export const links = () => [
-  { rel: "icon", type: "image/png", href: "/sourceboard-logo.png", sizes: "1254x1254" },
-  { rel: "apple-touch-icon", href: "/sourceboard-logo.png", sizes: "1254x1254" },
+  { rel: "icon", type: "image/svg+xml", href: "/sourceboard-logo.svg" },
+  { rel: "apple-touch-icon", href: "/sourceboard-og.png" },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

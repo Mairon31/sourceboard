@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">SourceBoard</title>
+  <desc id="desc">A minimal magnifying glass mark.</desc>
+  <defs>
+    <linearGradient id="lens" x1="18" y1="16" x2="100" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f8fbff" stop-opacity=".88"/>
+      <stop offset=".42" stop-color="#b8d8ee" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#607b98" stop-opacity=".48"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="27" y1="20" x2="91" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".96"/>
+      <stop offset="1" stop-color="#8ba8c2" stop-opacity=".7"/>
+    </linearGradient>
+    <linearGradient id="handle" x1="81" y1="86" x2="111" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#eaf5ff"/>
+      <stop offset="1" stop-color="#8ca8c0"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#08111d" flood-opacity=".28"/>
+    </filter>
+    <filter id="blur"><feGaussianBlur stdDeviation="5"/></filter>
+    <clipPath id="lensClip"><circle cx="55" cy="55" r="35"/></clipPath>
+  </defs>
+  <g filter="url(#shadow)">
+    <circle cx="55" cy="55" r="38" fill="#b4cbe0" fill-opacity=".1"/>
+    <circle cx="55" cy="55" r="35" fill="url(#lens)" stroke="url(#edge)" stroke-width="3"/>
+    <ellipse cx="44" cy="37" rx="19" ry="10" fill="#fff" fill-opacity=".45" filter="url(#blur)" clip-path="url(#lensClip)"/>
+    <path d="M32 68c12 14 34 17 49 5" fill="none" stroke="#f5fbff" stroke-opacity=".24" stroke-width="3" stroke-linecap="round"/>
+    <path class="logo-glint" d="M35 31c6-6 14-9 23-9" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="4" stroke-opacity=".8"/>
+    <path d="m82 82 29 29" fill="none" stroke="url(#handle)" stroke-linecap="round" stroke-width="13"/>
+    <path d="m83 82 29 29" fill="none" stroke="#fff" stroke-linecap="round" stroke-opacity=".34" stroke-width="3"/>
+  </g>
+  <style>
+    .logo-glint { transform-box: fill-box; transform-origin: center; animation: sourceboard-glint 4.8s ease-in-out infinite; }
+    @keyframes sourceboard-glint { 0%, 35%, 100% { opacity: .25; transform: translateX(-2px) rotate(-4deg); } 52%, 68% { opacity: 1; transform: translateX(8px) rotate(2deg); } }
+    @media (prefers-reduced-motion: reduce) { .logo-glint { animation: none; opacity: .65; } }
+  </style>
+</svg>

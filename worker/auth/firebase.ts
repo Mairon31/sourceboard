@@ -10,6 +10,9 @@ export interface FirebaseAccountInfo {
   email: string;
   emailVerified: boolean;
   disabled: boolean;
+  displayName?: string;
+  photoUrl?: string;
+  providerUserInfo?: Array<{ providerId: string; federatedId?: string }>;
 }
 
 export interface FirebaseActionCodeInfo {
@@ -62,6 +65,9 @@ interface FirebaseAccountResponse {
     email?: unknown;
     emailVerified?: unknown;
     disabled?: unknown;
+    displayName?: unknown;
+    photoUrl?: unknown;
+    providerUserInfo?: Array<{ providerId?: unknown; federatedId?: unknown }>;
   }>;
 }
 
@@ -147,11 +153,26 @@ export function createFirebaseAuthClient({ apiKey, fetcher = fetch }: FirebaseAu
     async getAccountInfo(idToken) {
       const payload = await request<FirebaseAccountResponse>("accounts:lookup", { idToken });
       const account = payload.users?.[0];
+      const providerUserInfo = account?.providerUserInfo
+        ?.filter((provider) => typeof provider.providerId === "string" && provider.providerId)
+        .map((provider) => ({
+          providerId: provider.providerId as string,
+          ...(typeof provider.federatedId === "string"
+            ? { federatedId: provider.federatedId }
+            : {}),
+        }));
       return {
         localId: requireString(account?.localId, "FIREBASE_INVALID_RESPONSE"),
         email: requireString(account?.email, "FIREBASE_INVALID_RESPONSE"),
         emailVerified: account?.emailVerified === true,
         disabled: account?.disabled === true,
+        ...(typeof account?.displayName === "string" && account.displayName
+          ? { displayName: account.displayName }
+          : {}),
+        ...(typeof account?.photoUrl === "string" && account.photoUrl
+          ? { photoUrl: account.photoUrl }
+          : {}),
+        ...(providerUserInfo?.length ? { providerUserInfo } : {}),
       };
     },
 

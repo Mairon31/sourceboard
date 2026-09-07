@@ -552,6 +552,26 @@ prerequisites.
 - [ ] Email/Password enablement, custom authentication-email domain/action URL,
       and one real auth-flow verification remain pending.
 
+### 2026-09-06 auth UX and Google sign-in checkpoint
+
+- [x] Registration retries recover a Firebase account left behind without its
+      D1 profile, only after the submitted password authenticates that account;
+      wrong credentials retain the generic duplicate-account response.
+- [x] Added `POST /api/auth/google`: Firebase verifies the browser token,
+      SourceBoard creates/reuses the D1 profile and issues its own session
+      cookies. Firebase tokens are never stored in D1.
+- [x] Login and registration expose the Google sign-in action; the public
+      Firebase web configuration is returned only as client configuration from
+      `/api/auth/config` and no secret is committed.
+- [x] Signed-out friends, notifications, post creation and settings now use a
+      shared account-required screen with sign-in and registration actions.
+- [x] Replaced the visible brand mark with an animated transparent SVG and
+      changed Open Graph/Twitter metadata to the liquid-glass magnifying-glass
+      image at `/sourceboard-og.png`.
+- [ ] Enable Google as a Firebase provider and authorize `srcboard.me` in the
+      Firebase console, then verify one real Google login and first-profile
+      creation. This remains an external release check.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B

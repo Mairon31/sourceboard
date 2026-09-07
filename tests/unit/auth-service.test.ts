@@ -3,7 +3,7 @@ import { encryptEmail, hashPassword, hashOpaqueToken } from "../../worker/auth/c
 import { createAuthService, type AuthServiceContext } from "../../worker/auth/service";
 import type { SourceBoardEnvironment } from "../../worker/environment";
 import type { AuthStore, SessionRecord, UserRecord } from "../../worker/auth/store";
-import type { FirebaseAuthClient } from "../../worker/auth/firebase";
+import { FirebaseAuthError, type FirebaseAuthClient } from "../../worker/auth/firebase";
 
 const rateLimit = { limit: vi.fn(async () => ({ success: true })) } as unknown as RateLimit;
 const baseEnvironment: SourceBoardEnvironment = {
@@ -193,6 +193,129 @@ describe("authentication service", () => {
     expect(firebase.sendEmailVerification).toHaveBeenCalledWith(
       "firebase-id-token",
       "https://sourceboard.test/verify-email",
+    );
+  });
+
+  it("repairs an orphaned Firebase account when the retry proves ownership", async () => {
+    let createdUser: UserRecord | null = null;
+    const store = {
+      findUserByEmailLookupHash: vi.fn(async () => null),
+      findUserByUsernameNormalized: vi.fn(async () => null),
+      createExternalUser: vi.fn(async ({ user }: { user: UserRecord }) => {
+        createdUser = user;
+      }),
+      deletePendingUser: vi.fn(async () => undefined),
+      writeAuditLog: vi.fn(async () => undefined),
+    } as unknown as AuthStore;
+    const firebase = {
+      createUser: vi.fn(async () => {
+        throw new FirebaseAuthError(400, "EMAIL_EXISTS");
+      }),
+      signInWithPassword: vi.fn(async () => ({
+        localId: "firebase-orphan",
+        email: "orphan@example.com",
+        idToken: "orphan-id-token",
+        refreshToken: "orphan-refresh-token",
+      })),
+      getAccountInfo: vi.fn(async () => ({
+        localId: "firebase-orphan",
+        email: "orphan@example.com",
+        emailVerified: false,
+        disabled: false,
+      })),
+      sendEmailVerification: vi.fn(async () => undefined),
+      deleteUser: vi.fn(async () => undefined),
+    } as unknown as FirebaseAuthClient;
+    const service = createAuthService({
+      store,
+      env: { ...baseEnvironment, FIREBASE_API_KEY: "api-key", FIREBASE_PROJECT_ID: "project" },
+      firebase,
+      verifyTurnstile: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      service.register(
+        {
+          username: "OrphanUser",
+          email: "orphan@example.com",
+          password: "correct horse battery staple",
+          turnstileToken: "turnstile-token",
+        },
+        context({
+          request: new Request("https://sourceboard.test/api/auth/register", { method: "POST" }),
+        }),
+      ),
+    ).resolves.toEqual({ verificationRequired: true });
+
+    expect(firebase.signInWithPassword).toHaveBeenCalledWith({
+      email: "orphan@example.com",
+      password: "correct horse battery staple",
+    });
+    expect(createdUser).toMatchObject({
+      id: "firebase-orphan",
+      status: "PENDING_VERIFICATION",
+      username: "OrphanUser",
+    });
+    expect(firebase.sendEmailVerification).toHaveBeenCalledWith(
+      "orphan-id-token",
+      "https://sourceboard.test/verify-email",
+    );
+  });
+
+  it("creates a SourceBoard session for a verified Google Firebase account", async () => {
+    let createdUser: UserRecord | null = null;
+    const store = {
+      findUserByEmailLookupHash: vi.fn(async () => null),
+      findUserByUsernameNormalized: vi.fn(async () => null),
+      getUserById: vi.fn(async () => null),
+      createExternalUser: vi.fn(async ({ user }: { user: UserRecord }) => {
+        createdUser = user;
+      }),
+      findActiveSessionByTokenHash: vi.fn(async () => null),
+      createSession: vi.fn(async () => undefined),
+      writeAuditLog: vi.fn(async () => undefined),
+    } as unknown as AuthStore;
+    const firebase = {
+      getAccountInfo: vi.fn(async () => ({
+        localId: "google-user",
+        email: "google@example.com",
+        emailVerified: true,
+        disabled: false,
+        displayName: "Google User",
+        providerUserInfo: [{ providerId: "google.com" }],
+      })),
+    } as unknown as FirebaseAuthClient;
+    const service = createAuthService({
+      store,
+      env: {
+        ...baseEnvironment,
+        FIREBASE_API_KEY: "api-key",
+        FIREBASE_PROJECT_ID: "project",
+      },
+      firebase,
+      now: () => 2000,
+    });
+
+    const result = await service.loginWithFirebaseToken(
+      { idToken: "google-id-token" },
+      context({
+        request: new Request("https://sourceboard.test/api/auth/google", {
+          method: "POST",
+          headers: { origin: "https://sourceboard.test" },
+        }),
+      }),
+    );
+
+    expect(result.user.id).toBe("google-user");
+    expect(result.cookies).toHaveLength(2);
+    expect(createdUser).toMatchObject({
+      id: "google-user",
+      username: "GoogleUser_googleus",
+      status: "ACTIVE",
+      emailVerifiedAt: 2000,
+    });
+    expect(store.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "google-user" }),
     );
   });
 

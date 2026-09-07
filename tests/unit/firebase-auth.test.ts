@@ -104,6 +104,32 @@ describe("Firebase Authentication REST client", () => {
     expect(fetcher).toHaveBeenCalledTimes(3);
   });
 
+  it("returns provider metadata from Firebase account lookup", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      response({
+        users: [
+          {
+            localId: "google-user",
+            email: "google@example.com",
+            emailVerified: true,
+            disabled: false,
+            displayName: "Google User",
+            photoUrl: "https://example.com/avatar.png",
+            providerUserInfo: [{ providerId: "google.com", federatedId: "google-id" }],
+          },
+        ],
+      }),
+    );
+    const client = createFirebaseAuthClient({ apiKey: "firebase-api-key", fetcher });
+
+    await expect(client.getAccountInfo("google-id-token")).resolves.toMatchObject({
+      localId: "google-user",
+      displayName: "Google User",
+      photoUrl: "https://example.com/avatar.png",
+      providerUserInfo: [{ providerId: "google.com", federatedId: "google-id" }],
+    });
+  });
+
   it("rejects an unconfigured client before making a network request", async () => {
     expect(() => createFirebaseAuthClient({ apiKey: "" })).toThrow(FirebaseAuthError);
   });

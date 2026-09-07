@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { readCsrfToken } from "../data/csrf";
 import { useLoaderData } from "react-router";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
+import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { Button, Card, Input, Switch, Textarea } from "../components/ui";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
@@ -14,14 +16,6 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
-
-function readCsrfToken(): string {
-  const entry = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith("__Host-sourceboard_csrf="));
-  return entry ? decodeURIComponent(entry.slice("__Host-sourceboard_csrf=".length)) : "";
-}
 
 export default function NewPostRoute() {
   const { authenticated, unavailable } = useLoaderData<LoaderData>();
@@ -73,80 +67,92 @@ export default function NewPostRoute() {
         description="Give the community one clear image and enough context to trace where it originally came from."
       />
 
-      <Card className="product-form-card">
-        <form className="product-form-grid" onSubmit={(event) => void submit(event)}>
-          <Input
-            label="Main image"
-            name="file"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            hint="JPEG, PNG, WebP or AVIF; maximum 10 MB."
-            required
-            disabled={!authenticated}
-          />
-          <Input
-            label="Title"
-            name="title"
-            placeholder="Where did this image originally come from?"
-            maxLength={160}
-            required
-            disabled={!authenticated}
-          />
-          <Textarea
-            label="Description"
-            name="description"
-            placeholder="Where you found it, what you already tried, and what kind of source you need…"
-            maxLength={10_000}
-            disabled={!authenticated}
-          />
-          <label className="product-field-native">
-            <span>Visibility</span>
-            <select
-              name="visibility"
-              defaultValue="PUBLIC"
-              aria-label="Visibility"
+      {!authenticated ? (
+        <AuthRequiredCard
+          unavailable={unavailable}
+          title="Sign in to publish a source request"
+          description="Publishing requires a verified SourceBoard account so ownership, privacy and image checks can be applied safely."
+        />
+      ) : null}
+
+      {authenticated ? (
+        <Card className="product-form-card">
+          <form className="product-form-grid" onSubmit={(event) => void submit(event)}>
+            <Input
+              label="Main image"
+              name="file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              hint="JPEG, PNG, WebP or AVIF; maximum 10 MB."
+              required
               disabled={!authenticated}
-            >
-              <option value="PUBLIC">Public</option>
-              <option value="FRIENDS_ONLY">Friends only</option>
-              <option value="UNLISTED">Unlisted</option>
-              <option value="PRIVATE">Private</option>
-            </select>
-          </label>
-          <Switch
-            label="Post anonymously"
-            description="Public responses use Anonymous Author; the real ownership record stays server-side."
-            checked={authorMode === "ANONYMOUS"}
-            disabled={!authenticated}
-            onCheckedChange={(checked) => setAuthorMode(checked ? "ANONYMOUS" : "IDENTIFIED")}
-          />
-          <Switch
-            label="Mark as NSFW"
-            description="The server applies your audience's sensitive-content preferences before serving media."
-            checked={isNsfw}
-            disabled={!authenticated}
-            onCheckedChange={setIsNsfw}
-          />
-          <div className="product-presentation-notice" role="note">
-            <strong>{unavailable ? "Post service unavailable" : "Publishing is connected"}</strong>
-            <span>
-              {unavailable
-                ? "This environment has no D1 post service."
-                : authenticated
-                  ? "The image and metadata will be validated by the Worker before the post is created."
-                  : "Sign in to upload an image and publish."}
-            </span>
-          </div>
-          <Button type="submit" size="lg" loading={busy} disabled={!authenticated || unavailable}>
-            Publish request
-          </Button>
-          {status ? (
-            <div className="product-store-preview-status" role="status">
-              {status}
+            />
+            <Input
+              label="Title"
+              name="title"
+              placeholder="Where did this image originally come from?"
+              maxLength={160}
+              required
+              disabled={!authenticated}
+            />
+            <Textarea
+              label="Description"
+              name="description"
+              placeholder="Where you found it, what you already tried, and what kind of source you need…"
+              maxLength={10_000}
+              disabled={!authenticated}
+            />
+            <label className="product-field-native">
+              <span>Visibility</span>
+              <select
+                name="visibility"
+                defaultValue="PUBLIC"
+                aria-label="Visibility"
+                disabled={!authenticated}
+              >
+                <option value="PUBLIC">Public</option>
+                <option value="FRIENDS_ONLY">Friends only</option>
+                <option value="UNLISTED">Unlisted</option>
+                <option value="PRIVATE">Private</option>
+              </select>
+            </label>
+            <Switch
+              label="Post anonymously"
+              description="Public responses use Anonymous Author; the real ownership record stays server-side."
+              checked={authorMode === "ANONYMOUS"}
+              disabled={!authenticated}
+              onCheckedChange={(checked) => setAuthorMode(checked ? "ANONYMOUS" : "IDENTIFIED")}
+            />
+            <Switch
+              label="Mark as NSFW"
+              description="The server applies your audience's sensitive-content preferences before serving media."
+              checked={isNsfw}
+              disabled={!authenticated}
+              onCheckedChange={setIsNsfw}
+            />
+            <div className="product-presentation-notice" role="note">
+              <strong>
+                {unavailable ? "Post service unavailable" : "Publishing is connected"}
+              </strong>
+              <span>
+                {unavailable
+                  ? "This environment has no D1 post service."
+                  : authenticated
+                    ? "The image and metadata will be validated by the Worker before the post is created."
+                    : "Sign in to upload an image and publish."}
+              </span>
             </div>
-          ) : null}
-        </form>
-      </Card>
+            <Button type="submit" size="lg" loading={busy} disabled={!authenticated || unavailable}>
+              Publish request
+            </Button>
+            {status ? (
+              <div className="product-store-preview-status" role="status">
+                {status}
+              </div>
+            ) : null}
+          </form>
+        </Card>
+      ) : null}
     </ProductShell>
   );
 }

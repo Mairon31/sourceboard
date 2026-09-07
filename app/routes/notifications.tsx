@@ -1,16 +1,19 @@
 import { useLoaderData } from "react-router";
+import { readCsrfToken } from "../data/csrf";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
+import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { Badge, Button, Card } from "../components/ui";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
   return withServerSession(
     request,
     context,
-    (unavailable) => ({ notifications: [], unreadCount: 0, unavailable }),
+    (unavailable) => ({ authenticated: false, notifications: [], unreadCount: 0, unavailable }),
     async (runtime, userId) => ({
+      authenticated: true,
       ...(await createProfileService({ store: createD1ProfileStore(runtime.db) }).listNotifications(
         userId,
       )),
@@ -25,21 +28,13 @@ function label(type: string): string {
   return type.replaceAll("_", " ").toLowerCase();
 }
 
-function csrfToken(): string {
-  const entry = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith("__Host-sourceboard_csrf="));
-  return entry ? decodeURIComponent(entry.slice("__Host-sourceboard_csrf=".length)) : "";
-}
-
 export default function NotificationsRoute() {
-  const { notifications, unreadCount, unavailable } = useLoaderData<LoaderData>();
+  const { authenticated, notifications, unreadCount, unavailable } = useLoaderData<LoaderData>();
 
   async function markAllRead() {
     await fetch("/api/notifications/read-all", {
       method: "POST",
-      headers: { "x-csrf-token": csrfToken() },
+      headers: { "x-csrf-token": readCsrfToken() },
     });
     window.location.reload();
   }
@@ -47,7 +42,7 @@ export default function NotificationsRoute() {
   async function markRead(id: string) {
     await fetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
       method: "POST",
-      headers: { "x-csrf-token": csrfToken() },
+      headers: { "x-csrf-token": readCsrfToken() },
     });
     window.location.reload();
   }
@@ -67,7 +62,13 @@ export default function NotificationsRoute() {
         }
       />
       {unavailable ? <p role="status">Notifications are unavailable in this environment.</p> : null}
-      {!unavailable && !notifications.length ? (
+      {!authenticated && !unavailable ? (
+        <AuthRequiredCard
+          title="Sign in to see your notifications"
+          description="Notifications belong to your private account. Sign in or create an account to keep up with SourceBoard activity."
+        />
+      ) : null}
+      {authenticated && !unavailable && !notifications.length ? (
         <Card className="product-empty-state">
           <p>No notifications yet.</p>
         </Card>

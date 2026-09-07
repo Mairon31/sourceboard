@@ -121,7 +121,7 @@ export function TopBar() {
       <Link className="sb-brand focus-ring" to="/" aria-label="SourceBoard">
         <img
           className="sb-brand__mark"
-          src="/sourceboard-logo.png"
+          src="/sourceboard-logo.svg"
           alt=""
           width="34"
           height="34"

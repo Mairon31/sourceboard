@@ -12,17 +12,20 @@ test("robots exposes only the public sitemap entry point", async ({ request }) =
 test("home exposes the SourceBoard brand asset in the document and as a public image", async ({
   request,
 }) => {
-  const [pageResponse, logoResponse] = await Promise.all([
+  const [pageResponse, logoResponse, ogResponse] = await Promise.all([
     request.get("/"),
-    request.get("/sourceboard-logo.png"),
+    request.get("/sourceboard-logo.svg"),
+    request.get("/sourceboard-og.png"),
   ]);
 
   expect(pageResponse.status()).toBe(200);
   const html = await pageResponse.text();
-  expect(html).toContain('property="og:image" content="https://srcboard.me/sourceboard-logo.png"');
+  expect(html).toContain('property="og:image" content="https://srcboard.me/sourceboard-og.png"');
   expect(html).toContain('rel="icon"');
   expect(logoResponse.status()).toBe(200);
-  expect(logoResponse.headers()["content-type"]).toContain("image/png");
+  expect(logoResponse.headers()["content-type"]).toContain("image/svg+xml");
+  expect(ogResponse.status()).toBe(200);
+  expect(ogResponse.headers()["content-type"]).toContain("image/png");
 });
 
 test("post API does not allow unauthenticated mutations", async ({ request }) => {

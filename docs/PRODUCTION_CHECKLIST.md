@@ -24,6 +24,8 @@ owner and a recorded exception before production traffic is enabled.
       real account flow.
 - [ ] Firebase Authentication custom email domain and the
       `https://srcboard.me/verify-email` action URL are verified.
+- [ ] Firebase Google provider is enabled and `srcboard.me` is authorized; a
+      real Google login and first-profile creation have passed.
 
 ## Security and edge controls
 

@@ -18,7 +18,9 @@ test("friends surface requires an authenticated private account", async ({ page 
   await expect(page.getByRole("heading", { name: "Friends", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Sign in to manage friends" })).toBeVisible();
   await expect(
-    page.getByText("Friend requests and blocks are private account data."),
+    page.getByText(
+      "Friend requests and blocks are private account data. Sign in or create an account to manage your connections.",
+    ),
   ).toBeVisible();
 });
 
@@ -27,8 +29,11 @@ test("notifications surface keeps private activity empty for signed-out visitors
 }) => {
   await page.goto("/notifications");
 
-  await expect(page.getByRole("heading", { name: "Notifications" })).toBeVisible();
-  await expect(page.getByText("No notifications yet.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Sign in to see your notifications" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create account" })).toBeVisible();
 });
 
 test("settings surface includes NSFW and appearance preferences", async ({ page }) => {

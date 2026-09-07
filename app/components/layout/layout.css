@@ -33,9 +33,12 @@
   display: block;
   width: 34px;
   height: 34px;
-  border-radius: 11px;
-  object-fit: cover;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  object-fit: contain;
+  transition: transform var(--motion-normal) var(--ease-standard);
+}
+
+.sb-brand:hover .sb-brand__mark {
+  transform: rotate(-5deg) scale(1.04);
 }
 
 .sb-topbar-search {

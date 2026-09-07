@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { readCsrfToken } from "../data/csrf";
 import {
   isRouteErrorResponse,
   redirect,
@@ -112,14 +113,6 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
     },
   ];
 };
-
-function readCsrfToken(): string {
-  const entry = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith("__Host-sourceboard_csrf="));
-  return entry ? decodeURIComponent(entry.slice("__Host-sourceboard_csrf=".length)) : "";
-}
 
 function PostOwnerControls({ post }: { post: NonNullable<LoaderData["post"]> }) {
   const revalidator = useRevalidator();

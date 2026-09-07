@@ -197,3 +197,15 @@ lookup data and application sessions. Project `sourceboardapp` is configured in
 the Worker without storing its values in Git. Firebase Email/Password,
 custom action URL/domain verification and the first real registration and
 password-reset flow still require explicit verification.
+
+### Auth UX and Google sign-in checkpoint — 2026-09-06
+
+Registration retries repair an orphaned Firebase account only after the
+submitted password proves ownership; pre-existing accounts are never deleted
+during recovery. Google login/register exchanges a Firebase browser ID token
+for a SourceBoard D1 profile and session through `POST /api/auth/google`.
+Signed-out product routes now use a shared accessible sign-in/register screen.
+The visible mark is an animated transparent SVG and metadata uses a separate
+liquid-glass magnifying-glass image. Enabling Google and authorizing `srcboard.me`
+in Firebase, then completing a real Google login/profile-creation check, remain
+external release gates.

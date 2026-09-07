@@ -149,6 +149,10 @@
       ],
       "vars": {
         "TURNSTILE_SITE_KEY": "0x4AAAAAAEqlOpm_bo6ovKs5",
+        "FIREBASE_AUTH_DOMAIN": "sourceboardapp.firebaseapp.com",
+        "FIREBASE_STORAGE_BUCKET": "sourceboardapp.firebasestorage.app",
+        "FIREBASE_MESSAGING_SENDER_ID": "1096409427918",
+        "FIREBASE_APP_ID": "1:1096409427918:web:05a96e78b2ea4dde67c59f",
       },
       "secrets": {
         "required": [
@@ -163,6 +167,10 @@
   },
   "vars": {
     "TURNSTILE_SITE_KEY": "0x4AAAAAAEqlOpm_bo6ovKs5",
+    "FIREBASE_AUTH_DOMAIN": "sourceboardapp.firebaseapp.com",
+    "FIREBASE_STORAGE_BUCKET": "sourceboardapp.firebasestorage.app",
+    "FIREBASE_MESSAGING_SENDER_ID": "1096409427918",
+    "FIREBASE_APP_ID": "1:1096409427918:web:05a96e78b2ea4dde67c59f",
   },
   "secrets": {
     "required": [

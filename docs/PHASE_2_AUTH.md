@@ -35,6 +35,11 @@ is stored in KV, R2, browser storage or an in-process fallback.
   configured; missing production security bindings fail closed.
 - Firebase provider failures return stable retryable errors and remove a newly
   created pending D1/Firebase account so an operator can retry safely.
+- A retry after a partial Firebase registration can recover only the same
+  account after Firebase authenticates the submitted password; it never links
+  by email alone or deletes a pre-existing Firebase account.
+- Google sign-in uses the Firebase Web SDK in the browser and a Worker-side
+  `accounts:lookup` check before creating or reusing the D1 profile/session.
 
 ## Secret configuration
 
@@ -66,6 +71,7 @@ GET    /api/auth/config
 GET    /api/auth/session
 POST   /api/auth/register
 POST   /api/auth/login
+POST   /api/auth/google
 POST   /api/auth/logout
 POST   /api/auth/logout-all
 POST   /api/auth/email/verify
@@ -115,8 +121,8 @@ The Firebase adapter and D1 external-profile bridge are additionally covered
 by the current local unit and E2E gates recorded in
 `docs/IMPLEMENTATION_PROGRESS.md`. The Firebase project and Worker secrets are
 configured, and verification/password-reset requests return to the explicit
-SourceBoard routes; Email/Password/domain verification and existing-user
-migration remain release work.
+SourceBoard routes; Email/Password/domain verification, Google provider
+enablement and existing-user migration remain release work.
 
 ## Deliberately deferred
 
