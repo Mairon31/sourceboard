@@ -15,6 +15,13 @@ const storeApi = read("../../worker/store/api.ts");
 const storeAdmin = read("../../worker/store/admin.ts");
 const entitlements = read("../../worker/store/entitlements.ts");
 const catalogApi = read("../../worker/catalog/api.ts");
+const storeRoute = read("../../app/routes/store.tsx");
+const storeSection = read("../../app/components/product/StoreSection.tsx");
+const storeCard = read("../../app/components/product/StoreItemCard.tsx");
+const adminStoreRoute = read("../../app/routes/admin-store.tsx");
+const adminCosmetics = read("../../app/components/admin/store/AdminCosmeticCatalog.tsx");
+const adminPacks = read("../../app/components/admin/store/AdminEmotePackManager.tsx");
+const adminEditor = read("../../app/components/admin/store/AdminStoreEditor.tsx");
 
 describe("store catalog lifecycle", () => {
   it("adds lifecycle enablement featured and emote moderation fields", () => {
@@ -64,5 +71,36 @@ describe("store catalog lifecycle", () => {
     expect(catalogApi).toContain("EMOTE_REMOVE");
     expect(catalogApi).toContain("image/svg+xml");
     expect(catalogApi).toContain("audit_logs");
+  });
+
+  it("structures the public Store into Featured New Owned and catalog sections", () => {
+    expect(storeRoute).toContain("featuredItems");
+    expect(storeRoute).toContain("newItems");
+    expect(storeRoute).toContain("ownedItems");
+    expect(storeSection).toContain("product-store-section");
+    expect(storeCard).toContain("StorePreview");
+  });
+
+  it("splits Admin Store into Cosmetics and Emote packs with editable catalog metadata", () => {
+    expect(adminStoreRoute).toContain('"cosmetics"');
+    expect(adminStoreRoute).toContain('"packs"');
+    expect(adminStoreRoute).toContain("AdminCosmeticCatalog");
+    expect(adminStoreRoute).toContain("AdminEmotePackManager");
+    expect(adminCosmetics).toContain("ownerCount");
+    expect(adminCosmetics).toContain("equippedCount");
+    expect(adminEditor).toContain("Config JSON");
+    expect(adminEditor).toContain("/api/admin/store/");
+  });
+
+  it("lets admins inspect every draft pack emote and act on each emote individually", () => {
+    expect(adminPacks).toContain("Open pack");
+    expect(adminPacks).toContain("Replace image");
+    expect(adminPacks).toContain("shortcode");
+    expect(adminPacks).toContain("sortOrder");
+    expect(adminPacks).toContain("Flag");
+    expect(adminPacks).toContain("Hide");
+    expect(adminPacks).toContain("Restore");
+    expect(adminPacks).toContain("Remove");
+    expect(adminPacks).toContain("moderationState");
   });
 });
