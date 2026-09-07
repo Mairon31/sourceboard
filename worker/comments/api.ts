@@ -102,7 +102,6 @@ async function searchKlipy(
   requestId: string,
   env: SourceBoardEnvironment,
 ): Promise<Response> {
-  assertSameOrigin(request);
   const userId = await requiredViewer(request, env);
   await enforceRateLimit(
     env.RATE_LIMIT_CONTENT,
@@ -129,15 +128,17 @@ async function searchKlipy(
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim() ?? "";
   const kind = url.searchParams.get("type")?.toUpperCase() === "STICKER" ? "STICKER" : "GIF";
-  if (!query || query.length > 80)
-    throw new PostError(400, "INVALID_MEDIA_QUERY", "Enter a search between 1 and 80 characters.");
-  const upstream = new URL("https://api.klipy.com/v2/search");
+  if (query.length > 80)
+    throw new PostError(400, "INVALID_MEDIA_QUERY", "Search must be 80 characters or fewer.");
+  const upstream = new URL(
+    query ? "https://api.klipy.com/v2/search" : "https://api.klipy.com/v2/featured",
+  );
   upstream.searchParams.set("key", env.KLIPY_API_KEY);
-  upstream.searchParams.set("q", query);
+  if (query) upstream.searchParams.set("q", query);
   upstream.searchParams.set("country", "CR");
   upstream.searchParams.set("locale", "es");
   upstream.searchParams.set("contentfilter", "high");
-  upstream.searchParams.set("limit", "12");
+  upstream.searchParams.set("limit", "24");
   if (kind === "STICKER") upstream.searchParams.set("searchfilter", "sticker");
   upstream.searchParams.set(
     "media_filter",
@@ -147,7 +148,7 @@ async function searchKlipy(
   );
   const response = await fetch(upstream, { headers: { accept: "application/json" } });
   if (!response.ok)
-    throw new PostError(502, "KLIPY_UNAVAILABLE", "Klipy search is temporarily unavailable.");
+    throw new PostError(502, "KLIPY_UNAVAILABLE", "Klipy media is temporarily unavailable.");
   let payload: unknown;
   try {
     payload = await response.json();
