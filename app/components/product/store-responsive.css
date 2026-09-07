@@ -12,3 +12,31 @@
 .product-store-grid {
   min-width: 0;
 }
+
+@media (max-width: 1120px) {
+  .product-store-hero {
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .product-store-hero > div:first-child {
+    min-width: 0;
+    flex: 1 1 360px;
+  }
+
+  .product-store-wallet {
+    width: min(100%, 180px);
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 180px;
+  }
+}
+
+@media (max-width: 780px) {
+  .product-store-wallet {
+    width: 100%;
+    flex-basis: 100%;
+    text-align: left;
+  }
+}
