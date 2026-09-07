@@ -22,10 +22,13 @@ describe("public cosmetic identity contracts", () => {
     expect(profileStore).toContain("NameFontFamily");
   });
 
-  it("serializes the equipped profile effect for visible identified authors", () => {
-    expect(postsService).toContain("profileEffect: cosmetics?.profileEffect");
-    expect(commentsService).toContain("profileEffect: cosmetics?.profileEffect");
-  });
+  it(
+    "serializes the equipped profile effect for visible identified authors",
+    () => {
+      expect(postsService).toContain("profileEffect: cosmetics?.profileEffect");
+      expect(commentsService).toContain("profileEffect: cosmetics?.profileEffect");
+    },
+  );
 
   it("keeps anonymous author serialization cosmetic-free", () => {
     expect(postsService).toContain(
