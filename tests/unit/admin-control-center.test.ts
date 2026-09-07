@@ -15,6 +15,8 @@ const adminRoute = read("../../app/routes/admin.tsx");
 const moderationRoute = read("../../app/routes/admin-moderation.tsx");
 const verificationsRoute = read("../../app/routes/admin-verifications.tsx");
 const usersRoute = read("../../app/routes/admin-users.tsx");
+const rolesRoute = read("../../app/routes/admin-roles.tsx");
+const auditRoute = read("../../app/routes/admin-audit.tsx");
 
 describe("admin control center", () => {
   it("provides typed overview users roles and audit reads", () => {
@@ -75,5 +77,24 @@ describe("admin control center", () => {
     expect(usersRoute).toContain("readCsrfToken()");
     expect(usersRoute).toContain('name="q"');
     expect(usersRoute.toLowerCase()).not.toContain("email");
+  });
+
+  it("adds a read-only Roles route with assignment counts and capability chips", () => {
+    expect(routes).toContain('route("admin/roles", "routes/admin-roles.tsx")');
+    expect(rolesRoute).toContain("createAdminReadService");
+    expect(rolesRoute).toContain(".roles()");
+    expect(rolesRoute).toContain("assignmentCount");
+    expect(rolesRoute).toContain("capabilities");
+    expect(rolesRoute).toContain("isSystem");
+  });
+
+  it("adds an audit.read-gated Audit route with fixed operational filters", () => {
+    expect(routes).toContain('route("admin/audit", "routes/admin-audit.tsx")');
+    expect(auditRoute).toContain('"audit.read"');
+    expect(auditRoute).toContain("createAdminReadService");
+    expect(auditRoute).toContain(".audit(");
+    expect(auditRoute).toContain("targetType");
+    expect(auditRoute).toContain('type="date"');
+    expect(auditRoute).toContain("metadataJson");
   });
 });
