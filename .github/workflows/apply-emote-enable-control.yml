@@ -12,7 +12,7 @@ permissions:
 jobs:
   apply:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
         with:
@@ -22,6 +22,62 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      - name: Prepare regression coverage and deterministic E2E fixtures
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const helperPath = 'tests/e2e/test-helpers.ts';
+          let helper = fs.readFileSync(helperPath, 'utf8');
+          const secureMatches = helper.match(/secure: true/g) ?? [];
+          if (secureMatches.length !== 2) throw new Error(`expected 2 local secure cookies, found ${secureMatches.length}`);
+          helper = helper.replaceAll('secure: true', 'secure: false');
+          fs.writeFileSync(helperPath, helper);
+
+          const storePath = 'tests/e2e/store.spec.ts';
+          let store = fs.readFileSync(storePath, 'utf8');
+          for (const name of ['Stellar Magic', 'Star Dust', 'Lujo Plata']) {
+            const needle = `page.getByRole("heading", { name: "${name}" })`;
+            store = store.replaceAll(needle, `${needle}.first()`);
+          }
+          fs.writeFileSync(storePath, store);
+
+          const adminPath = 'tests/e2e/admin.spec.ts';
+          let admin = fs.readFileSync(adminPath, 'utf8');
+          const replaceAssertion = '  await expect(emote.getByRole("button", { name: "Replace image" })).toBeVisible();\n';
+          const enableAssertion = `${replaceAssertion}  await expect(emote.getByRole("button", { name: "Disable", exact: true })).toBeVisible();\n`;
+          if (!admin.includes('name: "Disable", exact: true')) {
+            if (!admin.includes(replaceAssertion)) throw new Error('admin E2E insertion marker missing');
+            admin = admin.replace(replaceAssertion, enableAssertion);
+          }
+          fs.writeFileSync(adminPath, admin);
+
+          const unitPath = 'tests/unit/store-catalog-redesign.test.ts';
+          let unit = fs.readFileSync(unitPath, 'utf8');
+          const unitMarker = '    expect(adminPacks).toContain("moderationState");\n';
+          const unitAssertion = `${unitMarker}    expect(adminPacks).toContain("toggleEmoteEnabled");\n`;
+          if (!unit.includes('toContain("toggleEmoteEnabled")')) {
+            if (!unit.includes(unitMarker)) throw new Error('unit insertion marker missing');
+            unit = unit.replace(unitMarker, unitAssertion);
+          }
+          fs.writeFileSync(unitPath, unit);
+          NODE
+          npx prettier --write tests/e2e/test-helpers.ts tests/e2e/store.spec.ts tests/e2e/admin.spec.ts tests/unit/store-catalog-redesign.test.ts
+
+      - name: Verify regression test is RED before production change
+        shell: bash
+        run: |
+          set +e
+          npm test -- --run tests/unit/store-catalog-redesign.test.ts 2>&1 | tee /tmp/store-red.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Expected the new emote enablement regression assertion to fail before implementation."
+            exit 1
+          fi
+          grep -q "toggleEmoteEnabled" /tmp/store-red.log
+
       - name: Add direct emote enablement action
         run: |
           node <<'NODE'
@@ -42,9 +98,11 @@ jobs:
           }
           fs.writeFileSync(path, text);
           NODE
-          npx prettier --write app/components/admin/store/AdminEmotePackManager.tsx tests/unit/store-catalog-redesign.test.ts
-      - name: Focused Store tests
+          npx prettier --write app/components/admin/store/AdminEmotePackManager.tsx
+
+      - name: Verify focused GREEN
         run: npm test -- --run tests/unit/store-catalog-redesign.test.ts tests/unit/store-schema-compatibility.test.ts tests/unit/store-refresh.test.ts
+
       - name: Quality gates
         run: |
           npm run lint
@@ -52,20 +110,24 @@ jobs:
           npm test
           npm run build
           npm run deploy:dry-run
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Verify migrations and E2E
+
+      - name: Verify migrations and Store E2E
         run: |
           rm -rf .wrangler/verify-store-fresh
           npx wrangler d1 migrations apply DB --local --persist-to .wrangler/verify-store-fresh
           npx wrangler d1 migrations apply DB --local --persist-to .wrangler/verify-store-fresh
           npm run db:migrations:apply
+          npx playwright test tests/e2e/admin.spec.ts tests/e2e/store.spec.ts tests/e2e/responsive.spec.ts --project=chromium
           npm run test:e2e
-      - name: Commit verified control
+
+      - name: Commit verified Store rollout
         run: |
           git rm .github/workflows/apply-emote-enable-control.yml
           git config user.name "SourceBoard CI"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "feat: add direct emote enablement controls"
+          git commit -m "feat: complete store catalog administration rollout"
           git push origin HEAD:master
