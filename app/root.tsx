@@ -10,9 +10,7 @@ import {
 } from "react-router";
 import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import { readSourceBoardRequestContext } from "../shared/router-context";
-import type { ServerLoaderArgs } from "./data/server-request";
-import { createAuthService } from "../worker/auth/service";
-import { createD1AuthStore } from "../worker/auth/store";
+import { readServerSession, type ServerLoaderArgs } from "./data/server-request";
 import "./styles/base.css";
 import "./components/ui/ui.css";
 import "./components/layout/layout.css";
@@ -31,16 +29,11 @@ import "./components/admin/admin.css";
 export async function loader({ request, context }: ServerLoaderArgs) {
   const requestContext = readSourceBoardRequestContext(context);
   let session: { user: { id: string; username: string } } | null = null;
-  if (requestContext?.env.DB && request.headers.get("cookie")) {
-    try {
-      const current = await createAuthService({
-        store: createD1AuthStore(requestContext.env.DB),
-        env: requestContext.env,
-      }).getSession(request);
-      session = current ? { user: current.user } : null;
-    } catch {
-      session = null;
-    }
+  try {
+    const current = await readServerSession(request, context);
+    session = current ? { user: current.user } : null;
+  } catch {
+    session = null;
   }
 
   return {
