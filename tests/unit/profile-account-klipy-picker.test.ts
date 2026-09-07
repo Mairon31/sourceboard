@@ -20,7 +20,9 @@ const productCss =
 describe("profile account actions and KLIPY media picker", () => {
   it("shows Settings and current-session logout only on the owner profile", () => {
     expect(profileRoute).toContain("ProfileAccountActions");
-    expect(profileRoute).toContain("isOwnProfile ? <ProfileAccountActions /> : null");
+    expect(profileRoute).toContain(
+      "isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null",
+    );
     expect(accountActions).toContain('to="/settings"');
     expect(accountActions).toContain('fetch("/api/auth/logout"');
     expect(accountActions).toContain("readCsrfToken()");
