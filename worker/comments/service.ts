@@ -78,6 +78,7 @@ function publicAuthor(
       : undefined,
     profileUrl: `/u/${encodeURIComponent(comment.author.username)}`,
     avatarFrame: cosmetics?.avatarFrame,
+    profileEffect: cosmetics?.profileEffect,
     nameFont: cosmetics?.nameFont,
   };
 }
