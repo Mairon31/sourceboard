@@ -4,6 +4,7 @@ import { createProfileService } from "../../worker/profile/service";
 import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
 import { ProfileEditor } from "../components/product/ProfileEditor";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { SocialActionButton } from "../components/product/SocialActionButton";
@@ -222,6 +223,7 @@ export default function ProfileRoute() {
       <ProfileHero profile={profile} />
       {isOwnProfile ? <ProfileEditor /> : null}
       <ContributionHistory profile={profile} />
+      {isOwnProfile ? <ProfileAccountActions /> : null}
     </ProductShell>
   );
 }
