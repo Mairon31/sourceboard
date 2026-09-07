@@ -303,6 +303,7 @@ export const storeItemFixtures: StoreItemView[] = [
     state: "EQUIPPED",
     price: 500,
     previewLabel: "Nebula avatar frame",
+    preview: { config: { preset: "nebula" }, media: [] },
   },
   {
     id: "store-effect",
@@ -312,6 +313,7 @@ export const storeItemFixtures: StoreItemView[] = [
     state: "OWNED",
     price: 900,
     previewLabel: "Glass aurora profile effect",
+    preview: { config: { preset: "soft-glow" }, media: [] },
   },
   {
     id: "store-font",
@@ -321,6 +323,7 @@ export const storeItemFixtures: StoreItemView[] = [
     state: "AVAILABLE",
     price: 240,
     previewLabel: "Editorial display-name font",
+    preview: { config: { family: "Georgia" }, media: [] },
   },
   {
     id: "store-emotes",
@@ -331,6 +334,7 @@ export const storeItemFixtures: StoreItemView[] = [
     price: 2400,
     previewLabel: "Source Hunters emote pack",
     packSize: 12,
+    preview: { config: {}, media: [] },
   },
   {
     id: "store-stickers",
@@ -341,6 +345,7 @@ export const storeItemFixtures: StoreItemView[] = [
     price: 700,
     previewLabel: "Evidence Desk sticker pack",
     packSize: 8,
+    preview: { config: {}, media: [] },
   },
 ];
 

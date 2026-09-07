@@ -19,6 +19,14 @@ export const STORE_TYPES = [
 export type StoreType = (typeof STORE_TYPES)[number];
 export type CosmeticSlot = "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_FONT";
 
+interface StorePreviewAsset {
+  id: string;
+  label: string;
+  assetKey: string;
+}
+
+type StoreCatalogRow = StoreItemInput & { previewAssets: StorePreviewAsset[] };
+
 export interface StoreItemInput {
   id: string;
   type: StoreType;
@@ -42,19 +50,43 @@ function activePredicate(now = Date.now()): { sql: string; binds: unknown[] } {
 
 export function createStoreService(db: D1Database) {
   return {
-    async list(now = Date.now()) {
+    async list(now = Date.now()): Promise<StoreCatalogRow[]> {
       const active = activePredicate(now);
       const result = await db
         .prepare(
           `SELECT id, type, name, description, price_points AS pricePoints, asset_id AS assetId,
                   config_json AS configJson, is_active AS isActive, starts_at AS startsAt,
                   ends_at AS endsAt, sort_order AS sortOrder
-           FROM store_items WHERE (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at > ?)
+           FROM store_items WHERE is_active = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at > ?)
            ORDER BY sort_order ASC, created_at DESC`,
         )
         .bind(...active.binds)
-        .all();
-      return result.results;
+        .all<StoreItemInput>();
+      return Promise.all(
+        result.results.map(async (item): Promise<StoreCatalogRow> => {
+          let config: { packId?: unknown } = {};
+          try {
+            config = JSON.parse(String(item.configJson)) as { packId?: unknown };
+          } catch {
+            // The admin API validates configs; an invalid legacy row has no pack preview.
+          }
+          const type = String(item.type);
+          const packId = typeof config.packId === "string" ? config.packId : null;
+          if (!packId || (type !== "EMOTE_PACK" && type !== "STICKER_PACK")) {
+            return { ...item, previewAssets: [] as StorePreviewAsset[] };
+          }
+          const table = type === "EMOTE_PACK" ? "emote_catalog" : "sticker_catalog";
+          const rows = await db
+            .prepare(
+              `SELECT id, label, asset_key AS assetKey
+               FROM ${table} WHERE pack_id = ? AND status = 'ACTIVE'
+               ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+            )
+            .bind(packId)
+            .all<StorePreviewAsset>();
+          return { ...item, previewAssets: rows.results };
+        }),
+      );
     },
 
     async balance(userId: string) {

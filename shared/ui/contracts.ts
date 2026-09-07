@@ -56,6 +56,9 @@ export interface VerifiedSourceView {
 export interface CommentAttachmentView {
   type: "EMOTE" | "GIF" | "STICKER";
   label: string;
+  id?: string;
+  provider?: string;
+  url?: string;
   preview?: string;
 }
 
@@ -173,6 +176,13 @@ export interface StoreItemView {
   price: number;
   previewLabel: string;
   packSize?: number;
+  preview: {
+    config: {
+      preset?: "nebula" | "soft-glow" | "paper-grain" | "none";
+      family?: "InterVariable" | "AtkinsonHyperlegible" | "Georgia";
+    };
+    media: Array<{ id: string; label: string; url: string }>;
+  };
 }
 
 export interface ModerationQueueItem {

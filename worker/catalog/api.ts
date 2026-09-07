@@ -33,6 +33,12 @@ function routeKind(pathname: string): CatalogKind | null {
   return null;
 }
 
+function publicAsset(pathname: string): { kind: CatalogKind; id: string } | null {
+  const match = pathname.match(/^\/api\/media\/catalog\/(emote|sticker)\/([^/]+)$/);
+  if (!match) return null;
+  return { kind: match[1] as CatalogKind, id: decodeURIComponent(match[2] ?? "") };
+}
+
 function table(kind: CatalogKind): "emote_catalog" | "sticker_catalog" {
   return kind === "emote" ? "emote_catalog" : "sticker_catalog";
 }
@@ -164,6 +170,37 @@ async function handleStatus(
   return response({ id, status: body.status }, requestId);
 }
 
+async function handlePublicAsset(
+  kind: CatalogKind,
+  id: string,
+  env: SourceBoardEnvironment,
+  requestId: string,
+): Promise<Response> {
+  if (!env.DB || !env.MEDIA)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "Catalog media is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  const row = await env.DB.prepare(
+    `SELECT asset_key AS assetKey FROM ${table(kind)} WHERE id = ? AND status = 'ACTIVE'`,
+  )
+    .bind(id)
+    .first<{ assetKey: string }>();
+  if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+  const object = await env.MEDIA.get(row.assetKey);
+  if (!object) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+  const headers = new Headers({
+    "cache-control": "public, max-age=3600",
+    etag: object.httpEtag,
+    [REQUEST_ID_HEADER]: requestId,
+  });
+  if (object.httpMetadata?.contentType)
+    headers.set("content-type", object.httpMetadata.contentType);
+  return new Response(object.body, { headers });
+}
+
 export function isCatalogRoute(pathname: string): boolean {
   return routeKind(pathname) !== null;
 }
@@ -175,8 +212,13 @@ export async function handleCatalogRequest(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   const kind = routeKind(url.pathname);
-  if (!kind) return null;
+  const asset = publicAsset(url.pathname);
+  if (!kind && !asset) return null;
   try {
+    if (asset && request.method === "GET") {
+      return await handlePublicAsset(asset.kind, asset.id, env, requestId);
+    }
+    if (!kind) return null;
     const actorUserId = await requireCapability(request, requestId, env, CAPABILITIES[kind]);
     if (request.method === "GET" && url.pathname === `/api/admin/catalog/${kind}s`)
       return handleList(kind, env, requestId);

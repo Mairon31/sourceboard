@@ -575,6 +575,21 @@ prerequisites.
       Firebase console, then verify one real Google login and first-profile
       creation. This remains an external release check.
 
+### 2026-09-06 store previews and comment media checkpoint
+
+- [x] The store now reads only active/published cosmetics and renders the
+      current profile avatar/name through each allowlisted frame, effect and
+      font treatment.
+- [x] First-party emote/sticker pack previews read active catalog rows and
+      private R2 assets through `/api/media/catalog/:kind/:id`; the UI shows up
+      to four assets and does not fabricate content when a pack is empty.
+- [x] Comments now render persisted media metadata and provide authenticated
+      GIF/sticker search through a server-side KLIPY proxy with host allowlists,
+      content filtering and rate limiting.
+- [ ] Add the `KLIPY_API_KEY` Worker secret and publish at least one managed
+      first-party emote/sticker asset if those pack previews are required in
+      production. The connected Cloudflare account currently has no KLIPY key.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B

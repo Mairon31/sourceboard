@@ -23,8 +23,138 @@ function isCommentRoute(pathname: string): boolean {
   return (
     /^\/api\/posts\/[^/]+\/comments$/.test(pathname) ||
     /^\/api\/comments\/[^/]+$/.test(pathname) ||
+    pathname === "/api/comments/media/search" ||
     /^\/api\/reactions\/(POST|COMMENT)\/[^/]+$/.test(pathname)
   );
+}
+
+type KlipyMediaKind = "GIF" | "STICKER";
+const KLIPY_MEDIA_HOSTS = new Set(["static.klipy.com", "static1.klipy.com", "static2.klipy.com"]);
+
+function safeKlipyMediaUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && KLIPY_MEDIA_HOSTS.has(url.hostname) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatUrl(formats: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = formats[key];
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const url = safeKlipyMediaUrl((value as Record<string, unknown>).url);
+    if (url) return url;
+  }
+  return null;
+}
+
+function normalizeKlipyResults(payload: unknown, kind: KlipyMediaKind) {
+  const results =
+    payload &&
+    typeof payload === "object" &&
+    Array.isArray((payload as { results?: unknown }).results)
+      ? (payload as { results: unknown[] }).results
+      : [];
+  return results.flatMap((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const item = value as Record<string, unknown>;
+    if (item.type === "ad") return [];
+    const id = typeof item.id === "string" || typeof item.id === "number" ? String(item.id) : "";
+    const formats =
+      item.media_formats &&
+      typeof item.media_formats === "object" &&
+      !Array.isArray(item.media_formats)
+        ? (item.media_formats as Record<string, unknown>)
+        : {};
+    const url =
+      kind === "STICKER"
+        ? formatUrl(formats, [
+            "tinywebp_transparent",
+            "tinygif_transparent",
+            "webp_transparent",
+            "gif_transparent",
+            "tinygif",
+          ])
+        : formatUrl(formats, ["tinygif", "webp", "gif"]);
+    const preview =
+      kind === "STICKER"
+        ? formatUrl(formats, [
+            "nanowebp_transparent",
+            "nanogif_transparent",
+            "tinywebp_transparent",
+            "tinygif_transparent",
+          ])
+        : formatUrl(formats, ["tinygifpreview", "gifpreview", "nanogif"]);
+    if (!id || !url) return [];
+    const title =
+      typeof item.title === "string" && item.title.trim() ? item.title.trim() : "Klipy media";
+    return [
+      { id, title, label: title, url, preview: preview ?? url, type: kind, provider: "klipy" },
+    ];
+  });
+}
+
+async function searchKlipy(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  assertSameOrigin(request);
+  const userId = await requiredViewer(request, env);
+  await enforceRateLimit(
+    env.RATE_LIMIT_CONTENT,
+    `klipy-search:${userId}:${getRequestSecurityContext(request).ipPrefixHash}`,
+    {
+      unavailable: () =>
+        new PostError(
+          503,
+          "MEDIA_RATE_LIMIT_UNAVAILABLE",
+          "Media search is temporarily unavailable.",
+        ),
+      limited: () =>
+        new PostError(429, "MEDIA_RATE_LIMITED", "Too many media searches. Try again later.", {
+          retryAfter: 60,
+        }),
+    },
+  );
+  if (!env.KLIPY_API_KEY)
+    throw new PostError(
+      503,
+      "KLIPY_NOT_CONFIGURED",
+      "The GIF and sticker provider is not configured.",
+    );
+  const url = new URL(request.url);
+  const query = url.searchParams.get("q")?.trim() ?? "";
+  const kind = url.searchParams.get("type")?.toUpperCase() === "STICKER" ? "STICKER" : "GIF";
+  if (!query || query.length > 80)
+    throw new PostError(400, "INVALID_MEDIA_QUERY", "Enter a search between 1 and 80 characters.");
+  const upstream = new URL("https://api.klipy.com/v2/search");
+  upstream.searchParams.set("key", env.KLIPY_API_KEY);
+  upstream.searchParams.set("q", query);
+  upstream.searchParams.set("country", "CR");
+  upstream.searchParams.set("locale", "es");
+  upstream.searchParams.set("contentfilter", "high");
+  upstream.searchParams.set("limit", "12");
+  if (kind === "STICKER") upstream.searchParams.set("searchfilter", "sticker");
+  upstream.searchParams.set(
+    "media_filter",
+    kind === "STICKER"
+      ? "tinywebp_transparent,tinygif_transparent,nanowebp_transparent,nanogif_transparent"
+      : "tinygif,webp,tinygifpreview,gifpreview",
+  );
+  const response = await fetch(upstream, { headers: { accept: "application/json" } });
+  if (!response.ok)
+    throw new PostError(502, "KLIPY_UNAVAILABLE", "Klipy search is temporarily unavailable.");
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new PostError(502, "KLIPY_INVALID_RESPONSE", "Klipy returned an invalid response.");
+  }
+  return json({ items: normalizeKlipyResults(payload, kind), provider: "klipy" }, requestId);
 }
 
 function database(env: SourceBoardEnvironment): D1Database {
@@ -106,6 +236,9 @@ export async function handleCommentApiRequest(
   const url = new URL(request.url);
   if (!isCommentRoute(url.pathname)) return null;
   try {
+    if (url.pathname === "/api/comments/media/search" && request.method === "GET") {
+      return await searchKlipy(request, requestId, env);
+    }
     const commentService = service(env);
     const postMatch = url.pathname.match(/^\/api\/posts\/([^/]+)\/comments$/);
     if (postMatch && request.method === "GET") {

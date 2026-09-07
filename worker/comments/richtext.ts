@@ -10,6 +10,8 @@ export interface CommentAttachment {
   id: string;
   label: string;
   provider?: string;
+  url?: string;
+  preview?: string;
 }
 
 export interface NormalizedCommentBody {
@@ -21,6 +23,7 @@ export interface NormalizedCommentBody {
 const MAX_NODES = 100;
 const MAX_TEXT_LENGTH = 5_000;
 const MAX_LINK_LABEL = 300;
+const KLIPY_MEDIA_HOSTS = new Set(["static.klipy.com", "static1.klipy.com", "static2.klipy.com"]);
 
 function invalid(message: string): never {
   throw new PostError(400, "INVALID_COMMENT_BODY", message);
@@ -35,6 +38,19 @@ function safeUrl(value: string): string {
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     invalid("Comment links must use HTTP or HTTPS.");
+  }
+  return url.toString();
+}
+
+function safeKlipyUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    invalid("The selected KLIPY media is invalid.");
+  }
+  if (url.protocol !== "https:" || !KLIPY_MEDIA_HOSTS.has(url.hostname)) {
+    invalid("The selected KLIPY media is invalid.");
   }
   return url.toString();
 }
@@ -78,11 +94,27 @@ function normalizeAttachment(value: unknown): CommentAttachment | null {
   ) {
     invalid("Only provider GIFs and catalog stickers can be attached to comments.");
   }
+  const provider =
+    typeof attachment.provider === "string" ? attachment.provider.toLowerCase() : undefined;
+  if (attachment.url !== undefined && provider !== "klipy") {
+    invalid("Only KLIPY media URLs can be attached to comments.");
+  }
+  if (attachment.preview !== undefined && provider !== "klipy") {
+    invalid("Only KLIPY media previews can be attached to comments.");
+  }
   return {
     type: attachment.type,
     id: attachment.id,
     label: attachment.label,
-    provider: typeof attachment.provider === "string" ? attachment.provider : undefined,
+    provider,
+    url:
+      typeof attachment.url === "string" && provider === "klipy"
+        ? safeKlipyUrl(attachment.url)
+        : undefined,
+    preview:
+      typeof attachment.preview === "string" && provider === "klipy"
+        ? safeKlipyUrl(attachment.preview)
+        : undefined,
   };
 }
 
@@ -96,7 +128,7 @@ export function normalizeCommentBody(input: {
     : typeof input.plaintext === "string"
       ? [{ type: "text", text: input.plaintext }]
       : [];
-  if (!nodes.length || nodes.length > MAX_NODES)
+  if (nodes.length > MAX_NODES || (!nodes.length && input.attachment == null))
     invalid("A comment must contain text or an attachment.");
   const richtext = nodes.map(normalizeNode);
   const plaintext = richtext

@@ -20,6 +20,8 @@ owner and a recorded exception before production traffic is enabled.
       secrets; no secret is in Git.
 - [x] `FIREBASE_API_KEY` plus `FIREBASE_PROJECT_ID` are supplied as Worker
       secrets for Firebase project `sourceboardapp`.
+- [ ] `KLIPY_API_KEY` is supplied as a Worker secret before enabling GIF and
+      sticker search in comments.
 - [ ] Firebase Authentication email/password is enabled and verified with a
       real account flow.
 - [ ] Firebase Authentication custom email domain and the

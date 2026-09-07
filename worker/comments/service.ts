@@ -109,7 +109,14 @@ async function toView(
     state: record.comment.state,
     reaction: { type: "LIKE", count: record.comment.likeCount, viewerReacted: false },
     attachment: record.comment.attachment
-      ? { type: record.comment.attachment.type, label: record.comment.attachment.label }
+      ? {
+          type: record.comment.attachment.type,
+          id: record.comment.attachment.id,
+          label: record.comment.attachment.label,
+          provider: record.comment.attachment.provider,
+          url: record.comment.attachment.url,
+          preview: record.comment.attachment.preview,
+        }
       : undefined,
     replies: [],
   };

@@ -30,4 +30,5 @@ export interface SourceBoardEnvironment {
   FIREBASE_APP_ID?: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
+  KLIPY_API_KEY?: string;
 }

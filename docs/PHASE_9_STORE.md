@@ -15,6 +15,10 @@ Phase 9 adds points-backed personalization without moving the balance authority 
 - `store.manage` admin create/update routes with audit log entries;
 - pack inventory data and server-side entitlement checks for the composer.
 - allowlisted cosmetic rendering in public profiles, post authors and comments;
+- active published store items now render their actual cosmetic treatment in
+  the preview: the current profile avatar/name for frames, effects and fonts,
+  plus up to four active first-party pack assets served through a public-safe
+  catalog-media gateway;
 
 ## Routes
 

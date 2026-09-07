@@ -29,7 +29,12 @@ export async function loader({ params, request, context }: LoaderArgs) {
   const result = await withOptionalServerSession(
     request,
     context,
-    (unavailable) => ({ post: null, unavailable, canonicalUrl: requested.toString() }),
+    (unavailable) => ({
+      post: null,
+      unavailable,
+      authenticated: false,
+      canonicalUrl: requested.toString(),
+    }),
     async (runtime, userId) => {
       const service = createPostService({
         store: createD1PostStore(runtime.db),
@@ -46,6 +51,7 @@ export async function loader({ params, request, context }: LoaderArgs) {
       return {
         post: post ? { ...post, comments: comments.comments } : post,
         unavailable: false,
+        authenticated: Boolean(userId),
         canonicalUrl: requested.toString(),
       };
     },
@@ -248,7 +254,7 @@ function UnavailablePost({ unavailable }: { unavailable: boolean }) {
 }
 
 export default function PostDetailRoute() {
-  const { post, unavailable } = useLoaderData<LoaderData>();
+  const { post, unavailable, authenticated } = useLoaderData<LoaderData>();
   if (!post) return <UnavailablePost unavailable={unavailable} />;
   const currentPost = post;
 
@@ -276,6 +282,7 @@ export default function PostDetailRoute() {
       <CommentThread
         postId={post.id}
         comments={post.comments}
+        authenticated={authenticated}
         canAcceptSource={post.permissions.canAcceptSource}
         onAcceptSource={(commentId) => void acceptSource(commentId)}
       />

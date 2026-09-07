@@ -26,7 +26,7 @@ export function createEntitlementChecker(db: D1Database) {
       if (!available)
         throw new PostError(403, "EMOTE_NOT_ENTITLED", "This emote pack is not in your inventory.");
     }
-    if (body.attachment?.type !== "STICKER") return;
+    if (body.attachment?.type !== "STICKER" || body.attachment.provider === "klipy") return;
     const available = await db
       .prepare(
         `SELECT 1 FROM sticker_catalog s

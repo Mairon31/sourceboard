@@ -15,8 +15,10 @@ Cloudflare-compatible D1 persistence and server-side safety contracts.
 - `body_richtext_json` accepts only text, `:shortcode:` emotes and HTTP(S) links;
   `body_plaintext` is persisted for search/moderation. HTML, Markdown image
   syntax, external image nodes and arbitrary uploads are rejected.
-- GIF/sticker attachments are references only. GIF search requires a later
-  Worker-side provider configuration; the UI stays disabled when unavailable.
+- GIF/sticker attachments remain references only. Authenticated users can now
+  search KLIPY through the Worker proxy, select a result and render it after
+  reload; the UI reports the provider configuration state when `KLIPY_API_KEY`
+  is not present.
 - Reactions are extensible in storage but only `LIKE` is enabled. A unique
   user/target/type key and explicit set endpoint make retries idempotent.
 - Anonymous post authors remain `Anonymous Author` in comment DTOs, including
