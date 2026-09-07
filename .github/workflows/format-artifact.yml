@@ -12,7 +12,7 @@ permissions:
 jobs:
   format:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
         with:
@@ -22,96 +22,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Apply navigation performance patches
+      - name: Verify navigation performance patches exist
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          auth_path = Path("worker/auth/service.ts")
-          text = auth_path.read_text()
-          marker = "export function createAuthService(dependencies: AuthServiceDependencies): AuthService {"
-          if "SESSION_TOUCH_INTERVAL_MS" not in text:
-              if marker not in text:
-                  raise SystemExit("auth service marker not found")
-              text = text.replace(marker, "const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;\n\n" + marker, 1)
-
-          old_current = '''    const current = await dependencies.store.findActiveSessionByTokenHash(
-              hashOpaqueToken(rawToken),
-              now(),
-            );'''
-          new_current = '''    const at = now();
-            const current = await dependencies.store.findActiveSessionByTokenHash(
-              hashOpaqueToken(rawToken),
-              at,
-            );'''
-          if old_current in text:
-              text = text.replace(old_current, new_current, 1)
-
-          current_start = text.index("  async function currentSession(")
-          prepare_start = text.index("  async function prepareLogin(", current_start)
-          current_block = text[current_start:prepare_start]
-          current_touch = "    await dependencies.store.touchSession(current.id, now());"
-          if current_touch in current_block:
-              current_block = current_block.replace(
-                  current_touch,
-                  "    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {\n      await dependencies.store.touchSession(current.id, at);\n    }",
-                  1,
-              )
-              text = text[:current_start] + current_block + text[prepare_start:]
-
-          get_start = text.index("  async function getSession(")
-          logout_start = text.index("  async function logout(", get_start)
-          get_block = text[get_start:logout_start]
-          get_touch = "    await dependencies.store.touchSession(current.id, at);"
-          if get_touch in get_block:
-              get_block = get_block.replace(
-                  get_touch,
-                  "    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {\n      await dependencies.store.touchSession(current.id, at);\n    }",
-                  1,
-              )
-              text = text[:get_start] + get_block + text[logout_start:]
-
-          if "at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS" not in text:
-              raise SystemExit("session throttling was not applied")
-          auth_path.write_text(text)
-
-          detail_path = Path("app/routes/post-detail.tsx")
-          detail = detail_path.read_text()
-          old = '''      const service = createPostService({
-                store: createD1PostStore(runtime.db),
-                profileStore: createD1ProfileStore(runtime.db),
-              });
-              const post = await service.getPost(params.postId ?? "", userId);
-              const comments = post
-                ? await createCommentService({
-                    store: createD1CommentStore(runtime.db),
-                    postStore: createD1PostStore(runtime.db),
-                    profileStore: createD1ProfileStore(runtime.db),
-                  }).listForPost(post.id, userId, null, 50)
-                : { comments: [], nextCursor: null };'''
-          new = '''      const service = createPostService({
-                store: createD1PostStore(runtime.db),
-                profileStore: createD1ProfileStore(runtime.db),
-              });
-              const commentService = createCommentService({
-                store: createD1CommentStore(runtime.db),
-                postStore: createD1PostStore(runtime.db),
-                profileStore: createD1ProfileStore(runtime.db),
-              });
-              const postId = params.postId ?? "";
-              const [post, commentsResult] = await Promise.all([
-                service.getPost(postId, userId),
-                commentService
-                  .listForPost(postId, userId, null, 50)
-                  .catch(() => ({ comments: [], nextCursor: null })),
-              ]);
-              const comments = post ? commentsResult : { comments: [], nextCursor: null };'''
-          if old in detail:
-              detail = detail.replace(old, new, 1)
-          if "commentService.listForPost" not in detail or "const [post, commentsResult] = await Promise.all" not in detail:
-              raise SystemExit("post detail concurrency patch was not applied")
-          detail_path.write_text(detail)
-          PY
+          node - <<'NODE'
+          const fs = require("fs");
+          const auth = fs.readFileSync("worker/auth/service.ts", "utf8");
+          const detail = fs.readFileSync("app/routes/post-detail.tsx", "utf8");
+          if (!auth.includes("SESSION_TOUCH_INTERVAL_MS") || !auth.includes("at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS")) {
+            throw new Error("session activity throttling is missing");
+          }
+          if (!detail.includes("const [post, commentsResult] = await Promise.all") || !detail.includes("commentService.listForPost")) {
+            throw new Error("post detail concurrency optimization is missing");
+          }
+          NODE
       - name: Format Store and navigation implementation
         run: >-
           npx prettier --write
@@ -139,9 +62,21 @@ jobs:
           tests/unit/navigation-performance.test.ts
           tests/unit/store-catalog-redesign.test.ts
           tests/unit/store-refresh.test.ts
+          tests/e2e/test-helpers.ts
+          tests/e2e/admin.spec.ts
+          tests/e2e/responsive.spec.ts
+      - name: Lint and typecheck
+        run: |
+          npm run lint
+          npm run typecheck
       - name: Run focused tests
         run: npm test -- --run tests/unit/navigation-performance.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-refresh.test.ts
-      - name: Commit implementation
+      - name: Verify fresh Store migrations are idempotent
+        run: |
+          rm -rf .wrangler/verify-store-fresh
+          npx wrangler d1 migrations apply DB --local --persist-to .wrangler/verify-store-fresh
+          npx wrangler d1 migrations apply DB --local --persist-to .wrangler/verify-store-fresh
+      - name: Commit normalization if needed
         run: |
           if git diff --quiet; then
             exit 0
@@ -149,5 +84,5 @@ jobs:
           git config user.name "SourceBoard CI"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "perf: optimize navigation and normalize store implementation"
+          git commit -m "style: normalize final store and navigation changes"
           git push origin HEAD:master
