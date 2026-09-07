@@ -10,6 +10,8 @@ const migration = read("../../migrations/0015_store_catalog_lifecycle.sql");
 const schema = read("../../worker/db/schema.ts");
 const rbac = read("../../worker/auth/rbac.ts");
 const adminRead = read("../../worker/admin/read.ts");
+const storeService = read("../../worker/store/service.ts");
+const entitlements = read("../../worker/store/entitlements.ts");
 
 describe("store catalog lifecycle", () => {
   it("adds lifecycle enablement featured and emote moderation fields", () => {
@@ -26,5 +28,13 @@ describe("store catalog lifecycle", () => {
     expect(migration).toContain("catalog.moderate");
     expect(adminRead).toContain("lifecycle_state");
     expect(adminRead).toContain("moderation_state = 'FLAGGED'");
+  });
+
+  it("requires published enabled Store items and usable emotes", () => {
+    expect(storeService).toContain("lifecycle_state = 'PUBLISHED'");
+    expect(storeService).toContain("is_enabled = 1");
+    expect(entitlements).toContain("moderation_state NOT IN ('HIDDEN', 'REMOVED')");
+    expect(entitlements).toContain("p.lifecycle_state = 'PUBLISHED'");
+    expect(entitlements).toContain("p.is_enabled = 1");
   });
 });
