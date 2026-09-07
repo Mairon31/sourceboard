@@ -4,15 +4,7 @@ import { createAdminReadService } from "../../worker/admin/read";
 import type { AdminRoleRow, AdminUserRow } from "../../worker/admin/types";
 import { AdminActionMenu } from "../components/admin/AdminActionMenu";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
-import {
-  Badge,
-  Button,
-  Card,
-  Input,
-  Modal,
-  OverlayActionRow,
-  Textarea,
-} from "../components/ui";
+import { Badge, Button, Card, Input, Modal, OverlayActionRow, Textarea } from "../components/ui";
 import { loadAdminAccess } from "../data/admin-access";
 import { loadCapabilityAccess } from "../data/capability-access";
 import { readCsrfToken } from "../data/csrf";
