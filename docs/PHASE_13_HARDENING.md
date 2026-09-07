@@ -208,4 +208,6 @@ Signed-out product routes now use a shared accessible sign-in/register screen.
 The visible mark is an animated transparent SVG and metadata uses a separate
 liquid-glass magnifying-glass image. Enabling Google and authorizing `srcboard.me`
 in Firebase, then completing a real Google login/profile-creation check, remain
-external release gates.
+external release gates. The CSP includes only the Firebase and Google origins
+required by the popup flow, and signed-out notification refresh is skipped
+before it can call the private endpoint.

@@ -568,6 +568,9 @@ prerequisites.
 - [x] Replaced the visible brand mark with an animated transparent SVG and
       changed Open Graph/Twitter metadata to the liquid-glass magnifying-glass
       image at `/sourceboard-og.png`.
+- [x] CSP now permits only the Firebase/Google origins required by the browser
+      popup flow, and the signed-out TopBar skips the private notifications
+      request instead of generating an expected 401.
 - [ ] Enable Google as a Firebase provider and authorize `srcboard.me` in the
       Firebase console, then verify one real Google login and first-profile
       creation. This remains an external release check.

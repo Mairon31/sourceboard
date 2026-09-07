@@ -52,6 +52,11 @@ export function TopBar() {
 
     async function refresh(): Promise<{ authenticated: boolean; lastSeen: string | null }> {
       try {
+        const sessionResponse = await fetch("/api/auth/session");
+        if (!sessionResponse.ok) return { authenticated: false, lastSeen: null };
+        const session = (await sessionResponse.json()) as { authenticated?: unknown };
+        if (session.authenticated !== true) return { authenticated: false, lastSeen: null };
+
         const response = await fetch("/api/notifications");
         if (response.status === 401 || response.status === 403)
           return { authenticated: false, lastSeen: null };
