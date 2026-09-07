@@ -15,7 +15,12 @@ const routes = [
   "/posts/post-verified",
   "/u/aurora",
   "/store",
+  "/admin",
   "/admin/moderation",
+  "/admin/verifications",
+  "/admin/users",
+  "/admin/roles",
+  "/admin/audit",
 ];
 
 for (const viewport of viewports) {
