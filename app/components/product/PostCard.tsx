@@ -5,7 +5,7 @@ import {
 } from "react";
 import { Link, useNavigate } from "react-router";
 import type { PostSummary } from "../../../shared/ui/contracts";
-import { Avatar, Badge, Button, Card } from "../ui";
+import { Avatar, Badge, Button, Card, HeartIcon, MessageIcon, ShareIcon } from "../ui";
 
 function statusTone(status: PostSummary["status"]) {
   if (status === "VERIFIED") return "success" as const;
@@ -21,18 +21,24 @@ function isInteractivePostTarget(target: EventTarget | null): boolean {
   );
 }
 
+function postDetailHref(post: PostSummary): string {
+  const base = `/posts/${encodeURIComponent(post.id)}`;
+  return post.slug ? `${base}/${encodeURIComponent(post.slug)}` : base;
+}
+
 export function PostCard({ post, compact = false }: { post: PostSummary; compact?: boolean }) {
   const navigate = useNavigate();
   const [showNsfw, setShowNsfw] = useState(post.nsfwPresentation === "VISIBLE");
   const [liked, setLiked] = useState(post.reaction.viewerReacted);
   const [likes, setLikes] = useState(post.reaction.count);
   const [reactionStatus, setReactionStatus] = useState<string | null>(null);
+  const detailHref = postDetailHref(post);
   const mediaClass = post.imageUrl
     ? "product-post__media product-post__media--image"
     : "product-post__media";
 
   function openPostDetail() {
-    navigate(`/posts/${post.id}`);
+    navigate(detailHref);
   }
 
   function handleCardClick(event: ReactMouseEvent<HTMLDivElement>) {
@@ -48,13 +54,19 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
 
   async function toggleLike() {
     setReactionStatus(null);
+    const previousLiked = liked;
+    const previousLikes = likes;
+    const nextLiked = !previousLiked;
+    setLiked(nextLiked);
+    setLikes(Math.max(0, previousLikes + (nextLiked ? 1 : -1)));
+
     const csrf = document.cookie
       .split(";")
       .map((part) => part.trim())
       .find((part) => part.startsWith("__Host-sourceboard_csrf="));
     try {
       const response = await fetch(`/api/reactions/POST/${encodeURIComponent(post.id)}`, {
-        method: liked ? "DELETE" : "POST",
+        method: previousLiked ? "DELETE" : "POST",
         headers: {
           "x-csrf-token": csrf
             ? decodeURIComponent(csrf.slice("__Host-sourceboard_csrf=".length))
@@ -62,13 +74,19 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
         },
       });
       if (!response.ok) {
+        setLiked(previousLiked);
+        setLikes(previousLikes);
         setReactionStatus(response.status === 401 ? "Sign in to like posts." : "Like unavailable.");
         return;
       }
       const result = (await response.json()) as { liked: boolean };
-      setLiked(result.liked);
-      setLikes((count) => count + (result.liked ? 1 : -1));
+      if (result.liked !== nextLiked) {
+        setLiked(result.liked);
+        setLikes(Math.max(0, previousLikes + (result.liked ? 1 : 0) - (previousLiked ? 1 : 0)));
+      }
     } catch {
+      setLiked(previousLiked);
+      setLikes(previousLikes);
       setReactionStatus("Like unavailable.");
     }
   }
@@ -119,7 +137,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
       </header>
 
       <div className="product-post__copy">
-        <Link to={`/posts/${post.id}`} className="product-post__title">
+        <Link to={detailHref} className="product-post__title">
           {post.title}
         </Link>
         {post.description ? <p>{post.description}</p> : null}
@@ -166,30 +184,44 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
         </div>
       )}
 
-      <div className="product-post__meta">
-        <span>{likes} likes</span>
-        <span>{post.commentCount} comments</span>
-        {post.acceptedSource ? <span className="product-meta-success">Source accepted</span> : null}
-        {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
-      </div>
+      <div className="product-post__engagement">
+        <div className="product-post__meta">
+          <span>
+            <strong>{likes}</strong> {likes === 1 ? "like" : "likes"}
+          </span>
+          <span>
+            <strong>{post.commentCount}</strong> {post.commentCount === 1 ? "comment" : "comments"}
+          </span>
+          {post.acceptedSource ? <span className="product-meta-success">Source accepted</span> : null}
+          {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
+        </div>
 
-      <footer className="product-post__actions">
-        <Button
-          variant={liked ? "secondary" : "ghost"}
-          size="sm"
-          aria-pressed={liked}
-          onClick={() => void toggleLike()}
-        >
-          {liked ? "Liked" : "Like"}
-        </Button>
-        <Link className="product-text-action" to={`/posts/${post.id}`}>
-          Comment
-        </Link>
-        <button type="button" className="product-text-action" disabled>
-          Share
-        </button>
-      </footer>
-      {reactionStatus ? <span role="status">{reactionStatus}</span> : null}
+        <footer className="product-post__actions">
+          <button
+            type="button"
+            className={`product-post__action${liked ? " product-post__action--liked" : ""}`}
+            aria-pressed={liked}
+            aria-label={liked ? "Unlike post" : "Like post"}
+            onClick={() => void toggleLike()}
+          >
+            <HeartIcon />
+            <span>{liked ? "Liked" : "Like"}</span>
+          </button>
+          <Link className="product-post__action" to={`${detailHref}#comments`}>
+            <MessageIcon />
+            <span>Comment</span>
+          </Link>
+          <button type="button" className="product-post__action" disabled aria-label="Share post">
+            <ShareIcon />
+            <span>Share</span>
+          </button>
+        </footer>
+        {reactionStatus ? (
+          <small className="product-post__reaction-status" role="status">
+            {reactionStatus}
+          </small>
+        ) : null}
+      </div>
     </Card>
   );
 }
