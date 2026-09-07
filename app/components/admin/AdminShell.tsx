@@ -15,7 +15,12 @@ import {
 const adminLinks = [
   { href: "/admin", label: "Overview", end: true, icon: HomeIcon },
   { href: "/admin/moderation", label: "Moderation", end: false, icon: InfoIcon },
-  { href: "/admin/verifications", label: "Verifications", end: false, icon: CheckIcon },
+  {
+    href: "/admin/verifications",
+    label: "Verifications",
+    end: false,
+    icon: CheckIcon,
+  },
   { href: "/admin/users", label: "Users", end: false, icon: UserIcon },
   { href: "/admin/roles", label: "Roles", end: false, icon: FriendsIcon },
   { href: "/admin/store", label: "Store", end: false, icon: StoreIcon },
@@ -34,7 +39,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <aside className="admin-sidebar">
         <a href="/" className="admin-brand">
           <span aria-hidden="true">
-            <img src="/sourceboard-logo.svg" alt="" width="34" height="34" decoding="async" />
+            <img
+              src="/sourceboard-logo.svg"
+              alt=""
+              width="34"
+              height="34"
+              decoding="async"
+            />
           </span>
           <div>
             <strong>SourceBoard</strong>
