@@ -10,9 +10,11 @@ const adminRead = read("../../worker/admin/read.ts");
 const adminTypes = read("../../worker/admin/types.ts");
 const shell = read("../../app/components/admin/AdminShell.tsx");
 const css = read("../../app/components/admin/admin.css");
+const routes = read("../../app/routes.ts");
 const adminRoute = read("../../app/routes/admin.tsx");
 const moderationRoute = read("../../app/routes/admin-moderation.tsx");
 const verificationsRoute = read("../../app/routes/admin-verifications.tsx");
+const usersRoute = read("../../app/routes/admin-users.tsx");
 
 describe("admin control center", () => {
   it("provides typed overview users roles and audit reads", () => {
@@ -62,5 +64,16 @@ describe("admin control center", () => {
     expect(verificationsRoute).toContain("Verify source");
     expect(verificationsRoute).toContain("readCsrfToken()");
     expect(verificationsRoute).toContain("revalidator.revalidate()");
+  });
+
+  it("adds a searchable Users route with capability-gated role changes and no email fields", () => {
+    expect(routes).toContain('route("admin/users", "routes/admin-users.tsx")');
+    expect(usersRoute).toContain("createAdminReadService");
+    expect(usersRoute).toContain(".users(query)");
+    expect(usersRoute).toContain('"user.assign_roles"');
+    expect(usersRoute).toContain("/api/admin/users/");
+    expect(usersRoute).toContain("readCsrfToken()");
+    expect(usersRoute).toContain('name="q"');
+    expect(usersRoute.toLowerCase()).not.toContain("email");
   });
 });
