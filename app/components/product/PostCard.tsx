@@ -110,7 +110,9 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           ) : null}
         </div>
       ) : (
-        <div className="product-post__media">
+        <div
+          className={`product-post__media${post.imageUrl ? " product-post__media--image" : ""}`}
+        >
           {post.imageUrl ? (
             <img
               src={post.imageUrl}

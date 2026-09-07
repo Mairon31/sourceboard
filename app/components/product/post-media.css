@@ -1,0 +1,16 @@
+.product-post__media--image {
+  min-height: 0;
+  background: transparent;
+}
+
+.product-post--compact .product-post__media--image {
+  min-height: 0;
+}
+
+.product-post__media--image img {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  background: transparent;
+}

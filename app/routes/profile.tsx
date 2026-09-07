@@ -1,8 +1,10 @@
-import { Link, useLoaderData } from "react-router";
+import { Link, useLoaderData, useRouteLoaderData } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { createReputationReader } from "../../worker/reputation/read";
+import type { RootLoaderData } from "../root";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { ProfileEditor } from "../components/product/ProfileEditor";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { SocialActionButton } from "../components/product/SocialActionButton";
 import { Avatar, Badge, Card } from "../components/ui";
@@ -212,10 +214,13 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
 
 export default function ProfileRoute() {
   const { profile, unavailable } = useLoaderData<LoaderData>();
+  const rootData = useRouteLoaderData<RootLoaderData>("root");
+  const isOwnProfile = Boolean(profile && rootData?.session?.user.id === profile.id);
   if (!profile) return <UnavailableProfile unavailable={unavailable} />;
   return (
     <ProductShell wide>
       <ProfileHero profile={profile} />
+      {isOwnProfile ? <ProfileEditor /> : null}
       <ContributionHistory profile={profile} />
     </ProductShell>
   );

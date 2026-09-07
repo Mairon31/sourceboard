@@ -56,6 +56,10 @@ export function ProductNav() {
 }
 
 export function MobileProductNav() {
+  const rootData = useRouteLoaderData<RootLoaderData>("root");
+  const user = rootData?.session?.user ?? null;
+  const profileHref = user ? `/u/${encodeURIComponent(user.username)}` : "/login";
+
   return (
     <nav
       className="product-mobile-nav glass-panel glass-panel--strong"
@@ -69,11 +73,12 @@ export function MobileProductNav() {
       <NavLink className="product-mobile-nav__create" to="/post/new" aria-label="Create post">
         +
       </NavLink>
-      {primaryLinks.slice(2).map((item) => (
-        <NavLink key={item.href} to={item.href} className={navClass}>
-          {item.short}
-        </NavLink>
-      ))}
+      <NavLink to={profileHref} className={navClass}>
+        Profile
+      </NavLink>
+      <NavLink to="/store" className={navClass}>
+        Store
+      </NavLink>
     </nav>
   );
 }
