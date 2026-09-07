@@ -8,6 +8,7 @@ import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { resolvePublicFailure } from "../http/public-failure";
 import {
   createStoreService,
+  isStoreAdmin,
   STORE_TYPES,
   StoreError,
   type CosmeticSlot,
@@ -86,8 +87,13 @@ export async function handleStoreRequest(
     const service = createStoreService(database);
     if (request.method === "GET" && url.pathname === "/api/store") {
       const userId = await sessionUser(request, env);
+      const adminUnlocked = userId ? await isStoreAdmin(database, userId) : false;
       return response(
-        { items: await service.list(), points: userId ? await service.balance(userId) : null },
+        {
+          items: await service.list(),
+          points: userId ? await service.balance(userId) : null,
+          adminUnlocked,
+        },
         requestId,
       );
     }
@@ -101,6 +107,34 @@ export async function handleStoreRequest(
       if (typeof body.idempotencyKey !== "string")
         return failure("INVALID_REQUEST", "An idempotency key is required.", requestId, 400);
       const itemId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
+
+      if (await isStoreAdmin(database, userId)) {
+        const now = Date.now();
+        const item = await database
+          .prepare(
+            `SELECT id FROM store_items
+             WHERE id = ? AND is_active = 1
+               AND (starts_at IS NULL OR starts_at <= ?)
+               AND (ends_at IS NULL OR ends_at > ?)`,
+          )
+          .bind(itemId, now, now)
+          .first<{ id: string }>();
+        if (!item)
+          return failure("PURCHASE_UNAVAILABLE", "The item is unavailable.", requestId, 409);
+        return response(
+          {
+            purchase: {
+              id: `admin:${itemId}`,
+              storeItemId: itemId,
+              pricePaid: 0,
+              idempotencyKey: body.idempotencyKey,
+              adminUnlocked: true,
+            },
+          },
+          requestId,
+        );
+      }
+
       const purchase = await service.purchase(userId, itemId, body.idempotencyKey);
       if (env.EVENTS) {
         await env.EVENTS.send({
@@ -134,7 +168,15 @@ export async function handleStoreRequest(
       const body = parseBody(await request.json());
       if (typeof body.storeItemId !== "string")
         return failure("INVALID_REQUEST", "A store item is required.", requestId, 400);
-      return response({ cosmetic: await service.equip(userId, slot, body.storeItemId) }, requestId);
+      const adminUnlocked = await isStoreAdmin(database, userId);
+      return response(
+        {
+          cosmetic: await service.equip(userId, slot, body.storeItemId, {
+            allowUnowned: adminUnlocked,
+          }),
+        },
+        requestId,
+      );
     }
     if (request.method === "POST" && url.pathname === "/api/admin/store/grant") {
       assertSameOrigin(request);
@@ -198,7 +240,7 @@ export async function handleStoreRequest(
         await database
           .prepare(
             `INSERT INTO store_items (id, type, name, description, price_points, asset_id, config_json, is_active, starts_at, ends_at, sort_order, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(
             id,
