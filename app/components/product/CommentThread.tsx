@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
-import { Avatar, Badge, Button, Input, Textarea } from "../ui";
+import { Avatar, Badge, Button, Textarea } from "../ui";
 
 interface KlipyMediaItem {
   id: string;
@@ -164,10 +164,12 @@ function CommentItem({
 
 function MediaPicker({
   kind,
+  onKindChange,
   onSelect,
   onClose,
 }: {
   kind: "GIF" | "STICKER";
+  onKindChange: (kind: "GIF" | "STICKER") => void;
   onSelect: (item: KlipyMediaItem) => void;
   onClose: () => void;
 }) {
@@ -176,70 +178,111 @@ function MediaPicker({
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function search() {
-    const value = query.trim();
-    if (!value) {
-      setStatus("Enter a search term.");
-      return;
-    }
-    setBusy(true);
-    setStatus(null);
-    try {
-      const response = await fetch(
-        `/api/comments/media/search?type=${kind}&q=${encodeURIComponent(value)}`,
-      );
-      const body = (await response.json().catch(() => null)) as {
-        items?: KlipyMediaItem[];
-        error?: { message?: string };
-      } | null;
-      if (!response.ok) {
-        setStatus(body?.error?.message ?? "Media search is unavailable.");
+  const loadMedia = useCallback(
+    async (searchQuery: string) => {
+      const value = searchQuery.trim();
+      setBusy(true);
+      setStatus(null);
+      try {
+        const params = new URLSearchParams({ type: kind });
+        if (value) params.set("q", value);
+        const response = await fetch(`/api/comments/media/search?${params.toString()}`);
+        const payload = (await response.json().catch(() => null)) as {
+          items?: KlipyMediaItem[];
+          error?: { message?: string };
+        } | null;
+        if (!response.ok) {
+          setStatus(payload?.error?.message ?? "Media search is unavailable.");
+          setItems([]);
+          return;
+        }
+        const nextItems = Array.isArray(payload?.items) ? payload.items : [];
+        setItems(nextItems);
+        if (!nextItems.length) setStatus(value ? "No results found." : "No featured media found.");
+      } catch {
+        setStatus("Media search is unavailable.");
         setItems([]);
-        return;
+      } finally {
+        setBusy(false);
       }
-      setItems(Array.isArray(body?.items) ? body.items : []);
-      if (!body?.items?.length) setStatus("No results found.");
-    } catch {
-      setStatus("Media search is unavailable.");
-    } finally {
-      setBusy(false);
-    }
-  }
+    },
+    [kind],
+  );
+
+  useEffect(() => {
+    setQuery("");
+    setItems([]);
+    void loadMedia("");
+  }, [loadMedia]);
 
   return (
-    <div className="product-comment-media-picker">
-      <div className="product-comment-media-picker__controls">
-        <Input
-          label="Search KLIPY"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search KLIPY"
-          type="search"
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void search();
-            }
-          }}
-        />
-        <Button size="sm" loading={busy} onClick={() => void search()}>
-          Search
-        </Button>
-        <button type="button" onClick={onClose}>
-          Close
+    <div className="product-comment-media-picker" aria-label="KLIPY media picker">
+      <div className="product-comment-media-picker__header">
+        <div>
+          <strong>Add media</strong>
+          <small>Powered by KLIPY</small>
+        </div>
+        <button type="button" className="product-comment-media-picker__close" onClick={onClose}>
+          <span aria-hidden="true">×</span>
+          <span className="sr-only">Close media picker</span>
         </button>
       </div>
-      {items.length ? (
-        <div className="product-comment-media-picker__results" aria-label={`${kind} results`}>
-          {items.map((item) => (
-            <button key={item.id} type="button" onClick={() => onSelect(item)}>
-              <img src={item.preview || item.url} alt={item.title} loading="lazy" />
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {status ? <small role="status">{status}</small> : null}
-      <small>Powered by KLIPY</small>
+
+      <div className="product-comment-media-picker__tabs" role="tablist" aria-label="Media type">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={kind === "GIF"}
+          className={kind === "GIF" ? "is-active" : undefined}
+          onClick={() => onKindChange("GIF")}
+        >
+          GIFs
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={kind === "STICKER"}
+          className={kind === "STICKER" ? "is-active" : undefined}
+          onClick={() => onKindChange("STICKER")}
+        >
+          Stickers
+        </button>
+      </div>
+
+      <form
+        className="product-comment-media-picker__search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void loadMedia(query);
+        }}
+      >
+        <input
+          type="search"
+          value={query}
+          aria-label="Search KLIPY"
+          placeholder={`Search ${kind === "GIF" ? "GIFs" : "stickers"}`}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <button type="submit" disabled={busy}>
+          {busy ? "…" : "Search"}
+        </button>
+      </form>
+
+      <div className="product-comment-media-picker__results" aria-label={`${kind} results`}>
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={kind === "STICKER" ? "is-sticker" : undefined}
+            aria-label={`Add ${item.title}`}
+            onClick={() => onSelect(item)}
+          >
+            <img src={item.preview || item.url} alt={item.title} loading="lazy" />
+          </button>
+        ))}
+      </div>
+      {busy && !items.length ? <small role="status">Loading {kind.toLowerCase()}s…</small> : null}
+      {!busy && status ? <small role="status">{status}</small> : null}
     </div>
   );
 }
@@ -393,6 +436,7 @@ export function CommentThread({
             {mediaKind ? (
               <MediaPicker
                 kind={mediaKind}
+                onKindChange={(nextKind) => setMediaKind(nextKind)}
                 onSelect={selectMedia}
                 onClose={() => setMediaKind(null)}
               />
