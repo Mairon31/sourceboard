@@ -8,18 +8,32 @@ import { Button, IconButton } from "./controls";
 import { ChevronDownIcon, CloseIcon } from "./icons";
 
 export interface ModalProps {
-  triggerLabel: string;
+  triggerLabel?: string;
   title: string;
   description?: string;
   children: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function Modal({ triggerLabel, title, description, children }: ModalProps) {
+export function Modal({
+  triggerLabel,
+  title,
+  description,
+  children,
+  open,
+  onOpenChange,
+}: ModalProps) {
   return (
-    <Dialog.Root>
-      <Dialog.Trigger className="sb-button sb-button--secondary sb-button--md motion-interactive">
-        {triggerLabel}
-      </Dialog.Trigger>
+    <Dialog.Root
+      open={open}
+      onOpenChange={onOpenChange ? (nextOpen) => onOpenChange(nextOpen) : undefined}
+    >
+      {triggerLabel ? (
+        <Dialog.Trigger className="sb-button sb-button--secondary sb-button--md motion-interactive">
+          {triggerLabel}
+        </Dialog.Trigger>
+      ) : null}
       <Dialog.Portal>
         <Dialog.Backdrop className="sb-overlay-backdrop" />
         <Dialog.Viewport className="sb-overlay-viewport">
