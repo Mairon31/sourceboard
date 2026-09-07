@@ -14,7 +14,14 @@ function clampLimit(value: number | undefined, fallback = 50): number {
 
 function splitCsv(value: unknown): string[] {
   if (typeof value !== "string" || !value.trim()) return [];
-  return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 function mapAudit(row: Record<string, unknown>): AdminAuditRow {
