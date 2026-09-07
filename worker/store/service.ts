@@ -42,14 +42,21 @@ export interface StoreItemInput {
   assetId: string | null;
   configJson: string;
   isActive: boolean;
+  lifecycleState: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  isEnabled: boolean;
+  isFeatured: boolean;
   startsAt: number | null;
   endsAt: number | null;
   sortOrder: number;
+  createdAt: number;
 }
 
-function activePredicate(now = Date.now()): { sql: string; binds: unknown[] } {
+export function publicAvailabilityPredicate(now = Date.now()): {
+  sql: string;
+  binds: unknown[];
+} {
   return {
-    sql: "is_active = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at > ?)",
+    sql: "lifecycle_state = 'PUBLISHED' AND is_enabled = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at > ?)",
     binds: [now, now],
   };
 }
@@ -72,16 +79,18 @@ export function createStoreService(db: D1Database) {
   return {
     async list(now = Date.now()): Promise<StoreCatalogRow[]> {
       await ensureBuiltInStoreCatalog(db);
-      const active = activePredicate(now);
+      const available = publicAvailabilityPredicate(now);
       const result = await db
         .prepare(
           `SELECT id, type, name, description, price_points AS pricePoints, asset_id AS assetId,
-                  config_json AS configJson, is_active AS isActive, starts_at AS startsAt,
-                  ends_at AS endsAt, sort_order AS sortOrder
-           FROM store_items WHERE is_active = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at > ?)
+                  config_json AS configJson, is_active AS isActive,
+                  lifecycle_state AS lifecycleState, is_enabled AS isEnabled,
+                  is_featured AS isFeatured, starts_at AS startsAt,
+                  ends_at AS endsAt, sort_order AS sortOrder, created_at AS createdAt
+           FROM store_items WHERE ${available.sql}
            ORDER BY sort_order ASC, created_at DESC`,
         )
-        .bind(...active.binds)
+        .bind(...available.binds)
         .all<StoreItemInput>();
       return Promise.all(
         result.results.map(async (item): Promise<StoreCatalogRow> => {
@@ -96,15 +105,26 @@ export function createStoreService(db: D1Database) {
           if (!packId || (type !== "EMOTE_PACK" && type !== "STICKER_PACK")) {
             return { ...item, previewAssets: [] as StorePreviewAsset[] };
           }
-          const table = type === "EMOTE_PACK" ? "emote_catalog" : "sticker_catalog";
-          const rows = await db
-            .prepare(
-              `SELECT id, label, asset_key AS assetKey
-               FROM ${table} WHERE pack_id = ? AND status = 'ACTIVE'
-               ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
-            )
-            .bind(packId)
-            .all<StorePreviewAsset>();
+          const rows =
+            type === "EMOTE_PACK"
+              ? await db
+                  .prepare(
+                    `SELECT id, label, asset_key AS assetKey
+                     FROM emote_catalog
+                     WHERE pack_id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1
+                       AND moderation_state NOT IN ('HIDDEN', 'REMOVED')
+                     ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+                  )
+                  .bind(packId)
+                  .all<StorePreviewAsset>()
+              : await db
+                  .prepare(
+                    `SELECT id, label, asset_key AS assetKey
+                     FROM sticker_catalog WHERE pack_id = ? AND status = 'ACTIVE'
+                     ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+                  )
+                  .bind(packId)
+                  .all<StorePreviewAsset>();
           return { ...item, previewAssets: rows.results };
         }),
       );
@@ -124,7 +144,7 @@ export function createStoreService(db: D1Database) {
       const purchaseKey = `store:${userId}:${idempotencyKey}`;
       const ledgerId = createIdentifier();
       const purchaseId = createIdentifier();
-      const active = activePredicate(now);
+      const available = publicAvailabilityPredicate(now);
       await db.batch([
         db
           .prepare(
@@ -132,7 +152,7 @@ export function createStoreService(db: D1Database) {
              (id, user_id, amount, entry_type, reward_type, source_event, source_event_id, idempotency_key, metadata_json, created_at)
              SELECT ?, ?, -price_points, 'REVERSAL', 'STORE_PURCHASE', 'store.purchase', ?, ?, ?, ?
              FROM store_items
-             WHERE id = ? AND ${active.sql}
+             WHERE id = ? AND ${available.sql}
                AND NOT EXISTS (SELECT 1 FROM user_inventory WHERE user_id = ? AND store_item_id = ?)
                AND NOT EXISTS (SELECT 1 FROM store_purchases WHERE idempotency_key = ?)
                AND (SELECT COALESCE(SUM(amount), 0) FROM point_ledger WHERE user_id = ?) >= price_points`,
@@ -145,7 +165,7 @@ export function createStoreService(db: D1Database) {
             JSON.stringify({ itemId }),
             now,
             itemId,
-            ...active.binds,
+            ...available.binds,
             userId,
             itemId,
             purchaseKey,
@@ -245,29 +265,28 @@ export function createStoreService(db: D1Database) {
     ) {
       const now = options.now ?? Date.now();
       const allowUnowned = options.allowUnowned === true;
+      const available = publicAvailabilityPredicate(now);
       const result = allowUnowned
         ? await db
             .prepare(
               `INSERT INTO user_cosmetics (user_id, slot, store_item_id, updated_at)
                SELECT ?, ?, s.id, ? FROM store_items s
-               WHERE s.id = ? AND s.type = ? AND s.is_active = 1
-                 AND (s.starts_at IS NULL OR s.starts_at <= ?)
-                 AND (s.ends_at IS NULL OR s.ends_at > ?)
+               WHERE s.id = ? AND s.type = ? AND s.${available.sql}
                ON CONFLICT(user_id, slot) DO UPDATE SET
                  store_item_id = excluded.store_item_id, updated_at = excluded.updated_at`,
             )
-            .bind(userId, slot, now, itemId, slot, now, now)
+            .bind(userId, slot, now, itemId, slot, ...available.binds)
             .run()
         : await db
             .prepare(
               `INSERT INTO user_cosmetics (user_id, slot, store_item_id, updated_at)
                SELECT ?, ?, i.store_item_id, ? FROM user_inventory i
                JOIN store_items s ON s.id = i.store_item_id
-               WHERE i.user_id = ? AND i.store_item_id = ? AND s.type = ?
+               WHERE i.user_id = ? AND i.store_item_id = ? AND s.type = ? AND s.${available.sql}
                ON CONFLICT(user_id, slot) DO UPDATE SET
                  store_item_id = excluded.store_item_id, updated_at = excluded.updated_at`,
             )
-            .bind(userId, slot, now, userId, itemId, slot)
+            .bind(userId, slot, now, userId, itemId, slot, ...available.binds)
             .run();
       if (!result.meta.changes) {
         throw new StoreError(
@@ -275,7 +294,7 @@ export function createStoreService(db: D1Database) {
           allowUnowned ? "COSMETIC_UNAVAILABLE" : "COSMETIC_NOT_OWNED",
           allowUnowned
             ? "That cosmetic is unavailable."
-            : "That cosmetic is not in your inventory.",
+            : "That cosmetic is not in your inventory or is unavailable.",
         );
       }
       return { slot, storeItemId: itemId };
