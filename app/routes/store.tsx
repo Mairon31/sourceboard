@@ -4,7 +4,7 @@ import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
 import { ProductShell, PresentationNotice } from "../components/product/ProductShell";
-import { Avatar, Badge, Card } from "../components/ui";
+import { Avatar, Card } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
