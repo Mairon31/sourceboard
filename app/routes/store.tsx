@@ -4,7 +4,8 @@ import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
 import { ProductShell, PresentationNotice } from "../components/product/ProductShell";
-import { Avatar, Card } from "../components/ui";
+import { StoreItemCard } from "../components/product/StoreItemCard";
+import { StoreSection } from "../components/product/StoreSection";
 import { readCsrfToken } from "../data/csrf";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
@@ -57,17 +58,16 @@ export async function loader({ request, context }: ServerLoaderArgs) {
     }),
     async (runtime, userId) => {
       const service = createStoreService(runtime.db);
-      const profile = userId
-        ? await createD1ProfileStore(runtime.db).getProfileByUserId(userId, Date.now())
-        : null;
-      const [catalog, points, inventory, equipped, adminUnlocked] = await Promise.all([
+      const profileStore = createD1ProfileStore(runtime.db);
+      const [catalog, points, inventory, equipped, adminUnlocked, profile] = await Promise.all([
         service.list(),
         userId ? service.balance(userId) : Promise.resolve(null),
         userId ? service.inventory(userId) : Promise.resolve([]),
         userId ? service.equipped(userId) : Promise.resolve([]),
         userId ? isStoreAdmin(runtime.db, userId) : Promise.resolve(false),
+        userId ? profileStore.getProfileByUserId(userId, Date.now()) : Promise.resolve(null),
       ]);
-      const owned = new Set(inventory.map((item) => String(item.storeItemId)));
+      const ownedIds = new Set(inventory.map((item) => String(item.storeItemId)));
       const equippedIds = new Set(equipped.map((item) => String(item.storeItemId)));
       const items = catalog.map((item) => {
         const type = item.type as StoreItemView["type"];
@@ -79,16 +79,15 @@ export async function loader({ request, context }: ServerLoaderArgs) {
             }))
           : [];
         const id = String(item.id);
-        const state: StoreItemView["state"] =
-          Number(item.isActive) !== 1
-            ? "DISABLED"
-            : equippedIds.has(id)
-              ? "EQUIPPED"
-              : adminUnlocked || owned.has(id)
-                ? "OWNED"
-                : points !== null && Number(item.pricePoints) > points
-                  ? "INSUFFICIENT_POINTS"
-                  : "AVAILABLE";
+        const equippedItem = equippedIds.has(id);
+        const ownedItem = adminUnlocked || ownedIds.has(id);
+        const state: StoreItemView["state"] = equippedItem
+          ? "EQUIPPED"
+          : ownedItem
+            ? "OWNED"
+            : points !== null && Number(item.pricePoints) > points
+              ? "INSUFFICIENT_POINTS"
+              : "AVAILABLE";
         return {
           id,
           name: String(item.name),
@@ -96,6 +95,10 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           type,
           state,
           price: Number(item.pricePoints),
+          createdAt: new Date(Number(item.createdAt)).toISOString(),
+          featured: Boolean(item.isFeatured),
+          owned: ownedItem,
+          equipped: equippedItem,
           previewLabel: String(item.name),
           packSize: assets.length || undefined,
           adminUnlocked,
@@ -119,85 +122,6 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
-function categoryLabel(type: StoreItemType): string {
-  if (type === "AVATAR_FRAME") return "Frame";
-  if (type === "PROFILE_EFFECT") return "Effect";
-  if (type === "NAME_FONT") return "Font";
-  if (type === "EMOTE_PACK") return "Emote pack";
-  if (type === "PROFILE_BANNER") return "Banner";
-  return "Sticker pack";
-}
-
-function StorePreview({
-  item,
-  name,
-  avatarUrl,
-}: {
-  item: StoreItemView;
-  name: string;
-  avatarUrl?: string;
-}) {
-  const { config, media } = item.preview;
-  if (item.type === "AVATAR_FRAME") {
-    return (
-      <div className="product-store-preview product-store-preview--avatar">
-        <Avatar
-          name={name}
-          src={avatarUrl}
-          size="xl"
-          className={config.preset ? `sb-avatar--frame-${config.preset}` : undefined}
-        />
-      </div>
-    );
-  }
-  if (item.type === "PROFILE_EFFECT" || item.type === "PROFILE_BANNER") {
-    return (
-      <div
-        className={`product-store-preview product-store-preview--effect product-store-preview--${config.preset ?? "none"}`}
-      >
-        <div className="product-store-preview__profile">
-          <Avatar name={name} src={avatarUrl} size="xl" />
-          <strong>{name}</strong>
-        </div>
-      </div>
-    );
-  }
-  if (item.type === "NAME_FONT") {
-    return (
-      <div className="product-store-preview product-store-preview--font">
-        <strong style={config.family ? { fontFamily: config.family } : undefined}>{name}</strong>
-        <span>{config.family ?? "Default"}</span>
-      </div>
-    );
-  }
-  return (
-    <div className="product-store-preview product-store-preview--pack">
-      {media.length ? (
-        <div className="product-store-preview__media">
-          {media.slice(0, 4).map((asset) => (
-            <img key={asset.id} src={asset.url} alt={asset.label} loading="lazy" />
-          ))}
-        </div>
-      ) : (
-        <div className="product-store-preview__pack-empty">
-          <strong>✦</strong>
-          <span>Published emotes will appear here.</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function actionLabel(item: StoreItemView, adminUnlocked: boolean, authenticated: boolean): string {
-  if (!authenticated) return "Sign in";
-  if (item.state === "EQUIPPED") return "Unequip";
-  if (item.state === "DISABLED") return "Unavailable";
-  if (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) return "Not enough points";
-  if (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked)) return "Unlocked";
-  if (item.state === "OWNED" || adminUnlocked) return "Equip";
-  return "Redeem";
-}
-
 export default function StoreRoute() {
   const {
     items,
@@ -214,6 +138,13 @@ export default function StoreRoute() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const visibleItems =
     activeFilter === "ALL" ? items : items.filter((item) => item.type === activeFilter);
+  const featuredItems = visibleItems.filter((item) => item.featured);
+  const newItems = [...visibleItems]
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, 8);
+  const ownedItems = authenticated
+    ? visibleItems.filter((item) => item.owned || item.equipped)
+    : [];
 
   async function purchase(item: StoreItemView) {
     setBusyId(item.id);
@@ -292,6 +223,21 @@ export default function StoreRoute() {
     if (item.state !== "INSUFFICIENT_POINTS") void purchase(item);
   }
 
+  function renderItems(sectionItems: StoreItemView[]) {
+    return sectionItems.map((item) => (
+      <StoreItemCard
+        key={item.id}
+        item={item}
+        previewName={previewName}
+        previewAvatarUrl={previewAvatarUrl}
+        authenticated={authenticated}
+        adminUnlocked={adminUnlocked}
+        busy={busyId === item.id}
+        onAction={actOnItem}
+      />
+    ));
+  }
+
   return (
     <ProductShell wide>
       <div className="product-store-page">
@@ -331,52 +277,31 @@ export default function StoreRoute() {
           </div>
         ) : null}
 
-        <div className="product-store-grid">
-          {visibleItems.map((item) => {
-            const label = actionLabel(item, adminUnlocked, authenticated);
-            const disabled =
-              busyId === item.id ||
-              item.state === "DISABLED" ||
-              (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) ||
-              (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked));
-            return (
-              <Card key={item.id} className="product-store-item">
-                <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
-                <span className="product-store-item__category">{categoryLabel(item.type)}</span>
-                <h2>{item.name}</h2>
-                <p>{item.description}</p>
-                {adminUnlocked ? (
-                  <span className="product-store-admin-badge">Admin unlocked</span>
-                ) : null}
-                <div className="product-store-item__footer">
-                  <div>
-                    <span className="product-store-item__price">
-                      <i className="product-store-coin" aria-hidden="true" />
-                      {item.price.toLocaleString()} pts
-                    </span>
-                    <div className="product-store-state">
-                      {item.state === "EQUIPPED"
-                        ? "Currently equipped"
-                        : item.state === "OWNED"
-                          ? "Owned"
-                          : item.state === "INSUFFICIENT_POINTS"
-                            ? "More points required"
-                            : "Available"}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className={`product-store-action${item.state === "OWNED" || item.state === "EQUIPPED" || adminUnlocked ? " product-store-action--owned" : ""}`}
-                    disabled={disabled}
-                    onClick={() => actOnItem(item)}
-                  >
-                    {busyId === item.id ? "Working…" : label}
-                  </button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+        {featuredItems.length ? (
+          <StoreSection
+            eyebrow="Curated"
+            title="Featured"
+            description="Items highlighted by the SourceBoard catalog team."
+          >
+            {renderItems(featuredItems)}
+          </StoreSection>
+        ) : null}
+
+        {newItems.length ? (
+          <StoreSection title="New" description="The newest additions to the public catalog.">
+            {renderItems(newItems)}
+          </StoreSection>
+        ) : null}
+
+        {ownedItems.length ? (
+          <StoreSection title="Owned" description="Your unlocked and currently equipped items.">
+            {renderItems(ownedItems)}
+          </StoreSection>
+        ) : null}
+
+        <StoreSection title="All items" description="Browse every item in the selected category.">
+          {renderItems(visibleItems)}
+        </StoreSection>
       </div>
     </ProductShell>
   );
