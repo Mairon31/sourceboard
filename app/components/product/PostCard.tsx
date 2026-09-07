@@ -5,6 +5,7 @@ import {
 } from "react";
 import { Link, useNavigate } from "react-router";
 import type { PostSummary } from "../../../shared/ui/contracts";
+import { CosmeticIdentity } from "./CosmeticIdentity";
 import { Avatar, Badge, Button, Card, HeartIcon, MessageIcon, ShareIcon } from "../ui";
 
 function statusTone(status: PostSummary["status"]) {
@@ -104,24 +105,20 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
         {post.author.mode === "ANONYMOUS" ? (
           <Avatar name="Anonymous Author" />
         ) : (
-          <Avatar
-            name={post.author.displayName}
-            src={post.author.avatarUrl}
-            className={
-              post.author.avatarFrame ? `sb-avatar--frame-${post.author.avatarFrame}` : undefined
-            }
-          />
+          <Link to={post.author.profileUrl ?? `/u/${post.author.username ?? "aurora"}`}>
+            <CosmeticIdentity
+              displayName={post.author.displayName}
+              avatarUrl={post.author.avatarUrl}
+              avatarFrame={post.author.avatarFrame}
+              profileEffect={post.author.profileEffect}
+              nameFont={post.author.nameFont}
+              mode="compact"
+              nameAs="strong"
+            />
+          </Link>
         )}
         <div className="product-post__author">
-          {post.author.mode === "ANONYMOUS" ? (
-            <strong>Anonymous Author</strong>
-          ) : (
-            <Link to={post.author.profileUrl ?? `/u/${post.author.username ?? "aurora"}`}>
-              <span style={post.author.nameFont ? { fontFamily: post.author.nameFont } : undefined}>
-                {post.author.displayName}
-              </span>
-            </Link>
-          )}
+          {post.author.mode === "ANONYMOUS" ? <strong>Anonymous Author</strong> : null}
           <span>
             {new Date(post.createdAt).toLocaleDateString("en-US", {
               month: "short",
