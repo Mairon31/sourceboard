@@ -16,20 +16,13 @@ interface KlipyMediaItem {
 
 function CommentAttachment({ attachment }: { attachment: CommentAttachmentView }) {
   const imageUrl = attachment.preview ?? attachment.url;
+  if (!imageUrl) return null;
+
   return (
     <div
       className={`product-comment-attachment product-comment-attachment--${attachment.type.toLowerCase()}`}
     >
-      {imageUrl ? (
-        <div className="product-comment-attachment__media">
-          <img src={imageUrl} alt={attachment.label} loading="lazy" />
-          {attachment.provider === "klipy" ? <small>Powered by KLIPY</small> : null}
-        </div>
-      ) : null}
-      <div>
-        <span>{attachment.type}</span>
-        <strong>{attachment.label}</strong>
-      </div>
+      <img src={imageUrl} alt={attachment.label} loading="lazy" />
     </div>
   );
 }
@@ -216,12 +209,9 @@ function MediaPicker({
   }, [loadMedia]);
 
   return (
-    <div className="product-comment-media-picker" aria-label="KLIPY media picker">
+    <div className="product-comment-media-picker" aria-label="Media picker">
       <div className="product-comment-media-picker__header">
-        <div>
-          <strong>Add media</strong>
-          <small>Powered by KLIPY</small>
-        </div>
+        <strong>Add media</strong>
         <button type="button" className="product-comment-media-picker__close" onClick={onClose}>
           <span aria-hidden="true">×</span>
           <span className="sr-only">Close media picker</span>
@@ -259,7 +249,7 @@ function MediaPicker({
         <input
           type="search"
           value={query}
-          aria-label="Search KLIPY"
+          aria-label="Search media"
           placeholder={`Search ${kind === "GIF" ? "GIFs" : "stickers"}`}
           onChange={(event) => setQuery(event.target.value)}
         />
@@ -273,7 +263,7 @@ function MediaPicker({
           <button
             key={item.id}
             type="button"
-            className={kind === "STICKER" ? "is-sticker" : undefined}
+            className={`product-comment-media-picker__item product-comment-media-picker__item--${item.type.toLowerCase()}`}
             aria-label={`Add ${item.title}`}
             onClick={() => onSelect(item)}
           >
@@ -304,11 +294,13 @@ export function CommentThread({
 }) {
   const sectionRef = useRef<HTMLElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const submitInFlightRef = useRef(false);
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [mediaKind, setMediaKind] = useState<"GIF" | "STICKER" | null>(null);
   const [attachment, setAttachment] = useState<CommentAttachmentView | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!focusComposer) return;
@@ -318,7 +310,9 @@ export function CommentThread({
   }, [authenticated, focusComposer]);
 
   async function submit() {
-    if (!body.trim() && !attachment) return;
+    if (submitInFlightRef.current || (!body.trim() && !attachment)) return;
+    submitInFlightRef.current = true;
+    setSubmitting(true);
     setStatus(null);
     try {
       const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/comments`, {
@@ -351,6 +345,9 @@ export function CommentThread({
       window.location.reload();
     } catch {
       setStatus("Comment unavailable.");
+    } finally {
+      submitInFlightRef.current = false;
+      setSubmitting(false);
     }
   }
 
@@ -422,10 +419,10 @@ export function CommentThread({
               </div>
               <Button
                 size="sm"
-                disabled={!body.trim() && !attachment}
+                disabled={submitting || (!body.trim() && !attachment)}
                 onClick={() => void submit()}
               >
-                {replyTo ? "Reply" : "Comment"}
+                {submitting ? "Posting…" : replyTo ? "Reply" : "Comment"}
               </Button>
               {replyTo ? (
                 <button type="button" onClick={() => setReplyTo(null)}>
