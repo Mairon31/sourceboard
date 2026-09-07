@@ -58,6 +58,26 @@ describe("store service", () => {
     );
   });
 
+  it("unequips a cosmetic without deleting the owned inventory item", async () => {
+    const { db, queries } = createDb();
+    const service = createStoreService(db) as ReturnType<typeof createStoreService> & {
+      unequip: (
+        userId: string,
+        slot: "NAME_FONT",
+      ) => Promise<{ slot: "NAME_FONT"; storeItemId: null; removed: boolean }>;
+    };
+
+    await expect(service.unequip("user", "NAME_FONT")).resolves.toEqual({
+      slot: "NAME_FONT",
+      storeItemId: null,
+      removed: true,
+    });
+    expect(queries.find((query) => query.includes("DELETE FROM user_cosmetics"))).toContain(
+      "slot = ?",
+    );
+    expect(queries.some((query) => query.includes("DELETE FROM user_inventory"))).toBe(false);
+  });
+
   it("records admin grants in the authoritative inventory source", async () => {
     const { db, queries } = createDb();
     await expect(createStoreService(db).grant("user", "item", 100)).resolves.toEqual({
