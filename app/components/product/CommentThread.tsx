@@ -59,25 +59,29 @@ function CommentItem({
 
   return (
     <article className={`product-comment${depth ? " product-comment--reply" : ""}`}>
-      {comment.author.mode === "ANONYMOUS" ? (
-        <Avatar name="Anonymous Author" size="sm" />
-      ) : (
-        <CosmeticIdentity
-          displayName={comment.author.displayName}
-          avatarUrl={comment.author.avatarUrl}
-          avatarFrame={comment.author.avatarFrame}
-          profileEffect={comment.author.profileEffect}
-          nameFont={comment.author.nameFont}
-          mode="compact"
-          avatarSize="sm"
-          nameAs="strong"
-        />
-      )}
       <div className="product-comment__body">
         <div className="product-comment__heading">
-          {comment.author.mode === "ANONYMOUS" ? <strong>Anonymous Author</strong> : null}
-          {comment.author.mode === "ANONYMOUS" ? <Badge>Anonymous Author</Badge> : null}
-          <span>
+          <div className="product-comment__identity">
+            {comment.author.mode === "ANONYMOUS" ? (
+              <>
+                <Avatar name="Anonymous Author" size="sm" />
+                <strong>Anonymous Author</strong>
+                <Badge>Anonymous</Badge>
+              </>
+            ) : (
+              <CosmeticIdentity
+                displayName={comment.author.displayName}
+                avatarUrl={comment.author.avatarUrl}
+                avatarFrame={comment.author.avatarFrame}
+                profileEffect={comment.author.profileEffect}
+                nameFont={comment.author.nameFont}
+                mode="compact"
+                avatarSize="sm"
+                nameAs="strong"
+              />
+            )}
+          </div>
+          <span className="product-comment__date">
             {new Date(comment.createdAt).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
