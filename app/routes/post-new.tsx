@@ -1,24 +1,51 @@
 import { useState } from "react";
-import { readCsrfToken } from "../data/csrf";
 import { useLoaderData } from "react-router";
+import { createD1ProfileStore } from "../../worker/profile/store";
+import { readCsrfToken } from "../data/csrf";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
-import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
+import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
+import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { Button, Card, Input, Switch, Textarea } from "../components/ui";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
   return withOptionalServerSession(
     request,
     context,
-    (unavailable) => ({ authenticated: false, unavailable }),
-    async (_runtime, userId) => ({ authenticated: Boolean(userId), unavailable: false }),
+    (unavailable) => ({ authenticated: false, unavailable, identity: null }),
+    async (runtime, userId) => {
+      if (!userId) return { authenticated: false, unavailable: false, identity: null };
+      const profileStore = createD1ProfileStore(runtime.db);
+      const now = Date.now();
+      const [profile, cosmetics] = await Promise.all([
+        profileStore.getProfileByUserId(userId, now),
+        profileStore.getEquippedCosmetics(userId),
+      ]);
+      return {
+        authenticated: true,
+        unavailable: false,
+        identity: profile
+          ? {
+              displayName: profile.displayName,
+              avatarUrl: profile.avatarAssetId
+                ? `/api/media/profile/${encodeURIComponent(profile.avatarAssetId)}`
+                : undefined,
+              cosmetics,
+            }
+          : {
+              displayName: "SourceBoard member",
+              avatarUrl: undefined,
+              cosmetics,
+            },
+      };
+    },
   );
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
 export default function NewPostRoute() {
-  const { authenticated, unavailable } = useLoaderData<LoaderData>();
+  const { authenticated, unavailable, identity } = useLoaderData<LoaderData>();
   const [authorMode, setAuthorMode] = useState<"IDENTIFIED" | "ANONYMOUS">("IDENTIFIED");
   const [isNsfw, setIsNsfw] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -123,6 +150,24 @@ export default function NewPostRoute() {
               disabled={!authenticated}
               onCheckedChange={(checked) => setAuthorMode(checked ? "ANONYMOUS" : "IDENTIFIED")}
             />
+            <div className="product-presentation-notice" role="note" aria-label="Author preview">
+              <strong>Author preview</strong>
+              {authorMode === "ANONYMOUS" ? (
+                <span>Anonymous Author</span>
+              ) : identity ? (
+                <CosmeticIdentity
+                  displayName={identity.displayName}
+                  avatarUrl={identity.avatarUrl}
+                  avatarFrame={identity.cosmetics.avatarFrame}
+                  profileEffect={identity.cosmetics.profileEffect}
+                  nameFont={identity.cosmetics.nameFont}
+                  mode="preview"
+                  nameAs="strong"
+                />
+              ) : (
+                <span>SourceBoard member</span>
+              )}
+            </div>
             <Switch
               label="Mark as NSFW"
               description="The server applies your audience's sensitive-content preferences before serving media."
