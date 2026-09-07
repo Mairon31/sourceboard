@@ -28,13 +28,9 @@ import "./components/admin/admin.css";
 // fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
 export async function loader({ request, context }: ServerLoaderArgs) {
   const requestContext = readSourceBoardRequestContext(context);
-  let session: { user: { id: string; username: string } } | null = null;
-  try {
-    const current = await readServerSession(request, context);
-    session = current ? { user: current.user } : null;
-  } catch {
-    session = null;
-  }
+  const session = await readServerSession(request, context)
+    .then((current) => (current ? { user: current.user } : null))
+    .catch(() => null);
 
   return {
     cspNonce: requestContext?.cspNonce ?? null,
