@@ -15,7 +15,7 @@ interface KlipyMediaItem {
 }
 
 function CommentAttachment({ attachment }: { attachment: CommentAttachmentView }) {
-  const imageUrl = attachment.preview ?? attachment.url;
+  const imageUrl = attachment.url ?? attachment.preview;
   if (!imageUrl) return null;
 
   return (
@@ -267,7 +267,7 @@ function MediaPicker({
             aria-label={`Add ${item.title}`}
             onClick={() => onSelect(item)}
           >
-            <img src={item.preview || item.url} alt={item.title} loading="lazy" />
+            <img src={item.url || item.preview} alt={item.title} loading="lazy" />
           </button>
         ))}
       </div>
