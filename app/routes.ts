@@ -19,6 +19,7 @@ export default [
   route("admin", "routes/admin.tsx"),
   route("admin/moderation", "routes/admin-moderation.tsx"),
   route("admin/verifications", "routes/admin-verifications.tsx"),
+  route("admin/users", "routes/admin-users.tsx"),
   route("admin/store", "routes/admin-store.tsx"),
   route("admin/anonymous/:postId", "routes/admin-anonymous.tsx"),
 ] satisfies RouteConfig;
