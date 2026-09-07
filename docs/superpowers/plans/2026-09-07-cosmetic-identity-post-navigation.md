@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make equipped cosmetics render consistently on profiles, posts, comments and the post-creation preview, while making post-card/title/Comment navigation reliable in real browsers.
+**Goal:** Make equipped cosmetics render consistently on profiles, posts, comments and the post-creation preview, while making post-card/title/Comment navigation reliable in a real browser.
 
-**Architecture:** Keep D1/profile store as the single source of truth for equipped cosmetics. Extend the public author DTO with safe cosmetic fields and render them through one reusable `CosmeticIdentity` component with `profile`, `compact` and `preview` variants. Reproduce the navigation regression with Playwright first, then use real router links for title/Comment and a guarded card-surface navigation handler for non-interactive areas.
+**Architecture:** Keep D1/profile store as the single source of truth for equipped cosmetics. Extend the public author DTO with safe cosmetic fields and render them through one reusable `CosmeticIdentity` component with `profile`, `compact` and `preview` variants. Reproduce the navigation regression with a deterministic local-D1 Playwright fixture before changing production navigation, then use real router links for title/Comment and guarded card-surface navigation for non-interactive areas.
 
 **Tech Stack:** React Router v8 SSR, React, TypeScript, Cloudflare Workers, D1, Vitest, Playwright, CSS.
 
@@ -14,73 +14,46 @@
 
 - Work directly on `master`; do not create branches or PRs.
 - D1 remains authoritative for equipped cosmetics.
-- Anonymous posts/comments must not serialize identifying cosmetics.
-- Full profile effects appear on profiles; compact effects appear only around author identity in posts/comments.
-- `prefers-reduced-motion` disables cosmetic motion while preserving static appearance.
-- No per-card particle DOM systems or continuously animated full-card blur layers.
-- Required responsive verification widths: 390, 430, 768, 1024, 1280 and 1440+ CSS px.
-- No document-level horizontal overflow.
-
----
+- Anonymous posts/comments serialize no identifying cosmetics.
+- Full effects appear on profiles; compact effects are contained to author identity in posts/comments.
+- `prefers-reduced-motion` disables motion while retaining static styling.
+- No per-card particle DOM systems or full-card continuously animated blur layers.
+- Browser navigation tests must be deterministic; do not assume the normal local DB already contains a post.
+- Required responsive widths: 390, 430, 768, 1024, 1280 and 1440+ CSS px.
 
 ## File Structure
 
-- Create `app/components/product/CosmeticIdentity.tsx`: one rendering primitive for avatar/name cosmetics.
-- Create `app/components/product/cosmetic-identity.css`: profile/compact/preview effect containment and reduced-motion rules.
-- Modify `shared/ui/contracts.ts`: add `profileEffect` to `PublicPostAuthor`.
-- Modify `worker/profile/store.ts`: widen `EquippedCosmetics` to the shared preset types.
-- Modify `worker/posts/service.ts`: serialize safe public `profileEffect`.
-- Modify `worker/comments/service.ts`: serialize safe public `profileEffect`.
-- Modify `app/components/product/PostCard.tsx`: use `CosmeticIdentity`; harden navigation.
-- Modify `app/components/product/CommentThread.tsx`: use `CosmeticIdentity`.
-- Modify `app/routes/profile.tsx`: use `CosmeticIdentity` in profile mode.
-- Modify `app/routes/post-new.tsx`: load current profile/cosmetics and render preview mode.
-- Modify `app/root.tsx`: import `cosmetic-identity.css`.
-- Test `tests/unit/cosmetic-identity-navigation.test.ts`.
+- Create `app/components/product/CosmeticIdentity.tsx`.
+- Create `app/components/product/cosmetic-identity.css`.
+- Modify `shared/ui/contracts.ts`.
+- Modify `worker/profile/store.ts`.
+- Modify `worker/posts/service.ts`.
+- Modify `worker/comments/service.ts`.
+- Modify `app/components/product/PostCard.tsx`.
+- Modify `app/components/product/CommentThread.tsx`.
+- Modify `app/routes/profile.tsx`.
+- Modify `app/routes/post-new.tsx`.
+- Modify `app/routes/post-detail.tsx`.
+- Modify `app/root.tsx`.
+- Modify `tests/e2e/test-helpers.ts` for deterministic local-D1 post fixture.
+- Create/modify `tests/unit/cosmetic-identity-navigation.test.ts`.
 - Modify `tests/e2e/navigation.spec.ts` and `tests/e2e/responsive.spec.ts`.
 
-### Task 1: Widen the cosmetic contracts safely
+### Task 1: Widen cosmetic contracts
 
-**Files:**
-- Modify: `worker/profile/store.ts`
-- Modify: `shared/ui/contracts.ts`
-- Test: `tests/unit/cosmetic-identity-navigation.test.ts`
+**Files:** `worker/profile/store.ts`, `shared/ui/contracts.ts`, `tests/unit/cosmetic-identity-navigation.test.ts`
 
-**Interfaces:**
-- Consumes: `AvatarFramePreset`, `ProfileEffectPreset`, `NameFontFamily` from `shared/store/cosmetics.ts`.
-- Produces: `EquippedCosmetics` and `PublicPostAuthor` that can carry `profileEffect?: ProfileEffectPreset`.
+- [ ] **Step 1: Write failing contract tests**
 
-- [ ] **Step 1: Write the failing contract test**
+Assert `PublicPostAuthor` contains `profileEffect?: ProfileEffectPreset` and `EquippedCosmetics` uses `AvatarFramePreset`, `ProfileEffectPreset`, `NameFontFamily` rather than legacy literals.
 
-```ts
-import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+- [ ] **Step 2: Run RED**
 
-const contracts = readFileSync(new URL("../../shared/ui/contracts.ts", import.meta.url), "utf8");
-const profileStore = readFileSync(new URL("../../worker/profile/store.ts", import.meta.url), "utf8");
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
 
-describe("public cosmetic identity contracts", () => {
-  it("exposes profile effects on identified public authors", () => {
-    expect(contracts).toContain("profileEffect?: ProfileEffectPreset");
-  });
+Expected: FAIL.
 
-  it("uses shared cosmetic preset types in the profile store", () => {
-    expect(profileStore).toContain("AvatarFramePreset");
-    expect(profileStore).toContain("ProfileEffectPreset");
-    expect(profileStore).toContain("NameFontFamily");
-  });
-});
-```
-
-- [ ] **Step 2: Run the focused test and verify RED**
-
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
-
-Expected: FAIL because `PublicPostAuthor` does not contain `profileEffect` and `EquippedCosmetics` is still narrowed to legacy literal values.
-
-- [ ] **Step 3: Implement the shared typed contracts**
-
-In `worker/profile/store.ts`, import the shared preset types and replace the legacy literal interface with:
+- [ ] **Step 3: Implement typed contracts**
 
 ```ts
 export interface EquippedCosmetics {
@@ -91,17 +64,15 @@ export interface EquippedCosmetics {
 }
 ```
 
-In `shared/ui/contracts.ts`, add to `PublicPostAuthor`:
+Add to `PublicPostAuthor`:
 
 ```ts
 profileEffect?: ProfileEffectPreset;
 ```
 
-- [ ] **Step 4: Run the focused test and typecheck**
+- [ ] **Step 4: Verify GREEN + typecheck**
 
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts && npm run typecheck`
-
-Expected: PASS.
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts && npm run typecheck`
 
 - [ ] **Step 5: Commit**
 
@@ -110,55 +81,29 @@ git add shared/ui/contracts.ts worker/profile/store.ts tests/unit/cosmetic-ident
 git commit -m "feat: widen public cosmetic identity contracts"
 ```
 
-### Task 2: Serialize safe effects for posts and comments
+### Task 2: Serialize safe effects for posts/comments
 
-**Files:**
-- Modify: `worker/posts/service.ts`
-- Modify: `worker/comments/service.ts`
-- Test: `tests/unit/cosmetic-identity-navigation.test.ts`
+**Files:** `worker/posts/service.ts`, `worker/comments/service.ts`, unit test.
 
-**Interfaces:**
-- Consumes: widened `PublicPostAuthor` from Task 1.
-- Produces: identified public authors with `profileEffect`; anonymous author payloads remain cosmetic-free.
+- [ ] **Step 1: Add failing assertions**
 
-- [ ] **Step 1: Add failing serialization assertions**
+Require `profileEffect: cosmetics?.profileEffect` in both visible identified author serializers and retain the exact anonymous early return with no cosmetic fields.
 
-```ts
-const postsService = readFileSync(new URL("../../worker/posts/service.ts", import.meta.url), "utf8");
-const commentsService = readFileSync(new URL("../../worker/comments/service.ts", import.meta.url), "utf8");
+- [ ] **Step 2: Run RED**
 
-it("serializes the equipped profile effect for visible identified authors", () => {
-  expect(postsService).toContain("profileEffect: cosmetics?.profileEffect");
-  expect(commentsService).toContain("profileEffect: cosmetics?.profileEffect");
-});
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
 
-it("keeps anonymous author serialization cosmetic-free", () => {
-  expect(postsService).toContain('return { mode: "ANONYMOUS", displayName: "Anonymous Author" }');
-  expect(commentsService).toContain('return { mode: "ANONYMOUS", displayName: "Anonymous Author" }');
-});
-```
-
-- [ ] **Step 2: Run focused tests and verify RED**
-
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
-
-Expected: FAIL on missing `profileEffect` serialization.
-
-- [ ] **Step 3: Add effect serialization only in the identified visible branch**
-
-Add this field alongside `avatarFrame` and `nameFont` in both author serializers:
+- [ ] **Step 3: Add only the safe identified field**
 
 ```ts
 profileEffect: cosmetics?.profileEffect,
 ```
 
-Do not add cosmetic fields to either anonymous-return branch.
+Do not modify anonymous payloads.
 
-- [ ] **Step 4: Run focused tests**
+- [ ] **Step 4: Verify GREEN**
 
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
-
-Expected: PASS.
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
 
 - [ ] **Step 5: Commit**
 
@@ -167,17 +112,11 @@ git add worker/posts/service.ts worker/comments/service.ts tests/unit/cosmetic-i
 git commit -m "feat: expose equipped effects on public authors"
 ```
 
-### Task 3: Create the reusable cosmetic identity component
+### Task 3: Create reusable `CosmeticIdentity`
 
-**Files:**
-- Create: `app/components/product/CosmeticIdentity.tsx`
-- Create: `app/components/product/cosmetic-identity.css`
-- Modify: `app/root.tsx`
-- Test: `tests/unit/cosmetic-identity-navigation.test.ts`
+**Files:** new component/CSS, `app/root.tsx`, unit test.
 
-**Interfaces:**
-- Consumes: `PublicPostAuthor`-compatible identity fields and profile DTO cosmetics.
-- Produces:
+**Interface:**
 
 ```ts
 export interface CosmeticIdentityProps {
@@ -190,63 +129,21 @@ export interface CosmeticIdentityProps {
   avatarSize?: "sm" | "md" | "lg" | "xl";
   nameAs?: "span" | "strong" | "h1";
 }
-
-export function CosmeticIdentity(props: CosmeticIdentityProps): JSX.Element;
 ```
 
-- [ ] **Step 1: Add failing component-contract assertions**
+- [ ] **Step 1: Add failing source assertions**
 
-```ts
-const identity = readFileSync(new URL("../../app/components/product/CosmeticIdentity.tsx", import.meta.url), "utf8");
-const identityCss = readFileSync(new URL("../../app/components/product/cosmetic-identity.css", import.meta.url), "utf8");
+Require all three modes, profileEffect handling, `.cosmetic-identity--compact`, and a reduced-motion rule.
 
-it("provides profile compact and preview cosmetic identity modes", () => {
-  expect(identity).toContain('"profile" | "compact" | "preview"');
-  expect(identity).toContain("profileEffect");
-  expect(identityCss).toContain(".cosmetic-identity--compact");
-  expect(identityCss).toContain("prefers-reduced-motion: reduce");
-});
-```
+- [ ] **Step 2: Run RED**
 
-- [ ] **Step 2: Run focused test and verify RED**
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
 
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
+- [ ] **Step 3: Implement component**
 
-Expected: FAIL because the new files do not exist.
+Use existing `Avatar`; derive frame/effect classes only from already-typed allowlisted values. `compact` effects are smaller/lower-opacity than profile effects; `preview` uses the same visual rules inside bounded preview containers. Import CSS from `app/root.tsx`.
 
-- [ ] **Step 3: Implement `CosmeticIdentity`**
-
-Use the existing `Avatar` component and derive classes only from allowlisted presets:
-
-```tsx
-export function CosmeticIdentity({
-  displayName,
-  avatarUrl,
-  avatarFrame,
-  profileEffect,
-  nameFont,
-  mode,
-  avatarSize = mode === "profile" ? "xl" : "sm",
-  nameAs = "span",
-}: CosmeticIdentityProps) {
-  const NameTag = nameAs;
-  return (
-    <div
-      className={`cosmetic-identity cosmetic-identity--${mode}${profileEffect && profileEffect !== "none" ? ` cosmetic-identity--effect-${profileEffect}` : ""}`}
-    >
-      <Avatar
-        name={displayName}
-        src={avatarUrl}
-        size={avatarSize}
-        className={avatarFrame ? `sb-avatar--frame-${avatarFrame}` : undefined}
-      />
-      <NameTag style={nameFont ? { fontFamily: nameFont } : undefined}>{displayName}</NameTag>
-    </div>
-  );
-}
-```
-
-In CSS, constrain pseudo-elements to the identity wrapper. `compact` must use smaller radii/opacity than `profile`; `preview` may match profile scale inside Store/composer previews. Add:
+Required reduced-motion rule:
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -257,13 +154,9 @@ In CSS, constrain pseudo-elements to the identity wrapper. `compact` must use sm
 }
 ```
 
-Import the stylesheet from `app/root.tsx` after the existing product/store effect styles.
+- [ ] **Step 4: Verify**
 
-- [ ] **Step 4: Run focused test, typecheck and lint**
-
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts && npm run typecheck && npm run lint`
-
-Expected: PASS.
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts && npm run typecheck && npm run lint`
 
 - [ ] **Step 5: Commit**
 
@@ -272,49 +165,25 @@ git add app/components/product/CosmeticIdentity.tsx app/components/product/cosme
 git commit -m "feat: add reusable cosmetic identity"
 ```
 
-### Task 4: Use the identity component on profile, posts and comments
+### Task 4: Use shared identity on profile/posts/comments
 
-**Files:**
-- Modify: `app/routes/profile.tsx`
-- Modify: `app/components/product/PostCard.tsx`
-- Modify: `app/components/product/CommentThread.tsx`
-- Test: `tests/unit/cosmetic-identity-navigation.test.ts`
-
-**Interfaces:**
-- Consumes: `CosmeticIdentity` from Task 3.
-- Produces: full profile rendering and compact post/comment rendering.
+**Files:** `app/routes/profile.tsx`, `PostCard.tsx`, `CommentThread.tsx`, unit test.
 
 - [ ] **Step 1: Add failing usage assertions**
 
-```ts
-const profileRoute = readFileSync(new URL("../../app/routes/profile.tsx", import.meta.url), "utf8");
-const postCard = readFileSync(new URL("../../app/components/product/PostCard.tsx", import.meta.url), "utf8");
-const comments = readFileSync(new URL("../../app/components/product/CommentThread.tsx", import.meta.url), "utf8");
+Require `mode="profile"` in profile and `mode="compact"` in posts/comments.
 
-it("uses the shared cosmetic identity on profile posts and comments", () => {
-  expect(profileRoute).toContain('mode="profile"');
-  expect(postCard).toContain('mode="compact"');
-  expect(comments).toContain('mode="compact"');
-});
-```
+- [ ] **Step 2: Run RED**
 
-- [ ] **Step 2: Run focused test and verify RED**
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
 
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
+- [ ] **Step 3: Replace duplicated avatar/name rendering**
 
-Expected: FAIL because the routes/components still render avatar and name separately.
+Identified users use `CosmeticIdentity`; anonymous users keep explicit cosmetic-free identity. Keep banner profile-only. Do not let compact effects wrap title, image, comment bubble or actions.
 
-- [ ] **Step 3: Replace duplicated identity rendering**
+- [ ] **Step 4: Verify**
 
-Use `CosmeticIdentity` for identified authors. Keep anonymous presentation explicit and cosmetic-free. On profile, pass `profile.cosmetics?.avatarFrame`, `profile.cosmetics?.profileEffect`, `profile.cosmetics?.nameFont`. On posts/comments, pass the equivalent `post.author`/`comment.author` fields.
-
-Do not move the profile banner into `CosmeticIdentity`; keep `ProfileBanner` profile-only.
-
-- [ ] **Step 4: Run tests and typecheck**
-
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts && npm run typecheck`
-
-Expected: PASS.
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts && npm run typecheck`
 
 - [ ] **Step 5: Commit**
 
@@ -323,55 +192,25 @@ git add app/routes/profile.tsx app/components/product/PostCard.tsx app/component
 git commit -m "feat: render equipped cosmetics across public identity"
 ```
 
-### Task 5: Add equipped-identity preview to post creation
+### Task 5: Preview equipped identity while creating a post
 
-**Files:**
-- Modify: `app/routes/post-new.tsx`
-- Test: `tests/unit/cosmetic-identity-navigation.test.ts`
+**Files:** `app/routes/post-new.tsx`, unit test.
 
-**Interfaces:**
-- Consumes: `createD1ProfileStore`, `CosmeticIdentity`.
-- Produces loader data:
+- [ ] **Step 1: Add failing assertions**
 
-```ts
-{
-  authenticated: boolean;
-  unavailable: boolean;
-  identity?: {
-    displayName: string;
-    avatarUrl?: string;
-    cosmetics: EquippedCosmetics;
-  };
-}
-```
+Require `getEquippedCosmetics`, `mode="preview"`, and identified/anonymous preview switching.
 
-- [ ] **Step 1: Add failing preview assertions**
+- [ ] **Step 2: Run RED**
 
-```ts
-const postNew = readFileSync(new URL("../../app/routes/post-new.tsx", import.meta.url), "utf8");
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
 
-it("previews the signed-in author with equipped cosmetics before publishing", () => {
-  expect(postNew).toContain("getEquippedCosmetics");
-  expect(postNew).toContain('mode="preview"');
-  expect(postNew).toContain("authorMode === \"IDENTIFIED\"");
-});
-```
+- [ ] **Step 3: Extend loader**
 
-- [ ] **Step 2: Run focused test and verify RED**
+In the authenticated branch instantiate one profile store and fetch profile + cosmetics in `Promise.all`. Return display name, avatar URL and cosmetics. Render `CosmeticIdentity mode="preview"` when author mode is IDENTIFIED; render plain `Anonymous Author` when anonymous.
 
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts`
+- [ ] **Step 4: Verify**
 
-Expected: FAIL.
-
-- [ ] **Step 3: Extend the loader and render the preview**
-
-In the authenticated loader branch, create one `profileStore`, fetch `profile` and `cosmetics` with `Promise.all`, and serialize avatar URL through `/api/media/profile/:assetId`. Render a small preview card above the form controls when `authorMode === "IDENTIFIED"`; render a plain `Anonymous Author` preview when anonymous mode is selected.
-
-- [ ] **Step 4: Run tests and typecheck**
-
-Run: `npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts && npm run typecheck`
-
-Expected: PASS.
+`npm test -- --run tests/unit/cosmetic-identity-navigation.test.ts && npm run typecheck`
 
 - [ ] **Step 5: Commit**
 
@@ -380,107 +219,104 @@ git add app/routes/post-new.tsx tests/unit/cosmetic-identity-navigation.test.ts
 git commit -m "feat: preview equipped identity when creating posts"
 ```
 
-### Task 6: Reproduce and fix card/title/Comment navigation in Playwright
+### Task 6: Reproduce and fix card/title/Comment navigation with deterministic Playwright data
 
-**Files:**
-- Modify: `tests/e2e/navigation.spec.ts`
-- Modify: `app/components/product/PostCard.tsx`
-- Modify: `app/routes/post-detail.tsx`
-- Modify: `app/components/product/CommentThread.tsx`
+**Files:** `tests/e2e/test-helpers.ts`, `tests/e2e/navigation.spec.ts`, `PostCard.tsx`, `post-detail.tsx`, `CommentThread.tsx`.
 
-**Interfaces:**
-- Consumes: canonical route `/posts/:postId/:slug`.
-- Produces: title and Comment as real router links; card-surface navigation only for non-interactive targets; comments section target `id="comments"` and composer target `id="comment-composer"`.
+**Deterministic test fixture:** Add `seedNavigationPostFixture()` using Node `child_process.execFileSync` to run `npx wrangler d1 execute DB --local --command <sql>`. Use idempotent `INSERT OR IGNORE` statements with test-only IDs. Seed the minimum records needed by current server reads:
 
-- [ ] **Step 1: Add browser regressions before changing production code**
+- `users`: `e2e-navigation-user` with non-sensitive dummy encrypted/hash strings and ACTIVE status;
+- `user_profiles`: public display name;
+- `user_preferences`: default public-safe preferences;
+- `media_assets`: `e2e-navigation-media`, purpose POST-compatible metadata/R2 key;
+- `posts`: `e2e-navigation-post`, slug `e2e-navigation-post`, PUBLIC/OPEN, identified, timestamps/edit deadline.
 
-Add tests that, on the fixture-backed/development feed route used by the existing suite:
+Do **not** seed a session for basic card/title/Comment navigation; anonymous viewers can see this public post. Use `INSERT OR IGNORE` so retries are safe.
+
+- [ ] **Step 1: Add the seed helper and failing browser regressions before production navigation changes**
+
+In `navigation.spec.ts`, call the helper in `test.beforeAll`. Add:
 
 ```ts
 test("post title opens canonical detail", async ({ page }) => {
   await page.goto("/");
-  const card = page.locator(".product-post").first();
+  const card = page.getByRole("link", { name: /Open post: E2E navigation post/i });
   await card.locator(".product-post__title").click();
-  await expect(page).toHaveURL(/\/posts\/[^/]+\/[^#]+$/);
+  await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
 });
 
-test("post card surface opens detail", async ({ page }) => {
+test("post card surface opens canonical detail", async ({ page }) => {
   await page.goto("/");
-  const card = page.locator(".product-post").first();
-  await card.locator(".product-post__copy").click({ position: { x: 8, y: 8 } });
-  await expect(page).toHaveURL(/\/posts\/[^/]+\/[^#]+$/);
+  const card = page.locator(".product-post", { hasText: "E2E navigation post" });
+  await card.locator(".product-post__media").click();
+  await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
 });
 
-test("Comment opens detail comments and focuses the composer when authenticated", async ({ page }) => {
+test("Comment opens the comments target", async ({ page }) => {
   await page.goto("/");
-  await page.locator(".product-post").first().getByRole("link", { name: "Comment" }).click();
-  await expect(page).toHaveURL(/\/posts\/[^/]+\/[^#]+#comments$/);
+  const card = page.locator(".product-post", { hasText: "E2E navigation post" });
+  await card.getByRole("link", { name: "Comment" }).click();
+  await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post#comments$/);
   await expect(page.locator("#comments")).toBeVisible();
 });
 ```
 
-Use the repository's existing authenticated fixture/helper for the focus assertion; if the default E2E session is anonymous, assert scroll target on anonymous and add the authenticated focus case where the suite already establishes a signed-in session.
+If current `role="link"` nesting makes the title locator ambiguous, locate the card by class/text instead; the regression must reflect actual tap targets rather than pass because of ARIA quirks.
 
-- [ ] **Step 2: Run only the navigation E2E and verify RED**
+- [ ] **Step 2: Run navigation E2E and confirm RED**
 
-Run: `npx playwright test tests/e2e/navigation.spec.ts --project=chromium`
+`npx playwright test tests/e2e/navigation.spec.ts --project=chromium`
 
-Expected: at least one of the newly added title/card/Comment regressions reproduces the production failure.
+Expected: at least one newly added click test reproduces the current failure before production fix.
 
-- [ ] **Step 3: Harden navigation**
+- [ ] **Step 3: Fix navigation at the root cause**
 
-In `PostCard.tsx`:
+Requirements:
 
-- keep `<Link to={detailHref} className="product-post__title">`;
-- give Comment an explicit accessible label and `to={`${detailHref}#comments`}`;
-- keep `handleCardClick` only for non-interactive targets;
-- avoid placing `role="link"` on a container that contains other links/buttons; use `tabIndex={0}` plus an explicit keyboard handler only if the accessibility tree remains valid, otherwise add a visually stretched non-nested link layer behind interactive controls.
+- title remains a real React Router `<Link to={detailHref}>`;
+- Comment remains a real `<Link to={`${detailHref}#comments`}>` with accessible name `Comment`;
+- media/non-interactive card surface navigates to detail;
+- nested author/Like/Share/NSFW controls never trigger card navigation;
+- avoid an invalid outer `role="link"` containing nested links/buttons. Prefer a non-role clickable card with keyboard support on a dedicated stretched link/surface if needed.
 
-In `CommentThread.tsx`, ensure the wrapping section has `id="comments"` and the textarea/form target has `id="comment-composer"`.
+Add `id="comments"` to the comments section and `id="comment-composer"` to the actual textarea/composer target.
 
-In `post-detail.tsx`, on `location.hash === "#comments"`, use an effect after hydration:
+In `post-detail.tsx`, after hydration:
 
 ```ts
 useEffect(() => {
   if (location.hash !== "#comments") return;
-  const section = document.getElementById("comments");
-  section?.scrollIntoView({ block: "start" });
+  document.getElementById("comments")?.scrollIntoView({ block: "start" });
   if (authenticated) {
     document.getElementById("comment-composer")?.focus({ preventScroll: true });
   }
 }, [authenticated, location.hash]);
 ```
 
-- [ ] **Step 4: Run the navigation E2E again**
+Anonymous viewers scroll to comments without forced focus.
 
-Run: `npx playwright test tests/e2e/navigation.spec.ts --project=chromium`
+- [ ] **Step 4: Re-run browser regression**
+
+`npx playwright test tests/e2e/navigation.spec.ts --project=chromium`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/e2e/navigation.spec.ts app/components/product/PostCard.tsx app/routes/post-detail.tsx app/components/product/CommentThread.tsx
+git add tests/e2e/test-helpers.ts tests/e2e/navigation.spec.ts app/components/product/PostCard.tsx app/routes/post-detail.tsx app/components/product/CommentThread.tsx
 git commit -m "fix: make post and comment navigation reliable"
 ```
 
-### Task 7: Responsive and full verification for this subsystem
+### Task 7: Responsive/full verification and progress evidence
 
-**Files:**
-- Modify: `tests/e2e/responsive.spec.ts` only if a new scoped assertion is required.
-- Modify: `docs/IMPLEMENTATION_PROGRESS.md` after verification.
+**Files:** `tests/e2e/responsive.spec.ts`, `docs/IMPLEMENTATION_PROGRESS.md`.
 
-**Interfaces:**
-- Consumes: Tasks 1-6.
-- Produces: verified subsystem ready for the Admin and Store plans.
+- [ ] **Step 1: Add compact identity containment coverage**
 
-- [ ] **Step 1: Add compact identity overflow coverage if not already exercised**
+At 390/430px, verify feed card and comments do not exceed viewport and compact cosmetic identity remains within author region. Keep the deterministic navigation post fixture available to responsive tests if a real post is needed.
 
-At 390 and 430 px, assert the first feed card and first comment thread do not exceed the viewport and that `.cosmetic-identity--compact` remains contained within the author row.
-
-- [ ] **Step 2: Run all quality gates**
-
-Run:
+- [ ] **Step 2: Run full gates**
 
 ```bash
 npm run lint
@@ -494,13 +330,13 @@ npx playwright test
 
 Expected: every command exits 0.
 
-- [ ] **Step 3: Update implementation progress with factual verification evidence**
+- [ ] **Step 3: Update progress only from evidence**
 
-Record the subsystem completion and the actual CI/local run identifiers/results; do not claim deployment until the Cloudflare check is green.
+Record exact test totals/run IDs. Do not claim Cloudflare production deployment until its check for the final `master` commit is green.
 
 - [ ] **Step 4: Commit documentation**
 
 ```bash
-git add docs/IMPLEMENTATION_PROGRESS.md tests/e2e/responsive.spec.ts
+git add tests/e2e/responsive.spec.ts docs/IMPLEMENTATION_PROGRESS.md
 git commit -m "docs: record cosmetic identity navigation verification"
 ```
