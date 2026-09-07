@@ -1,8 +1,4 @@
-import {
-  useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import type { PostSummary } from "../../../shared/ui/contracts";
 import { CosmeticIdentity } from "./CosmeticIdentity";
@@ -44,12 +40,6 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
 
   function handleCardClick(event: ReactMouseEvent<HTMLDivElement>) {
     if (isInteractivePostTarget(event.target)) return;
-    openPostDetail();
-  }
-
-  function handleCardKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (event.target !== event.currentTarget || event.key !== "Enter") return;
-    event.preventDefault();
     openPostDetail();
   }
 
@@ -95,11 +85,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
   return (
     <Card
       className={`product-post product-post--clickable${compact ? " product-post--compact" : ""}`}
-      role="link"
-      tabIndex={0}
-      aria-label={`Open post: ${post.title}`}
       onClick={handleCardClick}
-      onKeyDown={handleCardKeyDown}
     >
       <header className="product-post__header">
         {post.author.mode === "ANONYMOUS" ? (
@@ -162,7 +148,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           ) : null}
         </div>
       ) : (
-        <div className={mediaClass}>
+        <Link to={detailHref} className={mediaClass} aria-label={`Open post: ${post.title}`}>
           {post.imageUrl ? (
             <img
               src={post.imageUrl}
@@ -178,7 +164,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
               <span />
             </div>
           )}
-        </div>
+        </Link>
       )}
 
       <div className="product-post__engagement">
