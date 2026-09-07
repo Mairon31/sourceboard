@@ -1,3 +1,9 @@
+import type {
+  AvatarFramePreset,
+  NameFontFamily,
+  ProfileEffectPreset,
+} from "../../shared/store/cosmetics";
+
 export type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY";
 
 export type FriendshipStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
@@ -76,10 +82,10 @@ export interface PublicProfileDto {
   avatarUrl?: string;
   bannerUrl?: string;
   cosmetics?: {
-    avatarFrame?: "nebula";
+    avatarFrame?: AvatarFramePreset;
     profileBanner?: "nebula";
-    profileEffect?: "soft-glow" | "paper-grain" | "none";
-    nameFont?: "InterVariable" | "AtkinsonHyperlegible" | "Georgia";
+    profileEffect?: ProfileEffectPreset;
+    nameFont?: NameFontFamily;
   };
   profileVisibility: ProfileVisibility;
   socialLinks: Array<{ platform: string; url: string }>;
