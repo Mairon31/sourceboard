@@ -11,6 +11,7 @@ const adminTypes = read("../../worker/admin/types.ts");
 const shell = read("../../app/components/admin/AdminShell.tsx");
 const css = read("../../app/components/admin/admin.css");
 const adminRoute = read("../../app/routes/admin.tsx");
+const moderationRoute = read("../../app/routes/admin-moderation.tsx");
 
 describe("admin control center", () => {
   it("provides typed overview users roles and audit reads", () => {
@@ -38,5 +39,18 @@ describe("admin control center", () => {
     expect(adminRoute).toContain("Draft store items");
     expect(adminRoute).toContain("Flagged catalog");
     expect(adminRoute).toContain("Recent audit");
+  });
+
+  it("filters the moderation queue and submits persisted target actions", () => {
+    expect(moderationRoute).toContain("statusFilter");
+    expect(moderationRoute).toContain("targetFilter");
+    expect(moderationRoute).toContain("categoryFilter");
+    expect(moderationRoute).toContain("sortOrder");
+    expect(moderationRoute).toContain("AdminActionMenu");
+    expect(moderationRoute).toContain('fetch("/api/admin/moderation/action"');
+    expect(moderationRoute).toContain("readCsrfToken()");
+    expect(moderationRoute).toContain("revalidator.revalidate()");
+    expect(moderationRoute).toContain("admin-desktop-table");
+    expect(moderationRoute).toContain("admin-mobile-review-card");
   });
 });
