@@ -4,7 +4,15 @@ import { createAdminReadService } from "../../worker/admin/read";
 import type { AdminRoleRow, AdminUserRow } from "../../worker/admin/types";
 import { AdminActionMenu } from "../components/admin/AdminActionMenu";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
-import { Badge, Button, Card, Input, Modal, OverlayActionRow, Textarea } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  Modal,
+  OverlayActionRow,
+  Textarea,
+} from "../components/ui";
 import { loadAdminAccess } from "../data/admin-access";
 import { loadCapabilityAccess } from "../data/capability-access";
 import { readCsrfToken } from "../data/csrf";
@@ -142,7 +150,9 @@ export default function AdminUsersRoute() {
         setDialogError(payload?.error?.message ?? "The role change could not be saved.");
         return;
       }
-      setStatus(`${operation === "assign" ? "Assigned" : "Removed"} ${role} for @${selectedUser.username}.`);
+      setStatus(
+        `${operation === "assign" ? "Assigned" : "Removed"} ${role} for @${selectedUser.username}.`,
+      );
       setSelectedUser(null);
       revalidator.revalidate();
     } catch {
