@@ -6,7 +6,9 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 const storeService = read("../../worker/store/service.ts");
 const storeAdmin = read("../../worker/store/admin.ts");
 const catalogApi = read("../../worker/catalog/api.ts");
-const adminEmotePacks = read("../../app/components/admin/store/AdminEmotePackManager.tsx");
+const adminEmotePacks = read(
+  "../../app/components/admin/store/AdminEmotePackManager.tsx",
+);
 
 describe("Store schema rollout compatibility", () => {
   it("limits lifecycle fallback to missing-column schema errors", () => {
@@ -34,8 +36,12 @@ describe("Store schema rollout compatibility", () => {
   });
 
   it("serves authenticated Admin emote previews even while a pack is draft or disabled", () => {
-    expect(adminEmotePacks).toContain("/api/admin/catalog/emotes/${encodeURIComponent(emote.id)}/media");
-    expect(adminEmotePacks).not.toContain("/api/media/catalog/emote/${encodeURIComponent(emote.id)}");
+    expect(adminEmotePacks).toContain(
+      "/api/admin/catalog/emotes/${encodeURIComponent(emote.id)}/media",
+    );
+    expect(adminEmotePacks).not.toContain(
+      "/api/media/catalog/emote/${encodeURIComponent(emote.id)}",
+    );
     expect(catalogApi).toContain("handleAdminEmoteAsset");
     expect(catalogApi).toContain('"cache-control": "no-store"');
   });
