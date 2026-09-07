@@ -48,7 +48,9 @@ describe("home post card experience", () => {
     expect(postCardSource).not.toContain("handleCardKeyDown");
     expect(postCardSource).toContain("handleCardClick");
     expect(postCardSource).toContain("isInteractivePostTarget");
-    expect(postCardSource).toContain('<Link to={detailHref} className="product-post__title">');
+    expect(postCardSource).toContain(
+      '<Link to={detailHref} className="product-post__title">',
+    );
     expect(postCardSource).toContain("<Link to={detailHref} className={mediaClass}");
   });
 });
