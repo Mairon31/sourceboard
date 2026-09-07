@@ -56,6 +56,17 @@ test("post title opens canonical detail", async ({ page }) => {
   await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
 });
 
+test("post author opens the public profile without triggering card navigation", async ({ page }) => {
+  await page.goto("/");
+  await waitForUiReady(page);
+  const card = page.locator(".product-post", { hasText: "E2E navigation post" });
+  const author = card.locator('a[href="/u/e2e-navigation-user"]');
+  await expect(author).toBeVisible();
+  await author.click();
+  await expect(page).toHaveURL(/\/u\/e2e-navigation-user$/);
+  await expect(page).not.toHaveURL(/\/posts\/e2e-navigation-post/);
+});
+
 test("post card surface opens canonical detail", async ({ page }) => {
   await page.goto("/");
   await waitForUiReady(page);
