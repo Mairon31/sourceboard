@@ -3,7 +3,11 @@ import { Link } from "react-router";
 import { readCsrfToken } from "../../data/csrf";
 import { Card } from "../ui";
 
-export function ProfileAccountActions() {
+export function ProfileAccountActions({
+  canAccessAdmin = false,
+}: {
+  canAccessAdmin?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -42,6 +46,15 @@ export function ProfileAccountActions() {
           </span>
           <span aria-hidden="true">›</span>
         </Link>
+        {canAccessAdmin ? (
+          <Link className="product-profile-account__action" to="/admin">
+            <span>
+              <strong>Admin Panel</strong>
+              <small>Moderation, Store and operational controls</small>
+            </span>
+            <span aria-hidden="true">›</span>
+          </Link>
+        ) : null}
         <button
           className="product-profile-account__action product-profile-account__action--danger"
           type="button"
