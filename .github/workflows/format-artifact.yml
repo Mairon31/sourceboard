@@ -22,59 +22,75 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Reproduce session write regression
+        run: |
+          if npm test -- --run tests/unit/navigation-performance.test.ts; then
+            echo "Expected the current session-write regression to fail before the patch."
+            exit 1
+          fi
+          echo "Session-write regression reproduced."
       - name: Apply session activity throttling
         run: |
           python - <<'PY'
           from pathlib import Path
+
           path = Path("worker/auth/service.ts")
           text = path.read_text()
-
           marker = "export function createAuthService(dependencies: AuthServiceDependencies): AuthService {"
+
           if "const SESSION_TOUCH_INTERVAL_MS" not in text:
               if marker not in text:
                   raise SystemExit("createAuthService marker missing")
-              text = text.replace(marker, "const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;\n\n" + marker, 1)
-
-          old_current_lookup = '''    const current = await dependencies.store.findActiveSessionByTokenHash(
-              hashOpaqueToken(rawToken),
-              now(),
-            );'''
-          new_current_lookup = '''    const at = now();
-            const current = await dependencies.store.findActiveSessionByTokenHash(
-              hashOpaqueToken(rawToken),
-              at,
-            );'''
-          if old_current_lookup in text:
-              text = text.replace(old_current_lookup, new_current_lookup, 1)
+              text = text.replace(
+                  marker,
+                  "const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;\n\n" + marker,
+                  1,
+              )
 
           current_start = text.index("  async function currentSession(")
           current_end = text.index("  async function prepareLogin(", current_start)
           current_block = text[current_start:current_end]
+          current_lookup = '''    const current = await dependencies.store.findActiveSessionByTokenHash(
+      hashOpaqueToken(rawToken),
+      now(),
+    );'''
+          current_lookup_throttled = '''    const at = now();
+    const current = await dependencies.store.findActiveSessionByTokenHash(
+      hashOpaqueToken(rawToken),
+      at,
+    );'''
           if "const at = now();" not in current_block:
-              raise SystemExit("currentSession timestamp patch missing")
-          old_current_touch = "    await dependencies.store.touchSession(current.id, now());"
-          if old_current_touch in current_block:
+              if current_lookup not in current_block:
+                  raise SystemExit("currentSession lookup shape changed")
+              current_block = current_block.replace(current_lookup, current_lookup_throttled, 1)
+
+          current_touch = "    await dependencies.store.touchSession(current.id, now());"
+          if "SESSION_TOUCH_INTERVAL_MS" not in current_block:
+              if current_touch not in current_block:
+                  raise SystemExit("currentSession touch shape changed")
               current_block = current_block.replace(
-                  old_current_touch,
+                  current_touch,
                   "    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {\n      await dependencies.store.touchSession(current.id, at);\n    }",
                   1,
               )
-              text = text[:current_start] + current_block + text[current_end:]
+          text = text[:current_start] + current_block + text[current_end:]
 
           get_start = text.index("  async function getSession(")
           get_end = text.index("  async function logout(", get_start)
           get_block = text[get_start:get_end]
-          old_get_touch = "    await dependencies.store.touchSession(current.id, at);"
-          if old_get_touch in get_block and "SESSION_TOUCH_INTERVAL_MS" not in get_block:
+          get_touch = "    await dependencies.store.touchSession(current.id, at);"
+          if "SESSION_TOUCH_INTERVAL_MS" not in get_block:
+              if get_touch not in get_block:
+                  raise SystemExit("getSession touch shape changed")
               get_block = get_block.replace(
-                  old_get_touch,
+                  get_touch,
                   "    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {\n      await dependencies.store.touchSession(current.id, at);\n    }",
                   1,
               )
-              text = text[:get_start] + get_block + text[get_end:]
+          text = text[:get_start] + get_block + text[get_end:]
 
-          if text.count("at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS") < 2:
-              raise SystemExit("both session read paths were not throttled")
+          if text.count("at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS") != 2:
+              raise SystemExit("both session read paths were not throttled exactly once")
           path.write_text(text)
           PY
       - name: Verify navigation performance patches exist
@@ -83,7 +99,7 @@ jobs:
           const fs = require("fs");
           const auth = fs.readFileSync("worker/auth/service.ts", "utf8");
           const detail = fs.readFileSync("app/routes/post-detail.tsx", "utf8");
-          if (!auth.includes("SESSION_TOUCH_INTERVAL_MS") || (auth.match(/lastUsedAt >= SESSION_TOUCH_INTERVAL_MS/g) || []).length < 2) {
+          if (!auth.includes("SESSION_TOUCH_INTERVAL_MS") || (auth.match(/lastUsedAt >= SESSION_TOUCH_INTERVAL_MS/g) || []).length !== 2) {
             throw new Error("session activity throttling is missing");
           }
           if (!detail.includes("const [post, commentsResult] = await Promise.all") || !detail.includes("commentService.listForPost")) {
