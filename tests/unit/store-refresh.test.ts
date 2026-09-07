@@ -8,6 +8,7 @@ function read(path: string): string {
 
 const storeRoute = read("../../app/routes/store.tsx");
 const adminStoreRoute = read("../../app/routes/admin-store.tsx");
+const adminPacks = read("../../app/components/admin/store/AdminEmotePackManager.tsx");
 const routes = read("../../app/routes.ts");
 const adminShell = read("../../app/components/admin/AdminShell.tsx");
 const storeCss = read("../../app/components/product/store.css");
@@ -82,9 +83,11 @@ describe("refreshed store experience", () => {
   it("lets admins create, populate and publish emote packs from the admin panel", () => {
     expect(routes).toContain('route("admin/store", "routes/admin-store.tsx")');
     expect(adminShell).toContain('href: "/admin/store"');
+    expect(adminStoreRoute).toContain("AdminEmotePackManager");
     expect(adminStoreRoute).toContain("/api/admin/catalog/emote-packs");
-    expect(adminStoreRoute).toContain("/api/admin/catalog/emotes");
-    expect(adminStoreRoute).toContain("packId");
+    expect(adminPacks).toContain("/api/admin/catalog/emote-packs");
+    expect(adminPacks).toContain("/api/admin/catalog/emotes");
+    expect(adminPacks).toContain("packId");
     expect(catalogApi).toContain("/api/admin/catalog/emote-packs");
     expect(catalogApi).toContain("emote_packs");
     expect(catalogApi).toContain("store_items");
