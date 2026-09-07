@@ -77,7 +77,9 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
 
   return (
     <Card
-      className={`product-post product-post--clickable${compact ? " product-post--compact" : ""}`}
+      className={`product-post product-post--clickable${
+        compact ? " product-post--compact" : ""
+      }`}
       role="link"
       tabIndex={0}
       aria-label={`Open post: ${post.title}`}
