@@ -4,6 +4,7 @@ import {
   isRouteErrorResponse,
   redirect,
   useLoaderData,
+  useLocation,
   useRevalidator,
   useRouteError,
   type MetaFunction,
@@ -255,8 +256,10 @@ function UnavailablePost({ unavailable }: { unavailable: boolean }) {
 
 export default function PostDetailRoute() {
   const { post, unavailable, authenticated } = useLoaderData<LoaderData>();
+  const location = useLocation();
   if (!post) return <UnavailablePost unavailable={unavailable} />;
   const currentPost = post;
+  const focusComments = location.hash === "#comments";
 
   async function acceptSource(commentId: string) {
     const response = await fetch(`/api/posts/${encodeURIComponent(currentPost.id)}/source/accept`, {
@@ -283,6 +286,7 @@ export default function PostDetailRoute() {
         postId={post.id}
         comments={post.comments}
         authenticated={authenticated}
+        focusComposer={focusComments}
         canAcceptSource={post.permissions.canAcceptSource}
         onAcceptSource={(commentId) => void acceptSource(commentId)}
       />
