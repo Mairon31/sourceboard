@@ -1,0 +1,48 @@
+name: Format Store Follow-up
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/format-store-followup.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Format pending Store files
+        run: >-
+          npx prettier --write
+          app/components/admin/store/AdminCosmeticCatalog.tsx
+          app/components/admin/store/AdminEmotePackManager.tsx
+          app/components/product/ProductNav.tsx
+          app/routes/admin-store.tsx
+          tests/e2e/admin.spec.ts
+          tests/e2e/navigation.spec.ts
+          tests/e2e/responsive.spec.ts
+      - name: Commit formatting and remove helper workflow
+        run: |
+          git config user.name "SourceBoard CI"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/format-store-followup.yml
+          git add app/components/admin/store/AdminCosmeticCatalog.tsx app/components/admin/store/AdminEmotePackManager.tsx app/components/product/ProductNav.tsx app/routes/admin-store.tsx tests/e2e/admin.spec.ts tests/e2e/navigation.spec.ts tests/e2e/responsive.spec.ts
+          git commit -m "style: normalize Store and admin formatting"
+          git push origin HEAD:master
+      - name: Lint after formatting
+        run: npm run lint
+      - name: Typecheck after formatting
+        run: npm run typecheck
+      - name: Unit tests after formatting
+        run: npm test
