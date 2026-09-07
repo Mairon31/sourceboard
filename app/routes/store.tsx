@@ -190,7 +190,7 @@ function StorePreview({
 
 function actionLabel(item: StoreItemView, adminUnlocked: boolean, authenticated: boolean): string {
   if (!authenticated) return "Sign in";
-  if (item.state === "EQUIPPED") return "Equipped";
+  if (item.state === "EQUIPPED") return "Unequip";
   if (item.state === "DISABLED") return "Unavailable";
   if (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) return "Not enough points";
   if (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked)) return "Unlocked";
@@ -255,12 +255,35 @@ export default function StoreRoute() {
     }
   }
 
+  async function unequip(item: StoreItemView) {
+    setBusyId(item.id);
+    setFeedback(null);
+    try {
+      const response = await fetch(`/api/me/cosmetics/${encodeURIComponent(item.type)}`, {
+        method: "DELETE",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      if (!response.ok) {
+        setFeedback("This cosmetic could not be unequipped.");
+        return;
+      }
+      setFeedback(`${item.name} unequipped.`);
+      revalidator.revalidate();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function actOnItem(item: StoreItemView) {
     if (!authenticated) {
       window.location.assign("/login");
       return;
     }
-    if (item.state === "EQUIPPED" || item.state === "DISABLED") return;
+    if (item.state === "EQUIPPED") {
+      if (COSMETIC_TYPES.has(item.type)) void unequip(item);
+      return;
+    }
+    if (item.state === "DISABLED") return;
     if (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked)) return;
     if (item.state === "OWNED" || adminUnlocked) {
       if (COSMETIC_TYPES.has(item.type)) void equip(item);
@@ -313,7 +336,6 @@ export default function StoreRoute() {
             const label = actionLabel(item, adminUnlocked, authenticated);
             const disabled =
               busyId === item.id ||
-              item.state === "EQUIPPED" ||
               item.state === "DISABLED" ||
               (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) ||
               (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked));
@@ -344,7 +366,7 @@ export default function StoreRoute() {
                   </div>
                   <button
                     type="button"
-                    className={`product-store-action${item.state === "OWNED" || adminUnlocked ? " product-store-action--owned" : ""}`}
+                    className={`product-store-action${item.state === "OWNED" || item.state === "EQUIPPED" || adminUnlocked ? " product-store-action--owned" : ""}`}
                     disabled={disabled}
                     onClick={() => actOnItem(item)}
                   >
