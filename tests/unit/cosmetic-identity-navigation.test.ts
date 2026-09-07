@@ -28,7 +28,11 @@ describe("public cosmetic identity contracts", () => {
   });
 
   it("keeps anonymous author serialization cosmetic-free", () => {
-    expect(postsService).toContain('return { mode: "ANONYMOUS", displayName: "Anonymous Author" }');
-    expect(commentsService).toContain('return { mode: "ANONYMOUS", displayName: "Anonymous Author" }');
+    expect(postsService).toContain(
+      'return { mode: "ANONYMOUS", displayName: "Anonymous Author" }',
+    );
+    expect(commentsService).toContain(
+      'return { mode: "ANONYMOUS", displayName: "Anonymous Author" }',
+    );
   });
 });
