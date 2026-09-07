@@ -1,8 +1,4 @@
-import type {
-  AvatarFramePreset,
-  NameFontFamily,
-  ProfileEffectPreset,
-} from "../store/cosmetics";
+import type { AvatarFramePreset, NameFontFamily, ProfileEffectPreset } from "../store/cosmetics";
 
 export type AuthorMode = "IDENTIFIED" | "ANONYMOUS";
 export type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
@@ -16,11 +12,7 @@ export type StoreItemType =
   | "EMOTE_PACK"
   | "STICKER_PACK";
 export type StoreItemState =
-  | "AVAILABLE"
-  | "OWNED"
-  | "EQUIPPED"
-  | "DISABLED"
-  | "INSUFFICIENT_POINTS";
+  "AVAILABLE" | "OWNED" | "EQUIPPED" | "DISABLED" | "INSUFFICIENT_POINTS";
 
 export interface UserSummary {
   id: string;
@@ -168,13 +160,7 @@ export interface FriendView {
 
 export interface NotificationView {
   id: string;
-  type:
-    | "COMMENT"
-    | "REPLY"
-    | "SOURCE_ACCEPTED"
-    | "SOURCE_VERIFIED"
-    | "FRIEND_REQUEST"
-    | "SYSTEM";
+  type: "COMMENT" | "REPLY" | "SOURCE_ACCEPTED" | "SOURCE_VERIFIED" | "FRIEND_REQUEST" | "SYSTEM";
   actor?: UserSummary;
   title: string;
   body: string;

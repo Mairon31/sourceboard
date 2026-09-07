@@ -273,7 +273,9 @@ export function createStoreService(db: D1Database) {
         throw new StoreError(
           409,
           allowUnowned ? "COSMETIC_UNAVAILABLE" : "COSMETIC_NOT_OWNED",
-          allowUnowned ? "That cosmetic is unavailable." : "That cosmetic is not in your inventory.",
+          allowUnowned
+            ? "That cosmetic is unavailable."
+            : "That cosmetic is not in your inventory.",
         );
       }
       return { slot, storeItemId: itemId };
@@ -299,7 +301,11 @@ export function validateStoreConfig(type: StoreType, config: unknown): string {
   if (type === "NAME_FONT" && !isNameFontFamily(value.family))
     throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "NAME_FONT family is not allowlisted.");
   if (type === "AVATAR_FRAME" && !isAvatarFramePreset(value.preset))
-    throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "AVATAR_FRAME preset is not allowlisted.");
+    throw new StoreError(
+      400,
+      "STORE_CONFIG_NOT_ALLOWED",
+      "AVATAR_FRAME preset is not allowlisted.",
+    );
   if (type === "PROFILE_EFFECT" && !isProfileEffectPreset(value.preset))
     throw new StoreError(
       400,

@@ -60,18 +60,12 @@ export function createEntitlementChecker(db: D1Database) {
 
     if (await hasAdminUnlock()) {
       const exists = await db
-        .prepare(
-          "SELECT 1 FROM sticker_catalog WHERE (id = ? OR slug = ?) AND status = 'ACTIVE'",
-        )
+        .prepare("SELECT 1 FROM sticker_catalog WHERE (id = ? OR slug = ?) AND status = 'ACTIVE'")
         .bind(body.attachment.id, body.attachment.id)
         .first();
       if (exists) return;
     }
 
-    throw new PostError(
-      403,
-      "STICKER_NOT_ENTITLED",
-      "This sticker pack is not in your inventory.",
-    );
+    throw new PostError(403, "STICKER_NOT_ENTITLED", "This sticker pack is not in your inventory.");
   };
 }

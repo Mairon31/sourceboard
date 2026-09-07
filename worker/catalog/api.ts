@@ -262,7 +262,15 @@ async function createEmotePack(
         `INSERT INTO store_items
          (id, type, name, description, price_points, config_json, is_active, sort_order, created_at, updated_at)
          VALUES (?, 'EMOTE_PACK', ?, ?, ?, ?, 0, 1000, ?, ?)`,
-      ).bind(storeItemId, label, description, pricePoints, JSON.stringify({ packId: id }), now, now),
+      ).bind(
+        storeItemId,
+        label,
+        description,
+        pricePoints,
+        JSON.stringify({ packId: id }),
+        now,
+        now,
+      ),
     ]);
   } catch (error) {
     if (String(error).includes("UNIQUE"))
@@ -404,7 +412,9 @@ async function handlePublicAsset(
 }
 
 export function isCatalogRoute(pathname: string): boolean {
-  return routeKind(pathname) !== null || isEmotePackRoute(pathname) || publicAsset(pathname) !== null;
+  return (
+    routeKind(pathname) !== null || isEmotePackRoute(pathname) || publicAsset(pathname) !== null
+  );
 }
 
 export async function handleCatalogRequest(
@@ -429,12 +439,7 @@ export async function handleCatalogRequest(
         return await createEmotePack(request, requestId, env);
       const match = url.pathname.match(/^\/api\/admin\/catalog\/emote-packs\/([^/]+)$/);
       if (request.method === "PATCH" && match)
-        return await updateEmotePack(
-          decodeURIComponent(match[1] ?? ""),
-          request,
-          requestId,
-          env,
-        );
+        return await updateEmotePack(decodeURIComponent(match[1] ?? ""), request, requestId, env);
       return failure("NOT_FOUND", "Emote pack endpoint not found.", requestId, 404);
     }
     if (!kind) return null;
