@@ -11,8 +11,15 @@ const postCardSource = readFileSync(
   "utf8",
 );
 const postMediaCss = readOptionalSource("../../app/components/product/post-media.css");
+const productInteractionsCss = readOptionalSource(
+  "../../app/components/product/product-interactions.css",
+);
 const productNavSource = readFileSync(
   new URL("../../app/components/product/ProductNav.tsx", import.meta.url),
+  "utf8",
+);
+const iconSource = readFileSync(
+  new URL("../../app/components/ui/icons.tsx", import.meta.url),
   "utf8",
 );
 const rootSource = readFileSync(new URL("../../app/root.tsx", import.meta.url), "utf8");
@@ -32,6 +39,15 @@ describe("mobile product UX regressions", () => {
     expect(postMediaCss).toContain("max-height: none");
   });
 
+  it("opens post detail from the card while leaving nested controls interactive", () => {
+    expect(postCardSource).toContain("useNavigate");
+    expect(postCardSource).toContain("isInteractivePostTarget");
+    expect(postCardSource).toContain('role="link"');
+    expect(postCardSource).toContain("tabIndex={0}");
+    expect(postCardSource).toContain("handleCardClick");
+    expect(postCardSource).toContain("handleCardKeyDown");
+  });
+
   it("uses Profile instead of duplicate Alerts in the mobile bottom navigation", () => {
     const mobileNavSource = productNavSource.slice(
       productNavSource.indexOf("export function MobileProductNav"),
@@ -39,8 +55,27 @@ describe("mobile product UX regressions", () => {
     );
 
     expect(mobileNavSource).toContain("profileHref");
-    expect(mobileNavSource).toContain("Profile");
+    expect(mobileNavSource).toContain('aria-label="Profile"');
     expect(mobileNavSource).not.toContain("Alerts");
+  });
+
+  it("renders compact icon-only mobile navigation with accessible labels", () => {
+    const mobileNavSource = productNavSource.slice(
+      productNavSource.indexOf("export function MobileProductNav"),
+      productNavSource.indexOf("export function ProductContextRail"),
+    );
+
+    for (const icon of ["HomeIcon", "FriendsIcon", "PlusIcon", "UserIcon", "StoreIcon"]) {
+      expect(iconSource).toContain(`export function ${icon}`);
+      expect(mobileNavSource).toContain(`<${icon}`);
+    }
+    for (const label of ["Home", "Friends", "Create post", "Profile", "Store"]) {
+      expect(mobileNavSource).toContain(`aria-label="${label}"`);
+    }
+    expect(rootSource).toContain('import "./components/product/product-interactions.css"');
+    expect(productInteractionsCss).toContain(".product-mobile-nav");
+    expect(productInteractionsCss).toContain("min-height: 54px");
+    expect(productInteractionsCss).toContain(".product-mobile-nav .product-nav__link svg");
   });
 
   it("exposes an owner-only profile editor wired to the existing profile and media APIs", () => {
