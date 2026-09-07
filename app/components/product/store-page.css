@@ -1,0 +1,100 @@
+.product-store-section {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.product-store-section + .product-store-section {
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+}
+
+.product-store-section__header {
+  display: flex;
+  min-width: 0;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.product-store-section__header > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.product-store-section__header h2 {
+  margin: 0;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  letter-spacing: -0.025em;
+}
+
+.product-store-section__header p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.product-store-featured-badge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 25px;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, #f4c84d 38%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, #f4c84d 10%, var(--surface));
+  color: #d9ad32;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.product-store-section .product-store-item h3 {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+@media (max-width: 680px) {
+  .product-store-section {
+    gap: 12px;
+  }
+
+  .product-store-section + .product-store-section {
+    padding-top: 14px;
+  }
+
+  .product-store-section__header {
+    align-items: start;
+  }
+
+  .product-store-section .product-store-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-store-section .product-store-item {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .product-store-filter-bar {
+    top: 64px;
+    overscroll-behavior-inline: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-store-section .product-store-item {
+    transition: none;
+  }
+
+  .product-store-section .product-store-item:hover {
+    transform: none;
+  }
+}
