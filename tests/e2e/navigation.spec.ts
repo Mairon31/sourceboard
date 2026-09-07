@@ -40,6 +40,12 @@ test("home exposes the SourceBoard product navigation", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("deterministic post detail route responds directly", async ({ page }) => {
+  const response = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
+  expect(response?.status()).toBe(200);
+  await expect(page.locator("body")).not.toContainText("Application Error");
+});
+
 test("post title opens canonical detail", async ({ page }) => {
   await page.goto("/");
   await waitForUiReady(page);
