@@ -42,13 +42,17 @@ test("home exposes the SourceBoard product navigation", async ({ page }) => {
 
 test("post title opens canonical detail", async ({ page }) => {
   await page.goto("/");
+  await waitForUiReady(page);
   const card = page.locator(".product-post", { hasText: "E2E navigation post" });
-  await card.locator(".product-post__title").click();
+  const title = card.locator(".product-post__title");
+  await expect(title).toHaveAttribute("href", "/posts/e2e-navigation-post/e2e-navigation-post");
+  await title.click();
   await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
 });
 
 test("post card surface opens canonical detail", async ({ page }) => {
   await page.goto("/");
+  await waitForUiReady(page);
   const card = page.locator(".product-post", { hasText: "E2E navigation post" });
   await card.locator(".product-post__media").click();
   await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
@@ -56,8 +60,14 @@ test("post card surface opens canonical detail", async ({ page }) => {
 
 test("Comment opens the comments target", async ({ page }) => {
   await page.goto("/");
+  await waitForUiReady(page);
   const card = page.locator(".product-post", { hasText: "E2E navigation post" });
-  await card.getByRole("link", { name: "Comment" }).click();
+  const comment = card.getByRole("link", { name: "Comment" });
+  await expect(comment).toHaveAttribute(
+    "href",
+    "/posts/e2e-navigation-post/e2e-navigation-post#comments",
+  );
+  await comment.click();
   await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post#comments$/);
   await expect(page.locator("#comments")).toBeVisible();
 });
