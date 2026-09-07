@@ -1,3 +1,11 @@
+import {
+  isAvatarFramePreset,
+  isNameFontFamily,
+  isProfileEffectPreset,
+  type AvatarFramePreset,
+  type NameFontFamily,
+  type ProfileEffectPreset,
+} from "../../shared/store/cosmetics";
 import type {
   FriendsListDto,
   FriendshipRecord,
@@ -35,10 +43,10 @@ export interface SocialLinkInput {
 }
 
 export interface EquippedCosmetics {
-  avatarFrame?: "nebula";
+  avatarFrame?: AvatarFramePreset;
   profileBanner?: "nebula";
-  profileEffect?: "soft-glow" | "paper-grain" | "none";
-  nameFont?: "InterVariable" | "AtkinsonHyperlegible" | "Georgia";
+  profileEffect?: ProfileEffectPreset;
+  nameFont?: NameFontFamily;
 }
 
 export interface MediaAssetRecord {
@@ -355,21 +363,17 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
         continue;
       }
       const value = config as { preset?: unknown; family?: unknown };
-      if (row.type === "AVATAR_FRAME" && value.preset === "nebula")
-        cosmetics.avatarFrame = "nebula";
-      if (row.type === "PROFILE_BANNER" && value.preset === "nebula")
-        cosmetics.profileBanner = "nebula";
-      if (
-        row.type === "PROFILE_EFFECT" &&
-        ["soft-glow", "paper-grain", "none"].includes(String(value.preset))
-      ) {
-        cosmetics.profileEffect = value.preset as EquippedCosmetics["profileEffect"];
+      if (row.type === "AVATAR_FRAME" && isAvatarFramePreset(value.preset)) {
+        cosmetics.avatarFrame = value.preset;
       }
-      if (
-        row.type === "NAME_FONT" &&
-        ["InterVariable", "AtkinsonHyperlegible", "Georgia"].includes(String(value.family))
-      ) {
-        cosmetics.nameFont = value.family as EquippedCosmetics["nameFont"];
+      if (row.type === "PROFILE_BANNER" && value.preset === "nebula") {
+        cosmetics.profileBanner = "nebula";
+      }
+      if (row.type === "PROFILE_EFFECT" && isProfileEffectPreset(value.preset)) {
+        cosmetics.profileEffect = value.preset;
+      }
+      if (row.type === "NAME_FONT" && isNameFontFamily(value.family)) {
+        cosmetics.nameFont = value.family;
       }
     }
     return cosmetics;
