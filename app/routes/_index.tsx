@@ -29,12 +29,7 @@ export async function loader({ request, context }: LoaderArgs) {
           service.listFeed({ viewerId: userId, kind, cursor: null, limit: 20 }),
         ),
       );
-      const allPosts = [
-        ...recent.posts,
-        ...friends.posts,
-        ...answered.posts,
-        ...verified.posts,
-      ];
+      const allPosts = [...recent.posts, ...friends.posts, ...answered.posts, ...verified.posts];
       const likedIds = await readViewerLikedPostIds(
         db,
         userId,

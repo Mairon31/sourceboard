@@ -192,7 +192,9 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           <span>
             <strong>{post.commentCount}</strong> {post.commentCount === 1 ? "comment" : "comments"}
           </span>
-          {post.acceptedSource ? <span className="product-meta-success">Source accepted</span> : null}
+          {post.acceptedSource ? (
+            <span className="product-meta-success">Source accepted</span>
+          ) : null}
           {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
         </div>
 
