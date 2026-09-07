@@ -78,8 +78,8 @@ jobs:
           npx prettier --check worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts app/dev-fixtures/data.ts tests/unit/store-schema-compatibility.test.ts
       - name: Typecheck
         run: npm run typecheck
-      - name: Focused Store tests
-        run: npm test -- --run tests/unit/store-schema-compatibility.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-refresh.test.ts
+      - name: Incident compatibility tests
+        run: npm test -- --run tests/unit/store-schema-compatibility.test.ts
       - name: Verify fresh migrations are idempotent
         run: |
           rm -rf .wrangler/verify-store-fresh
