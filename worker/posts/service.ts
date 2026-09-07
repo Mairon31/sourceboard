@@ -176,6 +176,7 @@ function authorForPost(
       : undefined,
     profileUrl: `/u/${encodeURIComponent(post.author.username)}`,
     avatarFrame: cosmetics?.avatarFrame,
+    profileEffect: cosmetics?.profileEffect,
     nameFont: cosmetics?.nameFont,
   };
 }
