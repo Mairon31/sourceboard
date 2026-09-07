@@ -1,8 +1,18 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page } from "@playwright/test";
+import { hashOpaqueToken } from "../../worker/auth/crypto";
+import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/security";
 
 export async function waitForUiReady(page: Page) {
   await expect(page.locator('[data-ui-ready="true"]')).toBeVisible();
+}
+
+function executeLocalSql(sql: string) {
+  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+  execFileSync(npx, ["wrangler", "d1", "execute", "DB", "--local", "--command", sql], {
+    cwd: process.cwd(),
+    stdio: "pipe",
+  });
 }
 
 export function seedNavigationPostFixture() {
@@ -47,9 +57,91 @@ export function seedNavigationPostFixture() {
        'e2e-navigation-media', 'PUBLIC', 'OPEN', 0, 0, NULL, NULL,
        ${now}, ${now}, ${now + 7 * 24 * 60 * 60 * 1000}, NULL, NULL, NULL, NULL);
   `;
-  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
-  execFileSync(npx, ["wrangler", "d1", "execute", "DB", "--local", "--command", sql], {
-    cwd: process.cwd(),
-    stdio: "pipe",
-  });
+  executeLocalSql(sql);
+}
+
+export async function installAdminStoreFixture(page: Page) {
+  const now = Date.now();
+  const sessionToken = "sourceboard-e2e-admin-session-token";
+  const csrfToken = "sourceboard-e2e-admin-csrf-token";
+  const tokenHash = hashOpaqueToken(sessionToken);
+  const expiresAt = now + 24 * 60 * 60 * 1000;
+
+  const sql = `
+    INSERT OR IGNORE INTO users
+      (id, username, username_normalized, email_lookup_hash, email_encrypted, email_key_version,
+       status, email_verified_at, created_at, updated_at, last_seen_at)
+    VALUES
+      ('e2e-admin-user', 'e2e-admin', 'e2e-admin', 'e2e-admin-email-hash',
+       'e2e-admin-encrypted-email', 'test-v1', 'ACTIVE', ${now}, ${now}, ${now}, ${now});
+
+    INSERT OR IGNORE INTO user_profiles
+      (user_id, display_name, bio, avatar_asset_id, banner_asset_id, profile_visibility,
+       created_at, updated_at)
+    VALUES
+      ('e2e-admin-user', 'E2E Admin', '', NULL, NULL, 'PUBLIC', ${now}, ${now});
+
+    INSERT OR IGNORE INTO user_preferences
+      (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests,
+       notify_activity, notify_friendships, created_at, updated_at)
+    VALUES
+      ('e2e-admin-user', 1, 1, 0, 1, 1, 1, ${now}, ${now});
+
+    INSERT OR IGNORE INTO user_roles (user_id, role_id, granted_at, granted_by_user_id)
+    VALUES ('e2e-admin-user', 'admin', ${now}, NULL);
+
+    DELETE FROM sessions WHERE id = 'e2e-admin-session' OR token_hash = '${tokenHash}';
+    INSERT INTO sessions
+      (id, user_id, token_hash, created_at, last_used_at, expires_at, revoked_at,
+       ip_prefix_hash, user_agent_hash)
+    VALUES
+      ('e2e-admin-session', 'e2e-admin-user', '${tokenHash}', ${now}, ${now}, ${expiresAt},
+       NULL, NULL, NULL);
+
+    DELETE FROM emote_catalog WHERE id = 'e2e-admin-emote';
+    DELETE FROM emote_packs WHERE id = 'e2e-admin-draft-pack';
+    DELETE FROM store_items WHERE id = 'e2e-admin-pack-store';
+
+    INSERT INTO store_items
+      (id, type, name, description, price_points, asset_id, config_json, is_active,
+       starts_at, ends_at, sort_order, created_at, updated_at,
+       lifecycle_state, is_enabled, is_featured)
+    VALUES
+      ('e2e-admin-pack-store', 'EMOTE_PACK', 'E2E Draft Pack', 'Draft pack for Admin Store E2E.',
+       120, NULL, '{"packId":"e2e-admin-draft-pack"}', 0, NULL, NULL, 900, ${now}, ${now},
+       'DRAFT', 0, 0);
+
+    INSERT INTO emote_packs
+      (id, slug, label, status, created_at, lifecycle_state, is_enabled, updated_at)
+    VALUES
+      ('e2e-admin-draft-pack', 'e2e-admin-draft-pack', 'E2E Draft Pack', 'DISABLED', ${now},
+       'DRAFT', 0, ${now});
+
+    INSERT INTO emote_catalog
+      (id, shortcode, label, asset_key, status, created_at, pack_id, sort_order,
+       lifecycle_state, is_enabled, moderation_state, updated_at)
+    VALUES
+      ('e2e-admin-emote', 'e2e_wave', 'E2E Wave', 'catalog/emote/e2e-admin-emote', 'ACTIVE',
+       ${now}, 'e2e-admin-draft-pack', 10, 'DRAFT', 1, 'CLEAR', ${now});
+  `;
+  executeLocalSql(sql);
+
+  await page.context().addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: sessionToken,
+      url: "http://127.0.0.1:5173",
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    },
+    {
+      name: CSRF_COOKIE_NAME,
+      value: csrfToken,
+      url: "http://127.0.0.1:5173",
+      httpOnly: false,
+      secure: true,
+      sameSite: "Lax",
+    },
+  ]);
 }
