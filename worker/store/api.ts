@@ -244,7 +244,12 @@ export async function handleStoreRequest(
       const actorUserId = await requireAdmin(request, requestId, env);
       const body = parseBody(await request.json());
       if (!isAdminAction(body.action))
-        return failure("INVALID_STORE_ACTION", "That Store action is not supported.", requestId, 400);
+        return failure(
+          "INVALID_STORE_ACTION",
+          "That Store action is not supported.",
+          requestId,
+          400,
+        );
       const item = await createStoreAdminService(database).action(
         decodeURIComponent(actionMatch[1] ?? ""),
         body.action,

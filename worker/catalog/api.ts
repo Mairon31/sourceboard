@@ -265,8 +265,7 @@ async function handleStickerStatus(
   const result = await env.DB.prepare("UPDATE sticker_catalog SET status = ? WHERE id = ?")
     .bind(body.status, id)
     .run();
-  if (!result.meta.changes)
-    return failure("NOT_FOUND", "Catalog item not found.", requestId, 404);
+  if (!result.meta.changes) return failure("NOT_FOUND", "Catalog item not found.", requestId, 404);
   return response({ id, status: body.status }, requestId);
 }
 
@@ -388,7 +387,15 @@ async function createEmotePack(
          (id, type, name, description, price_points, config_json, is_active,
           lifecycle_state, is_enabled, is_featured, sort_order, created_at, updated_at)
          VALUES (?, 'EMOTE_PACK', ?, ?, ?, ?, 0, 'DRAFT', 0, 0, 1000, ?, ?)`,
-      ).bind(storeItemId, label, description, pricePoints, JSON.stringify({ packId: id }), now, now),
+      ).bind(
+        storeItemId,
+        label,
+        description,
+        pricePoints,
+        JSON.stringify({ packId: id }),
+        now,
+        now,
+      ),
     ]);
   } catch (error) {
     if (String(error).includes("UNIQUE"))
@@ -549,7 +556,10 @@ async function updateEmotePack(
 }
 
 function duplicateShortcode(source: string, newId: string): string {
-  const suffix = `_copy_${newId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase()}`;
+  const suffix = `_copy_${newId
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 8)
+    .toLowerCase()}`;
   const base = source.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
   return `${base.slice(0, Math.max(2, 64 - suffix.length))}${suffix}`.slice(0, 64);
 }
@@ -634,10 +644,10 @@ async function duplicateEmotePack(
          VALUES (?, ?, ?, 'DISABLED', 'DRAFT', 0, ?, ?)`,
       ).bind(
         newPackId,
-        `${source.slug}-copy-${newPackId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase()}`.slice(
-          0,
-          64,
-        ),
+        `${source.slug}-copy-${newPackId
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .slice(0, 8)
+          .toLowerCase()}`.slice(0, 64),
         `${source.label} Copy`.slice(0, 120),
         now,
         now,
@@ -658,21 +668,23 @@ async function duplicateEmotePack(
         now,
       ),
       ...emoteRows.map((emote) =>
-        env.DB!.prepare(
-          `INSERT INTO emote_catalog
+        env
+          .DB!.prepare(
+            `INSERT INTO emote_catalog
            (id, shortcode, label, asset_key, pack_id, sort_order, status,
             lifecycle_state, is_enabled, moderation_state, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, 'DISABLED', 'DRAFT', 0, 'CLEAR', ?, ?)`,
-        ).bind(
-          emote.id,
-          emote.shortcode,
-          emote.label,
-          emote.assetKey,
-          newPackId,
-          emote.sortOrder,
-          now,
-          now,
-        ),
+          )
+          .bind(
+            emote.id,
+            emote.shortcode,
+            emote.label,
+            emote.assetKey,
+            newPackId,
+            emote.sortOrder,
+            now,
+            now,
+          ),
       ),
       env.DB.prepare(
         `INSERT INTO audit_logs
@@ -742,11 +754,7 @@ async function updateEmote(
     binds.push(shortcode);
   }
   if (body.label !== undefined) {
-    if (
-      typeof body.label !== "string" ||
-      !body.label.trim() ||
-      body.label.trim().length > 120
-    )
+    if (typeof body.label !== "string" || !body.label.trim() || body.label.trim().length > 120)
       return failure("INVALID_LABEL", "Label must be 1-120 characters.", requestId, 400);
     updates.push("label = ?");
     binds.push(body.label.trim());
@@ -871,12 +879,7 @@ async function moderateEmote(
   assertCsrfToken(request);
   const body = parseBody(await request.json());
   if (!(["FLAG", "HIDE", "RESTORE", "REMOVE"] as unknown[]).includes(body.action))
-    return failure(
-      "INVALID_MODERATION_ACTION",
-      "Moderation action is invalid.",
-      requestId,
-      400,
-    );
+    return failure("INVALID_MODERATION_ACTION", "Moderation action is invalid.", requestId, 400);
   const action = body.action as ModerationAction;
   const reason = assertReason(body.reason);
   const current = await env.DB.prepare(
@@ -936,10 +939,7 @@ async function moderateEmote(
     enabled = false;
   }
   const legacyActive =
-    current.lifecycleState === "PUBLISHED" &&
-    enabled &&
-    next !== "HIDDEN" &&
-    next !== "REMOVED";
+    current.lifecycleState === "PUBLISHED" && enabled && next !== "HIDDEN" && next !== "REMOVED";
   await env.DB.prepare(
     `UPDATE emote_catalog
      SET moderation_state = ?, is_enabled = ?, status = ?, updated_at = ? WHERE id = ?`,
@@ -1123,9 +1123,7 @@ export async function handleCatalogRequest(
     }
 
     if (kind === "emote") {
-      const replaceMatch = url.pathname.match(
-        /^\/api\/admin\/catalog\/emotes\/([^/]+)\/replace$/,
-      );
+      const replaceMatch = url.pathname.match(/^\/api\/admin\/catalog\/emotes\/([^/]+)\/replace$/);
       if (request.method === "POST" && replaceMatch)
         return await replaceEmoteImage(
           decodeURIComponent(replaceMatch[1] ?? ""),
@@ -1136,12 +1134,7 @@ export async function handleCatalogRequest(
         );
       const emoteMatch = url.pathname.match(/^\/api\/admin\/catalog\/emotes\/([^/]+)$/);
       if (request.method === "PATCH" && emoteMatch)
-        return await updateEmote(
-          decodeURIComponent(emoteMatch[1] ?? ""),
-          request,
-          requestId,
-          env,
-        );
+        return await updateEmote(decodeURIComponent(emoteMatch[1] ?? ""), request, requestId, env);
     } else {
       const stickerMatch = url.pathname.match(/^\/api\/admin\/catalog\/stickers\/([^/]+)$/);
       if (request.method === "PATCH" && stickerMatch)

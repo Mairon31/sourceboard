@@ -217,7 +217,10 @@ export function createStoreAdminService(db: D1Database) {
       const now = Date.now();
       updates.push("updated_at = ?");
       binds.push(now, id);
-      await db.prepare(`UPDATE store_items SET ${updates.join(", ")} WHERE id = ?`).bind(...binds).run();
+      await db
+        .prepare(`UPDATE store_items SET ${updates.join(", ")} WHERE id = ?`)
+        .bind(...binds)
+        .run();
       await audit(db, context, "STORE_ITEM_UPDATED", id, null, metadata);
       return readItem(db, id);
     },
