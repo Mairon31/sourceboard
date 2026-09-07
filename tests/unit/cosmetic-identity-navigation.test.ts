@@ -13,6 +13,9 @@ const comments = readOptionalSource("../../worker/comments/service.ts");
 const identity = readOptionalSource("../../app/components/product/CosmeticIdentity.tsx");
 const identityCss = readOptionalSource("../../app/components/product/cosmetic-identity.css");
 const root = readOptionalSource("../../app/root.tsx");
+const profileRoute = readOptionalSource("../../app/routes/profile.tsx");
+const postCard = readOptionalSource("../../app/components/product/PostCard.tsx");
+const commentThread = readOptionalSource("../../app/components/product/CommentThread.tsx");
 
 describe("public cosmetic identity contracts", () => {
   it("exposes profile effects", () => {
@@ -41,5 +44,11 @@ describe("public cosmetic identity contracts", () => {
     expect(identityCss).toContain(".cosmetic-identity--compact");
     expect(identityCss).toContain("prefers-reduced-motion: reduce");
     expect(root).toContain("cosmetic-identity.css");
+  });
+
+  it("uses the shared identity in profile, posts and comments", () => {
+    expect(profileRoute).toContain('mode="profile"');
+    expect(postCard).toContain('mode="compact"');
+    expect(commentThread).toContain('mode="compact"');
   });
 });
