@@ -3,6 +3,7 @@ import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
+import { loadAdminAccess } from "../data/admin-access";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
@@ -16,18 +17,22 @@ interface LoaderArgs extends ServerLoaderArgs {
 }
 
 export async function loader({ params, request, context }: LoaderArgs) {
-  return withServerSession(
-    request,
-    context,
-    (unavailable) => ({ profile: null, unavailable }),
-    async (runtime, userId) => ({
-      profile: await createProfileService({
-        store: createD1ProfileStore(runtime.db),
-        reputation: createReputationReader(runtime.db),
-      }).getPublicProfile(params.username ?? "", userId),
-      unavailable: false,
-    }),
-  );
+  const [profileResult, adminAccess] = await Promise.all([
+    withServerSession(
+      request,
+      context,
+      (unavailable) => ({ profile: null, unavailable }),
+      async (runtime, userId) => ({
+        profile: await createProfileService({
+          store: createD1ProfileStore(runtime.db),
+          reputation: createReputationReader(runtime.db),
+        }).getPublicProfile(params.username ?? "", userId),
+        unavailable: false,
+      }),
+    ),
+    loadAdminAccess(request, context),
+  ]);
+  return { ...profileResult, canAccessAdmin: adminAccess.authorized };
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
@@ -205,7 +210,7 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
 }
 
 export default function ProfileRoute() {
-  const { profile, unavailable } = useLoaderData<LoaderData>();
+  const { profile, unavailable, canAccessAdmin } = useLoaderData<LoaderData>();
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const isOwnProfile = Boolean(profile && rootData?.session?.user.id === profile.id);
   if (!profile) return <UnavailableProfile unavailable={unavailable} />;
@@ -214,7 +219,7 @@ export default function ProfileRoute() {
       <ProfileHero profile={profile} />
       {isOwnProfile ? <ProfileEditor /> : null}
       <ContributionHistory profile={profile} />
-      {isOwnProfile ? <ProfileAccountActions /> : null}
+      {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
     </ProductShell>
   );
 }
