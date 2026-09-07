@@ -33,14 +33,12 @@ describe("home post card experience", () => {
   });
 
   it("opens the comment composer directly from the home Comment action", () => {
-    expect(postCardSource).toContain('to={`${detailHref}#comments`}');
+    expect(postCardSource).toContain("to={`${detailHref}#comments`}");
     expect(commentThreadSource).toContain('id="comments"');
     expect(commentThreadSource).toContain('id="comment-composer"');
     expect(postDetailSource).toContain('location.hash !== "#comments"');
     expect(postDetailSource).toContain('document.getElementById("comments")');
-    expect(postDetailSource).toContain(
-      'document.getElementById("comment-composer")',
-    );
+    expect(postDetailSource).toContain('document.getElementById("comment-composer")');
     expect(postDetailSource).toContain("focus({ preventScroll: true })");
   });
 
@@ -50,11 +48,7 @@ describe("home post card experience", () => {
     expect(postCardSource).not.toContain("handleCardKeyDown");
     expect(postCardSource).toContain("handleCardClick");
     expect(postCardSource).toContain("isInteractivePostTarget");
-    expect(postCardSource).toContain(
-      '<Link to={detailHref} className="product-post__title">',
-    );
-    expect(postCardSource).toContain(
-      "<Link to={detailHref} className={mediaClass}",
-    );
+    expect(postCardSource).toContain('<Link to={detailHref} className="product-post__title">');
+    expect(postCardSource).toContain("<Link to={detailHref} className={mediaClass}");
   });
 });
