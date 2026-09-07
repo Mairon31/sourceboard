@@ -83,8 +83,12 @@ describe("profile account actions and KLIPY media picker", () => {
   });
 
   it("keeps mobile store effects visually centered while retaining animation", () => {
-    expect(storeResponsiveCss).toContain(".product-store-page .product-store-preview--effect::before");
-    expect(storeResponsiveCss).toContain(".product-store-page .product-store-preview--effect::after");
+    expect(storeResponsiveCss).toContain(
+      ".product-store-page .product-store-preview--effect::before",
+    );
+    expect(storeResponsiveCss).toContain(
+      ".product-store-page .product-store-preview--effect::after",
+    );
     expect(storeResponsiveCss).toContain("top: 42%");
     expect(storeEffectsCss).toContain("animation:");
   });
