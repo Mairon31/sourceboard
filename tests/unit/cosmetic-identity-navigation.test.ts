@@ -10,12 +10,8 @@ const contracts = readOptionalSource("../../shared/ui/contracts.ts");
 const store = readOptionalSource("../../worker/profile/store.ts");
 const posts = readOptionalSource("../../worker/posts/service.ts");
 const comments = readOptionalSource("../../worker/comments/service.ts");
-const identity = readOptionalSource(
-  "../../app/components/product/CosmeticIdentity.tsx",
-);
-const identityCss = readOptionalSource(
-  "../../app/components/product/cosmetic-identity.css",
-);
+const identity = readOptionalSource("../../app/components/product/CosmeticIdentity.tsx");
+const identityCss = readOptionalSource("../../app/components/product/cosmetic-identity.css");
 const root = readOptionalSource("../../app/root.tsx");
 
 describe("public cosmetic identity contracts", () => {
