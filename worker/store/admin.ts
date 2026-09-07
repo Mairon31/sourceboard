@@ -394,14 +394,30 @@ export function createStoreAdminService(db: D1Database) {
       }
       const isActive = lifecycleState === "PUBLISHED" && isEnabled;
       metadata.to = { lifecycleState, isEnabled, isFeatured };
-      await db
-        .prepare(
-          `UPDATE store_items
-           SET lifecycle_state = ?, is_enabled = ?, is_featured = ?, is_active = ?, updated_at = ?
-           WHERE id = ?`,
-        )
-        .bind(lifecycleState, isEnabled ? 1 : 0, isFeatured ? 1 : 0, isActive ? 1 : 0, now, id)
-        .run();
+      try {
+        await db
+          .prepare(
+            `UPDATE store_items
+             SET lifecycle_state = ?, is_enabled = ?, is_featured = ?, is_active = ?, updated_at = ?
+             WHERE id = ?`,
+          )
+          .bind(lifecycleState, isEnabled ? 1 : 0, isFeatured ? 1 : 0, isActive ? 1 : 0, now, id)
+          .run();
+      } catch (error) {
+        if (!isStoreAdminLifecycleSchemaError(error)) throw error;
+        const legacyActive =
+          action === "PUBLISH" || action === "ENABLE"
+            ? 1
+            : action === "UNPUBLISH" || action === "DISABLE" || action === "ARCHIVE"
+              ? 0
+              : isActive
+                ? 1
+                : 0;
+        await db
+          .prepare("UPDATE store_items SET is_active = ?, updated_at = ? WHERE id = ?")
+          .bind(legacyActive, now, id)
+          .run();
+      }
       await audit(db, context, `STORE_ITEM_${action}`, id, validatedReason, metadata);
       return readItem(db, id);
     },

@@ -141,6 +141,16 @@ function isCatalogLifecycleSchemaError(error: unknown): boolean {
   );
 }
 
+async function hasCatalogLifecycleSchema(db: D1Database): Promise<boolean> {
+  try {
+    await db.prepare("SELECT lifecycle_state FROM emote_packs LIMIT 1").first();
+    return true;
+  } catch (error) {
+    if (!isCatalogLifecycleSchemaError(error)) throw error;
+    return false;
+  }
+}
+
 async function legacyListEmotes(db: D1Database) {
   return db
     .prepare(
@@ -485,6 +495,101 @@ async function createEmotePack(
   );
 }
 
+async function legacyUpdateEmotePack(
+  packId: string,
+  body: Record<string, unknown>,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  const current = await env
+    .DB!.prepare(`SELECT p.id, p.status FROM emote_packs p WHERE p.id = ?`)
+    .bind(packId)
+    .first<{ id: string; status: "ACTIVE" | "DISABLED" }>();
+  if (!current) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
+
+  let lifecycleState: LifecycleState = current.status === "ACTIVE" ? "PUBLISHED" : "DRAFT";
+  let isEnabled = current.status === "ACTIVE";
+  const legacyStatus = body.status as "ACTIVE" | "DISABLED" | undefined;
+  if (legacyStatus) {
+    lifecycleState = legacyStatus === "ACTIVE" ? "PUBLISHED" : "DRAFT";
+    isEnabled = legacyStatus === "ACTIVE";
+  } else {
+    if (body.lifecycleState !== undefined) {
+      lifecycleState = body.lifecycleState as LifecycleState;
+      if (body.isEnabled === undefined) isEnabled = lifecycleState === "PUBLISHED";
+    }
+    if (body.isEnabled !== undefined) {
+      isEnabled = body.isEnabled as boolean;
+      if (body.lifecycleState === undefined) lifecycleState = isEnabled ? "PUBLISHED" : "DRAFT";
+    }
+  }
+  if (lifecycleState === "ARCHIVED") isEnabled = false;
+  const active = lifecycleState === "PUBLISHED" && isEnabled;
+
+  if (active) {
+    const usable = await env
+      .DB!.prepare(
+        `SELECT 1 AS available FROM emote_catalog WHERE pack_id = ? AND status = 'ACTIVE' LIMIT 1`,
+      )
+      .bind(packId)
+      .first<{ available: number }>();
+    if (!usable)
+      return failure(
+        "EMPTY_EMOTE_PACK",
+        "Publish and enable at least one usable emote before publishing this pack.",
+        requestId,
+        409,
+      );
+  }
+
+  await env
+    .DB!.prepare("UPDATE emote_packs SET status = ? WHERE id = ?")
+    .bind(active ? "ACTIVE" : "DISABLED", packId)
+    .run();
+  await env
+    .DB!.prepare(
+      `UPDATE store_items SET is_active = ?, updated_at = ?
+     WHERE type = 'EMOTE_PACK' AND json_extract(config_json, '$.packId') = ?`,
+    )
+    .bind(active ? 1 : 0, Date.now(), packId)
+    .run();
+
+  if (body.label !== undefined) {
+    const label = String(body.label).trim();
+    await env
+      .DB!.prepare("UPDATE emote_packs SET label = ? WHERE id = ?")
+      .bind(label, packId)
+      .run();
+    await env
+      .DB!.prepare(
+        `UPDATE store_items SET name = ?, updated_at = ?
+       WHERE type = 'EMOTE_PACK' AND json_extract(config_json, '$.packId') = ?`,
+      )
+      .bind(label, Date.now(), packId)
+      .run();
+  }
+  if (body.description !== undefined) {
+    await env
+      .DB!.prepare(
+        `UPDATE store_items SET description = ?, updated_at = ?
+       WHERE type = 'EMOTE_PACK' AND json_extract(config_json, '$.packId') = ?`,
+      )
+      .bind(String(body.description).trim(), Date.now(), packId)
+      .run();
+  }
+  if (body.pricePoints !== undefined) {
+    await env
+      .DB!.prepare(
+        `UPDATE store_items SET price_points = ?, updated_at = ?
+       WHERE type = 'EMOTE_PACK' AND json_extract(config_json, '$.packId') = ?`,
+      )
+      .bind(body.pricePoints, Date.now(), packId)
+      .run();
+  }
+
+  return response({ pack: { id: packId, updated: true, lifecycleState, isEnabled } }, requestId);
+}
+
 async function updateEmotePack(
   packId: string,
   request: Request,
@@ -521,6 +626,9 @@ async function updateEmotePack(
     return failure("INVALID_ENABLEMENT", "isEnabled must be boolean.", requestId, 400);
   if (body.status !== undefined && body.status !== "ACTIVE" && body.status !== "DISABLED")
     return failure("INVALID_STATUS", "Status must be ACTIVE or DISABLED.", requestId, 400);
+
+  if (!(await hasCatalogLifecycleSchema(env.DB)))
+    return legacyUpdateEmotePack(packId, body, requestId, env);
 
   const current = await env.DB.prepare(
     `SELECT p.id, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled,
@@ -901,9 +1009,15 @@ async function replaceEmoteImage(
   const newAssetKey = `catalog/emote/${createIdentifier()}`;
   await env.MEDIA.put(newAssetKey, bytes, { httpMetadata: { contentType: metadata.contentType } });
   try {
-    await env.DB.prepare("UPDATE emote_catalog SET asset_key = ?, updated_at = ? WHERE id = ?")
-      .bind(newAssetKey, Date.now(), id)
-      .run();
+    if (await hasCatalogLifecycleSchema(env.DB)) {
+      await env.DB.prepare("UPDATE emote_catalog SET asset_key = ?, updated_at = ? WHERE id = ?")
+        .bind(newAssetKey, Date.now(), id)
+        .run();
+    } else {
+      await env.DB.prepare("UPDATE emote_catalog SET asset_key = ? WHERE id = ?")
+        .bind(newAssetKey, id)
+        .run();
+    }
   } catch (error) {
     await env.MEDIA.delete(newAssetKey);
     throw error;
@@ -1029,6 +1143,34 @@ function blockedEmoteResponse(requestId: string): Response {
   });
 }
 
+async function handleAdminEmoteAsset(
+  id: string,
+  env: SourceBoardEnvironment,
+  requestId: string,
+): Promise<Response> {
+  if (!env.DB || !env.MEDIA)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "Catalog media is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  const row = await env.DB.prepare("SELECT asset_key AS assetKey FROM emote_catalog WHERE id = ?")
+    .bind(id)
+    .first<{ assetKey: string }>();
+  if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+  const object = await env.MEDIA.get(row.assetKey);
+  if (!object) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+  const headers = new Headers({
+    "cache-control": "no-store",
+    etag: object.httpEtag,
+    [REQUEST_ID_HEADER]: requestId,
+  });
+  if (object.httpMetadata?.contentType)
+    headers.set("content-type", object.httpMetadata.contentType);
+  return new Response(object.body, { headers });
+}
+
 async function handlePublicAsset(
   kind: CatalogKind,
   id: string,
@@ -1045,34 +1187,53 @@ async function handlePublicAsset(
 
   let assetKey: string;
   if (kind === "emote") {
-    const row = await env.DB.prepare(
-      `SELECT e.asset_key AS assetKey, e.lifecycle_state AS lifecycleState,
-              e.is_enabled AS isEnabled, e.moderation_state AS moderationState,
-              e.pack_id AS packId, p.lifecycle_state AS packLifecycleState,
-              p.is_enabled AS packEnabled
-       FROM emote_catalog e
-       LEFT JOIN emote_packs p ON p.id = e.pack_id
-       WHERE e.id = ?`,
-    )
-      .bind(id)
-      .first<{
-        assetKey: string;
-        lifecycleState: LifecycleState;
-        isEnabled: number;
-        moderationState: ModerationState;
-        packId: string | null;
-        packLifecycleState: LifecycleState | null;
-        packEnabled: number | null;
-      }>();
-    if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
-    if (row.moderationState === "HIDDEN" || row.moderationState === "REMOVED")
-      return blockedEmoteResponse(requestId);
-    const packAvailable =
-      row.packId === null ||
-      (row.packLifecycleState === "PUBLISHED" && Number(row.packEnabled) === 1);
-    if (row.lifecycleState !== "PUBLISHED" || Number(row.isEnabled) !== 1 || !packAvailable)
-      return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
-    assetKey = row.assetKey;
+    if (!(await hasCatalogLifecycleSchema(env.DB))) {
+      const row = await env.DB.prepare(
+        `SELECT e.asset_key AS assetKey, e.status, e.pack_id AS packId, p.status AS packStatus
+         FROM emote_catalog e LEFT JOIN emote_packs p ON p.id = e.pack_id WHERE e.id = ?`,
+      )
+        .bind(id)
+        .first<{
+          assetKey: string;
+          status: string;
+          packId: string | null;
+          packStatus: string | null;
+        }>();
+      if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+      const packAvailable = row.packId === null || row.packStatus === "ACTIVE";
+      if (row.status !== "ACTIVE" || !packAvailable)
+        return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+      assetKey = row.assetKey;
+    } else {
+      const row = await env.DB.prepare(
+        `SELECT e.asset_key AS assetKey, e.lifecycle_state AS lifecycleState,
+                e.is_enabled AS isEnabled, e.moderation_state AS moderationState,
+                e.pack_id AS packId, p.lifecycle_state AS packLifecycleState,
+                p.is_enabled AS packEnabled
+         FROM emote_catalog e
+         LEFT JOIN emote_packs p ON p.id = e.pack_id
+         WHERE e.id = ?`,
+      )
+        .bind(id)
+        .first<{
+          assetKey: string;
+          lifecycleState: LifecycleState;
+          isEnabled: number;
+          moderationState: ModerationState;
+          packId: string | null;
+          packLifecycleState: LifecycleState | null;
+          packEnabled: number | null;
+        }>();
+      if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+      if (row.moderationState === "HIDDEN" || row.moderationState === "REMOVED")
+        return blockedEmoteResponse(requestId);
+      const packAvailable =
+        row.packId === null ||
+        (row.packLifecycleState === "PUBLISHED" && Number(row.packEnabled) === 1);
+      if (row.lifecycleState !== "PUBLISHED" || Number(row.isEnabled) !== 1 || !packAvailable)
+        return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+      assetKey = row.assetKey;
+    }
   } else {
     const row = await env.DB.prepare(
       "SELECT asset_key AS assetKey FROM sticker_catalog WHERE id = ? AND status = 'ACTIVE'",
@@ -1166,6 +1327,16 @@ export async function handleCatalogRequest(
     }
 
     const actorUserId = await requireCapability(request, requestId, env, CAPABILITIES[kind]);
+    const adminEmoteMediaMatch =
+      kind === "emote"
+        ? url.pathname.match(/^\/api\/admin\/catalog\/emotes\/([^/]+)\/media$/)
+        : null;
+    if (request.method === "GET" && adminEmoteMediaMatch)
+      return await handleAdminEmoteAsset(
+        decodeURIComponent(adminEmoteMediaMatch[1] ?? ""),
+        env,
+        requestId,
+      );
     if (request.method === "GET" && url.pathname === `/api/admin/catalog/${kind}s`)
       return handleList(kind, env, requestId);
     if (request.method === "POST" && url.pathname === `/api/admin/catalog/${kind}s`) {

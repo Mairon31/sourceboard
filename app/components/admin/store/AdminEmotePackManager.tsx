@@ -158,7 +158,7 @@ function EmoteEditor({
     <Card className="admin-store-emote-card">
       <div className="admin-store-emote-card__preview">
         <img
-          src={`/api/media/catalog/emote/${encodeURIComponent(emote.id)}`}
+          src={`/api/admin/catalog/emotes/${encodeURIComponent(emote.id)}/media`}
           alt={emote.label}
           loading="lazy"
         />
