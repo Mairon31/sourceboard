@@ -1,5 +1,11 @@
 import { createIdentifier } from "../auth/crypto";
 import { PublicHttpError } from "../http/error";
+import { ensureBuiltInStoreCatalog } from "./builtin-catalog";
+import {
+  isAvatarFramePreset,
+  isNameFontFamily,
+  isProfileEffectPreset,
+} from "../../shared/store/cosmetics";
 
 export class StoreError extends PublicHttpError {
   constructor(status: number, code: string, message: string) {
@@ -48,9 +54,24 @@ function activePredicate(now = Date.now()): { sql: string; binds: unknown[] } {
   };
 }
 
+export async function isStoreAdmin(db: D1Database, userId: string): Promise<boolean> {
+  const row = await db
+    .prepare(
+      `SELECT 1 AS allowed
+       FROM user_roles ur
+       JOIN roles r ON r.id = ur.role_id
+       WHERE ur.user_id = ? AND r.slug IN ('admin', 'owner')
+       LIMIT 1`,
+    )
+    .bind(userId)
+    .first<{ allowed: number }>();
+  return Boolean(row?.allowed);
+}
+
 export function createStoreService(db: D1Database) {
   return {
     async list(now = Date.now()): Promise<StoreCatalogRow[]> {
+      await ensureBuiltInStoreCatalog(db);
       const active = activePredicate(now);
       const result = await db
         .prepare(
@@ -216,18 +237,45 @@ export function createStoreService(db: D1Database) {
       return result.results;
     },
 
-    async equip(userId: string, slot: CosmeticSlot, itemId: string, now = Date.now()) {
-      const result = await db
-        .prepare(
-          `INSERT INTO user_cosmetics (user_id, slot, store_item_id, updated_at)
-           SELECT ?, ?, i.store_item_id, ? FROM user_inventory i JOIN store_items s ON s.id = i.store_item_id
-           WHERE i.user_id = ? AND i.store_item_id = ? AND s.type = ?
-           ON CONFLICT(user_id, slot) DO UPDATE SET store_item_id = excluded.store_item_id, updated_at = excluded.updated_at`,
-        )
-        .bind(userId, slot, now, userId, itemId, slot)
-        .run();
-      if (!result.meta.changes)
-        throw new StoreError(409, "COSMETIC_NOT_OWNED", "That cosmetic is not in your inventory.");
+    async equip(
+      userId: string,
+      slot: CosmeticSlot,
+      itemId: string,
+      options: { now?: number; allowUnowned?: boolean } = {},
+    ) {
+      const now = options.now ?? Date.now();
+      const allowUnowned = options.allowUnowned === true;
+      const result = allowUnowned
+        ? await db
+            .prepare(
+              `INSERT INTO user_cosmetics (user_id, slot, store_item_id, updated_at)
+               SELECT ?, ?, s.id, ? FROM store_items s
+               WHERE s.id = ? AND s.type = ? AND s.is_active = 1
+                 AND (s.starts_at IS NULL OR s.starts_at <= ?)
+                 AND (s.ends_at IS NULL OR s.ends_at > ?)
+               ON CONFLICT(user_id, slot) DO UPDATE SET
+                 store_item_id = excluded.store_item_id, updated_at = excluded.updated_at`,
+            )
+            .bind(userId, slot, now, itemId, slot, now, now)
+            .run()
+        : await db
+            .prepare(
+              `INSERT INTO user_cosmetics (user_id, slot, store_item_id, updated_at)
+               SELECT ?, ?, i.store_item_id, ? FROM user_inventory i
+               JOIN store_items s ON s.id = i.store_item_id
+               WHERE i.user_id = ? AND i.store_item_id = ? AND s.type = ?
+               ON CONFLICT(user_id, slot) DO UPDATE SET
+                 store_item_id = excluded.store_item_id, updated_at = excluded.updated_at`,
+            )
+            .bind(userId, slot, now, userId, itemId, slot)
+            .run();
+      if (!result.meta.changes) {
+        throw new StoreError(
+          409,
+          allowUnowned ? "COSMETIC_UNAVAILABLE" : "COSMETIC_NOT_OWNED",
+          allowUnowned ? "That cosmetic is unavailable." : "That cosmetic is not in your inventory.",
+        );
+      }
       return { slot, storeItemId: itemId };
     },
   };
@@ -248,20 +296,21 @@ export function assertSafeStoreConfig(config: unknown): string {
 export function validateStoreConfig(type: StoreType, config: unknown): string {
   const serialized = assertSafeStoreConfig(config);
   const value = config as Record<string, unknown>;
-  if (
-    type === "NAME_FONT" &&
-    !["InterVariable", "AtkinsonHyperlegible", "Georgia"].includes(String(value.family))
-  )
+  if (type === "NAME_FONT" && !isNameFontFamily(value.family))
     throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "NAME_FONT family is not allowlisted.");
-  if (
-    type === "PROFILE_EFFECT" &&
-    !["soft-glow", "paper-grain", "none"].includes(String(value.preset))
-  )
+  if (type === "AVATAR_FRAME" && !isAvatarFramePreset(value.preset))
+    throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "AVATAR_FRAME preset is not allowlisted.");
+  if (type === "PROFILE_EFFECT" && !isProfileEffectPreset(value.preset))
     throw new StoreError(
       400,
       "STORE_CONFIG_NOT_ALLOWED",
       "PROFILE_EFFECT preset is not allowlisted.",
     );
+  if (
+    (type === "EMOTE_PACK" || type === "STICKER_PACK") &&
+    (typeof value.packId !== "string" || !/^[A-Za-z0-9:_-]{2,128}$/.test(value.packId))
+  )
+    throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "A valid packId is required.");
   if (Object.keys(value).some((key) => ["css", "fontUrl", "src", "script", "style"].includes(key)))
     throw new StoreError(
       400,
