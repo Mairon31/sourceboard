@@ -1,0 +1,574 @@
+.admin-store-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.admin-store-summary-card {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.admin-store-summary-card > span,
+.admin-store-summary-card > small {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.admin-store-summary-card > strong {
+  font-size: var(--text-2xl);
+  letter-spacing: -0.04em;
+}
+
+.admin-store-mode-tabs {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 4px;
+  margin-bottom: var(--space-5);
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--bg-app-secondary);
+}
+
+.admin-store-mode-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 0 16px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 750;
+}
+
+.admin-store-mode-tabs button:hover,
+.admin-store-mode-tabs .admin-store-mode-tab--active {
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-1);
+}
+
+.admin-store-status {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border-subtle));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-solid));
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.admin-store-section-heading {
+  display: flex;
+  min-width: 0;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.admin-store-section-heading > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.admin-store-section-heading h2,
+.admin-store-section-heading p,
+.admin-store-cosmetic-card h3,
+.admin-store-cosmetic-card p,
+.admin-store-pack-header h3,
+.admin-store-pack-header p,
+.admin-store-add-emote h3 {
+  margin: 0;
+}
+
+.admin-store-section-heading p,
+.admin-store-cosmetic-card p,
+.admin-store-pack-header p {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.admin-store-create-cosmetic,
+.admin-store-create-pack {
+  margin-bottom: var(--space-4);
+}
+
+.admin-store-create-cosmetic > summary,
+.admin-store-create-pack > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 780;
+}
+
+.admin-store-create-card {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+}
+
+.admin-store-cosmetic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.admin-store-cosmetic-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(150px, 0.42fr) minmax(0, 1fr);
+  overflow: visible;
+}
+
+.admin-store-cosmetic-preview {
+  display: grid;
+  min-height: 190px;
+  place-items: center;
+  gap: var(--space-2);
+  overflow: hidden;
+  border-right: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  background: var(--bg-app-secondary);
+}
+
+.admin-store-cosmetic-preview--avatar,
+.admin-store-cosmetic-preview--font,
+.admin-store-cosmetic-preview--effect {
+  padding: var(--space-4);
+}
+
+.admin-store-cosmetic-preview--font {
+  align-content: center;
+  text-align: center;
+}
+
+.admin-store-cosmetic-preview--font strong {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.15rem, 2.5vw, 1.7rem);
+}
+
+.admin-store-cosmetic-preview--font span,
+.admin-store-cosmetic-preview--effect span {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.admin-store-cosmetic-card__body {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.admin-store-cosmetic-card__title,
+.admin-store-emote-card__heading,
+.admin-store-pack-header__main {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-store-cosmetic-card__title > div,
+.admin-store-emote-card__heading > div,
+.admin-store-pack-header__main > div:first-child {
+  min-width: 0;
+}
+
+.admin-store-metric-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-store-metric-row > span,
+.admin-store-sort-label,
+.admin-store-emote-meta > span {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 0 9px;
+  background: var(--bg-app-secondary);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-store-card-actions,
+.admin-store-inline-actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-store-action-menu {
+  position: relative;
+  z-index: 3;
+}
+
+.admin-store-action-menu > summary {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0 11px;
+  background: var(--surface-solid);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: 750;
+  list-style: none;
+}
+
+.admin-store-action-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-store-action-menu__panel {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: grid;
+  width: 170px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-2);
+}
+
+.admin-store-action-menu__panel button,
+.admin-store-terminal-state {
+  width: 100%;
+  border: 0;
+  padding: 10px 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.admin-store-action-menu__panel button:hover {
+  background: var(--bg-app-secondary);
+  color: var(--text-primary);
+}
+
+.admin-store-action-menu__panel .admin-store-action-menu__danger {
+  color: var(--danger, #c74848);
+}
+
+.admin-store-terminal-state {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.admin-store-danger-panel,
+.admin-store-moderation-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border-color: color-mix(in srgb, var(--danger, #c74848) 28%, var(--border-subtle));
+}
+
+.admin-store-danger-panel p,
+.admin-store-moderation-panel p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.admin-store-editor,
+.admin-store-emote-editor,
+.admin-store-pack-editor,
+.admin-store-replace-form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-store-editor {
+  max-width: 760px;
+  padding: var(--space-5);
+}
+
+.admin-store-editor__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.admin-store-editor__wide {
+  grid-column: 1 / -1;
+}
+
+.admin-store-check-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.admin-store-pack-layout {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.admin-store-pack-list {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+}
+
+.admin-store-pack-list__item {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 11px;
+  background: var(--surface-solid);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.admin-store-pack-list__item:hover,
+.admin-store-pack-list__item--active {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface-solid));
+  color: var(--text-primary);
+}
+
+.admin-store-pack-list__item > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.admin-store-pack-list__item strong,
+.admin-store-pack-list__item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-store-pack-list__item small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.admin-store-pack-list__meta {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 4px;
+}
+
+.admin-store-pack-workspace {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.admin-store-pack-header,
+.admin-store-add-emote {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.admin-store-add-emote__form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.admin-store-emote-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.admin-store-emote-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 130px minmax(0, 1fr);
+  overflow: visible;
+}
+
+.admin-store-emote-card__preview {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+  overflow: hidden;
+  border-right: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  background: var(--bg-app-secondary);
+}
+
+.admin-store-emote-card__preview img {
+  width: min(92px, 80%);
+  height: min(92px, 80%);
+  object-fit: contain;
+}
+
+.admin-store-emote-card__body {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.admin-store-emote-card__heading code {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.admin-store-emote-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-store-capability-note {
+  margin-top: var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 1100px) {
+  .admin-store-cosmetic-grid,
+  .admin-store-emote-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-store-add-emote__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-store-pack-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-store-pack-list {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+
+  .admin-store-create-pack,
+  .admin-store-pack-list__item {
+    flex: 0 0 min(260px, 76vw);
+  }
+
+  .admin-store-pack-list__item {
+    min-height: 64px;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-store-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-store-section-heading,
+  .admin-store-cosmetic-card__title,
+  .admin-store-emote-card__heading,
+  .admin-store-pack-header__main {
+    display: grid;
+    align-items: start;
+  }
+
+  .admin-store-cosmetic-card,
+  .admin-store-emote-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-store-cosmetic-preview,
+  .admin-store-emote-card__preview {
+    min-height: 150px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .admin-store-add-emote__form,
+  .admin-store-editor__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-store-editor__wide {
+    grid-column: auto;
+  }
+
+  .admin-store-action-menu__panel {
+    right: auto;
+    bottom: auto;
+    left: 0;
+    top: calc(100% + 6px);
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-store-mode-tabs {
+    width: 100%;
+  }
+
+  .admin-store-mode-tabs button {
+    min-width: 0;
+    flex: 1 1 0;
+    padding-inline: 10px;
+  }
+
+  .admin-store-card-actions,
+  .admin-store-inline-actions {
+    align-items: stretch;
+  }
+
+  .admin-store-card-actions > .sb-button,
+  .admin-store-inline-actions > .sb-button {
+    flex: 1 1 120px;
+  }
+
+  .admin-store-pack-list__item {
+    flex-basis: 82vw;
+  }
+}
