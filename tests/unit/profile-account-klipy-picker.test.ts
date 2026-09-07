@@ -10,6 +10,9 @@ const profileRoute = read("../../app/routes/profile.tsx");
 const accountActions = read("../../app/components/product/ProfileAccountActions.tsx");
 const commentThread = read("../../app/components/product/CommentThread.tsx");
 const commentsApi = read("../../worker/comments/api.ts");
+const commentService = read("../../worker/comments/service.ts");
+const commentStore = read("../../worker/comments/store.ts");
+const storeRoute = read("../../app/routes/store.tsx");
 const root = read("../../app/root.tsx");
 const storeEffectsCss = read("../../app/components/product/store-effects.css");
 const productCss =
@@ -57,6 +60,12 @@ describe("profile account actions and KLIPY media picker", () => {
     expect(productCss).toContain("aspect-ratio: 1 / 1");
   });
 
+  it("uses real animated GIF media instead of provider preview strips", () => {
+    expect(commentThread).toContain("attachment.url ?? attachment.preview");
+    expect(commentsApi).not.toContain('formatUrl(formats, ["tinygifpreview", "gifpreview", "nanogif"])');
+    expect(commentsApi).not.toContain('"tinygif,webp,tinygifpreview,gifpreview"');
+  });
+
   it("renders selected GIFs and stickers as media only without provider chrome", () => {
     expect(commentThread).not.toContain("Powered by KLIPY");
     expect(commentThread).not.toContain("<span>{attachment.type}</span>");
@@ -72,13 +81,25 @@ describe("profile account actions and KLIPY media picker", () => {
     expect(commentThread).toContain("disabled={submitting || (!body.trim() && !attachment)}");
   });
 
+  it("makes comment creation idempotent across repeated POST requests", () => {
+    expect(commentThread).toContain("clientMutationId");
+    expect(commentsApi).toContain("clientMutationId");
+    expect(commentService).toContain("clientMutationId");
+    expect(commentStore).toContain("INSERT OR IGNORE INTO comments");
+    expect(commentStore).toContain("meta.changes");
+  });
+
+  it("anchors animated store effects to the avatar stage instead of the whole card", () => {
+    expect(storeRoute).toContain("product-store-effect-stage");
+    expect(storeEffectsCss).toContain(".product-store-effect-stage::before");
+    expect(storeEffectsCss).toContain(".product-store-effect-stage::after");
+    expect(storeEffectsCss).not.toContain("top: 45%");
+  });
+
   it("ships centered animated profile effects with reduced-motion fallback", () => {
     expect(root).toContain('import "./components/product/store-effects.css"');
     expect(storeEffectsCss).toContain("@keyframes sb-fx-orbit");
     expect(storeEffectsCss).toContain("@keyframes sb-fx-pulse");
-    expect(storeEffectsCss).toContain(".product-store-preview--effect::before");
-    expect(storeEffectsCss).toContain(".product-store-preview--blue-energy::before");
-    expect(storeEffectsCss).toContain(".product-store-preview--pink-hearts::before");
     expect(storeEffectsCss).toContain("prefers-reduced-motion: reduce");
   });
 });
