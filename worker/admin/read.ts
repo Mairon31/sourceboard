@@ -105,19 +105,13 @@ export function createAdminReadService(db: D1Database): AdminReadService {
           )
           .first<{ count: number }>(),
         db
-          .prepare("SELECT COUNT(*) AS count FROM store_items WHERE is_active = 1")
+          .prepare("SELECT COUNT(*) AS count FROM store_items WHERE lifecycle_state = 'PUBLISHED'")
           .first<{ count: number }>(),
         db
-          .prepare("SELECT COUNT(*) AS count FROM store_items WHERE is_active = 0")
+          .prepare("SELECT COUNT(*) AS count FROM store_items WHERE lifecycle_state = 'DRAFT'")
           .first<{ count: number }>(),
         db
-          .prepare(
-            `SELECT COUNT(*) AS count FROM (
-               SELECT id FROM emote_catalog WHERE status <> 'ACTIVE'
-               UNION ALL
-               SELECT id FROM sticker_catalog WHERE status <> 'ACTIVE'
-             )`,
-          )
+          .prepare("SELECT COUNT(*) AS count FROM emote_catalog WHERE moderation_state = 'FLAGGED'")
           .first<{ count: number }>(),
         audit({ limit: 8 }),
       ]);
