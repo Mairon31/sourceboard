@@ -39,13 +39,15 @@ describe("mobile product UX regressions", () => {
     expect(postMediaCss).toContain("max-height: none");
   });
 
-  it("opens post detail from the card while leaving nested controls interactive", () => {
+  it("opens post detail from real links while leaving nested controls interactive", () => {
     expect(postCardSource).toContain("useNavigate");
     expect(postCardSource).toContain("isInteractivePostTarget");
-    expect(postCardSource).toContain('role="link"');
-    expect(postCardSource).toContain("tabIndex={0}");
     expect(postCardSource).toContain("handleCardClick");
-    expect(postCardSource).toContain("handleCardKeyDown");
+    expect(postCardSource).toContain("onClick={handleCardClick}");
+    expect(postCardSource).toContain("<Link to={detailHref} className={mediaClass}");
+    expect(postCardSource).not.toContain('role="link"');
+    expect(postCardSource).not.toContain("tabIndex={0}");
+    expect(postCardSource).not.toContain("handleCardKeyDown");
   });
 
   it("uses Profile instead of duplicate Alerts in the mobile bottom navigation", () => {
