@@ -62,7 +62,9 @@ describe("profile account actions and KLIPY media picker", () => {
 
   it("uses real animated GIF media instead of provider preview strips", () => {
     expect(commentThread).toContain("attachment.url ?? attachment.preview");
-    expect(commentsApi).not.toContain('formatUrl(formats, ["tinygifpreview", "gifpreview", "nanogif"])');
+    expect(commentsApi).not.toContain(
+      'formatUrl(formats, ["tinygifpreview", "gifpreview", "nanogif"])',
+    );
     expect(commentsApi).not.toContain('"tinygif,webp,tinygifpreview,gifpreview"');
   });
 
