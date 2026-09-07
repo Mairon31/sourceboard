@@ -94,8 +94,10 @@ jobs:
           app/components/admin/store/AdminStoreEditor.tsx
           app/components/admin/store/AdminCosmeticCatalog.tsx
           app/components/admin/store/AdminEmotePackManager.tsx
+          app/components/admin/store/admin-store.css
           tests/unit/navigation-performance.test.ts
           tests/unit/store-catalog-redesign.test.ts
+          tests/unit/store-refresh.test.ts
       - name: Run focused tests
         run: npm test -- --run tests/unit/navigation-performance.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-refresh.test.ts
       - name: Commit implementation
