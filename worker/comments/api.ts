@@ -87,7 +87,7 @@ function normalizeKlipyResults(payload: unknown, kind: KlipyMediaKind) {
             "tinywebp_transparent",
             "tinygif_transparent",
           ])
-        : formatUrl(formats, ["tinygifpreview", "gifpreview", "nanogif"]);
+        : url;
     if (!id || !url) return [];
     const title =
       typeof item.title === "string" && item.title.trim() ? item.title.trim() : "Klipy media";
@@ -144,7 +144,7 @@ async function searchKlipy(
     "media_filter",
     kind === "STICKER"
       ? "tinywebp_transparent,tinygif_transparent,nanowebp_transparent,nanogif_transparent"
-      : "tinygif,webp,tinygifpreview,gifpreview",
+      : "tinygif,webp,gif",
   );
   const response = await fetch(upstream, { headers: { accept: "application/json" } });
   if (!response.ok)
