@@ -153,6 +153,23 @@ describe("Phase 4 post policy", () => {
     expect(result.posts[0]?.imageUrl).toBe("/api/media/post/asset-1");
   });
 
+  it("preserves an authenticated viewer's existing post like in feed serialization", async () => {
+    const { profileStore, store } = dependencies();
+    const hasLike = vi.fn(async () => true);
+    Object.assign(store, { hasLike });
+    const service = createPostService({ store, profileStore, now: () => 2 });
+
+    const result = await service.listFeed({
+      viewerId: "viewer-1",
+      kind: "recent",
+      cursor: null,
+      limit: 20,
+    });
+
+    expect(hasLike).toHaveBeenCalledWith("viewer-1", "POST", "post-1");
+    expect(result.posts[0]?.reaction.viewerReacted).toBe(true);
+  });
+
   it("rejects anonymous friends-only posts before writing", async () => {
     const { profileStore, store } = dependencies();
     const service = createPostService({ store, profileStore, now: () => 2 });
