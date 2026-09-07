@@ -28,9 +28,7 @@ export function CosmeticIdentity({
 }: CosmeticIdentityProps) {
   const NameTag = nameAs;
   const effectClass =
-    profileEffect && profileEffect !== "none"
-      ? ` cosmetic-identity--effect-${profileEffect}`
-      : "";
+    profileEffect && profileEffect !== "none" ? ` cosmetic-identity--effect-${profileEffect}` : "";
 
   return (
     <div className={`cosmetic-identity cosmetic-identity--${mode}${effectClass}`}>
