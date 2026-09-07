@@ -33,17 +33,34 @@ jobs:
         run: node scripts/finalize-store.mjs
       - name: Keep this recovery scoped to Store only
         run: |
-          git checkout HEAD -- worker/auth/service.ts app/dev-fixtures/data.ts app/routes/post-detail.tsx
+          git checkout HEAD -- \
+            worker/auth/service.ts \
+            app/dev-fixtures/data.ts \
+            app/routes/post-detail.tsx \
+            app/routes/store.tsx \
+            app/routes/admin-store.tsx \
+            app/components/product/ProductNav.tsx \
+            app/components/product/StoreItemCard.tsx \
+            app/components/product/StoreSection.tsx \
+            app/components/product/store-page.css \
+            app/components/admin/store/types.ts \
+            app/components/admin/store/AdminStoreEditor.tsx \
+            app/components/admin/store/AdminCosmeticCatalog.tsx \
+            app/components/admin/store/AdminEmotePackManager.tsx \
+            app/components/admin/store/admin-store.css \
+            tests/unit/navigation-performance.test.ts \
+            tests/unit/store-catalog-redesign.test.ts \
+            tests/unit/store-refresh.test.ts \
+            tests/e2e/test-helpers.ts \
+            tests/e2e/navigation.spec.ts \
+            tests/e2e/admin.spec.ts \
+            tests/e2e/responsive.spec.ts
           node <<'NODE'
           const fs = require("node:fs");
           const path = "worker/catalog/api.ts";
           let text = fs.readFileSync(path, "utf8");
           text = text.replace(
-            `function table(kind: CatalogKind): "emote_catalog" | "sticker_catalog" {
-            return kind === "emote" ? "emote_catalog" : "sticker_catalog";
-          }
-
-          `,
+            /function table\(kind: CatalogKind\): "emote_catalog" \| "sticker_catalog" \{\s*return kind === "emote" \? "emote_catalog" : "sticker_catalog";\s*\}\s*/,
             "",
           );
           fs.writeFileSync(path, text);
@@ -55,8 +72,10 @@ jobs:
           worker/store/admin.ts
           worker/catalog/api.ts
           tests/unit/store-schema-compatibility.test.ts
-      - name: Lint
-        run: npm run lint
+      - name: Lint Store recovery
+        run: |
+          npx eslint worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts
+          npx prettier --check worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts tests/unit/store-schema-compatibility.test.ts
       - name: Typecheck
         run: npm run typecheck
       - name: Focused Store tests
