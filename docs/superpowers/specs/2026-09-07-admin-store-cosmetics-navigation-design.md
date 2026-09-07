@@ -23,7 +23,7 @@ The administrative interface will use a hybrid visual direction:
 - information architecture and density inspired by Linear/Vercel;
 - SourceBoard Liquid Glass language used selectively for hierarchy, focus and elevation;
 - no excessive translucency, decorative blur or animation on data-heavy screens;
-- mobile layouts must remain fully usable rather than becoming horizontally scrolling desktop tables.
+- mobile layouts remain fully usable instead of becoming horizontally scrolling desktop tables.
 
 The public Store remains visually richer than Admin because it is a discovery/personalization surface.
 
@@ -32,6 +32,7 @@ The public Store remains visually richer than Admin because it is a discovery/pe
 ### 3.1 Included
 
 - Redesign `/admin` and every existing admin subpanel.
+- Add dedicated `/admin/users`, `/admin/roles` and `/admin/audit` routes instead of keeping those areas as anchors inside `/admin`.
 - Improve `/admin/store` into a complete catalog-management surface.
 - Improve the public `/store` experience.
 - Add administrative actions for published cosmetics and emote packs.
@@ -73,15 +74,15 @@ Anonymous authors must not serialize cosmetic fields that could correlate the an
 
 ### 4.3 Reusable presentation component
 
-Introduce one reusable visual identity primitive, conceptually `UserIdentity`/`CosmeticIdentity`, with variants rather than separate ad-hoc implementations.
+Introduce one reusable visual identity primitive, conceptually `CosmeticIdentity`, with variants rather than separate ad-hoc implementations.
 
 Supported presentation modes:
 
 - `profile`: full effect intensity, full avatar frame, equipped font and profile-specific presentation;
 - `compact`: reduced effect around avatar/name, frame and font for posts/comments;
-- `preview`: Store and creation previews using the same rendering rules without pretending to mutate state.
+- `preview`: Store and creation previews using the same rendering rules without mutating state.
 
-The component must accept explicit identity/cosmetic props and must not fetch its own data.
+The component accepts explicit identity/cosmetic props and does not fetch its own data.
 
 ### 4.4 Rendering rules
 
@@ -113,8 +114,8 @@ The component must accept explicit identity/cosmetic props and must not fetch it
 ### 4.5 Performance rules
 
 - No per-card particle DOM systems.
-- Effects should use lightweight CSS pseudo-elements/transforms where practical.
-- Avoid continuously animating large blurred layers across the feed.
+- Effects use lightweight CSS pseudo-elements/transforms where possible.
+- No continuously animated full-card blurred layers in feed/comment lists.
 - Reduced motion support is mandatory.
 - Cosmetic data is read server-side with the same D1-backed source of truth already used by profile/post/comment services.
 
@@ -130,15 +131,15 @@ The current card contains a `navigate()` handler and real `<Link>` elements, but
 - Clicking/tapping a non-interactive area of the card opens the same route.
 - Clicking/tapping the media area opens the same route unless the media control itself has an explicit interaction.
 - Comment opens the post with `#comments`.
-- On post detail, `#comments` scrolls to the comments section and focuses the comment composer when appropriate.
+- On post detail, `#comments` scrolls to the comments section and focuses the comment composer for an authenticated user; unauthenticated users are scrolled to the comments section without forced focus.
 - Like, Share, author profile links, NSFW controls and other nested controls must not accidentally trigger card navigation.
 - Keyboard activation must remain accessible.
 
 ### 5.3 Implementation direction
 
-Prefer real anchors/React Router links for title and Comment. The card-level click remains a progressive enhancement for the non-interactive surface. The implementation must not depend solely on synthetic click delegation.
+Use real React Router links for title and Comment. The card-level click remains a progressive enhancement for non-interactive card surface only. The implementation must not depend solely on synthetic click delegation.
 
-The exact bug will be reproduced in Playwright before changing behavior, then fixed at its root cause.
+The exact failure is reproduced in Playwright before changing behavior, then fixed at its root cause.
 
 ## 6. Admin information architecture
 
@@ -156,32 +157,30 @@ Desktop:
 Mobile/tablet:
 
 - no desktop table forced beyond viewport;
-- navigation becomes a compact horizontal/overflow-safe strip or collapsible admin navigation;
+- navigation becomes a compact horizontal overflow-safe strip;
 - data tables convert to card/list presentation when columns no longer fit;
 - destructive actions remain reachable without hover.
 
-### 6.2 Navigation groups
+### 6.2 Navigation groups and routes
 
-- Overview
-- Moderation
-- Verifications
-- Users
-- Roles
-- Store
-- Audit
+- Overview — `/admin`
+- Moderation — `/admin/moderation`
+- Verifications — `/admin/verifications`
+- Users — `/admin/users`
+- Roles — `/admin/roles`
+- Store — `/admin/store`
+- Audit — `/admin/audit`
 
-Existing anchors currently living inside `/admin` may become dedicated subroutes when that improves clarity and testability. Route changes must preserve authorization behavior.
+Every route preserves server-side authorization behavior.
 
 ## 7. Admin Overview
 
-The overview should contain only real persisted operational data.
-
-Suggested content:
+The overview contains only real persisted operational data:
 
 - open moderation reports;
 - pending verification candidates;
-- active/published catalog counts;
-- draft/flagged catalog counts;
+- published catalog count;
+- draft/flagged catalog count;
 - recent privileged audit activity;
 - quick links to common administrative queues.
 
@@ -201,7 +200,7 @@ No fixture counts or fabricated analytics are allowed.
 
 ### 8.2 Mobile
 
-Rows become review cards with the same information hierarchy. No 700+ pixel minimum-width table on mobile.
+Rows become review cards with the same information hierarchy. No fixed desktop minimum-width table is used on phone layouts.
 
 ### 8.3 Security
 
@@ -209,7 +208,7 @@ Every moderation mutation remains capability-checked server-side and reason-gate
 
 ## 9. Admin Verifications redesign
 
-Each verification candidate should show:
+Each verification candidate shows:
 
 - post title/link;
 - relevant comment/source candidate;
@@ -217,62 +216,70 @@ Each verification candidate should show:
 - existing evidence context;
 - canonical source URL field;
 - evidence note;
-- clear verify/reject/defer actions where supported by the backend.
+- `Verify source` as the persisted decision action;
+- `Open post` as a non-mutating review action.
 
-The page should visually separate the candidate content from the administrative decision form.
+Reject/defer workflow is not added in this redesign because the current persistence model does not define those decisions.
+
+The page visually separates candidate content from the administrative decision form.
 
 ## 10. Users and Roles
 
 ### 10.1 Users
 
-Provide a dedicated searchable operational surface for authorized administrators:
+`/admin/users` provides a dedicated searchable operational surface for authorized administrators:
 
 - username/display name;
 - account status;
 - assigned roles;
-- joined/last-seen timestamps when already available and appropriate;
-- direct links to safe profile/admin actions.
+- joined timestamp;
+- last-seen timestamp when available;
+- direct link to the public profile;
+- existing safe administrative actions exposed by current backend capabilities.
 
-No decrypted email should be exposed unless an existing capability and explicit product requirement permit it.
+Decrypted email is not shown in this redesign.
 
 ### 10.2 Roles
 
-- list roles and capabilities;
-- show system-role status;
-- show assignments where practical;
-- role/capability mutation continues through existing RBAC services;
-- owner protections remain intact.
+`/admin/roles` provides:
+
+- role list;
+- capability list per role;
+- system-role status;
+- user assignment counts;
+- existing role/capability mutation controls through current RBAC services;
+- owner protections unchanged.
 
 ## 11. Audit redesign
 
 Reuse the existing `audit_logs` table.
 
-The Audit panel should support:
+`/admin/audit` supports filtering by:
 
 - actor;
 - action;
-- target type and ID;
-- reason;
-- timestamp;
-- selected metadata;
-- filters by actor/action/target/date where practical.
+- target type;
+- target ID;
+- date range.
 
-Sensitive operations added in this redesign must write audit records, including catalog moderation and lifecycle actions.
+Each row shows actor, action, target, reason, timestamp and safe metadata.
+
+Sensitive operations added in this redesign write audit records, including catalog moderation and lifecycle actions.
 
 ## 12. Public Store redesign
 
 ### 12.1 Structure
 
-The public Store will use clearer discovery hierarchy:
+The public Store uses this hierarchy:
 
 - hero/wallet summary;
 - category filters;
 - Featured section when featured items exist;
-- New section when meaningful ordering/timestamps support it;
+- New section based on `created_at` for recently published items;
 - Owned section for signed-in users;
 - full catalog.
 
-Sections with no items are omitted rather than filled with fake content.
+Sections with no items are omitted.
 
 ### 12.2 Item cards
 
@@ -293,7 +300,7 @@ Actions:
 - `Equip`
 - `Equipped`
 - `Unlocked` for non-equippable owned packs
-- `Unavailable` for disabled/archived items that should not be purchasable
+- `Unavailable` for items that are not purchasable
 
 ### 12.3 Cosmetic previews
 
@@ -312,9 +319,9 @@ The Store admin surface is split into two primary catalog modes:
 
 ### 13.1 Cosmetics management
 
-Supported cosmetic classes include current Store item types such as frames, profile effects, name fonts and profile banners.
+Supported cosmetic classes include frames, profile effects, name fonts and profile banners.
 
-Each item should expose:
+Each item exposes:
 
 - preview;
 - name;
@@ -322,9 +329,11 @@ Each item should expose:
 - price;
 - type;
 - lifecycle state;
+- enabled/disabled state;
 - featured state;
 - sort order;
-- ownership/equipped usage counts when queryable efficiently.
+- ownership count;
+- equipped-user count.
 
 Actions:
 
@@ -334,9 +343,9 @@ Actions:
 - Feature / Unfeature
 - Duplicate
 - Archive
-- Delete only when safe and not referenced by ownership/equip state
+- Delete only when no inventory/equip/dependent rows reference the item
 
-The UI should normally place secondary actions in an overflow menu rather than showing a row of many buttons.
+Secondary actions use an accessible overflow menu instead of a row of many buttons.
 
 ### 13.2 Emote pack list
 
@@ -348,6 +357,7 @@ Each pack displays:
 - description;
 - price;
 - lifecycle state;
+- enabled/disabled state;
 - emote count;
 - Store visibility;
 - actions menu.
@@ -356,7 +366,7 @@ A draft pack remains fully inspectable.
 
 ### 13.3 Expanded pack view
 
-Opening a pack shows its complete emote list, including disabled or flagged emotes.
+Opening a pack shows its complete emote list, including disabled, flagged, hidden and removed emotes.
 
 Each emote displays:
 
@@ -364,61 +374,92 @@ Each emote displays:
 - shortcode;
 - label;
 - sort order;
-- lifecycle/moderation state;
-- created timestamp where useful.
+- lifecycle state;
+- moderation state;
+- created timestamp.
 
 Actions:
 
-- Edit label/shortcode where safe;
+- Edit label/shortcode;
 - reorder;
 - Enable / Disable;
 - Replace image;
-- Remove;
 - Moderate;
-- Restore when moderation is reversible.
+- Restore;
+- Remove.
 
-## 14. Catalog lifecycle model
+## 14. Catalog state model
 
 The current `ACTIVE/DISABLED` model is not expressive enough for the approved UI.
 
-### 14.1 Lifecycle states
+### 14.1 Lifecycle state
 
-Use explicit lifecycle semantics:
+Persist lifecycle separately from operational enablement:
 
-- `DRAFT`: not publicly purchasable/visible;
-- `PUBLISHED`: publicly available subject to item-level enabled state;
-- `DISABLED`: retained but temporarily unavailable;
-- `ARCHIVED`: retired from normal Store discovery and not newly purchasable.
+- `DRAFT`: not publicly discoverable/purchasable;
+- `PUBLISHED`: eligible for public Store discovery;
+- `ARCHIVED`: retired from normal discovery and not newly purchasable.
 
-Existing data must be migrated without making currently active Store items disappear.
+### 14.2 Operational enablement
 
-### 14.2 Moderation state
+A separate boolean/enum operational state controls temporary availability:
 
-Moderation is separate from lifecycle state:
+- `ENABLED`
+- `DISABLED`
+
+This preserves the approved UI concepts `Publish / Unpublish` and `Enable / Disable` without overloading one column.
+
+Public Store availability requires `lifecycle = PUBLISHED`, `enabled = ENABLED`, no blocking moderation state and any existing scheduling rules to permit visibility.
+
+### 14.3 Moderation state
+
+Moderation is separate from lifecycle and enablement:
 
 - `CLEAR`
 - `FLAGGED`
 - `HIDDEN`
 - `REMOVED`
 
-This separation prevents a moderation decision from being overloaded into ordinary publishing state.
+Policy:
 
-For an emote, `HIDDEN` and `REMOVED` prevent public use. `FLAGGED` is visible to admins as requiring attention and may remain unavailable publicly depending on policy chosen in implementation.
+- `CLEAR`: normal behavior.
+- `FLAGGED`: internal review marker only; it does not automatically remove an otherwise eligible emote from public use.
+- `HIDDEN`: not publicly selectable or rendered as a newly selectable catalog item; existing audit/history remains.
+- `REMOVED`: strongest retired moderation state; not publicly selectable and cannot return to public use until explicitly restored by an authorized moderation action.
 
-### 14.3 Featured and ordering
+### 14.4 Featured and ordering
 
-Store items gain explicit featured/ordering metadata instead of inferring discovery solely from timestamps.
+Store items gain explicit featured metadata and retain explicit sort order. Featured controls discovery placement only; it never bypasses lifecycle, enablement, moderation or entitlement rules.
 
-## 15. Deletion and archival rules
+## 15. Lifecycle transitions
+
+### 15.1 Publish / Unpublish
+
+- Publish: `DRAFT -> PUBLISHED` after validation.
+- Unpublish: `PUBLISHED -> DRAFT`; existing owners keep inventory access, but the item is not newly discoverable/purchasable.
+
+### 15.2 Enable / Disable
+
+- Disable keeps lifecycle unchanged while blocking new public purchase/use where applicable.
+- Enable restores operational availability only if lifecycle/moderation rules also allow it.
+
+### 15.3 Archive
+
+- Archive moves any non-archived item to `ARCHIVED`.
+- Archived items are not newly purchasable.
+- Existing ownership records remain intact.
+- Equipped archived cosmetics remain renderable for existing owners unless separately disabled or moderated; this prevents a catalog retirement from silently stripping a user's purchased appearance.
+
+## 16. Deletion and archival rules
 
 - Purchased/owned cosmetics are not hard-deleted as a normal admin action.
 - Archive is preferred for previously distributed items.
-- Hard delete is permitted only when dependency checks confirm no inventory, equip or other persistent references require the item.
-- Removing an emote from a pack must not leave broken comment payloads for already-posted content; published comments referencing catalog media need a stable presentation/retention strategy.
+- Hard delete is permitted only when dependency checks confirm no inventory, equip, pack membership, audit-sensitive or other persistent references require the item.
+- Emote records used by existing comments are retained even after `HIDDEN`/`REMOVED`; public media serving for historical comments follows the existing persisted-comment compatibility policy so old discussions do not become structurally broken.
 
-## 16. Emote moderation
+## 17. Emote moderation
 
-### 16.1 Actions
+### 17.1 Actions
 
 Individual emotes support:
 
@@ -427,11 +468,11 @@ Individual emotes support:
 - Restore
 - Remove
 
-### 16.2 Reason requirement
+### 17.2 Reason requirement
 
-Moderation actions require a non-empty reason.
+Every moderation action requires a non-empty reason.
 
-### 16.3 Audit
+### 17.3 Audit
 
 Each moderation action records:
 
@@ -441,30 +482,36 @@ Each moderation action records:
 - target ID;
 - reason;
 - request ID;
-- useful state-transition metadata;
+- previous state;
+- next state;
 - timestamp.
 
-### 16.4 Reversibility
+### 17.4 Reversibility
 
-Flag/Hide are reversible. Remove is treated as a stronger administrative state and should still preserve enough database metadata for audit/history rather than silently deleting the record.
+- Flag can return to Clear.
+- Hide can return to Clear.
+- Remove can return to Clear only through explicit Restore by an authorized administrator/moderator.
 
-## 17. API direction
+## 18. API contract direction
 
-Existing API families remain the foundation.
+Existing API families remain the foundation. The implementation adds these server contracts:
 
-Likely extensions include:
+- `GET /api/admin/catalog/emote-packs` — pack summaries with lifecycle, enabled state and counts;
+- `GET /api/admin/catalog/emote-packs/:id` — full pack and complete emote membership, including non-public states;
+- `PATCH /api/admin/catalog/emote-packs/:id` — metadata, lifecycle and enabled-state changes;
+- `POST /api/admin/catalog/emote-packs/:id/duplicate` — duplicate pack metadata and member references/assets according to implementation plan;
+- `PATCH /api/admin/catalog/emotes/:id` — label, shortcode, sort order and enabled state;
+- `POST /api/admin/catalog/emotes/:id/moderation` — Flag/Hide/Restore/Remove with mandatory reason;
+- `POST /api/admin/catalog/emotes/:id/replace` — replace image while retaining stable emote identity;
+- `GET /api/admin/store/items` — administrative cosmetic/store catalog read with counts and states;
+- `PATCH /api/admin/store/items/:id` — cosmetic metadata, lifecycle, enabled, featured and order changes;
+- `POST /api/admin/store/items/:id/duplicate` — duplicate a cosmetic item;
+- `POST /api/admin/store/items/:id/archive` — archive with dependency-safe semantics;
+- `DELETE /api/admin/store/items/:id` — hard delete only after server-side dependency checks pass.
 
-- richer `GET /api/admin/catalog/emote-packs` payload including nested/summary state;
-- `GET /api/admin/catalog/emote-packs/:id` for full pack + emote inspection;
-- `PATCH /api/admin/catalog/emote-packs/:id` for lifecycle/metadata changes;
-- `PATCH /api/admin/catalog/emotes/:id` for state, label, shortcode and ordering changes;
-- explicit moderation action endpoint or structured action payload for emotes;
-- catalog/store item admin endpoints for cosmetics instead of emote-only administration;
-- safe duplicate/archive operations with server-side dependency checks.
+All writes preserve same-origin + CSRF protection and server-side capability checks.
 
-All writes must preserve same-origin + CSRF protection and server-side capability checks.
-
-## 18. Authorization model
+## 19. Authorization model
 
 The browser never determines authorization.
 
@@ -477,50 +524,54 @@ Existing capabilities remain the basis, including:
 - source verification capability;
 - role-management capabilities.
 
-If a new distinct catalog-moderation capability is required, it will be added explicitly through RBAC migration rather than inferred from UI visibility.
+Emote moderation requires both catalog-management authorization for the item and the existing moderation/admin authority selected in the implementation plan. If no existing capability cleanly represents this intersection, a dedicated capability is added by migration rather than inferred from UI visibility.
 
-Owner/admin protections already present in SourceBoard must remain intact.
+Owner/admin protections already present in SourceBoard remain intact.
 
-## 19. Data migration strategy
+## 20. Data migration strategy
 
-A forward-only D1 migration will add only the columns/tables needed by the approved lifecycle/moderation design.
+A forward-only D1 migration adds the fields/indexes required by lifecycle, enablement, moderation and featured state.
 
-Migration requirements:
+Migration rules:
 
-- preserve all current Store items;
-- map currently active items to `PUBLISHED`;
-- map currently disabled draft packs appropriately to `DRAFT` or `DISABLED` based on current Store visibility;
-- preserve ownership and equipped cosmetic rows;
-- preserve current emote pack relations;
-- add indexes needed by admin filters without creating unnecessary write overhead.
+- currently active public Store items become `lifecycle = PUBLISHED`, `enabled = ENABLED`;
+- current disabled draft emote packs become `lifecycle = DRAFT`, `enabled = ENABLED` unless their existing Store record explicitly represents a disabled operational item, in which case `enabled = DISABLED`;
+- existing archived semantics, if any are discovered during implementation, map to `ARCHIVED` rather than being revived;
+- ownership and equipped cosmetic rows remain unchanged;
+- current emote pack relations remain unchanged;
+- moderation defaults to `CLEAR`;
+- featured defaults to false unless a current canonical featured source exists;
+- indexes are added for admin lifecycle/moderation filters and public Store discovery.
 
-The exact migration number is determined from the repository state at implementation time.
+The migration number is chosen from the repository state at implementation time.
 
-## 20. Error handling
+## 21. Error handling
 
-Admin mutations must return actionable, non-sensitive errors.
+Admin mutations return actionable, non-sensitive errors.
 
-Examples:
+Required cases include:
 
 - pack cannot publish because it contains no usable emotes;
-- item cannot hard-delete because users own it;
-- emote cannot be restored because its parent pack is archived;
+- item cannot hard-delete because users own/equip it;
+- item cannot enable while archived;
+- emote cannot become publicly usable while its parent pack is not eligible;
 - insufficient capability;
-- concurrent update conflict where relevant.
+- invalid lifecycle transition;
+- invalid moderation transition.
 
-Client UI should show operation-level feedback without losing the current filtered/expanded context.
+Client UI shows operation-level feedback without losing the current filtered/expanded context.
 
-## 21. Accessibility
+## 22. Accessibility
 
-- All action menus must be keyboard accessible.
-- Tables/cards require meaningful headings and labels.
-- Status must not rely on color alone.
+- All action menus are keyboard accessible.
+- Tables/cards use meaningful headings and labels.
+- Status does not rely on color alone.
 - Focus remains visible in Admin and Store.
-- Card navigation must not create nested interactive-role traps.
+- Card navigation does not create nested interactive-role traps.
 - Reduced-motion behavior applies to cosmetic previews and public identity effects.
-- Mobile touch targets remain at least practical tap size.
+- Mobile primary touch targets remain at least 44 CSS pixels high/wide where applicable.
 
-## 22. Responsive behavior
+## 23. Responsive behavior
 
 Required verification viewports remain:
 
@@ -533,46 +584,49 @@ Required verification viewports remain:
 
 No route in scope may introduce document-level horizontal overflow.
 
-Admin tables must degrade into cards/lists before requiring page-level horizontal scrolling on phone layouts.
+Admin tables convert to card/list presentation before requiring page-level horizontal scrolling on phone layouts.
 
-## 23. Testing strategy
+## 24. Testing strategy
 
-### 23.1 TDD
+### 24.1 TDD
 
 New behavioral work begins with regression/contract tests that fail for the intended missing behavior.
 
-### 23.2 Unit/contract coverage
+### 24.2 Unit/contract coverage
 
 Cover at minimum:
 
 - cosmetic DTO includes safe public effect state;
 - anonymous author payload strips identifying cosmetics;
 - profile/post/comment identity variants;
-- Store lifecycle rules;
+- Store lifecycle/enablement rules;
 - archive/delete dependency logic;
-- emote moderation state transitions;
+- emote moderation transitions;
 - audit writes for sensitive catalog actions;
 - RBAC denial paths;
 - migration-compatible state mapping.
 
-### 23.3 Browser coverage
+### 24.3 Browser coverage
 
-Playwright must prove, not infer:
+Playwright proves:
 
 - title click opens post;
 - card background/media click opens post;
 - Comment opens canonical post `#comments`;
-- comment composer scroll/focus behavior;
+- comment scroll/focus behavior;
 - nested Like/author controls do not trigger card navigation;
 - equipped frame/font/effect visible on profile;
 - compact cosmetics visible on posts/comments;
 - anonymous identities do not show identifying cosmetics;
+- post creation previews equipped cosmetics;
 - public Store filters/actions/previews;
 - Admin Store pack expansion and actions;
+- emote moderation reason flow;
+- Users/Roles/Audit route rendering;
 - mobile Admin navigation and responsive card/table behavior;
 - no horizontal overflow at required breakpoints.
 
-## 24. Verification gates
+## 25. Verification gates
 
 Before completion is claimed, the final candidate must pass:
 
@@ -585,9 +639,9 @@ Before completion is claimed, the final candidate must pass:
 - full Playwright E2E suite;
 - Cloudflare production build/deploy check for final `master` commit.
 
-## 25. Implementation sequencing
+## 26. Implementation sequencing
 
-The implementation plan should order work to minimize broken intermediate states:
+The implementation plan orders work to minimize broken intermediate states:
 
 1. regression tests for navigation and cosmetic propagation;
 2. shared identity contract/component;
@@ -596,13 +650,14 @@ The implementation plan should order work to minimize broken intermediate states
 5. post navigation browser fix;
 6. lifecycle/moderation migration and server model;
 7. Store admin APIs and audit behavior;
-8. Admin shell/subpanel redesign;
-9. Admin Store expanded management;
-10. public Store redesign;
-11. responsive/accessibility cleanup;
-12. full verification and production deployment.
+8. Admin shell and dedicated Users/Roles/Audit routes;
+9. remaining Admin subpanel redesign;
+10. Admin Store expanded management;
+11. public Store redesign;
+12. responsive/accessibility cleanup;
+13. full verification and production deployment.
 
-## 26. Acceptance criteria
+## 27. Acceptance criteria
 
 The work is complete only when all of the following are true:
 
@@ -612,9 +667,10 @@ The work is complete only when all of the following are true:
 - Anonymous posts/comments do not leak identifying cosmetics.
 - Clicking a feed post title opens the post in real browser tests.
 - Clicking a non-interactive post card area opens the post.
-- Clicking Comment opens the post and reaches/focuses the comments composer.
+- Clicking Comment opens the post and reaches/focuses the comments composer according to authentication state.
 - Admin uses the approved Linear/Vercel structure with restrained SourceBoard Liquid Glass styling.
 - All existing Admin subpanels receive coherent responsive redesigns.
+- `/admin/users`, `/admin/roles` and `/admin/audit` are dedicated authorized routes.
 - Public Store receives improved hierarchy, previews and ownership/equip actions.
 - Admin Store manages cosmetics and emote packs, not only pack creation.
 - Draft emote packs expose their complete emote list to authorized admins.
