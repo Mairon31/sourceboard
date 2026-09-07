@@ -22,62 +22,57 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Confirm current regressions are reproduced
+      - name: Confirm Store regressions are reproduced
         run: |
-          if npm test -- --run tests/unit/navigation-performance.test.ts tests/unit/store-schema-compatibility.test.ts; then
-            echo "Expected at least one current regression before applying the verified fixes."
+          if npm test -- --run tests/unit/store-schema-compatibility.test.ts; then
+            echo "Expected Store schema compatibility regression before applying the fix."
             exit 1
           fi
-          echo "Current regressions reproduced."
-      - name: Apply verified Store and navigation fixes
+          echo "Store schema regressions reproduced."
+      - name: Apply verified Store compatibility fixes
         run: node scripts/finalize-store.mjs
-      - name: Normalize changed implementation
+      - name: Keep this recovery scoped to Store only
+        run: |
+          git checkout HEAD -- worker/auth/service.ts app/dev-fixtures/data.ts app/routes/post-detail.tsx
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = "worker/catalog/api.ts";
+          let text = fs.readFileSync(path, "utf8");
+          text = text.replace(
+            `function table(kind: CatalogKind): "emote_catalog" | "sticker_catalog" {
+            return kind === "emote" ? "emote_catalog" : "sticker_catalog";
+          }
+
+          `,
+            "",
+          );
+          fs.writeFileSync(path, text);
+          NODE
+      - name: Normalize Store implementation
         run: >-
           npx prettier --write
-          scripts/finalize-store.mjs
-          worker/auth/service.ts
           worker/store/service.ts
           worker/store/admin.ts
           worker/catalog/api.ts
-          app/dev-fixtures/data.ts
-          app/routes/post-detail.tsx
-          app/routes/store.tsx
-          app/routes/admin-store.tsx
-          app/components/product/ProductNav.tsx
-          app/components/product/StoreItemCard.tsx
-          app/components/product/StoreSection.tsx
-          app/components/product/store-page.css
-          app/components/admin/store/types.ts
-          app/components/admin/store/AdminStoreEditor.tsx
-          app/components/admin/store/AdminCosmeticCatalog.tsx
-          app/components/admin/store/AdminEmotePackManager.tsx
-          app/components/admin/store/admin-store.css
-          tests/unit/navigation-performance.test.ts
           tests/unit/store-schema-compatibility.test.ts
-          tests/unit/store-catalog-redesign.test.ts
-          tests/unit/store-refresh.test.ts
-          tests/e2e/test-helpers.ts
-          tests/e2e/navigation.spec.ts
-          tests/e2e/admin.spec.ts
-          tests/e2e/responsive.spec.ts
       - name: Lint
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
-      - name: Focused tests
-        run: npm test -- --run tests/unit/navigation-performance.test.ts tests/unit/store-schema-compatibility.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-refresh.test.ts
+      - name: Focused Store tests
+        run: npm test -- --run tests/unit/store-schema-compatibility.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-refresh.test.ts
       - name: Verify fresh migrations are idempotent
         run: |
           rm -rf .wrangler/verify-store-fresh
           npx wrangler d1 migrations apply DB --local --persist-to .wrangler/verify-store-fresh
           npx wrangler d1 migrations apply DB --local --persist-to .wrangler/verify-store-fresh
-      - name: Commit verified changes
+      - name: Commit verified Store recovery
         run: |
           git config user.name "SourceBoard CI"
           git config user.email "actions@users.noreply.github.com"
-          git add -A
+          git add worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No Store implementation changes to commit."
             exit 0
           fi
           git commit -m "fix: restore Store across lifecycle schema rollout"
