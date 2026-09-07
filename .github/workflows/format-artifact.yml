@@ -22,12 +22,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Throttle session activity writes
+      - name: Apply navigation performance patches
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path("worker/auth/service.ts")
-          text = path.read_text()
+
+          auth_path = Path("worker/auth/service.ts")
+          text = auth_path.read_text()
           marker = "export function createAuthService(dependencies: AuthServiceDependencies): AuthService {"
           if "SESSION_TOUCH_INTERVAL_MS" not in text:
               if marker not in text:
@@ -72,7 +73,44 @@ jobs:
 
           if "at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS" not in text:
               raise SystemExit("session throttling was not applied")
-          path.write_text(text)
+          auth_path.write_text(text)
+
+          detail_path = Path("app/routes/post-detail.tsx")
+          detail = detail_path.read_text()
+          old = '''      const service = createPostService({
+                store: createD1PostStore(runtime.db),
+                profileStore: createD1ProfileStore(runtime.db),
+              });
+              const post = await service.getPost(params.postId ?? "", userId);
+              const comments = post
+                ? await createCommentService({
+                    store: createD1CommentStore(runtime.db),
+                    postStore: createD1PostStore(runtime.db),
+                    profileStore: createD1ProfileStore(runtime.db),
+                  }).listForPost(post.id, userId, null, 50)
+                : { comments: [], nextCursor: null };'''
+          new = '''      const service = createPostService({
+                store: createD1PostStore(runtime.db),
+                profileStore: createD1ProfileStore(runtime.db),
+              });
+              const commentService = createCommentService({
+                store: createD1CommentStore(runtime.db),
+                postStore: createD1PostStore(runtime.db),
+                profileStore: createD1ProfileStore(runtime.db),
+              });
+              const postId = params.postId ?? "";
+              const [post, commentsResult] = await Promise.all([
+                service.getPost(postId, userId),
+                commentService
+                  .listForPost(postId, userId, null, 50)
+                  .catch(() => ({ comments: [], nextCursor: null })),
+              ]);
+              const comments = post ? commentsResult : { comments: [], nextCursor: null };'''
+          if old in detail:
+              detail = detail.replace(old, new, 1)
+          if "commentService.listForPost" not in detail or "const [post, commentsResult] = await Promise.all" not in detail:
+              raise SystemExit("post detail concurrency patch was not applied")
+          detail_path.write_text(detail)
           PY
       - name: Format Store and navigation implementation
         run: >-
@@ -88,8 +126,11 @@ jobs:
           worker/store/api.ts
           app/routes/store.tsx
           app/routes/admin-store.tsx
+          app/routes/post-detail.tsx
+          app/components/product/ProductNav.tsx
           app/components/product/StoreItemCard.tsx
           app/components/product/StoreSection.tsx
+          app/components/product/store-page.css
           app/components/admin/store/types.ts
           app/components/admin/store/AdminStoreEditor.tsx
           app/components/admin/store/AdminCosmeticCatalog.tsx
@@ -108,5 +149,5 @@ jobs:
           git config user.name "SourceBoard CI"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "style: normalize store and navigation implementation"
+          git commit -m "perf: optimize navigation and normalize store implementation"
           git push origin HEAD:master
