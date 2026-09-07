@@ -1,24 +1,50 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useLoaderData } from "react-router";
+import { hasCapability } from "../../worker/auth/rbac";
+import { createD1AuthStore } from "../../worker/auth/store";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
-import { Badge, Button, Card, Input, Textarea } from "../components/ui";
-import { loadCapabilityAccess } from "../data/capability-access";
+import { AdminCosmeticCatalog } from "../components/admin/store/AdminCosmeticCatalog";
+import { AdminEmotePackManager } from "../components/admin/store/AdminEmotePackManager";
+import type { AdminStoreItem, EmotePackSummary } from "../components/admin/store/types";
+import { Button, Card, Input, Textarea } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
-import type { ServerLoaderArgs } from "../data/server-request";
+import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
-interface EmotePack {
-  id: string;
-  slug: string;
-  label: string;
-  status: "ACTIVE" | "DISABLED";
-  description?: string;
-  pricePoints?: number;
-  emoteCount?: number;
-  storeItemId?: string;
-}
+type AdminStoreMode = "COSMETICS" | "EMOTE_PACKS";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  return loadCapabilityAccess(request, context, "emote.manage");
+  return withOptionalServerSession(
+    request,
+    context,
+    () => ({
+      authorized: false,
+      unavailable: false,
+      storeManage: false,
+      emoteManage: false,
+      catalogModerate: false,
+    }),
+    async (runtime, userId) => {
+      if (!userId) {
+        return {
+          authorized: false,
+          unavailable: false,
+          storeManage: false,
+          emoteManage: false,
+          catalogModerate: false,
+        };
+      }
+      const authorization = await createD1AuthStore(runtime.db).getAuthorization(userId);
+      const storeManage = hasCapability(authorization, "store.manage");
+      const emoteManage = hasCapability(authorization, "emote.manage");
+      return {
+        authorized: storeManage || emoteManage,
+        unavailable: false,
+        storeManage,
+        emoteManage,
+        catalogModerate: hasCapability(authorization, "catalog.moderate"),
+      };
+    },
+  );
 }
 
 function errorMessage(payload: unknown, fallback: string): string {
@@ -31,109 +57,98 @@ function errorMessage(payload: unknown, fallback: string): string {
 
 export default function AdminStoreRoute() {
   const access = useLoaderData<typeof loader>();
-  const [packs, setPacks] = useState<EmotePack[]>([]);
+  const [mode, setMode] = useState<AdminStoreMode>(access.storeManage ? "COSMETICS" : "EMOTE_PACKS");
+  const [items, setItems] = useState<AdminStoreItem[]>([]);
+  const [packs, setPacks] = useState<EmotePackSummary[]>([]);
   const [selectedPackId, setSelectedPackId] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [creatingCosmetic, setCreatingCosmetic] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
+  const loadStoreCatalog = useCallback(async () => {
+    if (!access.storeManage) return;
+    const response = await fetch("/api/admin/store/catalog");
+    const payload = (await response.json().catch(() => null)) as { items?: AdminStoreItem[] } | null;
+    if (!response.ok) {
+      setStatus(errorMessage(payload, "Could not load the Store catalog."));
+      return;
+    }
+    setItems(Array.isArray(payload?.items) ? payload.items : []);
+  }, [access.storeManage]);
+
   const loadPacks = useCallback(async () => {
-    if (!access.authorized) return;
+    if (!access.emoteManage) return;
     const response = await fetch("/api/admin/catalog/emote-packs");
     const payload = (await response.json().catch(() => null)) as {
-      packs?: EmotePack[];
+      packs?: EmotePackSummary[];
     } | null;
     if (!response.ok) {
       setStatus(errorMessage(payload, "Could not load emote packs."));
       return;
     }
-    const nextPacks = Array.isArray(payload?.packs) ? payload.packs : [];
-    setPacks(nextPacks);
-    setSelectedPackId((current) => current || nextPacks[0]?.id || "");
-  }, [access.authorized]);
+    const next = Array.isArray(payload?.packs) ? payload.packs : [];
+    setPacks(next);
+    setSelectedPackId((current) => {
+      if (current && next.some((pack) => pack.id === current)) return current;
+      return next[0]?.id ?? "";
+    });
+  }, [access.emoteManage]);
 
   useEffect(() => {
-    void loadPacks();
-  }, [loadPacks]);
+    if (!access.authorized) {
+      setLoading(false);
+      return;
+    }
+    let active = true;
+    void Promise.all([loadStoreCatalog(), loadPacks()]).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [access.authorized, loadPacks, loadStoreCatalog]);
 
-  async function createPack(event: FormEvent<HTMLFormElement>) {
+  async function createCosmetic(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    setBusy(true);
-    setStatus(null);
+    let config: Record<string, unknown> = {};
+    const configText = String(form.get("config") ?? "").trim();
+    if (configText) {
+      try {
+        const parsed = JSON.parse(configText) as unknown;
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+        config = parsed as Record<string, unknown>;
+      } catch {
+        setStatus("Config must be a valid JSON object using the Store allowlisted fields.");
+        return;
+      }
+    }
+
+    setCreatingCosmetic(true);
     try {
-      const response = await fetch("/api/admin/catalog/emote-packs", {
+      const response = await fetch("/api/admin/store", {
         method: "POST",
         headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
         body: JSON.stringify({
-          slug: form.get("slug"),
-          label: form.get("label"),
+          type: form.get("type"),
+          name: form.get("name"),
           description: form.get("description"),
           pricePoints: Number(form.get("pricePoints")),
+          sortOrder: Number(form.get("sortOrder") ?? 0),
+          config,
+          isActive: false,
         }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        setStatus(errorMessage(payload, "Could not create this pack."));
+        setStatus(errorMessage(payload, "Could not create this cosmetic."));
         return;
       }
       event.currentTarget.reset();
-      setStatus("Emote pack created. Add at least one emote before publishing it.");
-      await loadPacks();
+      setStatus("Draft cosmetic created. Review it below before publishing.");
+      await loadStoreCatalog();
     } finally {
-      setBusy(false);
-    }
-  }
-
-  async function uploadEmote(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    if (!selectedPackId) {
-      setStatus("Create or select an emote pack first.");
-      return;
-    }
-    form.set("packId", selectedPackId);
-    setBusy(true);
-    setStatus(null);
-    try {
-      const response = await fetch("/api/admin/catalog/emotes", {
-        method: "POST",
-        headers: { "x-csrf-token": readCsrfToken() },
-        body: form,
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        setStatus(errorMessage(payload, "Could not upload this emote."));
-        return;
-      }
-      event.currentTarget.reset();
-      setStatus("Emote added to the pack.");
-      await loadPacks();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function setPackStatus(pack: EmotePack, nextStatus: "ACTIVE" | "DISABLED") {
-    setBusy(true);
-    setStatus(null);
-    try {
-      const response = await fetch(
-        `/api/admin/catalog/emote-packs/${encodeURIComponent(pack.id)}`,
-        {
-          method: "PATCH",
-          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-          body: JSON.stringify({ status: nextStatus }),
-        },
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        setStatus(errorMessage(payload, "Could not update this pack."));
-        return;
-      }
-      setStatus(nextStatus === "ACTIVE" ? "Emote pack published." : "Emote pack unpublished.");
-      await loadPacks();
-    } finally {
-      setBusy(false);
+      setCreatingCosmetic(false);
     }
   }
 
@@ -143,7 +158,7 @@ export default function AdminStoreRoute() {
         <AdminPageHeader
           eyebrow="Restricted"
           title="Store catalog"
-          description="The emote.manage capability is required."
+          description="Store or emote management capability is required."
         />
         <Card className="product-empty-state">
           Sign in with an authorized administrator account to continue.
@@ -156,118 +171,117 @@ export default function AdminStoreRoute() {
     <AdminShell>
       <AdminPageHeader
         eyebrow="Store"
-        title="Emote packs"
-        description="Create packs, add KLIPY-independent uploaded emotes and publish them to the SourceBoard Store."
+        title="Catalog control center"
+        description="Manage published cosmetics, inspect draft packs and moderate individual emotes without leaving Admin."
       />
 
-      <div className="admin-dashboard-grid">
-        <Card className="product-form-card">
-          <span className="product-eyebrow">New pack</span>
-          <h2>Create an emote pack</h2>
-          <form className="product-form-grid" onSubmit={(event) => void createPack(event)}>
-            <Input name="label" label="Pack name" required maxLength={120} />
-            <Input
-              name="slug"
-              label="Slug"
-              required
-              pattern="[a-z0-9][a-z0-9-]{1,63}"
-              placeholder="reaction-pack"
-            />
-            <Input name="pricePoints" label="Price in points" type="number" min={1} required />
-            <Textarea name="description" label="Description" maxLength={500} />
-            <Button type="submit" loading={busy}>
-              Create pack
-            </Button>
-          </form>
+      <div className="admin-store-summary-grid">
+        <Card className="admin-store-summary-card">
+          <span>Store items</span>
+          <strong>{items.length}</strong>
+          <small>{items.filter((item) => item.lifecycleState === "PUBLISHED").length} published</small>
         </Card>
-
-        <Card className="product-form-card">
-          <span className="product-eyebrow">Pack contents</span>
-          <h2>Add an emote</h2>
-          <form className="product-form-grid" onSubmit={(event) => void uploadEmote(event)}>
-            <label className="sb-field">
-              <span>Emote pack</span>
-              <select
-                name="packId"
-                value={selectedPackId}
-                onChange={(event) => setSelectedPackId(event.target.value)}
-                required
-              >
-                <option value="">Select a pack</option>
-                {packs.map((pack) => (
-                  <option key={pack.id} value={pack.id}>
-                    {pack.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Input
-              name="shortcode"
-              label="Shortcode"
-              required
-              pattern="[a-z0-9][a-z0-9_-]{1,63}"
-              placeholder="party_blob"
-            />
-            <Input name="label" label="Emote label" required maxLength={120} />
-            <label className="sb-field">
-              <span>Image</span>
-              <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
-            </label>
-            <input type="hidden" name="packId" value={selectedPackId} />
-            <Button type="submit" loading={busy} disabled={!selectedPackId}>
-              Add emote
-            </Button>
-          </form>
+        <Card className="admin-store-summary-card">
+          <span>Draft catalog</span>
+          <strong>
+            {items.filter((item) => item.lifecycleState === "DRAFT").length +
+              packs.filter((pack) => pack.lifecycleState === "DRAFT").length}
+          </strong>
+          <small>Cosmetics and emote packs awaiting publication</small>
+        </Card>
+        <Card className="admin-store-summary-card">
+          <span>Emote packs</span>
+          <strong>{packs.length}</strong>
+          <small>{packs.reduce((total, pack) => total + Number(pack.emoteCount || 0), 0)} emotes</small>
         </Card>
       </div>
 
-      <section className="product-search-section">
-        <div className="product-search-section__header">
-          <div>
-            <span className="product-eyebrow">Published catalog</span>
-            <h2>Manage packs</h2>
-          </div>
-          <span className="product-search-count">{packs.length} packs</span>
-        </div>
-        {packs.length ? (
-          <div className="product-list-stack">
-            {packs.map((pack) => (
-              <Card key={pack.id} className="product-list-row">
-                <div className="product-list-row__identity">
-                  <div>
-                    <strong>{pack.label}</strong>
-                    <span>
-                      {pack.emoteCount ?? 0} emotes · {pack.pricePoints ?? 0} pts
-                    </span>
-                  </div>
-                </div>
-                <div className="product-chip-row">
-                  <Badge tone={pack.status === "ACTIVE" ? "success" : "neutral"}>
-                    {pack.status === "ACTIVE" ? "Published" : "Draft"}
-                  </Badge>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    loading={busy}
-                    onClick={() =>
-                      void setPackStatus(pack, pack.status === "ACTIVE" ? "DISABLED" : "ACTIVE")
-                    }
-                  >
-                    {pack.status === "ACTIVE" ? "Unpublish" : "Publish"}
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="product-empty-state">No emote packs have been created yet.</Card>
-        )}
-      </section>
+      <div className="admin-store-mode-tabs" role="tablist" aria-label="Store catalog mode">
+        {access.storeManage ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "COSMETICS"}
+            className={mode === "COSMETICS" ? "admin-store-mode-tab--active" : undefined}
+            onClick={() => setMode("COSMETICS")}
+          >
+            Cosmetics
+          </button>
+        ) : null}
+        {access.emoteManage ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "EMOTE_PACKS"}
+            className={mode === "EMOTE_PACKS" ? "admin-store-mode-tab--active" : undefined}
+            onClick={() => setMode("EMOTE_PACKS")}
+          >
+            Emote packs
+          </button>
+        ) : null}
+      </div>
 
       {status ? (
-        <div className="product-store-preview-status" role="status">
+        <div className="admin-store-status" role="status">
           {status}
         </div>
+      ) : null}
+
+      {loading ? <Card className="product-empty-state">Loading catalog…</Card> : null}
+
+      {!loading && mode === "COSMETICS" && access.storeManage ? (
+        <>
+          <details className="admin-store-create-cosmetic">
+            <summary>Create cosmetic</summary>
+            <Card className="admin-store-create-card">
+              <form className="product-form-grid" onSubmit={(event) => void createCosmetic(event)}>
+                <label className="sb-field">
+                  <span>Type</span>
+                  <select name="type" defaultValue="AVATAR_FRAME">
+                    <option value="AVATAR_FRAME">Avatar frame</option>
+                    <option value="PROFILE_EFFECT">Profile effect</option>
+                    <option value="PROFILE_BANNER">Profile banner</option>
+                    <option value="NAME_FONT">Name font</option>
+                  </select>
+                </label>
+                <Input name="name" label="Name" required maxLength={120} />
+                <Textarea name="description" label="Description" required maxLength={500} />
+                <Input name="pricePoints" label="Price in points" type="number" min={1} required />
+                <Input name="sortOrder" label="Sort order" type="number" defaultValue="0" />
+                <Textarea
+                  name="config"
+                  label="Config JSON"
+                  placeholder={'{"preset":"stellar"} or {"family":"Georgia"}'}
+                />
+                <Button type="submit" loading={creatingCosmetic}>
+                  Create draft cosmetic
+                </Button>
+              </form>
+            </Card>
+          </details>
+          <AdminCosmeticCatalog
+            items={items}
+            onRefresh={loadStoreCatalog}
+            onStatus={setStatus}
+          />
+        </>
+      ) : null}
+
+      {!loading && mode === "EMOTE_PACKS" && access.emoteManage ? (
+        <AdminEmotePackManager
+          packs={packs}
+          selectedPackId={selectedPackId}
+          onSelectPack={setSelectedPackId}
+          onRefreshPacks={loadPacks}
+          onStatus={setStatus}
+        />
+      ) : null}
+
+      {!access.catalogModerate && mode === "EMOTE_PACKS" ? (
+        <p className="admin-store-capability-note">
+          Individual moderation actions require the catalog.moderate capability and will be rejected by
+          the server if unavailable.
+        </p>
       ) : null}
     </AdminShell>
   );
