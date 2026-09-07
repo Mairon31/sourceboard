@@ -10,6 +10,8 @@ const profileRoute = read("../../app/routes/profile.tsx");
 const accountActions = read("../../app/components/product/ProfileAccountActions.tsx");
 const commentThread = read("../../app/components/product/CommentThread.tsx");
 const commentsApi = read("../../worker/comments/api.ts");
+const root = read("../../app/root.tsx");
+const storeEffectsCss = read("../../app/components/product/store-effects.css");
 const productCss =
   read("../../app/components/product/product.css") +
   read("../../app/components/product/profile-klipy.css");
@@ -46,11 +48,37 @@ describe("profile account actions and KLIPY media picker", () => {
     expect(klipyHandler).toContain('"https://api.klipy.com/v2/search"');
   });
 
-  it("renders the media picker as a compact Instagram-style visual grid", () => {
+  it("renders the media picker as a stable row-major square grid on mobile", () => {
     expect(productCss).toContain(".product-comment-media-picker__tabs");
     expect(productCss).toContain(".product-comment-media-picker__search");
     expect(productCss).toContain("grid-template-columns: repeat(3, minmax(0, 1fr))");
+    expect(productCss).toContain("grid-auto-flow: row");
     expect(productCss).toContain("overflow-y: auto");
-    expect(productCss).toContain("aspect-ratio: 1");
+    expect(productCss).toContain("aspect-ratio: 1 / 1");
+  });
+
+  it("renders selected GIFs and stickers as media only without provider chrome", () => {
+    expect(commentThread).not.toContain("Powered by KLIPY");
+    expect(commentThread).not.toContain("<span>{attachment.type}</span>");
+    expect(commentThread).not.toContain("<strong>{attachment.label}</strong>");
+    expect(productCss).toContain(".product-comment-attachment--sticker");
+    expect(productCss).toContain("background: transparent");
+  });
+
+  it("prevents duplicate comment creation from repeated mobile taps", () => {
+    expect(commentThread).toContain("submitInFlightRef");
+    expect(commentThread).toContain("setSubmitting(true)");
+    expect(commentThread).toContain("submitInFlightRef.current = true");
+    expect(commentThread).toContain("disabled={submitting || (!body.trim() && !attachment)}");
+  });
+
+  it("ships centered animated profile effects with reduced-motion fallback", () => {
+    expect(root).toContain('import "./components/product/store-effects.css"');
+    expect(storeEffectsCss).toContain("@keyframes sb-fx-orbit");
+    expect(storeEffectsCss).toContain("@keyframes sb-fx-pulse");
+    expect(storeEffectsCss).toContain(".product-store-preview--effect::before");
+    expect(storeEffectsCss).toContain(".product-store-preview--blue-energy::before");
+    expect(storeEffectsCss).toContain(".product-store-preview--pink-hearts::before");
+    expect(storeEffectsCss).toContain("prefers-reduced-motion: reduce");
   });
 });
