@@ -104,6 +104,16 @@ export function MessageIcon(props: IconProps) {
   );
 }
 
+export function ShareIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 16V4" />
+      <path d="m7.5 8.5 4.5-4.5 4.5 4.5" />
+      <path d="M5 12v7h14v-7" />
+    </IconBase>
+  );
+}
+
 export function MoreIcon(props: IconProps) {
   return (
     <IconBase {...props}>
