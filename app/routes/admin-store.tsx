@@ -130,9 +130,7 @@ export default function AdminStoreRoute() {
         setStatus(errorMessage(payload, "Could not update this pack."));
         return;
       }
-      setStatus(
-        nextStatus === "ACTIVE" ? "Emote pack published." : "Emote pack unpublished.",
-      );
+      setStatus(nextStatus === "ACTIVE" ? "Emote pack published." : "Emote pack unpublished.");
       await loadPacks();
     } finally {
       setBusy(false);
@@ -175,13 +173,7 @@ export default function AdminStoreRoute() {
               pattern="[a-z0-9][a-z0-9-]{1,63}"
               placeholder="reaction-pack"
             />
-            <Input
-              name="pricePoints"
-              label="Price in points"
-              type="number"
-              min={1}
-              required
-            />
+            <Input name="pricePoints" label="Price in points" type="number" min={1} required />
             <Textarea name="description" label="Description" maxLength={500} />
             <Button type="submit" loading={busy}>
               Create pack
@@ -219,12 +211,7 @@ export default function AdminStoreRoute() {
             <Input name="label" label="Emote label" required maxLength={120} />
             <label className="sb-field">
               <span>Image</span>
-              <input
-                name="file"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                required
-              />
+              <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
             </label>
             <input type="hidden" name="packId" value={selectedPackId} />
             <Button type="submit" loading={busy} disabled={!selectedPackId}>
