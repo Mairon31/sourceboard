@@ -30,6 +30,7 @@ export interface PublicPostAuthor {
   avatarUrl?: string;
   profileUrl?: string;
   avatarFrame?: AvatarFramePreset;
+  profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
 }
 
