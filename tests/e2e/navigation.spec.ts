@@ -55,7 +55,9 @@ test("post title opens canonical detail", async ({ page }) => {
   });
   page.on("requestfailed", (request) => {
     if (request.url().includes("e2e-navigation-post")) {
-      navigationTraffic.push(`FAILED ${request.url()} ${request.failure()?.errorText ?? "unknown"}`);
+      navigationTraffic.push(
+        `FAILED ${request.url()} ${request.failure()?.errorText ?? "unknown"}`,
+      );
     }
   });
 
@@ -66,7 +68,9 @@ test("post title opens canonical detail", async ({ page }) => {
   await expect(title).toHaveAttribute("href", "/posts/e2e-navigation-post/e2e-navigation-post");
   await title.click();
   await page.waitForTimeout(1_000);
-  console.log(`POST_NAV_DIAGNOSTIC url=${page.url()} traffic=${JSON.stringify(navigationTraffic)}`);
+  console.log(
+    `POST_NAV_DIAGNOSTIC url=${page.url()} traffic=${JSON.stringify(navigationTraffic)}`,
+  );
   await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
 });
 
