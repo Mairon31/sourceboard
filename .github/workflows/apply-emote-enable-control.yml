@@ -1,0 +1,71 @@
+name: Apply Emote Enable Control
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/apply-emote-enable-control.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Add direct emote enablement action
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'app/components/admin/store/AdminEmotePackManager.tsx';
+          let text = fs.readFileSync(path, 'utf8');
+          const functionMarker = '  const disabled = busy || localBusy;\n';
+          const fn = `  async function toggleEmoteEnabled() {\n    setLocalBusy(true);\n    try {\n      const response = await fetch(\`/api/admin/catalog/emotes/\${encodeURIComponent(emote.id)}\`, {\n        method: "PATCH",\n        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },\n        body: JSON.stringify({ isEnabled: !truthy(emote.isEnabled) }),\n      });\n      const payload = await response.json().catch(() => null);\n      if (!response.ok) {\n        onStatus(errorMessage(payload, "Could not change this emote enablement."));\n        return;\n      }\n      onStatus(\`\${emote.label} \${truthy(emote.isEnabled) ? "disabled" : "enabled"}.\`);\n      await onChanged();\n    } finally {\n      setLocalBusy(false);\n    }\n  }\n\n`;
+          if (!text.includes('async function toggleEmoteEnabled()')) {
+            if (!text.includes(functionMarker)) throw new Error('toggle insertion marker missing');
+            text = text.replace(functionMarker, fn + functionMarker);
+          }
+          const editButton = `            <Button type="button" size="sm" onClick={() => setEditing(true)} disabled={removed}>\n              Edit\n            </Button>\n`;
+          const toggleButton = `${editButton}            <Button\n              type="button"\n              size="sm"\n              variant="secondary"\n              loading={disabled}\n              disabled={removed}\n              onClick={() => void toggleEmoteEnabled()}\n            >\n              {truthy(emote.isEnabled) ? "Disable" : "Enable"}\n            </Button>\n`;
+          if (!text.includes('onClick={() => void toggleEmoteEnabled()}')) {
+            if (!text.includes(editButton)) throw new Error('emote action insertion marker missing');
+            text = text.replace(editButton, toggleButton);
+          }
+          fs.writeFileSync(path, text);
+          NODE
+          npx prettier --write app/components/admin/store/AdminEmotePackManager.tsx tests/unit/store-catalog-redesign.test.ts
+      - name: Focused Store tests
+        run: npm test -- --run tests/unit/store-catalog-redesign.test.ts tests/unit/store-schema-compatibility.test.ts tests/unit/store-refresh.test.ts
+      - name: Quality gates
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+          npm run deploy:dry-run
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify migrations and E2E
+        run: |
+          rm -rf .wrangler/verify-store-fresh
+          npx wrangler d1 migrations apply DB --local --persist-to .wrangler/verify-store-fresh
+          npx wrangler d1 migrations apply DB --local --persist-to .wrangler/verify-store-fresh
+          npm run db:migrations:apply
+          npm run test:e2e
+      - name: Commit verified control
+        run: |
+          git rm .github/workflows/apply-emote-enable-control.yml
+          git config user.name "SourceBoard CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: add direct emote enablement controls"
+          git push origin HEAD:master
