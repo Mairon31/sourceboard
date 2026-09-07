@@ -56,6 +56,8 @@ jobs:
           tests/e2e/admin.spec.ts
       - name: Focused regression tests
         run: npm test -- --run tests/unit/store-schema-compatibility.test.ts tests/unit/store-catalog-redesign.test.ts
+      - name: Remove one-shot recovery helpers before global gates
+        run: git rm .github/workflows/fix-admin-emote-rollout.yml scripts/fix-admin-emote-rollout.mjs
       - name: Lint and format check
         run: npm run lint
       - name: Typecheck
@@ -72,11 +74,10 @@ jobs:
         run: npm run db:migrations:apply
       - name: End-to-end tests
         run: npm run test:e2e
-      - name: Commit verified fix and remove recovery helpers
+      - name: Commit verified fix
         run: |
           git config user.name "SourceBoard CI"
           git config user.email "actions@users.noreply.github.com"
-          git rm .github/workflows/fix-admin-emote-rollout.yml scripts/fix-admin-emote-rollout.mjs
-          git add worker/catalog/api.ts worker/store/admin.ts app/components/admin/store/AdminEmotePackManager.tsx tests/unit/store-schema-compatibility.test.ts tests/e2e/test-helpers.ts tests/e2e/store.spec.ts tests/e2e/admin.spec.ts
+          git add -A
           git commit -m "fix: restore Admin emote pack controls"
           git push origin HEAD:master
