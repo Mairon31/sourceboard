@@ -19,7 +19,10 @@ function truthy(value: boolean | number): boolean {
   return value === true || Number(value) === 1;
 }
 
-function errorDetails(payload: unknown, fallback: string): { code: string | null; message: string } {
+function errorDetails(
+  payload: unknown,
+  fallback: string,
+): { code: string | null; message: string } {
   if (!payload || typeof payload !== "object") return { code: null, message: fallback };
   const error = (payload as { error?: unknown }).error;
   if (!error || typeof error !== "object") return { code: null, message: fallback };
@@ -98,9 +101,10 @@ export function AdminCosmeticCatalog({
   );
   const [editing, setEditing] = useState<AdminStoreItem | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [danger, setDanger] = useState<{ item: AdminStoreItem; action: "ARCHIVE" | "DELETE" } | null>(
-    null,
-  );
+  const [danger, setDanger] = useState<{
+    item: AdminStoreItem;
+    action: "ARCHIVE" | "DELETE";
+  } | null>(null);
   const [reason, setReason] = useState("");
 
   async function perform(item: AdminStoreItem, action: StoreAction, actionReason?: string) {

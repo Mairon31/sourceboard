@@ -76,14 +76,7 @@ export function MobileProductNav() {
       className="product-mobile-nav glass-panel glass-panel--strong"
       aria-label="Mobile navigation"
     >
-      <NavLink
-        to="/"
-        className={navClass}
-        end
-        aria-label="Home"
-        title="Home"
-        prefetch="viewport"
-      >
+      <NavLink to="/" className={navClass} end aria-label="Home" title="Home" prefetch="viewport">
         <HomeIcon />
       </NavLink>
       <NavLink

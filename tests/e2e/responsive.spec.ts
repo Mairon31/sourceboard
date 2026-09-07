@@ -53,7 +53,8 @@ for (const width of [390, 430]) {
       const filterElement = document.querySelector<HTMLElement>(".product-store-filter-bar");
       const cardElement = document.querySelector<HTMLElement>(".product-store-item");
       return {
-        documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        documentOverflow:
+          document.documentElement.scrollWidth - document.documentElement.clientWidth,
         filterRight: filterElement?.getBoundingClientRect().right ?? Infinity,
         cardRight: cardElement?.getBoundingClientRect().right ?? Infinity,
       };
@@ -64,7 +65,9 @@ for (const width of [390, 430]) {
   });
 }
 
-test("authorized Admin Store collapses to mobile cards without document overflow", async ({ page }) => {
+test("authorized Admin Store collapses to mobile cards without document overflow", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await installAdminStoreFixture(page);
   await page.goto("/admin/store");

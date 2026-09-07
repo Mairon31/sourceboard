@@ -22,7 +22,9 @@ test("anonymous identity reveal is reason-gated", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Admin access required" })).toBeVisible();
 });
 
-test("authorized Admin Store exposes published cosmetics and editable metadata", async ({ page }) => {
+test("authorized Admin Store exposes published cosmetics and editable metadata", async ({
+  page,
+}) => {
   await installAdminStoreFixture(page);
   await page.goto("/admin/store");
   await waitForUiReady(page);
@@ -43,7 +45,9 @@ test("authorized Admin Store exposes published cosmetics and editable metadata",
   await expect(page.getByRole("button", { name: "Save changes" })).toBeVisible();
 });
 
-test("authorized Admin Store opens draft packs and administers individual emotes", async ({ page }) => {
+test("authorized Admin Store opens draft packs and administers individual emotes", async ({
+  page,
+}) => {
   await installAdminStoreFixture(page);
   await page.goto("/admin/store");
   await waitForUiReady(page);

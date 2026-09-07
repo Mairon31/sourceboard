@@ -27,9 +27,7 @@ function lifecycleTone(state: StoreLifecycleState): "success" | "neutral" | "war
   return "neutral";
 }
 
-function moderationTone(
-  state: EmoteModerationState,
-): "success" | "neutral" | "warning" | "danger" {
+function moderationTone(state: EmoteModerationState): "success" | "neutral" | "warning" | "danger" {
   if (state === "CLEAR") return "success";
   if (state === "FLAGGED") return "warning";
   if (state === "REMOVED") return "danger";
@@ -197,7 +195,11 @@ function EmoteEditor({
             </label>
             <label className="sb-field">
               <span>Label</span>
-              <input value={label} maxLength={120} onChange={(event) => setLabel(event.target.value)} />
+              <input
+                value={label}
+                maxLength={120}
+                onChange={(event) => setLabel(event.target.value)}
+              />
             </label>
             <label className="sb-field">
               <span>Sort order</span>
@@ -388,7 +390,9 @@ export function AdminEmotePackManager({
       const response = await fetch(
         `/api/admin/catalog/emote-packs/${encodeURIComponent(selectedPackId)}`,
       );
-      const payload = (await response.json().catch(() => null)) as { pack?: EmotePackDetail } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        pack?: EmotePackDetail;
+      } | null;
       if (!response.ok || !payload?.pack) {
         onStatus(errorMessage(payload, "Could not open this emote pack."));
         setDetail(null);
@@ -635,7 +639,9 @@ export function AdminEmotePackManager({
                     <p>{detail.description || "No description."}</p>
                   </div>
                   <div className="product-chip-row">
-                    <Badge tone={lifecycleTone(detail.lifecycleState)}>{detail.lifecycleState}</Badge>
+                    <Badge tone={lifecycleTone(detail.lifecycleState)}>
+                      {detail.lifecycleState}
+                    </Badge>
                     <Badge tone={truthy(detail.isEnabled) ? "success" : "neutral"}>
                       {truthy(detail.isEnabled) ? "Enabled" : "Disabled"}
                     </Badge>
@@ -761,7 +767,9 @@ export function AdminEmotePackManager({
                             lifecycleState:
                               detail.lifecycleState === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
                           },
-                          detail.lifecycleState === "PUBLISHED" ? "Pack unpublished." : "Pack published.",
+                          detail.lifecycleState === "PUBLISHED"
+                            ? "Pack unpublished."
+                            : "Pack published.",
                         )
                       }
                     >
@@ -809,7 +817,10 @@ export function AdminEmotePackManager({
                   <span className="product-eyebrow">Selected pack</span>
                   <h3>Add emote</h3>
                 </div>
-                <form className="admin-store-add-emote__form" onSubmit={(event) => void uploadEmote(event)}>
+                <form
+                  className="admin-store-add-emote__form"
+                  onSubmit={(event) => void uploadEmote(event)}
+                >
                   <Input
                     name="shortcode"
                     label="Shortcode"
@@ -820,7 +831,12 @@ export function AdminEmotePackManager({
                   <Input name="label" label="Label" required maxLength={120} />
                   <label className="sb-field">
                     <span>Image</span>
-                    <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
+                    <input
+                      name="file"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      required
+                    />
                   </label>
                   <Button type="submit" size="sm" loading={busy}>
                     Add emote

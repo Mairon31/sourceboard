@@ -57,7 +57,9 @@ function errorMessage(payload: unknown, fallback: string): string {
 
 export default function AdminStoreRoute() {
   const access = useLoaderData<typeof loader>();
-  const [mode, setMode] = useState<AdminStoreMode>(access.storeManage ? "COSMETICS" : "EMOTE_PACKS");
+  const [mode, setMode] = useState<AdminStoreMode>(
+    access.storeManage ? "COSMETICS" : "EMOTE_PACKS",
+  );
   const [items, setItems] = useState<AdminStoreItem[]>([]);
   const [packs, setPacks] = useState<EmotePackSummary[]>([]);
   const [selectedPackId, setSelectedPackId] = useState("");
@@ -68,7 +70,9 @@ export default function AdminStoreRoute() {
   const loadStoreCatalog = useCallback(async () => {
     if (!access.storeManage) return;
     const response = await fetch("/api/admin/store/catalog");
-    const payload = (await response.json().catch(() => null)) as { items?: AdminStoreItem[] } | null;
+    const payload = (await response.json().catch(() => null)) as {
+      items?: AdminStoreItem[];
+    } | null;
     if (!response.ok) {
       setStatus(errorMessage(payload, "Could not load the Store catalog."));
       return;
@@ -179,7 +183,9 @@ export default function AdminStoreRoute() {
         <Card className="admin-store-summary-card">
           <span>Store items</span>
           <strong>{items.length}</strong>
-          <small>{items.filter((item) => item.lifecycleState === "PUBLISHED").length} published</small>
+          <small>
+            {items.filter((item) => item.lifecycleState === "PUBLISHED").length} published
+          </small>
         </Card>
         <Card className="admin-store-summary-card">
           <span>Draft catalog</span>
@@ -192,7 +198,9 @@ export default function AdminStoreRoute() {
         <Card className="admin-store-summary-card">
           <span>Emote packs</span>
           <strong>{packs.length}</strong>
-          <small>{packs.reduce((total, pack) => total + Number(pack.emoteCount || 0), 0)} emotes</small>
+          <small>
+            {packs.reduce((total, pack) => total + Number(pack.emoteCount || 0), 0)} emotes
+          </small>
         </Card>
       </div>
 
@@ -259,11 +267,7 @@ export default function AdminStoreRoute() {
               </form>
             </Card>
           </details>
-          <AdminCosmeticCatalog
-            items={items}
-            onRefresh={loadStoreCatalog}
-            onStatus={setStatus}
-          />
+          <AdminCosmeticCatalog items={items} onRefresh={loadStoreCatalog} onStatus={setStatus} />
         </>
       ) : null}
 
@@ -279,8 +283,8 @@ export default function AdminStoreRoute() {
 
       {!access.catalogModerate && mode === "EMOTE_PACKS" ? (
         <p className="admin-store-capability-note">
-          Individual moderation actions require the catalog.moderate capability and will be rejected by
-          the server if unavailable.
+          Individual moderation actions require the catalog.moderate capability and will be rejected
+          by the server if unavailable.
         </p>
       ) : null}
     </AdminShell>
