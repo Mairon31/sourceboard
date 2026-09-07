@@ -280,6 +280,18 @@ export function createStoreService(db: D1Database) {
       }
       return { slot, storeItemId: itemId };
     },
+
+    async unequip(userId: string, slot: CosmeticSlot) {
+      const result = await db
+        .prepare("DELETE FROM user_cosmetics WHERE user_id = ? AND slot = ?")
+        .bind(userId, slot)
+        .run();
+      return {
+        slot,
+        storeItemId: null,
+        removed: Number(result.meta.changes ?? 0) > 0,
+      };
+    },
   };
 }
 
