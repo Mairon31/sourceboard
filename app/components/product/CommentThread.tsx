@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
@@ -248,20 +248,31 @@ export function CommentThread({
   postId,
   comments,
   authenticated = true,
+  focusComposer = false,
   canAcceptSource,
   onAcceptSource,
 }: {
   postId: string;
   comments: CommentView[];
   authenticated?: boolean;
+  focusComposer?: boolean;
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
 }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [mediaKind, setMediaKind] = useState<"GIF" | "STICKER" | null>(null);
   const [attachment, setAttachment] = useState<CommentAttachmentView | null>(null);
+
+  useEffect(() => {
+    if (!focusComposer) return;
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!authenticated) return;
+    window.requestAnimationFrame(() => composerRef.current?.focus({ preventScroll: true }));
+  }, [authenticated, focusComposer]);
 
   async function submit() {
     if (!body.trim() && !attachment) return;
@@ -313,7 +324,12 @@ export function CommentThread({
   }
 
   return (
-    <section className="product-comments" aria-labelledby="comments-heading">
+    <section
+      ref={sectionRef}
+      id="comments"
+      className="product-comments"
+      aria-labelledby="comments-heading"
+    >
       <header className="product-section-heading">
         <div>
           <span className="product-eyebrow">Discussion</span>
@@ -332,6 +348,7 @@ export function CommentThread({
           <Avatar name="SourceBoard member" size="sm" />
           <div className="product-comment-composer__field">
             <Textarea
+              ref={composerRef}
               label={replyTo ? "Add a reply" : "Add a comment"}
               value={body}
               onChange={(event) => setBody(event.target.value)}
