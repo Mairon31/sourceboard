@@ -177,6 +177,10 @@ export interface StoreItemView {
   type: StoreItemType;
   state: StoreItemState;
   price: number;
+  createdAt: string;
+  featured: boolean;
+  owned: boolean;
+  equipped: boolean;
   previewLabel: string;
   packSize?: number;
   adminUnlocked?: boolean;
