@@ -586,9 +586,11 @@ prerequisites.
 - [x] Comments now render persisted media metadata and provide authenticated
       GIF/sticker search through a server-side KLIPY proxy with host allowlists,
       content filtering and rate limiting.
-- [ ] Add the `KLIPY_API_KEY` Worker secret and publish at least one managed
-      first-party emote/sticker asset if those pack previews are required in
-      production. The connected Cloudflare account currently has no KLIPY key.
+- [x] The connected Cloudflare Worker has the `KLIPY_API_KEY` secret, so the
+      authenticated GIF/sticker search path is configured.
+- [ ] Publish at least one managed first-party emote/sticker asset if those
+      pack previews are required in production; the active Source Hunters pack
+      currently has no catalog assets.
 
 ## Known limitations
 
