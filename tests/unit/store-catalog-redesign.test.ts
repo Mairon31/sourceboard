@@ -82,21 +82,26 @@ describe("store catalog lifecycle", () => {
   });
 
   it("splits Admin Store into Cosmetics and Emote packs with editable catalog metadata", () => {
-    expect(adminStoreRoute).toContain('"cosmetics"');
-    expect(adminStoreRoute).toContain('"packs"');
+    expect(adminStoreRoute).toContain(">Cosmetics<");
+    expect(adminStoreRoute).toContain("Emote packs");
     expect(adminStoreRoute).toContain("AdminCosmeticCatalog");
     expect(adminStoreRoute).toContain("AdminEmotePackManager");
+    expect(adminStoreRoute).toContain("/api/admin/store/catalog");
     expect(adminCosmetics).toContain("ownerCount");
     expect(adminCosmetics).toContain("equippedCount");
+    expect(adminCosmetics).toContain("Archive");
+    expect(adminCosmetics).toContain("Delete");
     expect(adminEditor).toContain("Config JSON");
     expect(adminEditor).toContain("/api/admin/store/");
   });
 
   it("lets admins inspect every draft pack emote and act on each emote individually", () => {
-    expect(adminPacks).toContain("Open pack");
+    expect(adminPacks).toContain("/api/admin/catalog/emote-packs/");
+    expect(adminPacks).toContain("/api/admin/catalog/emotes");
     expect(adminPacks).toContain("Replace image");
     expect(adminPacks).toContain("shortcode");
     expect(adminPacks).toContain("sortOrder");
+    expect(adminPacks).toContain("Moderation reason");
     expect(adminPacks).toContain("Flag");
     expect(adminPacks).toContain("Hide");
     expect(adminPacks).toContain("Restore");
