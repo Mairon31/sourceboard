@@ -27,26 +27,6 @@ for (const viewport of viewports) {
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
-      if (overflow > 1 && path === "/store") {
-        const offenders = await page.evaluate(() =>
-          [...document.querySelectorAll<HTMLElement>("*")]
-            .map((element) => {
-              const rect = element.getBoundingClientRect();
-              return {
-                tag: element.tagName,
-                className: String(element.className).slice(0, 180),
-                text: (element.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 100),
-                left: Math.round(rect.left),
-                right: Math.round(rect.right),
-                width: Math.round(rect.width),
-              };
-            })
-            .filter((item) => item.right > window.innerWidth + 1 || item.left < -1)
-            .sort((left, right) => right.right - left.right)
-            .slice(0, 24),
-        );
-        console.log("STORE_OVERFLOW_DIAGNOSTIC", JSON.stringify({ viewport, overflow, offenders }));
-      }
       expect(overflow).toBeLessThanOrEqual(1);
     });
   }
