@@ -3,6 +3,7 @@ import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { readViewerLikedPostIds } from "../data/viewer-post-likes";
 import { PostCard } from "../components/product/PostCard";
 import { ProductShell } from "../components/product/ProductShell";
 import { Card, GlassPanel, Tabs } from "../components/ui";
@@ -28,13 +29,29 @@ export async function loader({ request, context }: LoaderArgs) {
           service.listFeed({ viewerId: userId, kind, cursor: null, limit: 20 }),
         ),
       );
+      const allPosts = [
+        ...recent.posts,
+        ...friends.posts,
+        ...answered.posts,
+        ...verified.posts,
+      ];
+      const likedIds = await readViewerLikedPostIds(
+        db,
+        userId,
+        allPosts.map((post) => post.id),
+      );
+      const withViewerReaction = (posts: typeof recent.posts) =>
+        posts.map((post) => ({
+          ...post,
+          reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
+        }));
       return {
         unavailable: false,
         feeds: {
-          recent: recent.posts,
-          friends: friends.posts,
-          answered: answered.posts,
-          verified: verified.posts,
+          recent: withViewerReaction(recent.posts),
+          friends: withViewerReaction(friends.posts),
+          answered: withViewerReaction(answered.posts),
+          verified: withViewerReaction(verified.posts),
         },
       };
     },
