@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { readViewerLikedPostIds } from "../../app/data/viewer-post-likes";
 import { canViewPost, createPostService, createPostSlug } from "../../worker/posts/service";
 import type { ProfileStore } from "../../worker/profile/store";
 import type { Relationship } from "../../worker/profile/types";
@@ -153,21 +154,26 @@ describe("Phase 4 post policy", () => {
     expect(result.posts[0]?.imageUrl).toBe("/api/media/post/asset-1");
   });
 
-  it("preserves an authenticated viewer's existing post like in feed serialization", async () => {
-    const { profileStore, store } = dependencies();
-    const hasLike = vi.fn(async () => true);
-    Object.assign(store, { hasLike });
-    const service = createPostService({ store, profileStore, now: () => 2 });
+  it("reads an authenticated viewer's existing post likes from reactions", async () => {
+    let sql = "";
+    const statement = {
+      bind: vi.fn(() => statement),
+      all: vi.fn(async () => ({ results: [{ targetId: "post-1" }] })),
+    };
+    const db = {
+      prepare: vi.fn((query: string) => {
+        sql = query;
+        return statement;
+      }),
+    } as unknown as D1Database;
 
-    const result = await service.listFeed({
-      viewerId: "viewer-1",
-      kind: "recent",
-      cursor: null,
-      limit: 20,
-    });
+    const likedIds = await readViewerLikedPostIds(db, "viewer-1", ["post-1", "post-2"]);
 
-    expect(hasLike).toHaveBeenCalledWith("viewer-1", "POST", "post-1");
-    expect(result.posts[0]?.reaction.viewerReacted).toBe(true);
+    expect(likedIds.has("post-1")).toBe(true);
+    expect(likedIds.has("post-2")).toBe(false);
+    expect(sql).toContain("target_type = 'POST'");
+    expect(sql).toContain("reaction_type = 'LIKE'");
+    expect(statement.bind).toHaveBeenCalledWith("viewer-1", "post-1", "post-2");
   });
 
   it("rejects anonymous friends-only posts before writing", async () => {
