@@ -586,6 +586,9 @@ export const storeItems = sqliteTable(
     assetId: text("asset_id"),
     configJson: text("config_json").notNull().default("{}"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    lifecycleState: text("lifecycle_state").notNull().default("PUBLISHED"),
+    isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
+    isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
     startsAt: integer("starts_at", { mode: "number" }),
     endsAt: integer("ends_at", { mode: "number" }),
     sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
@@ -594,11 +597,23 @@ export const storeItems = sqliteTable(
   },
   (table) => [
     index("store_items_active_order_index").on(table.isActive, table.sortOrder),
+    index("store_items_lifecycle_discovery_index").on(
+      table.lifecycleState,
+      table.isEnabled,
+      table.isFeatured,
+      table.sortOrder,
+    ),
     check(
       "store_items_type_check",
       sql`${table.type} IN ('AVATAR_FRAME', 'PROFILE_BANNER', 'PROFILE_EFFECT', 'NAME_FONT', 'EMOTE_PACK', 'STICKER_PACK')`,
     ),
     check("store_items_price_check", sql`${table.pricePoints} >= 0`),
+    check(
+      "store_items_lifecycle_state_check",
+      sql`${table.lifecycleState} IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')`,
+    ),
+    check("store_items_is_enabled_check", sql`${table.isEnabled} IN (0, 1)`),
+    check("store_items_is_featured_check", sql`${table.isFeatured} IN (0, 1)`),
   ],
 );
 
@@ -778,11 +793,31 @@ export const emoteCatalog = sqliteTable(
     packId: text("pack_id"),
     sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
     status: text("status").notNull().default("ACTIVE"),
+    lifecycleState: text("lifecycle_state").notNull().default("PUBLISHED"),
+    isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
+    moderationState: text("moderation_state").notNull().default("CLEAR"),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }),
   },
   (table) => [
     uniqueIndex("emote_catalog_shortcode_unique").on(table.shortcode),
+    index("emote_catalog_pack_state_order_index").on(
+      table.packId,
+      table.lifecycleState,
+      table.isEnabled,
+      table.moderationState,
+      table.sortOrder,
+    ),
     check("emote_catalog_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
+    check(
+      "emote_catalog_lifecycle_state_check",
+      sql`${table.lifecycleState} IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')`,
+    ),
+    check("emote_catalog_is_enabled_check", sql`${table.isEnabled} IN (0, 1)`),
+    check(
+      "emote_catalog_moderation_state_check",
+      sql`${table.moderationState} IN ('CLEAR', 'FLAGGED', 'HIDDEN', 'REMOVED')`,
+    ),
   ],
 );
 
@@ -811,11 +846,19 @@ export const emotePacks = sqliteTable(
     slug: text("slug").notNull(),
     label: text("label").notNull(),
     status: text("status").notNull().default("ACTIVE"),
+    lifecycleState: text("lifecycle_state").notNull().default("PUBLISHED"),
+    isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }),
   },
   (table) => [
     uniqueIndex("emote_packs_slug_unique").on(table.slug),
     check("emote_packs_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
+    check(
+      "emote_packs_lifecycle_state_check",
+      sql`${table.lifecycleState} IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')`,
+    ),
+    check("emote_packs_is_enabled_check", sql`${table.isEnabled} IN (0, 1)`),
   ],
 );
 
