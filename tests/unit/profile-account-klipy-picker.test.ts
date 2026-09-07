@@ -10,7 +10,9 @@ const profileRoute = read("../../app/routes/profile.tsx");
 const accountActions = read("../../app/components/product/ProfileAccountActions.tsx");
 const commentThread = read("../../app/components/product/CommentThread.tsx");
 const commentsApi = read("../../worker/comments/api.ts");
-const productCss = read("../../app/components/product/product.css");
+const productCss =
+  read("../../app/components/product/product.css") +
+  read("../../app/components/product/profile-klipy.css");
 
 describe("profile account actions and KLIPY media picker", () => {
   it("shows Settings and current-session logout only on the owner profile", () => {
