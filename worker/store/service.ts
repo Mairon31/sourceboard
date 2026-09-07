@@ -61,6 +61,73 @@ export function publicAvailabilityPredicate(now = Date.now()): {
   };
 }
 
+export function isStoreLifecycleSchemaError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes("no such column") &&
+    ["lifecycle_state", "is_enabled", "is_featured", "moderation_state", "updated_at"].some(
+      (column) => message.includes(column),
+    )
+  );
+}
+
+async function legacyListStoreCatalog(db: D1Database, now: number): Promise<StoreItemInput[]> {
+  const rows = await db
+    .prepare(
+      `SELECT id, type, name, description, price_points AS pricePoints, asset_id AS assetId, config_json AS configJson, is_active AS isActive,
+            CASE WHEN is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
+            is_active AS isEnabled, 0 AS isFeatured, starts_at AS startsAt, ends_at AS endsAt, sort_order AS sortOrder, created_at AS createdAt
+     FROM store_items
+     WHERE is_active = 1 AND (starts_at IS NULL OR starts_at <= ?) AND (ends_at IS NULL OR ends_at > ?)
+     ORDER BY sort_order ASC, created_at DESC`,
+    )
+    .bind(now, now)
+    .all<StoreItemInput>();
+  return rows.results;
+}
+
+async function listStoreCatalog(db: D1Database, now: number): Promise<StoreItemInput[]> {
+  const available = publicAvailabilityPredicate(now);
+  try {
+    const rows = await db
+      .prepare(
+        `SELECT id, type, name, description, price_points AS pricePoints, asset_id AS assetId, config_json AS configJson, is_active AS isActive,
+              lifecycle_state AS lifecycleState, is_enabled AS isEnabled, is_featured AS isFeatured, starts_at AS startsAt,
+              ends_at AS endsAt, sort_order AS sortOrder, created_at AS createdAt
+       FROM store_items WHERE ${available.sql} ORDER BY sort_order ASC, created_at DESC`,
+      )
+      .bind(...available.binds)
+      .all<StoreItemInput>();
+    return rows.results;
+  } catch (error) {
+    if (!isStoreLifecycleSchemaError(error)) throw error;
+    return legacyListStoreCatalog(db, now);
+  }
+}
+
+async function listEmotePreviewAssets(db: D1Database, packId: string) {
+  try {
+    return await db
+      .prepare(
+        `SELECT id, label, asset_key AS assetKey FROM emote_catalog
+       WHERE pack_id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1 AND moderation_state NOT IN ('HIDDEN', 'REMOVED')
+       ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+      )
+      .bind(packId)
+      .all<StorePreviewAsset>();
+  } catch (error) {
+    if (!isStoreLifecycleSchemaError(error)) throw error;
+    return db
+      .prepare(
+        `SELECT id, label, asset_key AS assetKey FROM emote_catalog WHERE pack_id = ? AND status = 'ACTIVE'
+       ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+      )
+      .bind(packId)
+      .all<StorePreviewAsset>();
+  }
+}
+
 export async function isStoreAdmin(db: D1Database, userId: string): Promise<boolean> {
   const row = await db
     .prepare(
@@ -79,49 +146,25 @@ export function createStoreService(db: D1Database) {
   return {
     async list(now = Date.now()): Promise<StoreCatalogRow[]> {
       await ensureBuiltInStoreCatalog(db);
-      const available = publicAvailabilityPredicate(now);
-      const result = await db
-        .prepare(
-          `SELECT id, type, name, description, price_points AS pricePoints, asset_id AS assetId,
-                  config_json AS configJson, is_active AS isActive,
-                  lifecycle_state AS lifecycleState, is_enabled AS isEnabled,
-                  is_featured AS isFeatured, starts_at AS startsAt,
-                  ends_at AS endsAt, sort_order AS sortOrder, created_at AS createdAt
-           FROM store_items WHERE ${available.sql}
-           ORDER BY sort_order ASC, created_at DESC`,
-        )
-        .bind(...available.binds)
-        .all<StoreItemInput>();
+      const result = await listStoreCatalog(db, now);
       return Promise.all(
-        result.results.map(async (item): Promise<StoreCatalogRow> => {
+        result.map(async (item): Promise<StoreCatalogRow> => {
           let config: { packId?: unknown } = {};
           try {
             config = JSON.parse(String(item.configJson)) as { packId?: unknown };
           } catch {
-            // The admin API validates configs; an invalid legacy row has no pack preview.
+            /* Invalid legacy config has no pack preview. */
           }
           const type = String(item.type);
           const packId = typeof config.packId === "string" ? config.packId : null;
-          if (!packId || (type !== "EMOTE_PACK" && type !== "STICKER_PACK")) {
+          if (!packId || (type !== "EMOTE_PACK" && type !== "STICKER_PACK"))
             return { ...item, previewAssets: [] as StorePreviewAsset[] };
-          }
           const rows =
             type === "EMOTE_PACK"
-              ? await db
-                  .prepare(
-                    `SELECT id, label, asset_key AS assetKey
-                     FROM emote_catalog
-                     WHERE pack_id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1
-                       AND moderation_state NOT IN ('HIDDEN', 'REMOVED')
-                     ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
-                  )
-                  .bind(packId)
-                  .all<StorePreviewAsset>()
+              ? await listEmotePreviewAssets(db, packId)
               : await db
                   .prepare(
-                    `SELECT id, label, asset_key AS assetKey
-                     FROM sticker_catalog WHERE pack_id = ? AND status = 'ACTIVE'
-                     ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+                    `SELECT id, label, asset_key AS assetKey FROM sticker_catalog WHERE pack_id = ? AND status = 'ACTIVE' ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
                   )
                   .bind(packId)
                   .all<StorePreviewAsset>();

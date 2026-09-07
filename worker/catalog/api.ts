@@ -59,10 +59,6 @@ function publicAsset(pathname: string): { kind: CatalogKind; id: string } | null
   return { kind: match[1] as CatalogKind, id: decodeURIComponent(match[2] ?? "") };
 }
 
-function table(kind: CatalogKind): "emote_catalog" | "sticker_catalog" {
-  return kind === "emote" ? "emote_catalog" : "sticker_catalog";
-}
-
 function isLifecycle(value: unknown): value is LifecycleState {
   return typeof value === "string" && (LIFECYCLE_STATES as readonly string[]).includes(value);
 }
@@ -134,6 +130,73 @@ async function audit(
     .run();
 }
 
+function isCatalogLifecycleSchemaError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes("no such column") &&
+    ["lifecycle_state", "is_enabled", "is_featured", "moderation_state", "updated_at"].some(
+      (column) => message.includes(column),
+    )
+  );
+}
+
+async function legacyListEmotes(db: D1Database) {
+  return db
+    .prepare(
+      `SELECT id, shortcode AS key, label, asset_key AS assetKey, status, CASE WHEN status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
+            CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, 'CLEAR' AS moderationState, created_at AS updatedAt, pack_id AS packId,
+            sort_order AS sortOrder, created_at AS createdAt FROM emote_catalog ORDER BY sort_order ASC, created_at DESC LIMIT 500`,
+    )
+    .all();
+}
+
+async function legacyListEmotePacks(
+  env: SourceBoardEnvironment,
+  requestId: string,
+): Promise<Response> {
+  const rows = await env
+    .DB!.prepare(
+      `SELECT p.id, p.slug, p.label, p.status, CASE WHEN p.status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
+            CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, p.created_at AS createdAt, p.created_at AS updatedAt, s.id AS storeItemId,
+            s.description, s.price_points AS pricePoints, CASE WHEN s.is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS storeLifecycleState,
+            s.is_active AS storeEnabled, 0 AS isFeatured, s.is_active AS isActive, COUNT(e.id) AS emoteCount
+     FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
+     LEFT JOIN emote_catalog e ON e.pack_id = p.id GROUP BY p.id, p.slug, p.label, p.status, p.created_at, s.id, s.description, s.price_points, s.is_active
+     ORDER BY p.created_at DESC LIMIT 200`,
+    )
+    .all();
+  return response({ packs: rows.results }, requestId);
+}
+
+async function legacyGetEmotePackDetail(
+  packId: string,
+  env: SourceBoardEnvironment,
+  requestId: string,
+): Promise<Response> {
+  const pack = await env
+    .DB!.prepare(
+      `SELECT p.id, p.slug, p.label, p.status, CASE WHEN p.status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
+            CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, p.created_at AS createdAt, p.created_at AS updatedAt, s.id AS storeItemId,
+            s.name AS storeName, s.description, s.price_points AS pricePoints, CASE WHEN s.is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS storeLifecycleState,
+            s.is_active AS storeEnabled, 0 AS isFeatured, s.sort_order AS storeSortOrder
+     FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id WHERE p.id = ?`,
+    )
+    .bind(packId)
+    .first();
+  if (!pack) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
+  const emotes = await env
+    .DB!.prepare(
+      `SELECT id, shortcode, label, asset_key AS assetKey, pack_id AS packId, sort_order AS sortOrder, status,
+            CASE WHEN status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState, CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled,
+            'CLEAR' AS moderationState, created_at AS createdAt, created_at AS updatedAt
+     FROM emote_catalog WHERE pack_id = ? ORDER BY sort_order ASC, created_at ASC`,
+    )
+    .bind(packId)
+    .all();
+  return response({ pack: { ...pack, emotes: emotes.results } }, requestId);
+}
+
 async function handleList(kind: CatalogKind, env: SourceBoardEnvironment, requestId: string) {
   if (!env.DB)
     return failure(
@@ -142,15 +205,23 @@ async function handleList(kind: CatalogKind, env: SourceBoardEnvironment, reques
       requestId,
       503,
     );
-  const fields =
-    kind === "emote"
-      ? `status, lifecycle_state AS lifecycleState, is_enabled AS isEnabled,
-         moderation_state AS moderationState, updated_at AS updatedAt,`
-      : "status,";
+  if (kind === "emote") {
+    try {
+      const rows = await env.DB.prepare(
+        `SELECT id, shortcode AS key, label, asset_key AS assetKey, status, lifecycle_state AS lifecycleState, is_enabled AS isEnabled,
+                moderation_state AS moderationState, updated_at AS updatedAt, pack_id AS packId, sort_order AS sortOrder, created_at AS createdAt
+         FROM emote_catalog ORDER BY sort_order ASC, created_at DESC LIMIT 500`,
+      ).all();
+      return response({ items: rows.results }, requestId);
+    } catch (error) {
+      if (!isCatalogLifecycleSchemaError(error)) throw error;
+      const rows = await legacyListEmotes(env.DB);
+      return response({ items: rows.results }, requestId);
+    }
+  }
   const rows = await env.DB.prepare(
-    `SELECT id, ${kind === "emote" ? "shortcode" : "slug"} AS key, label, asset_key AS assetKey,
-      ${fields} pack_id AS packId, sort_order AS sortOrder, created_at AS createdAt
-     FROM ${table(kind)} ORDER BY sort_order ASC, created_at DESC LIMIT 500`,
+    `SELECT id, slug AS key, label, asset_key AS assetKey, status, pack_id AS packId, sort_order AS sortOrder, created_at AS createdAt
+     FROM sticker_catalog ORDER BY sort_order ASC, created_at DESC LIMIT 500`,
   ).all();
   return response({ items: rows.results }, requestId);
 }
@@ -277,23 +348,20 @@ async function listEmotePacks(env: SourceBoardEnvironment, requestId: string): P
       requestId,
       503,
     );
-  const rows = await env.DB.prepare(
-    `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState,
-            p.is_enabled AS isEnabled, p.created_at AS createdAt, p.updated_at AS updatedAt,
-            s.id AS storeItemId, s.description, s.price_points AS pricePoints,
-            s.lifecycle_state AS storeLifecycleState, s.is_enabled AS storeEnabled,
-            s.is_featured AS isFeatured, s.is_active AS isActive,
-            COUNT(e.id) AS emoteCount
-     FROM emote_packs p
-     LEFT JOIN store_items s
-       ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
-     LEFT JOIN emote_catalog e ON e.pack_id = p.id
-     GROUP BY p.id, p.slug, p.label, p.status, p.lifecycle_state, p.is_enabled,
-              p.created_at, p.updated_at, s.id, s.description, s.price_points,
-              s.lifecycle_state, s.is_enabled, s.is_featured, s.is_active
-     ORDER BY p.created_at DESC LIMIT 200`,
-  ).all();
-  return response({ packs: rows.results }, requestId);
+  try {
+    const rows = await env.DB.prepare(
+      `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.created_at AS createdAt, p.updated_at AS updatedAt,
+              s.id AS storeItemId, s.description, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState, s.is_enabled AS storeEnabled,
+              s.is_featured AS isFeatured, s.is_active AS isActive, COUNT(e.id) AS emoteCount
+       FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
+       LEFT JOIN emote_catalog e ON e.pack_id = p.id GROUP BY p.id, p.slug, p.label, p.status, p.lifecycle_state, p.is_enabled, p.created_at, p.updated_at,
+                s.id, s.description, s.price_points, s.lifecycle_state, s.is_enabled, s.is_featured, s.is_active ORDER BY p.created_at DESC LIMIT 200`,
+    ).all();
+    return response({ packs: rows.results }, requestId);
+  } catch (error) {
+    if (!isCatalogLifecycleSchemaError(error)) throw error;
+    return legacyListEmotePacks(env, requestId);
+  }
 }
 
 async function getEmotePackDetail(
@@ -308,32 +376,28 @@ async function getEmotePackDetail(
       requestId,
       503,
     );
-  const pack = await env.DB.prepare(
-    `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState,
-            p.is_enabled AS isEnabled, p.created_at AS createdAt, p.updated_at AS updatedAt,
-            s.id AS storeItemId, s.name AS storeName, s.description,
-            s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState,
-            s.is_enabled AS storeEnabled, s.is_featured AS isFeatured,
-            s.sort_order AS storeSortOrder
-     FROM emote_packs p
-     LEFT JOIN store_items s
-       ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
-     WHERE p.id = ?`,
-  )
-    .bind(packId)
-    .first();
-  if (!pack) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
-  const emotes = await env.DB.prepare(
-    `SELECT id, shortcode, label, asset_key AS assetKey, pack_id AS packId,
-            sort_order AS sortOrder, status, lifecycle_state AS lifecycleState,
-            is_enabled AS isEnabled, moderation_state AS moderationState,
-            created_at AS createdAt, updated_at AS updatedAt
-     FROM emote_catalog WHERE pack_id = ?
-     ORDER BY sort_order ASC, created_at ASC`,
-  )
-    .bind(packId)
-    .all();
-  return response({ pack: { ...pack, emotes: emotes.results } }, requestId);
+  try {
+    const pack = await env.DB.prepare(
+      `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.created_at AS createdAt, p.updated_at AS updatedAt,
+              s.id AS storeItemId, s.name AS storeName, s.description, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState,
+              s.is_enabled AS storeEnabled, s.is_featured AS isFeatured, s.sort_order AS storeSortOrder
+       FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id WHERE p.id = ?`,
+    )
+      .bind(packId)
+      .first();
+    if (!pack) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
+    const emotes = await env.DB.prepare(
+      `SELECT id, shortcode, label, asset_key AS assetKey, pack_id AS packId, sort_order AS sortOrder, status, lifecycle_state AS lifecycleState,
+              is_enabled AS isEnabled, moderation_state AS moderationState, created_at AS createdAt, updated_at AS updatedAt
+       FROM emote_catalog WHERE pack_id = ? ORDER BY sort_order ASC, created_at ASC`,
+    )
+      .bind(packId)
+      .all();
+    return response({ pack: { ...pack, emotes: emotes.results } }, requestId);
+  } catch (error) {
+    if (!isCatalogLifecycleSchemaError(error)) throw error;
+    return legacyGetEmotePackDetail(packId, env, requestId);
+  }
 }
 
 async function createEmotePack(

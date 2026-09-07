@@ -169,20 +169,64 @@ async function audit(
     .run();
 }
 
-async function readItem(db: D1Database, id: string): Promise<AdminStoreItemRow> {
-  const row = await db
+function isStoreAdminLifecycleSchemaError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes("no such column") &&
+    ["lifecycle_state", "is_enabled", "is_featured", "moderation_state", "updated_at"].some(
+      (column) => message.includes(column),
+    )
+  );
+}
+
+async function legacyListCatalog(db: D1Database): Promise<RawStoreItem[]> {
+  const rows = await db
     .prepare(
-      `SELECT s.id, s.type, s.name, s.description, s.price_points AS pricePoints,
-              s.asset_id AS assetId, s.config_json AS configJson,
-              s.lifecycle_state AS lifecycleState, s.is_enabled AS isEnabled,
-              s.is_featured AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt,
+      `SELECT s.id, s.type, s.name, s.description, s.price_points AS pricePoints, s.asset_id AS assetId, s.config_json AS configJson,
+            CASE WHEN s.is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
+            s.is_active AS isEnabled, 0 AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt, s.sort_order AS sortOrder,
+            s.created_at AS createdAt, s.updated_at AS updatedAt, COUNT(DISTINCT i.user_id) AS ownerCount, COUNT(DISTINCT c.user_id) AS equippedCount
+     FROM store_items s LEFT JOIN user_inventory i ON i.store_item_id = s.id LEFT JOIN user_cosmetics c ON c.store_item_id = s.id
+     GROUP BY s.id ORDER BY s.sort_order ASC, s.created_at DESC`,
+    )
+    .all<RawStoreItem>();
+  return rows.results;
+}
+
+async function legacyReadItem(db: D1Database, id: string): Promise<RawStoreItem | null> {
+  return db
+    .prepare(
+      `SELECT s.id, s.type, s.name, s.description, s.price_points AS pricePoints, s.asset_id AS assetId, s.config_json AS configJson,
+            CASE WHEN s.is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
+            s.is_active AS isEnabled, 0 AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt, s.sort_order AS sortOrder,
+            s.created_at AS createdAt, s.updated_at AS updatedAt,
+            (SELECT COUNT(*) FROM user_inventory i WHERE i.store_item_id = s.id) AS ownerCount,
+            (SELECT COUNT(*) FROM user_cosmetics c WHERE c.store_item_id = s.id) AS equippedCount
+     FROM store_items s WHERE s.id = ?`,
+    )
+    .bind(id)
+    .first<RawStoreItem>();
+}
+
+async function readItem(db: D1Database, id: string): Promise<AdminStoreItemRow> {
+  let row: RawStoreItem | null;
+  try {
+    row = await db
+      .prepare(
+        `SELECT s.id, s.type, s.name, s.description, s.price_points AS pricePoints, s.asset_id AS assetId, s.config_json AS configJson,
+              s.lifecycle_state AS lifecycleState, s.is_enabled AS isEnabled, s.is_featured AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt,
               s.sort_order AS sortOrder, s.created_at AS createdAt, s.updated_at AS updatedAt,
               (SELECT COUNT(*) FROM user_inventory i WHERE i.store_item_id = s.id) AS ownerCount,
               (SELECT COUNT(*) FROM user_cosmetics c WHERE c.store_item_id = s.id) AS equippedCount
        FROM store_items s WHERE s.id = ?`,
-    )
-    .bind(id)
-    .first<RawStoreItem>();
+      )
+      .bind(id)
+      .first<RawStoreItem>();
+  } catch (error) {
+    if (!isStoreAdminLifecycleSchemaError(error)) throw error;
+    row = await legacyReadItem(db, id);
+  }
   if (!row) throw new StoreError(404, "NOT_FOUND", "Store item not found.");
   return mapRow(row);
 }
@@ -190,23 +234,22 @@ async function readItem(db: D1Database, id: string): Promise<AdminStoreItemRow> 
 export function createStoreAdminService(db: D1Database) {
   return {
     async listCatalog(): Promise<AdminStoreItemRow[]> {
-      const rows = await db
-        .prepare(
-          `SELECT s.id, s.type, s.name, s.description, s.price_points AS pricePoints,
-                  s.asset_id AS assetId, s.config_json AS configJson,
-                  s.lifecycle_state AS lifecycleState, s.is_enabled AS isEnabled,
-                  s.is_featured AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt,
+      try {
+        const rows = await db
+          .prepare(
+            `SELECT s.id, s.type, s.name, s.description, s.price_points AS pricePoints, s.asset_id AS assetId, s.config_json AS configJson,
+                  s.lifecycle_state AS lifecycleState, s.is_enabled AS isEnabled, s.is_featured AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt,
                   s.sort_order AS sortOrder, s.created_at AS createdAt, s.updated_at AS updatedAt,
-                  COUNT(DISTINCT i.user_id) AS ownerCount,
-                  COUNT(DISTINCT c.user_id) AS equippedCount
-           FROM store_items s
-           LEFT JOIN user_inventory i ON i.store_item_id = s.id
-           LEFT JOIN user_cosmetics c ON c.store_item_id = s.id
-           GROUP BY s.id
-           ORDER BY s.sort_order ASC, s.created_at DESC`,
-        )
-        .all<RawStoreItem>();
-      return rows.results.map(mapRow);
+                  COUNT(DISTINCT i.user_id) AS ownerCount, COUNT(DISTINCT c.user_id) AS equippedCount
+           FROM store_items s LEFT JOIN user_inventory i ON i.store_item_id = s.id LEFT JOIN user_cosmetics c ON c.store_item_id = s.id
+           GROUP BY s.id ORDER BY s.sort_order ASC, s.created_at DESC`,
+          )
+          .all<RawStoreItem>();
+        return rows.results.map(mapRow);
+      } catch (error) {
+        if (!isStoreAdminLifecycleSchemaError(error)) throw error;
+        return (await legacyListCatalog(db)).map(mapRow);
+      }
     },
 
     async updateItem(id: string, input: StoreItemEditInput, context: StoreAdminContext) {

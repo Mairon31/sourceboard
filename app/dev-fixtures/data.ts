@@ -297,6 +297,10 @@ export const notificationFixtures: NotificationView[] = [
 export const storeItemFixtures: StoreItemView[] = [
   {
     id: "store-frame",
+    createdAt: "2026-09-01T12:00:00Z",
+    featured: true,
+    owned: true,
+    equipped: true,
     name: "Nebula Frame",
     description: "A restrained animated-looking frame preview for profile avatars.",
     type: "AVATAR_FRAME",
@@ -307,6 +311,10 @@ export const storeItemFixtures: StoreItemView[] = [
   },
   {
     id: "store-effect",
+    createdAt: "2026-08-30T12:00:00Z",
+    featured: false,
+    owned: true,
+    equipped: false,
     name: "Glass Aurora",
     description: "Subtle profile background effect.",
     type: "PROFILE_EFFECT",
@@ -317,6 +325,10 @@ export const storeItemFixtures: StoreItemView[] = [
   },
   {
     id: "store-font",
+    createdAt: "2026-08-28T12:00:00Z",
+    featured: false,
+    owned: false,
+    equipped: false,
     name: "Editorial",
     description: "Display-name font from the staff-managed catalog.",
     type: "NAME_FONT",
@@ -327,6 +339,10 @@ export const storeItemFixtures: StoreItemView[] = [
   },
   {
     id: "store-emotes",
+    createdAt: "2026-09-02T12:00:00Z",
+    featured: true,
+    owned: false,
+    equipped: false,
     name: "Source Hunters",
     description: "Pack of custom inline emotes.",
     type: "EMOTE_PACK",
@@ -338,6 +354,10 @@ export const storeItemFixtures: StoreItemView[] = [
   },
   {
     id: "store-stickers",
+    createdAt: "2026-08-25T12:00:00Z",
+    featured: false,
+    owned: false,
+    equipped: false,
     name: "Evidence Desk",
     description: "Sticker pack for comment replies.",
     type: "STICKER_PACK",
