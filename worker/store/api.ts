@@ -6,9 +6,11 @@ import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { resolvePublicFailure } from "../http/public-failure";
+import { createStoreAdminService, type StoreAdminAction } from "./admin";
 import {
   createStoreService,
   isStoreAdmin,
+  publicAvailabilityPredicate,
   STORE_TYPES,
   StoreError,
   type CosmeticSlot,
@@ -17,6 +19,17 @@ import {
 } from "./service";
 
 const SLOTS = ["AVATAR_FRAME", "PROFILE_BANNER", "PROFILE_EFFECT", "NAME_FONT"] as const;
+const STORE_ADMIN_ACTIONS = [
+  "PUBLISH",
+  "UNPUBLISH",
+  "ENABLE",
+  "DISABLE",
+  "FEATURE",
+  "UNFEATURE",
+  "DUPLICATE",
+  "ARCHIVE",
+  "DELETE",
+] as const satisfies readonly StoreAdminAction[];
 
 function response(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -62,6 +75,9 @@ function isType(value: unknown): value is StoreType {
 }
 function isSlot(value: string): value is CosmeticSlot {
   return (SLOTS as readonly string[]).includes(value);
+}
+function isAdminAction(value: unknown): value is StoreAdminAction {
+  return typeof value === "string" && (STORE_ADMIN_ACTIONS as readonly string[]).includes(value);
 }
 
 export function isStoreRoute(pathname: string): boolean {
@@ -109,15 +125,10 @@ export async function handleStoreRequest(
       const itemId = decodeURIComponent(url.pathname.split("/")[3] ?? "");
 
       if (await isStoreAdmin(database, userId)) {
-        const now = Date.now();
+        const available = publicAvailabilityPredicate(Date.now());
         const item = await database
-          .prepare(
-            `SELECT id FROM store_items
-             WHERE id = ? AND is_active = 1
-               AND (starts_at IS NULL OR starts_at <= ?)
-               AND (ends_at IS NULL OR ends_at > ?)`,
-          )
-          .bind(itemId, now, now)
+          .prepare(`SELECT id FROM store_items WHERE id = ? AND ${available.sql}`)
+          .bind(itemId, ...available.binds)
           .first<{ id: string }>();
         if (!item)
           return failure("PURCHASE_UNAVAILABLE", "The item is unavailable.", requestId, 409);
@@ -220,129 +231,113 @@ export async function handleStoreRequest(
         .run();
       return response({ grant }, requestId, grant.created ? 201 : 200);
     }
-    if (url.pathname === "/api/admin/store" || /^\/api\/admin\/store\/[^/]+$/.test(url.pathname)) {
+
+    if (request.method === "GET" && url.pathname === "/api/admin/store/catalog") {
+      await requireAdmin(request, requestId, env);
+      return response({ items: await createStoreAdminService(database).listCatalog() }, requestId);
+    }
+
+    const actionMatch = url.pathname.match(/^\/api\/admin\/store\/([^/]+)\/actions$/);
+    if (request.method === "POST" && actionMatch) {
       assertSameOrigin(request);
       assertCsrfToken(request);
       const actorUserId = await requireAdmin(request, requestId, env);
-      if (request.method === "POST" && url.pathname === "/api/admin/store") {
-        const body = parseBody(await request.json());
-        if (
-          !isType(body.type) ||
-          typeof body.name !== "string" ||
-          typeof body.description !== "string" ||
-          typeof body.pricePoints !== "number" ||
-          !Number.isInteger(body.pricePoints) ||
-          body.pricePoints <= 0
-        )
-          return failure(
-            "INVALID_STORE_ITEM",
-            "A valid type, name, description and positive price are required.",
-            requestId,
-            400,
-          );
-        const id = crypto.randomUUID();
-        const now = Date.now();
-        const configJson = validateStoreConfig(body.type, body.config ?? {});
-        await database
-          .prepare(
-            `INSERT INTO store_items (id, type, name, description, price_points, asset_id, config_json, is_active, starts_at, ends_at, sort_order, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .bind(
-            id,
-            body.type,
-            body.name.trim(),
-            body.description.trim(),
-            body.pricePoints,
-            typeof body.assetId === "string" ? body.assetId : null,
-            configJson,
-            body.isActive !== false ? 1 : 0,
-            typeof body.startsAt === "number" ? body.startsAt : null,
-            typeof body.endsAt === "number" ? body.endsAt : null,
-            typeof body.sortOrder === "number" ? body.sortOrder : 0,
-            now,
-            now,
-          )
-          .run();
-        await database
-          .prepare(
-            "INSERT INTO audit_logs (id, actor_user_id, action, target_type, target_id, metadata_json, request_id, created_at) VALUES (?, ?, 'STORE_ITEM_CREATED', 'STORE_ITEM', ?, ?, ?, ?)",
-          )
-          .bind(
-            crypto.randomUUID(),
-            actorUserId,
-            id,
-            JSON.stringify({ type: body.type }),
-            requestId,
-            now,
-          )
-          .run();
-        return response({ id }, requestId, 201);
-      }
-      if (request.method === "PATCH") {
-        const id = decodeURIComponent(url.pathname.split("/")[4] ?? "");
-        const body = parseBody(await request.json());
-        if (body.isActive !== undefined && typeof body.isActive !== "boolean")
-          return failure("INVALID_STORE_ITEM", "isActive must be boolean.", requestId, 400);
-        if (
-          body.pricePoints !== undefined &&
-          (typeof body.pricePoints !== "number" ||
-            !Number.isInteger(body.pricePoints) ||
-            body.pricePoints <= 0)
-        )
-          return failure(
-            "INVALID_STORE_ITEM",
-            "pricePoints must be a positive integer.",
-            requestId,
-            400,
-          );
-        const updates: string[] = [];
-        const binds: unknown[] = [];
-        for (const [key, column] of [
-          ["name", "name"],
-          ["description", "description"],
-          ["pricePoints", "price_points"],
-          ["isActive", "is_active"],
-          ["startsAt", "starts_at"],
-          ["endsAt", "ends_at"],
-          ["sortOrder", "sort_order"],
-        ] as const) {
-          if (body[key] !== undefined) {
-            updates.push(`${column} = ?`);
-            binds.push(key === "isActive" ? (body[key] ? 1 : 0) : body[key]);
-          }
-        }
-        if (body.config !== undefined) {
-          updates.push("config_json = ?");
-          const existing = await database
-            .prepare("SELECT type FROM store_items WHERE id = ?")
-            .bind(id)
-            .first<{ type: string }>();
-          if (!existing || !isType(existing.type))
-            throw new StoreError(400, "INVALID_STORE_ITEM", "The store item type is invalid.");
-          binds.push(validateStoreConfig(existing.type, body.config));
-        }
-        if (!updates.length)
-          return failure("INVALID_STORE_ITEM", "No editable fields were provided.", requestId, 400);
-        updates.push("updated_at = ?");
-        binds.push(Date.now(), id);
-        const result = await database
-          .prepare(`UPDATE store_items SET ${updates.join(", ")} WHERE id = ?`)
-          .bind(...binds)
-          .run();
-        if (!result.meta.changes)
-          return failure("NOT_FOUND", "Store item not found.", requestId, 404);
-        await database
-          .prepare(
-            "INSERT INTO audit_logs (id, actor_user_id, action, target_type, target_id, request_id, created_at) VALUES (?, ?, 'STORE_ITEM_UPDATED', 'STORE_ITEM', ?, ?, ?)",
-          )
-          .bind(crypto.randomUUID(), actorUserId, id, requestId, Date.now())
-          .run();
-        return response({ updated: true, id }, requestId);
-      }
+      const body = parseBody(await request.json());
+      if (!isAdminAction(body.action))
+        return failure("INVALID_STORE_ACTION", "That Store action is not supported.", requestId, 400);
+      const item = await createStoreAdminService(database).action(
+        decodeURIComponent(actionMatch[1] ?? ""),
+        body.action,
+        body.reason,
+        { actorUserId, requestId },
+      );
+      return response({ item }, requestId);
     }
+
+    const itemMatch = url.pathname.match(/^\/api\/admin\/store\/([^/]+)$/);
+    if (request.method === "PATCH" && itemMatch) {
+      assertSameOrigin(request);
+      assertCsrfToken(request);
+      const actorUserId = await requireAdmin(request, requestId, env);
+      const body = parseBody(await request.json());
+      const item = await createStoreAdminService(database).updateItem(
+        decodeURIComponent(itemMatch[1] ?? ""),
+        body,
+        { actorUserId, requestId },
+      );
+      return response({ item }, requestId);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/admin/store") {
+      assertSameOrigin(request);
+      assertCsrfToken(request);
+      const actorUserId = await requireAdmin(request, requestId, env);
+      const body = parseBody(await request.json());
+      if (
+        !isType(body.type) ||
+        typeof body.name !== "string" ||
+        typeof body.description !== "string" ||
+        typeof body.pricePoints !== "number" ||
+        !Number.isInteger(body.pricePoints) ||
+        body.pricePoints <= 0
+      )
+        return failure(
+          "INVALID_STORE_ITEM",
+          "A valid type, name, description and positive price are required.",
+          requestId,
+          400,
+        );
+      const id = crypto.randomUUID();
+      const now = Date.now();
+      const configJson = validateStoreConfig(body.type, body.config ?? {});
+      const enabled = body.isActive !== false;
+      const lifecycleState = enabled ? "PUBLISHED" : "DRAFT";
+      await database
+        .prepare(
+          `INSERT INTO store_items
+           (id, type, name, description, price_points, asset_id, config_json, is_active,
+            lifecycle_state, is_enabled, is_featured, starts_at, ends_at, sort_order, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          id,
+          body.type,
+          body.name.trim(),
+          body.description.trim(),
+          body.pricePoints,
+          typeof body.assetId === "string" ? body.assetId : null,
+          configJson,
+          enabled ? 1 : 0,
+          lifecycleState,
+          enabled ? 1 : 0,
+          typeof body.startsAt === "number" ? body.startsAt : null,
+          typeof body.endsAt === "number" ? body.endsAt : null,
+          typeof body.sortOrder === "number" ? body.sortOrder : 0,
+          now,
+          now,
+        )
+        .run();
+      await database
+        .prepare(
+          "INSERT INTO audit_logs (id, actor_user_id, action, target_type, target_id, metadata_json, request_id, created_at) VALUES (?, ?, 'STORE_ITEM_CREATED', 'STORE_ITEM', ?, ?, ?, ?)",
+        )
+        .bind(
+          crypto.randomUUID(),
+          actorUserId,
+          id,
+          JSON.stringify({ type: body.type, lifecycleState }),
+          requestId,
+          now,
+        )
+        .run();
+      return response({ id }, requestId, 201);
+    }
+
     return failure("NOT_FOUND", "Store endpoint not found.", requestId, 404);
   } catch (error) {
+    if (error instanceof StoreError) {
+      return failure(error.code, error.publicMessage, requestId, error.status);
+    }
     const { status, message } = resolvePublicFailure(
       error,
       "Store request failed.",
