@@ -6,7 +6,9 @@ function read(path: string): string {
 }
 
 const commentThread = read("../../app/components/product/CommentThread.tsx");
-const productCss = read("../../app/components/product/product.css");
+const productCss =
+  read("../../app/components/product/product.css") +
+  read("../../app/components/product/profile-klipy.css");
 const klipyCss = read("../../app/components/product/profile-klipy.css");
 const storeRoute = read("../../app/routes/store.tsx");
 const storeApi = read("../../worker/store/api.ts");
