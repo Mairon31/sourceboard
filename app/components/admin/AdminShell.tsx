@@ -10,7 +10,7 @@ const adminLinks = [
   { href: "/admin#users", label: "Users", end: false },
   { href: "/admin#roles", label: "Roles", end: false },
   { href: "/admin#source-verification", label: "Source verification", end: false },
-  { href: "/admin#store", label: "Store", end: false },
+  { href: "/admin/store", label: "Store", end: false },
   { href: "/admin#audit", label: "Audit", end: false },
 ];
 
