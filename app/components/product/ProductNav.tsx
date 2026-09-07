@@ -22,32 +22,42 @@ export function ProductNav() {
     <nav className="product-nav" aria-label="Primary navigation">
       <div className="product-nav__links">
         {primaryLinks.map((item) => (
-          <NavLink key={item.href} to={item.href} className={navClass} end={item.href === "/"}>
+          <NavLink
+            key={item.href}
+            to={item.href}
+            className={navClass}
+            end={item.href === "/"}
+            prefetch="intent"
+          >
             <span className="product-nav__dot" aria-hidden="true" />
             <span>{item.label}</span>
           </NavLink>
         ))}
       </div>
 
-      <NavLink className="product-nav__create" to="/post/new">
+      <NavLink className="product-nav__create" to="/post/new" prefetch="intent">
         Create post
       </NavLink>
 
       <div className="product-nav__account">
         {user ? (
-          <NavLink className={navClass} to={`/u/${encodeURIComponent(user.username)}`}>
+          <NavLink
+            className={navClass}
+            to={`/u/${encodeURIComponent(user.username)}`}
+            prefetch="intent"
+          >
             <span className="product-nav__avatar" aria-hidden="true">
               {user.username.slice(0, 2).toUpperCase()}
             </span>
             <span>{user.username}</span>
           </NavLink>
         ) : (
-          <NavLink className={navClass} to="/login">
+          <NavLink className={navClass} to="/login" prefetch="intent">
             <span className="product-nav__dot" aria-hidden="true" />
             <span>Sign in</span>
           </NavLink>
         )}
-        <NavLink className={navClass} to="/settings">
+        <NavLink className={navClass} to="/settings" prefetch="intent">
           <span className="product-nav__dot" aria-hidden="true" />
           <span>Settings</span>
         </NavLink>
@@ -66,10 +76,23 @@ export function MobileProductNav() {
       className="product-mobile-nav glass-panel glass-panel--strong"
       aria-label="Mobile navigation"
     >
-      <NavLink to="/" className={navClass} end aria-label="Home" title="Home">
+      <NavLink
+        to="/"
+        className={navClass}
+        end
+        aria-label="Home"
+        title="Home"
+        prefetch="viewport"
+      >
         <HomeIcon />
       </NavLink>
-      <NavLink to="/friends" className={navClass} aria-label="Friends" title="Friends">
+      <NavLink
+        to="/friends"
+        className={navClass}
+        aria-label="Friends"
+        title="Friends"
+        prefetch="viewport"
+      >
         <FriendsIcon />
       </NavLink>
       <NavLink
@@ -77,13 +100,26 @@ export function MobileProductNav() {
         to="/post/new"
         aria-label="Create post"
         title="Create post"
+        prefetch="viewport"
       >
         <PlusIcon />
       </NavLink>
-      <NavLink to={profileHref} className={navClass} aria-label="Profile" title="Profile">
+      <NavLink
+        to={profileHref}
+        className={navClass}
+        aria-label="Profile"
+        title="Profile"
+        prefetch="viewport"
+      >
         <UserIcon />
       </NavLink>
-      <NavLink to="/store" className={navClass} aria-label="Store" title="Store">
+      <NavLink
+        to="/store"
+        className={navClass}
+        aria-label="Store"
+        title="Store"
+        prefetch="viewport"
+      >
         <StoreIcon />
       </NavLink>
     </nav>
