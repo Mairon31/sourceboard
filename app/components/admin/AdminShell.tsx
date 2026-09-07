@@ -14,7 +14,12 @@ import {
 
 const adminLinks = [
   { href: "/admin", label: "Overview", end: true, icon: HomeIcon },
-  { href: "/admin/moderation", label: "Moderation", end: false, icon: InfoIcon },
+  {
+    href: "/admin/moderation",
+    label: "Moderation",
+    end: false,
+    icon: InfoIcon,
+  },
   {
     href: "/admin/verifications",
     label: "Verifications",
