@@ -1,0 +1,115 @@
+.product-post__engagement {
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-glass-soft);
+}
+
+.product-post__engagement .product-post__meta {
+  padding: 10px 16px 4px;
+  gap: 14px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.product-post__engagement .product-post__meta strong {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.product-post__engagement .product-post__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px 10px 10px;
+}
+
+.product-post__action {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.925rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.product-post__action:hover,
+.product-post__action:focus-visible {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.product-post__action:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.product-post__action svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+}
+
+.product-post__action--liked {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.product-post__action--liked:hover,
+.product-post__action--liked:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.product-post__action--liked svg {
+  fill: currentColor;
+}
+
+.product-post__action:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.product-post__reaction-status {
+  display: block;
+  padding: 0 16px 10px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 760px) {
+  .product-post__engagement .product-post__meta {
+    padding: 8px 12px 2px;
+    gap: 12px;
+    font-size: 0.82rem;
+  }
+
+  .product-post__engagement .product-post__actions {
+    gap: 4px;
+    padding: 4px 8px 8px;
+  }
+
+  .product-post__action {
+    min-height: 38px;
+    gap: 6px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+  }
+
+  .product-post__action svg {
+    width: 18px;
+    height: 18px;
+  }
+}
