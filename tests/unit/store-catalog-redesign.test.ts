@@ -98,6 +98,7 @@ describe("store catalog lifecycle", () => {
   it("lets admins inspect every draft pack emote and act on each emote individually", () => {
     expect(adminPacks).toContain("/api/admin/catalog/emote-packs/");
     expect(adminPacks).toContain("/api/admin/catalog/emotes");
+    expect(adminPacks).toContain("/api/admin/catalog/emotes/${encodeURIComponent(emote.id)}/media");
     expect(adminPacks).toContain("Replace image");
     expect(adminPacks).toContain("shortcode");
     expect(adminPacks).toContain("sortOrder");
@@ -107,5 +108,7 @@ describe("store catalog lifecycle", () => {
     expect(adminPacks).toContain("Restore");
     expect(adminPacks).toContain("Remove");
     expect(adminPacks).toContain("moderationState");
+    expect(adminPacks).toContain("toggleEmoteEnabled");
+    expect(adminPacks).toContain("isEnabled: !truthy(emote.isEnabled)");
   });
 });
