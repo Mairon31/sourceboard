@@ -26,7 +26,9 @@ describe("public cosmetic identity contracts", () => {
 
   it("serializes equipped effects", () => {
     expect(postsService).toContain("profileEffect: cosmetics?.profileEffect");
-    expect(commentsService).toContain("profileEffect: cosmetics?.profileEffect");
+    expect(commentsService).toContain(
+      "profileEffect: cosmetics?.profileEffect",
+    );
   });
 
   it("keeps anonymous authors cosmetic-free", () => {
