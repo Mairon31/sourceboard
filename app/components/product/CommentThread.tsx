@@ -284,19 +284,15 @@ export function CommentThread({
   postId,
   comments,
   authenticated = true,
-  focusComposer = false,
   canAcceptSource,
   onAcceptSource,
 }: {
   postId: string;
   comments: CommentView[];
   authenticated?: boolean;
-  focusComposer?: boolean;
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
 }) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const composerRef = useRef<HTMLTextAreaElement>(null);
   const submitInFlightRef = useRef(false);
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -304,13 +300,6 @@ export function CommentThread({
   const [mediaKind, setMediaKind] = useState<"GIF" | "STICKER" | null>(null);
   const [attachment, setAttachment] = useState<CommentAttachmentView | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!focusComposer) return;
-    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (!authenticated) return;
-    window.requestAnimationFrame(() => composerRef.current?.focus({ preventScroll: true }));
-  }, [authenticated, focusComposer]);
 
   async function submit() {
     if (submitInFlightRef.current || (!body.trim() && !attachment)) return;
@@ -367,12 +356,7 @@ export function CommentThread({
   }
 
   return (
-    <section
-      ref={sectionRef}
-      id="comments"
-      className="product-comments"
-      aria-labelledby="comments-heading"
-    >
+    <section id="comments" className="product-comments" aria-labelledby="comments-heading">
       <header className="product-section-heading">
         <div>
           <span className="product-eyebrow">Discussion</span>
@@ -391,7 +375,7 @@ export function CommentThread({
           <Avatar name="SourceBoard member" size="sm" />
           <div className="product-comment-composer__field">
             <Textarea
-              ref={composerRef}
+              id="comment-composer"
               label={replyTo ? "Add a reply" : "Add a comment"}
               value={body}
               onChange={(event) => setBody(event.target.value)}
