@@ -132,7 +132,12 @@ export default function AdminAuditRoute() {
 
       <section className="admin-section">
         <form className="admin-filter-bar" method="get">
-          <Input name="actor" label="Actor" defaultValue={query.actor} placeholder="Username or user ID" />
+          <Input
+            name="actor"
+            label="Actor"
+            defaultValue={query.actor}
+            placeholder="Username or user ID"
+          />
           <Input name="action" label="Action" defaultValue={query.action} placeholder="Action" />
           <Input
             name="targetType"
@@ -140,7 +145,12 @@ export default function AdminAuditRoute() {
             defaultValue={query.targetType}
             placeholder="post, user, catalog…"
           />
-          <Input name="targetId" label="Target ID" defaultValue={query.targetId} placeholder="Target ID" />
+          <Input
+            name="targetId"
+            label="Target ID"
+            defaultValue={query.targetId}
+            placeholder="Target ID"
+          />
           <label className="sb-field">
             <span className="sb-field__label">From (UTC)</span>
             <input className="sb-input" type="date" name="from" defaultValue={query.from} />
@@ -197,7 +207,9 @@ export default function AdminAuditRoute() {
             </div>
           </>
         ) : (
-          <Card className="product-empty-state admin-surface">No audit entries match these filters.</Card>
+          <Card className="product-empty-state admin-surface">
+            No audit entries match these filters.
+          </Card>
         )}
       </section>
     </AdminShell>
