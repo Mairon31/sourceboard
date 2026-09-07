@@ -1,0 +1,862 @@
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Badge, Button, Card, Input, Textarea } from "../../ui";
+import { readCsrfToken } from "../../../data/csrf";
+import type {
+  AdminEmote,
+  EmoteModerationState,
+  EmotePackDetail,
+  EmotePackSummary,
+  StoreLifecycleState,
+} from "./types";
+
+function truthy(value: boolean | number | null | undefined): boolean {
+  return value === true || Number(value) === 1;
+}
+
+function errorMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== "object") return fallback;
+  const error = (payload as { error?: unknown }).error;
+  if (!error || typeof error !== "object") return fallback;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === "string" && message ? message : fallback;
+}
+
+function lifecycleTone(state: StoreLifecycleState): "success" | "neutral" | "warning" {
+  if (state === "PUBLISHED") return "success";
+  if (state === "ARCHIVED") return "warning";
+  return "neutral";
+}
+
+function moderationTone(
+  state: EmoteModerationState,
+): "success" | "neutral" | "warning" | "danger" {
+  if (state === "CLEAR") return "success";
+  if (state === "FLAGGED") return "warning";
+  if (state === "REMOVED") return "danger";
+  return "neutral";
+}
+
+function EmoteEditor({
+  emote,
+  busy,
+  onChanged,
+  onStatus,
+}: {
+  emote: AdminEmote;
+  busy: boolean;
+  onChanged: () => Promise<void>;
+  onStatus: (message: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [shortcode, setShortcode] = useState(emote.shortcode);
+  const [label, setLabel] = useState(emote.label);
+  const [sortOrder, setSortOrder] = useState(emote.sortOrder);
+  const [lifecycleState, setLifecycleState] = useState<StoreLifecycleState>(emote.lifecycleState);
+  const [enabled, setEnabled] = useState(truthy(emote.isEnabled));
+  const [replacing, setReplacing] = useState(false);
+  const [moderationAction, setModerationAction] = useState<
+    "FLAG" | "HIDE" | "RESTORE" | "REMOVE" | null
+  >(null);
+  const [moderationReason, setModerationReason] = useState("");
+  const [localBusy, setLocalBusy] = useState(false);
+
+  useEffect(() => {
+    setShortcode(emote.shortcode);
+    setLabel(emote.label);
+    setSortOrder(emote.sortOrder);
+    setLifecycleState(emote.lifecycleState);
+    setEnabled(truthy(emote.isEnabled));
+  }, [emote]);
+
+  async function save() {
+    setLocalBusy(true);
+    try {
+      const response = await fetch(`/api/admin/catalog/emotes/${encodeURIComponent(emote.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({
+          shortcode,
+          label,
+          sortOrder,
+          lifecycleState,
+          isEnabled: enabled,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not update this emote."));
+        return;
+      }
+      onStatus(`${label} updated.`);
+      setEditing(false);
+      await onChanged();
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
+  async function replaceImage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const file = form.get("file");
+    if (!(file instanceof File) || !file.size) {
+      onStatus("Choose a replacement image first.");
+      return;
+    }
+    setLocalBusy(true);
+    try {
+      const response = await fetch(
+        `/api/admin/catalog/emotes/${encodeURIComponent(emote.id)}/replace`,
+        {
+          method: "POST",
+          headers: { "x-csrf-token": readCsrfToken() },
+          body: form,
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not replace this emote image."));
+        return;
+      }
+      event.currentTarget.reset();
+      setReplacing(false);
+      onStatus(`${emote.label} image replaced.`);
+      await onChanged();
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
+  async function moderate() {
+    if (!moderationAction || moderationReason.trim().length < 3) return;
+    setLocalBusy(true);
+    try {
+      const response = await fetch(
+        `/api/admin/catalog/emotes/${encodeURIComponent(emote.id)}/moderate`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+          body: JSON.stringify({ action: moderationAction, reason: moderationReason.trim() }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not moderate this emote."));
+        return;
+      }
+      onStatus(`${emote.label}: ${moderationAction.toLowerCase()} completed.`);
+      setModerationAction(null);
+      setModerationReason("");
+      await onChanged();
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
+  const disabled = busy || localBusy;
+  const removed = emote.moderationState === "REMOVED";
+
+  return (
+    <Card className="admin-store-emote-card">
+      <div className="admin-store-emote-card__preview">
+        <img
+          src={`/api/media/catalog/emote/${encodeURIComponent(emote.id)}`}
+          alt={emote.label}
+          loading="lazy"
+        />
+      </div>
+      <div className="admin-store-emote-card__body">
+        <div className="admin-store-emote-card__heading">
+          <div>
+            <strong>{emote.label}</strong>
+            <code>:{emote.shortcode}:</code>
+          </div>
+          <div className="product-chip-row">
+            <Badge tone={lifecycleTone(emote.lifecycleState)}>{emote.lifecycleState}</Badge>
+            <Badge tone={moderationTone(emote.moderationState)}>{emote.moderationState}</Badge>
+            <Badge tone={truthy(emote.isEnabled) ? "success" : "neutral"}>
+              {truthy(emote.isEnabled) ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        </div>
+        <div className="admin-store-emote-meta">
+          <span>Order {emote.sortOrder}</span>
+          <span>{new Date(emote.createdAt).toLocaleDateString()}</span>
+        </div>
+
+        {editing ? (
+          <div className="admin-store-emote-editor">
+            <label className="sb-field">
+              <span>Shortcode</span>
+              <input
+                value={shortcode}
+                maxLength={64}
+                pattern="[a-z0-9][a-z0-9_-]{1,63}"
+                onChange={(event) => setShortcode(event.target.value.toLowerCase())}
+              />
+            </label>
+            <label className="sb-field">
+              <span>Label</span>
+              <input value={label} maxLength={120} onChange={(event) => setLabel(event.target.value)} />
+            </label>
+            <label className="sb-field">
+              <span>Sort order</span>
+              <input
+                type="number"
+                value={sortOrder}
+                onChange={(event) => setSortOrder(Number(event.target.value))}
+              />
+            </label>
+            <label className="sb-field">
+              <span>Lifecycle</span>
+              <select
+                value={lifecycleState}
+                onChange={(event) => setLifecycleState(event.target.value as StoreLifecycleState)}
+              >
+                <option value="DRAFT">Draft</option>
+                <option value="PUBLISHED">Published</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </label>
+            <label className="admin-store-check-row">
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(event) => setEnabled(event.target.checked)}
+              />
+              <span>Enabled</span>
+            </label>
+            <div className="admin-store-inline-actions">
+              <Button type="button" size="sm" loading={disabled} onClick={() => void save()}>
+                Save emote
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {replacing ? (
+          <form className="admin-store-replace-form" onSubmit={(event) => void replaceImage(event)}>
+            <label className="sb-field">
+              <span>Replacement image</span>
+              <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
+            </label>
+            <div className="admin-store-inline-actions">
+              <Button type="submit" size="sm" loading={disabled}>
+                Replace image
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setReplacing(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : null}
+
+        {moderationAction ? (
+          <div className="admin-store-moderation-panel">
+            <strong>{moderationAction} emote</strong>
+            <label className="sb-field">
+              <span>Moderation reason</span>
+              <textarea
+                rows={3}
+                value={moderationReason}
+                maxLength={2000}
+                onChange={(event) => setModerationReason(event.target.value)}
+                placeholder="Reason required for the audit log"
+              />
+            </label>
+            <div className="admin-store-inline-actions">
+              <Button
+                type="button"
+                size="sm"
+                variant={moderationAction === "REMOVE" ? "danger" : "secondary"}
+                loading={disabled}
+                disabled={moderationReason.trim().length < 3}
+                onClick={() => void moderate()}
+              >
+                Confirm {moderationAction.toLowerCase()}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setModerationAction(null);
+                  setModerationReason("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {!editing && !replacing && !moderationAction ? (
+          <div className="admin-store-card-actions">
+            <Button type="button" size="sm" onClick={() => setEditing(true)} disabled={removed}>
+              Edit
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setReplacing(true)}
+              disabled={removed}
+            >
+              Replace image
+            </Button>
+            <details className="admin-store-action-menu">
+              <summary>Moderate</summary>
+              <div className="admin-store-action-menu__panel">
+                {emote.moderationState === "CLEAR" ? (
+                  <button type="button" onClick={() => setModerationAction("FLAG")}>
+                    Flag
+                  </button>
+                ) : null}
+                {emote.moderationState === "CLEAR" || emote.moderationState === "FLAGGED" ? (
+                  <button type="button" onClick={() => setModerationAction("HIDE")}>
+                    Hide
+                  </button>
+                ) : null}
+                {emote.moderationState === "FLAGGED" || emote.moderationState === "HIDDEN" ? (
+                  <button type="button" onClick={() => setModerationAction("RESTORE")}>
+                    Restore
+                  </button>
+                ) : null}
+                {!removed ? (
+                  <button
+                    type="button"
+                    className="admin-store-action-menu__danger"
+                    onClick={() => setModerationAction("REMOVE")}
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <span className="admin-store-terminal-state">Removed is terminal</span>
+                )}
+              </div>
+            </details>
+          </div>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+export function AdminEmotePackManager({
+  packs,
+  selectedPackId,
+  onSelectPack,
+  onRefreshPacks,
+  onStatus,
+}: {
+  packs: EmotePackSummary[];
+  selectedPackId: string;
+  onSelectPack: (packId: string) => void;
+  onRefreshPacks: () => Promise<void>;
+  onStatus: (message: string) => void;
+}) {
+  const [detail, setDetail] = useState<EmotePackDetail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [editingPack, setEditingPack] = useState(false);
+  const [packLabel, setPackLabel] = useState("");
+  const [packDescription, setPackDescription] = useState("");
+  const [packPrice, setPackPrice] = useState(1);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiving, setArchiving] = useState(false);
+
+  const selectedSummary = useMemo(
+    () => packs.find((pack) => pack.id === selectedPackId) ?? null,
+    [packs, selectedPackId],
+  );
+
+  const loadDetail = useCallback(async () => {
+    if (!selectedPackId) {
+      setDetail(null);
+      return;
+    }
+    setLoadingDetail(true);
+    try {
+      const response = await fetch(
+        `/api/admin/catalog/emote-packs/${encodeURIComponent(selectedPackId)}`,
+      );
+      const payload = (await response.json().catch(() => null)) as { pack?: EmotePackDetail } | null;
+      if (!response.ok || !payload?.pack) {
+        onStatus(errorMessage(payload, "Could not open this emote pack."));
+        setDetail(null);
+        return;
+      }
+      setDetail(payload.pack);
+      setPackLabel(payload.pack.label);
+      setPackDescription(payload.pack.description ?? "");
+      setPackPrice(payload.pack.pricePoints ?? 1);
+    } finally {
+      setLoadingDetail(false);
+    }
+  }, [onStatus, selectedPackId]);
+
+  useEffect(() => {
+    void loadDetail();
+  }, [loadDetail]);
+
+  async function createPack(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    try {
+      const response = await fetch("/api/admin/catalog/emote-packs", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({
+          slug: form.get("slug"),
+          label: form.get("label"),
+          description: form.get("description"),
+          pricePoints: Number(form.get("pricePoints")),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        pack?: { id?: string };
+      } | null;
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not create this pack."));
+        return;
+      }
+      event.currentTarget.reset();
+      await onRefreshPacks();
+      if (payload?.pack?.id) onSelectPack(payload.pack.id);
+      onStatus("Draft emote pack created.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadEmote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedPackId) return;
+    const form = new FormData(event.currentTarget);
+    form.set("packId", selectedPackId);
+    setBusy(true);
+    try {
+      const response = await fetch("/api/admin/catalog/emotes", {
+        method: "POST",
+        headers: { "x-csrf-token": readCsrfToken() },
+        body: form,
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not add this emote."));
+        return;
+      }
+      event.currentTarget.reset();
+      onStatus("Emote added to the selected pack.");
+      await Promise.all([onRefreshPacks(), loadDetail()]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function patchPack(input: Record<string, unknown>, successMessage: string) {
+    if (!selectedPackId) return;
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/admin/catalog/emote-packs/${encodeURIComponent(selectedPackId)}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+          body: JSON.stringify(input),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not update this pack."));
+        return;
+      }
+      setEditingPack(false);
+      onStatus(successMessage);
+      await Promise.all([onRefreshPacks(), loadDetail()]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function duplicatePack() {
+    if (!selectedPackId) return;
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/admin/catalog/emote-packs/${encodeURIComponent(selectedPackId)}/duplicate`,
+        {
+          method: "POST",
+          headers: { "x-csrf-token": readCsrfToken() },
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        pack?: { id?: string };
+      } | null;
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not duplicate this pack."));
+        return;
+      }
+      await onRefreshPacks();
+      if (payload?.pack?.id) onSelectPack(payload.pack.id);
+      onStatus("Independent draft copy created with separate media assets.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function archiveStoreOffering() {
+    if (!detail?.storeItemId || archiveReason.trim().length < 3) return;
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/admin/store/${encodeURIComponent(detail.storeItemId)}/actions`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+          body: JSON.stringify({ action: "ARCHIVE", reason: archiveReason.trim() }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not archive this Store offering."));
+        return;
+      }
+      setArchiving(false);
+      setArchiveReason("");
+      onStatus("Linked Store offering archived; historical ownership remains intact.");
+      await Promise.all([onRefreshPacks(), loadDetail()]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!packs.length) {
+    return (
+      <section className="admin-store-pack-manager">
+        <div className="admin-store-section-heading">
+          <div>
+            <span className="product-eyebrow">Catalog workspace</span>
+            <h2>Emote packs</h2>
+            <p>Create a draft pack, then open it to add and manage individual emotes.</p>
+          </div>
+        </div>
+        <Card className="admin-store-create-card">
+          <h3>Create first pack</h3>
+          <form className="product-form-grid" onSubmit={(event) => void createPack(event)}>
+            <Input name="label" label="Pack name" required maxLength={120} />
+            <Input name="slug" label="Slug" required pattern="[a-z0-9][a-z0-9-]{1,63}" />
+            <Input name="pricePoints" label="Price in points" type="number" min={1} required />
+            <Textarea name="description" label="Description" maxLength={500} />
+            <Button type="submit" loading={busy}>
+              Create draft pack
+            </Button>
+          </form>
+        </Card>
+      </section>
+    );
+  }
+
+  return (
+    <section className="admin-store-pack-manager">
+      <div className="admin-store-section-heading">
+        <div>
+          <span className="product-eyebrow">Catalog workspace</span>
+          <h2>Emote packs</h2>
+          <p>Open drafts and published packs, then administer every member emote independently.</p>
+        </div>
+        <span className="product-search-count">{packs.length} packs</span>
+      </div>
+
+      <div className="admin-store-pack-layout">
+        <aside className="admin-store-pack-list" aria-label="Emote packs">
+          <details className="admin-store-create-pack">
+            <summary>Create pack</summary>
+            <Card className="admin-store-create-card">
+              <form className="product-form-grid" onSubmit={(event) => void createPack(event)}>
+                <Input name="label" label="Pack name" required maxLength={120} />
+                <Input
+                  name="slug"
+                  label="Slug"
+                  required
+                  pattern="[a-z0-9][a-z0-9-]{1,63}"
+                  placeholder="reaction-pack"
+                />
+                <Input name="pricePoints" label="Price in points" type="number" min={1} required />
+                <Textarea name="description" label="Description" maxLength={500} />
+                <Button type="submit" loading={busy}>
+                  Create draft
+                </Button>
+              </form>
+            </Card>
+          </details>
+
+          {packs.map((pack) => {
+            const active = pack.id === selectedPackId;
+            return (
+              <button
+                key={pack.id}
+                type="button"
+                className={`admin-store-pack-list__item${active ? " admin-store-pack-list__item--active" : ""}`}
+                onClick={() => onSelectPack(pack.id)}
+              >
+                <span>
+                  <strong>{pack.label}</strong>
+                  <small>{pack.slug}</small>
+                </span>
+                <span className="admin-store-pack-list__meta">
+                  <Badge tone={lifecycleTone(pack.lifecycleState)}>{pack.lifecycleState}</Badge>
+                  <small>{pack.emoteCount} emotes</small>
+                </span>
+              </button>
+            );
+          })}
+        </aside>
+
+        <div className="admin-store-pack-workspace">
+          {loadingDetail ? (
+            <Card className="product-empty-state">Opening pack…</Card>
+          ) : detail ? (
+            <>
+              <Card className="admin-store-pack-header">
+                <div className="admin-store-pack-header__main">
+                  <div>
+                    <span className="product-eyebrow">{detail.slug}</span>
+                    <h3>{detail.label}</h3>
+                    <p>{detail.description || "No description."}</p>
+                  </div>
+                  <div className="product-chip-row">
+                    <Badge tone={lifecycleTone(detail.lifecycleState)}>{detail.lifecycleState}</Badge>
+                    <Badge tone={truthy(detail.isEnabled) ? "success" : "neutral"}>
+                      {truthy(detail.isEnabled) ? "Enabled" : "Disabled"}
+                    </Badge>
+                    {detail.storeLifecycleState ? (
+                      <Badge tone={lifecycleTone(detail.storeLifecycleState)}>
+                        Store {detail.storeLifecycleState}
+                      </Badge>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="admin-store-metric-row">
+                  <span>{detail.emotes.length} emotes</span>
+                  <span>{detail.pricePoints ?? 0} pts</span>
+                  <span>{truthy(detail.isFeatured) ? "Featured" : "Standard"}</span>
+                </div>
+
+                {editingPack ? (
+                  <div className="admin-store-pack-editor">
+                    <label className="sb-field">
+                      <span>Pack label</span>
+                      <input
+                        value={packLabel}
+                        maxLength={120}
+                        onChange={(event) => setPackLabel(event.target.value)}
+                      />
+                    </label>
+                    <label className="sb-field">
+                      <span>Description</span>
+                      <textarea
+                        rows={3}
+                        value={packDescription}
+                        maxLength={500}
+                        onChange={(event) => setPackDescription(event.target.value)}
+                      />
+                    </label>
+                    <label className="sb-field">
+                      <span>Price in points</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={packPrice}
+                        onChange={(event) => setPackPrice(Number(event.target.value))}
+                      />
+                    </label>
+                    <div className="admin-store-inline-actions">
+                      <Button
+                        type="button"
+                        size="sm"
+                        loading={busy}
+                        onClick={() =>
+                          void patchPack(
+                            {
+                              label: packLabel,
+                              description: packDescription,
+                              pricePoints: packPrice,
+                            },
+                            "Pack metadata updated.",
+                          )
+                        }
+                      >
+                        Save pack
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setEditingPack(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {archiving ? (
+                  <div className="admin-store-moderation-panel">
+                    <strong>Archive linked Store offering</strong>
+                    <label className="sb-field">
+                      <span>Reason</span>
+                      <textarea
+                        rows={3}
+                        value={archiveReason}
+                        onChange={(event) => setArchiveReason(event.target.value)}
+                      />
+                    </label>
+                    <div className="admin-store-inline-actions">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        loading={busy}
+                        disabled={archiveReason.trim().length < 3}
+                        onClick={() => void archiveStoreOffering()}
+                      >
+                        Archive Store offering
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setArchiving(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {!editingPack && !archiving ? (
+                  <div className="admin-store-card-actions">
+                    <Button type="button" size="sm" onClick={() => setEditingPack(true)}>
+                      Edit metadata
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      loading={busy}
+                      onClick={() =>
+                        void patchPack(
+                          {
+                            lifecycleState:
+                              detail.lifecycleState === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
+                          },
+                          detail.lifecycleState === "PUBLISHED" ? "Pack unpublished." : "Pack published.",
+                        )
+                      }
+                    >
+                      {detail.lifecycleState === "PUBLISHED" ? "Unpublish" : "Publish"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      loading={busy}
+                      onClick={() =>
+                        void patchPack(
+                          { isEnabled: !truthy(detail.isEnabled) },
+                          truthy(detail.isEnabled) ? "Pack disabled." : "Pack enabled.",
+                        )
+                      }
+                    >
+                      {truthy(detail.isEnabled) ? "Disable" : "Enable"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      loading={busy}
+                      onClick={() => void duplicatePack()}
+                    >
+                      Duplicate
+                    </Button>
+                    {detail.storeItemId ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setArchiving(true)}
+                      >
+                        Archive Store offering
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </Card>
+
+              <Card className="admin-store-add-emote">
+                <div>
+                  <span className="product-eyebrow">Selected pack</span>
+                  <h3>Add emote</h3>
+                </div>
+                <form className="admin-store-add-emote__form" onSubmit={(event) => void uploadEmote(event)}>
+                  <Input
+                    name="shortcode"
+                    label="Shortcode"
+                    required
+                    pattern="[a-z0-9][a-z0-9_-]{1,63}"
+                    placeholder="party_blob"
+                  />
+                  <Input name="label" label="Label" required maxLength={120} />
+                  <label className="sb-field">
+                    <span>Image</span>
+                    <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
+                  </label>
+                  <Button type="submit" size="sm" loading={busy}>
+                    Add emote
+                  </Button>
+                </form>
+              </Card>
+
+              <div className="admin-store-emote-grid">
+                {detail.emotes.length ? (
+                  detail.emotes.map((emote) => (
+                    <EmoteEditor
+                      key={emote.id}
+                      emote={emote}
+                      busy={busy}
+                      onChanged={async () => {
+                        await Promise.all([loadDetail(), onRefreshPacks()]);
+                      }}
+                      onStatus={onStatus}
+                    />
+                  ))
+                ) : (
+                  <Card className="product-empty-state">
+                    This draft pack has no emotes yet. Add one above before publishing it.
+                  </Card>
+                )}
+              </div>
+            </>
+          ) : selectedSummary ? (
+            <Card className="product-empty-state">
+              Could not load {selectedSummary.label}. Select it again to retry.
+            </Card>
+          ) : (
+            <Card className="product-empty-state">Select a pack to open it.</Card>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
