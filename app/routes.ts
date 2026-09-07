@@ -20,6 +20,8 @@ export default [
   route("admin/moderation", "routes/admin-moderation.tsx"),
   route("admin/verifications", "routes/admin-verifications.tsx"),
   route("admin/users", "routes/admin-users.tsx"),
+  route("admin/roles", "routes/admin-roles.tsx"),
   route("admin/store", "routes/admin-store.tsx"),
+  route("admin/audit", "routes/admin-audit.tsx"),
   route("admin/anonymous/:postId", "routes/admin-anonymous.tsx"),
 ] satisfies RouteConfig;
