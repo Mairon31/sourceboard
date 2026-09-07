@@ -1,5 +1,5 @@
 import type { RouterContextProvider } from "react-router";
-import { createAuthService } from "../../worker/auth/service";
+import { createAuthService, type AuthenticatedSession } from "../../worker/auth/service";
 import { createD1AuthStore } from "../../worker/auth/store";
 import type { SourceBoardEnvironment } from "../../worker/environment";
 import { readSourceBoardRequestContext } from "../../shared/router-context";
@@ -51,7 +51,22 @@ function hasAvailableRuntime(
   return Boolean(runtime.db) && Boolean(runtime.env);
 }
 
-async function readServerSession(
+export async function readServerSession(
+  request: Request,
+  context: Readonly<RouterContextProvider>,
+): Promise<AuthenticatedSession | null> {
+  const requestContext = readSourceBoardRequestContext(context);
+  if (!requestContext?.env.DB || !request.headers.get("cookie")) return null;
+  if (!requestContext.sessionPromise) {
+    requestContext.sessionPromise = createAuthService({
+      store: createD1AuthStore(requestContext.env.DB),
+      env: requestContext.env,
+    }).getSession(request);
+  }
+  return requestContext.sessionPromise;
+}
+
+async function readServerState(
   request: Request,
   context: Readonly<RouterContextProvider>,
 ): Promise<{ runtime: ServerRequestRuntime; userId: string | null }> {
@@ -59,10 +74,7 @@ async function readServerSession(
   if (!hasAuthenticatedRuntime(runtime)) {
     return { runtime, userId: null };
   }
-  const session = await createAuthService({
-    store: createD1AuthStore(runtime.db),
-    env: runtime.env,
-  }).getSession(request);
+  const session = await readServerSession(request, context);
   return { runtime, userId: session ? session.user.id : null };
 }
 
@@ -88,7 +100,7 @@ export async function withOptionalServerSession<Unauthenticated, Loaded>(
   loaded: (runtime: AvailableServerRequestRuntime, userId: string | null) => Promise<Loaded>,
 ): Promise<Unauthenticated | Loaded> {
   try {
-    const state = await readServerSession(request, context);
+    const state = await readServerState(request, context);
     if (!hasAvailableRuntime(state.runtime)) return unauthenticated(true);
     return loaded(state.runtime, state.userId);
   } catch {
