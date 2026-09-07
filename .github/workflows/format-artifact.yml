@@ -22,13 +22,68 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Apply session activity throttling
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("worker/auth/service.ts")
+          text = path.read_text()
+
+          marker = "export function createAuthService(dependencies: AuthServiceDependencies): AuthService {"
+          if "const SESSION_TOUCH_INTERVAL_MS" not in text:
+              if marker not in text:
+                  raise SystemExit("createAuthService marker missing")
+              text = text.replace(marker, "const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;\n\n" + marker, 1)
+
+          old_current_lookup = '''    const current = await dependencies.store.findActiveSessionByTokenHash(
+              hashOpaqueToken(rawToken),
+              now(),
+            );'''
+          new_current_lookup = '''    const at = now();
+            const current = await dependencies.store.findActiveSessionByTokenHash(
+              hashOpaqueToken(rawToken),
+              at,
+            );'''
+          if old_current_lookup in text:
+              text = text.replace(old_current_lookup, new_current_lookup, 1)
+
+          current_start = text.index("  async function currentSession(")
+          current_end = text.index("  async function prepareLogin(", current_start)
+          current_block = text[current_start:current_end]
+          if "const at = now();" not in current_block:
+              raise SystemExit("currentSession timestamp patch missing")
+          old_current_touch = "    await dependencies.store.touchSession(current.id, now());"
+          if old_current_touch in current_block:
+              current_block = current_block.replace(
+                  old_current_touch,
+                  "    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {\n      await dependencies.store.touchSession(current.id, at);\n    }",
+                  1,
+              )
+              text = text[:current_start] + current_block + text[current_end:]
+
+          get_start = text.index("  async function getSession(")
+          get_end = text.index("  async function logout(", get_start)
+          get_block = text[get_start:get_end]
+          old_get_touch = "    await dependencies.store.touchSession(current.id, at);"
+          if old_get_touch in get_block and "SESSION_TOUCH_INTERVAL_MS" not in get_block:
+              get_block = get_block.replace(
+                  old_get_touch,
+                  "    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {\n      await dependencies.store.touchSession(current.id, at);\n    }",
+                  1,
+              )
+              text = text[:get_start] + get_block + text[get_end:]
+
+          if text.count("at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS") < 2:
+              raise SystemExit("both session read paths were not throttled")
+          path.write_text(text)
+          PY
       - name: Verify navigation performance patches exist
         run: |
           node - <<'NODE'
           const fs = require("fs");
           const auth = fs.readFileSync("worker/auth/service.ts", "utf8");
           const detail = fs.readFileSync("app/routes/post-detail.tsx", "utf8");
-          if (!auth.includes("SESSION_TOUCH_INTERVAL_MS") || !auth.includes("at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS")) {
+          if (!auth.includes("SESSION_TOUCH_INTERVAL_MS") || (auth.match(/lastUsedAt >= SESSION_TOUCH_INTERVAL_MS/g) || []).length < 2) {
             throw new Error("session activity throttling is missing");
           }
           if (!detail.includes("const [post, commentsResult] = await Promise.all") || !detail.includes("commentService.listForPost")) {
@@ -63,6 +118,7 @@ jobs:
           tests/unit/store-catalog-redesign.test.ts
           tests/unit/store-refresh.test.ts
           tests/e2e/test-helpers.ts
+          tests/e2e/navigation.spec.ts
           tests/e2e/admin.spec.ts
           tests/e2e/responsive.spec.ts
       - name: Lint and typecheck
@@ -84,5 +140,5 @@ jobs:
           git config user.name "SourceBoard CI"
           git config user.email "actions@users.noreply.github.com"
           git add -A
-          git commit -m "style: normalize final store and navigation changes"
+          git commit -m "perf: persist session throttling and normalize final changes"
           git push origin HEAD:master
