@@ -81,9 +81,7 @@ export default function AdminRolesRoute() {
                     <span>{role.slug}</span>
                   </div>
                   <span>{role.rank}</span>
-                  <span className="admin-status-badge">
-                    {role.isSystem ? "System" : "Custom"}
-                  </span>
+                  <span className="admin-status-badge">{role.isSystem ? "System" : "Custom"}</span>
                   <span>{role.assignmentCount}</span>
                   <CapabilityBadges capabilities={role.capabilities} />
                 </div>
