@@ -21,6 +21,7 @@ import "./components/product/post-media.css";
 import "./components/product/post-card-refresh.css";
 import "./components/product/product-interactions.css";
 import "./components/product/store.css";
+import "./components/product/profile-klipy.css";
 import "./components/admin/admin.css";
 
 // fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
