@@ -251,7 +251,12 @@ async function handleStickerStatus(
   env: SourceBoardEnvironment,
 ) {
   if (!env.DB)
-    return failure("CATALOG_UNAVAILABLE", "The catalog is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
   assertSameOrigin(request);
   assertCsrfToken(request);
   const body = parseBody(await request.json());
@@ -260,13 +265,19 @@ async function handleStickerStatus(
   const result = await env.DB.prepare("UPDATE sticker_catalog SET status = ? WHERE id = ?")
     .bind(body.status, id)
     .run();
-  if (!result.meta.changes) return failure("NOT_FOUND", "Catalog item not found.", requestId, 404);
+  if (!result.meta.changes)
+    return failure("NOT_FOUND", "Catalog item not found.", requestId, 404);
   return response({ id, status: body.status }, requestId);
 }
 
 async function listEmotePacks(env: SourceBoardEnvironment, requestId: string): Promise<Response> {
   if (!env.DB)
-    return failure("CATALOG_UNAVAILABLE", "The catalog is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
   const rows = await env.DB.prepare(
     `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState,
             p.is_enabled AS isEnabled, p.created_at AS createdAt, p.updated_at AS updatedAt,
@@ -292,7 +303,12 @@ async function getEmotePackDetail(
   requestId: string,
 ): Promise<Response> {
   if (!env.DB)
-    return failure("CATALOG_UNAVAILABLE", "The catalog is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
   const pack = await env.DB.prepare(
     `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState,
             p.is_enabled AS isEnabled, p.created_at AS createdAt, p.updated_at AS updatedAt,
@@ -327,7 +343,12 @@ async function createEmotePack(
   env: SourceBoardEnvironment,
 ): Promise<Response> {
   if (!env.DB)
-    return failure("CATALOG_UNAVAILABLE", "The catalog is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
   assertSameOrigin(request);
   assertCsrfToken(request);
   const body = parseBody(await request.json());
@@ -400,17 +421,27 @@ async function updateEmotePack(
   env: SourceBoardEnvironment,
 ): Promise<Response> {
   if (!env.DB)
-    return failure("CATALOG_UNAVAILABLE", "The catalog is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
   assertSameOrigin(request);
   assertCsrfToken(request);
   const body = parseBody(await request.json());
   if (body.label !== undefined && (typeof body.label !== "string" || !body.label.trim()))
     return failure("INVALID_EMOTE_PACK", "Label cannot be empty.", requestId, 400);
-  if (body.description !== undefined && (typeof body.description !== "string" || body.description.length > 500))
+  if (
+    body.description !== undefined &&
+    (typeof body.description !== "string" || body.description.length > 500)
+  )
     return failure("INVALID_EMOTE_PACK", "Description is too long.", requestId, 400);
   if (
     body.pricePoints !== undefined &&
-    (typeof body.pricePoints !== "number" || !Number.isInteger(body.pricePoints) || body.pricePoints <= 0)
+    (typeof body.pricePoints !== "number" ||
+      !Number.isInteger(body.pricePoints) ||
+      body.pricePoints <= 0)
   )
     return failure("INVALID_EMOTE_PACK", "Price must be a positive integer.", requestId, 400);
   if (body.lifecycleState !== undefined && !isLifecycle(body.lifecycleState))
@@ -429,7 +460,12 @@ async function updateEmotePack(
      WHERE p.id = ?`,
   )
     .bind(packId)
-    .first<{ id: string; lifecycleState: LifecycleState; isEnabled: number; storeItemId: string | null }>();
+    .first<{
+      id: string;
+      lifecycleState: LifecycleState;
+      isEnabled: number;
+      storeItemId: string | null;
+    }>();
   if (!current) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
 
   const legacyStatus = body.status as "ACTIVE" | "DISABLED" | undefined;
@@ -460,7 +496,12 @@ async function updateEmotePack(
   }
 
   const now = Date.now();
-  const packUpdates: string[] = ["lifecycle_state = ?", "is_enabled = ?", "status = ?", "updated_at = ?"];
+  const packUpdates: string[] = [
+    "lifecycle_state = ?",
+    "is_enabled = ?",
+    "status = ?",
+    "updated_at = ?",
+  ];
   const packBinds: unknown[] = [
     lifecycleState,
     isEnabled ? 1 : 0,
@@ -520,7 +561,12 @@ async function duplicateEmotePack(
   env: SourceBoardEnvironment,
 ): Promise<Response> {
   if (!env.DB || !env.MEDIA)
-    return failure("CATALOG_UNAVAILABLE", "Catalog storage is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "Catalog storage is temporarily unavailable.",
+      requestId,
+      503,
+    );
   const source = await env.DB.prepare(
     `SELECT p.id, p.slug, p.label, s.description, s.price_points AS pricePoints,
             s.sort_order AS sortOrder
@@ -530,7 +576,14 @@ async function duplicateEmotePack(
      WHERE p.id = ?`,
   )
     .bind(packId)
-    .first<{ id: string; slug: string; label: string; description: string; pricePoints: number; sortOrder: number }>();
+    .first<{
+      id: string;
+      slug: string;
+      label: string;
+      description: string;
+      pricePoints: number;
+      sortOrder: number;
+    }>();
   if (!source) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
   const members = await env.DB.prepare(
     `SELECT id, shortcode, label, asset_key AS assetKey, sort_order AS sortOrder
@@ -581,7 +634,10 @@ async function duplicateEmotePack(
          VALUES (?, ?, ?, 'DISABLED', 'DRAFT', 0, ?, ?)`,
       ).bind(
         newPackId,
-        `${source.slug}-copy-${newPackId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase()}`.slice(0, 64),
+        `${source.slug}-copy-${newPackId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase()}`.slice(
+          0,
+          64,
+        ),
         `${source.label} Copy`.slice(0, 120),
         now,
         now,
@@ -626,7 +682,11 @@ async function duplicateEmotePack(
         createIdentifier(),
         actorUserId,
         newPackId,
-        JSON.stringify({ sourceId: packId, destinationId: newPackId, storeItemId: newStoreItemId }),
+        JSON.stringify({
+          sourceId: packId,
+          destinationId: newPackId,
+          storeItemId: newStoreItemId,
+        }),
         requestId,
         now,
       ),
@@ -646,7 +706,12 @@ async function updateEmote(
   env: SourceBoardEnvironment,
 ): Promise<Response> {
   if (!env.DB)
-    return failure("CATALOG_UNAVAILABLE", "The catalog is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
   assertSameOrigin(request);
   assertCsrfToken(request);
   const body = parseBody(await request.json());
@@ -677,7 +742,11 @@ async function updateEmote(
     binds.push(shortcode);
   }
   if (body.label !== undefined) {
-    if (typeof body.label !== "string" || !body.label.trim() || body.label.trim().length > 120)
+    if (
+      typeof body.label !== "string" ||
+      !body.label.trim() ||
+      body.label.trim().length > 120
+    )
       return failure("INVALID_LABEL", "Label must be 1-120 characters.", requestId, 400);
     updates.push("label = ?");
     binds.push(body.label.trim());
@@ -692,8 +761,7 @@ async function updateEmote(
     body.lifecycleState === undefined ? current.lifecycleState : body.lifecycleState;
   if (!isLifecycle(lifecycleState))
     return failure("INVALID_LIFECYCLE", "Lifecycle state is invalid.", requestId, 400);
-  const isEnabled =
-    body.isEnabled === undefined ? Number(current.isEnabled) === 1 : body.isEnabled;
+  const isEnabled = body.isEnabled === undefined ? Number(current.isEnabled) === 1 : body.isEnabled;
   if (typeof isEnabled !== "boolean")
     return failure("INVALID_ENABLEMENT", "isEnabled must be boolean.", requestId, 400);
   if (body.lifecycleState !== undefined) {
@@ -705,7 +773,12 @@ async function updateEmote(
     binds.push(isEnabled ? 1 : 0);
   }
   if (!updates.length)
-    return failure("INVALID_CATALOG_ITEM", "No editable emote fields were provided.", requestId, 400);
+    return failure(
+      "INVALID_CATALOG_ITEM",
+      "No editable emote fields were provided.",
+      requestId,
+      400,
+    );
   const legacyActive =
     lifecycleState === "PUBLISHED" &&
     isEnabled &&
@@ -733,10 +806,17 @@ async function replaceEmoteImage(
   env: SourceBoardEnvironment,
 ): Promise<Response> {
   if (!env.DB || !env.MEDIA)
-    return failure("CATALOG_UNAVAILABLE", "Catalog storage is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "Catalog storage is temporarily unavailable.",
+      requestId,
+      503,
+    );
   assertSameOrigin(request);
   assertCsrfToken(request);
-  const current = await env.DB.prepare("SELECT asset_key AS assetKey FROM emote_catalog WHERE id = ?")
+  const current = await env.DB.prepare(
+    "SELECT asset_key AS assetKey FROM emote_catalog WHERE id = ?",
+  )
     .bind(id)
     .first<{ assetKey: string }>();
   if (!current) return failure("NOT_FOUND", "Emote not found.", requestId, 404);
@@ -781,12 +861,22 @@ async function moderateEmote(
   env: SourceBoardEnvironment,
 ): Promise<Response> {
   if (!env.DB)
-    return failure("CATALOG_UNAVAILABLE", "The catalog is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
   assertSameOrigin(request);
   assertCsrfToken(request);
   const body = parseBody(await request.json());
   if (!(["FLAG", "HIDE", "RESTORE", "REMOVE"] as unknown[]).includes(body.action))
-    return failure("INVALID_MODERATION_ACTION", "Moderation action is invalid.", requestId, 400);
+    return failure(
+      "INVALID_MODERATION_ACTION",
+      "Moderation action is invalid.",
+      requestId,
+      400,
+    );
   const action = body.action as ModerationAction;
   const reason = assertReason(body.reason);
   const current = await env.DB.prepare(
@@ -795,33 +885,61 @@ async function moderateEmote(
      FROM emote_catalog WHERE id = ?`,
   )
     .bind(id)
-    .first<{ moderationState: ModerationState; lifecycleState: LifecycleState; isEnabled: number }>();
+    .first<{
+      moderationState: ModerationState;
+      lifecycleState: LifecycleState;
+      isEnabled: number;
+    }>();
   if (!current) return failure("NOT_FOUND", "Emote not found.", requestId, 404);
   if (current.moderationState === "REMOVED") {
-    return failure("EMOTE_REMOVED", "Removed emotes cannot be restored by the ordinary flow.", requestId, 409);
+    return failure(
+      "EMOTE_REMOVED",
+      "Removed emotes cannot be restored by the ordinary flow.",
+      requestId,
+      409,
+    );
   }
 
   let next: ModerationState = current.moderationState;
   let enabled = Number(current.isEnabled) === 1;
   if (action === "FLAG") {
     if (current.moderationState !== "CLEAR")
-      return failure("INVALID_MODERATION_TRANSITION", "Only clear emotes can be flagged.", requestId, 409);
+      return failure(
+        "INVALID_MODERATION_TRANSITION",
+        "Only clear emotes can be flagged.",
+        requestId,
+        409,
+      );
     next = "FLAGGED";
   } else if (action === "HIDE") {
     if (current.moderationState !== "CLEAR" && current.moderationState !== "FLAGGED")
-      return failure("INVALID_MODERATION_TRANSITION", "That emote cannot be hidden.", requestId, 409);
+      return failure(
+        "INVALID_MODERATION_TRANSITION",
+        "That emote cannot be hidden.",
+        requestId,
+        409,
+      );
     next = "HIDDEN";
     enabled = false;
   } else if (action === "RESTORE") {
     if (current.moderationState !== "FLAGGED" && current.moderationState !== "HIDDEN")
-      return failure("INVALID_MODERATION_TRANSITION", "That emote does not need restoration.", requestId, 409);
+      return failure(
+        "INVALID_MODERATION_TRANSITION",
+        "That emote does not need restoration.",
+        requestId,
+        409,
+      );
     next = "CLEAR";
     enabled = current.lifecycleState !== "ARCHIVED";
   } else if (action === "REMOVE") {
     next = "REMOVED";
     enabled = false;
   }
-  const legacyActive = current.lifecycleState === "PUBLISHED" && enabled && next !== "HIDDEN" && next !== "REMOVED";
+  const legacyActive =
+    current.lifecycleState === "PUBLISHED" &&
+    enabled &&
+    next !== "HIDDEN" &&
+    next !== "REMOVED";
   await env.DB.prepare(
     `UPDATE emote_catalog
      SET moderation_state = ?, is_enabled = ?, status = ?, updated_at = ? WHERE id = ?`,
@@ -854,9 +972,14 @@ async function handlePublicAsset(
   requestId: string,
 ): Promise<Response> {
   if (!env.DB || !env.MEDIA)
-    return failure("CATALOG_UNAVAILABLE", "Catalog media is temporarily unavailable.", requestId, 503);
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "Catalog media is temporarily unavailable.",
+      requestId,
+      503,
+    );
 
-  let assetKey: string | null = null;
+  let assetKey: string;
   if (kind === "emote") {
     const row = await env.DB.prepare(
       `SELECT e.asset_key AS assetKey, e.lifecycle_state AS lifecycleState,
@@ -903,7 +1026,8 @@ async function handlePublicAsset(
     etag: object.httpEtag,
     [REQUEST_ID_HEADER]: requestId,
   });
-  if (object.httpMetadata?.contentType) headers.set("content-type", object.httpMetadata.contentType);
+  if (object.httpMetadata?.contentType)
+    headers.set("content-type", object.httpMetadata.contentType);
   return new Response(object.body, { headers });
 }
 
@@ -999,7 +1123,9 @@ export async function handleCatalogRequest(
     }
 
     if (kind === "emote") {
-      const replaceMatch = url.pathname.match(/^\/api\/admin\/catalog\/emotes\/([^/]+)\/replace$/);
+      const replaceMatch = url.pathname.match(
+        /^\/api\/admin\/catalog\/emotes\/([^/]+)\/replace$/,
+      );
       if (request.method === "POST" && replaceMatch)
         return await replaceEmoteImage(
           decodeURIComponent(replaceMatch[1] ?? ""),
