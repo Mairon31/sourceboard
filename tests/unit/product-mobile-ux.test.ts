@@ -13,10 +13,7 @@ const profileRouteSource = readFileSync(
   new URL("../../app/routes/profile.tsx", import.meta.url),
   "utf8",
 );
-const profileEditorUrl = new URL(
-  "../../app/components/product/ProfileEditor.tsx",
-  import.meta.url,
-);
+const profileEditorUrl = new URL("../../app/components/product/ProfileEditor.tsx", import.meta.url);
 const profileEditorSource = existsSync(profileEditorUrl)
   ? readFileSync(profileEditorUrl, "utf8")
   : "";
@@ -50,8 +47,8 @@ describe("mobile product UX regressions", () => {
   it("exposes an owner-only profile editor wired to the existing profile and media APIs", () => {
     expect(profileRouteSource).toContain("ProfileEditor");
     expect(profileRouteSource).toContain("isOwnProfile");
-    expect(profileEditorSource).toContain('/api/profile/me');
-    expect(profileEditorSource).toContain('/api/profile/media');
+    expect(profileEditorSource).toContain("/api/profile/me");
+    expect(profileEditorSource).toContain("/api/profile/media");
     expect(profileEditorSource).toContain('method: "PATCH"');
   });
 });
