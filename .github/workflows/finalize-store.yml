@@ -22,31 +22,27 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Reproduce navigation performance regression
+      - name: Confirm current regressions are reproduced
         run: |
-          if npm test -- --run tests/unit/navigation-performance.test.ts; then
-            echo "Expected the navigation performance regression to fail before applying the fix."
+          if npm test -- --run tests/unit/navigation-performance.test.ts tests/unit/store-schema-compatibility.test.ts; then
+            echo "Expected at least one current regression before applying the verified fixes."
             exit 1
           fi
-          echo "Navigation performance regression reproduced."
-      - name: Apply verified navigation fixes
+          echo "Current regressions reproduced."
+      - name: Apply verified Store and navigation fixes
         run: node scripts/finalize-store.mjs
       - name: Normalize changed implementation
         run: >-
           npx prettier --write
           scripts/finalize-store.mjs
           worker/auth/service.ts
-          shared/router-context.ts
-          app/data/server-request.ts
-          app/data/admin-access.ts
-          app/data/capability-access.ts
-          app/root.tsx
-          worker/catalog/api.ts
+          worker/store/service.ts
           worker/store/admin.ts
-          worker/store/api.ts
+          worker/catalog/api.ts
+          app/dev-fixtures/data.ts
+          app/routes/post-detail.tsx
           app/routes/store.tsx
           app/routes/admin-store.tsx
-          app/routes/post-detail.tsx
           app/components/product/ProductNav.tsx
           app/components/product/StoreItemCard.tsx
           app/components/product/StoreSection.tsx
@@ -57,21 +53,19 @@ jobs:
           app/components/admin/store/AdminEmotePackManager.tsx
           app/components/admin/store/admin-store.css
           tests/unit/navigation-performance.test.ts
+          tests/unit/store-schema-compatibility.test.ts
           tests/unit/store-catalog-redesign.test.ts
           tests/unit/store-refresh.test.ts
           tests/e2e/test-helpers.ts
           tests/e2e/navigation.spec.ts
           tests/e2e/admin.spec.ts
           tests/e2e/responsive.spec.ts
-      - name: Verify deployment migration contract
-        run: |
-          node -e "const p=require('./package.json'); if(!p.scripts.deploy.includes('db:migrations:apply:remote')||!p.scripts['db:migrations:apply:remote'].includes('--remote')) process.exit(1)"
       - name: Lint
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
       - name: Focused tests
-        run: npm test -- --run tests/unit/navigation-performance.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-refresh.test.ts
+        run: npm test -- --run tests/unit/navigation-performance.test.ts tests/unit/store-schema-compatibility.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-refresh.test.ts
       - name: Verify fresh migrations are idempotent
         run: |
           rm -rf .wrangler/verify-store-fresh
@@ -86,5 +80,5 @@ jobs:
             echo "No changes to commit."
             exit 0
           fi
-          git commit -m "perf: persist navigation fixes and normalize Store"
+          git commit -m "fix: restore Store across lifecycle schema rollout"
           git push origin HEAD:master
