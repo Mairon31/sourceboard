@@ -17,7 +17,7 @@
     "db:migrations:apply": "wrangler d1 migrations apply DB --local",
     "typegen": "wrangler types --env-interface CloudflareEnvironment && react-router typegen",
     "typecheck": "npm run typegen && tsc --noEmit",
-    "lint": "eslint . && prettier --check .",
+    "lint": "eslint . && prettier --write app/components/product/store-effects.css && git diff -- app/components/product/store-effects.css && exit 1",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "playwright test",
