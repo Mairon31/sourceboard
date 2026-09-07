@@ -2,15 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router";
 import { ThemeControl } from "../layout/ThemeControl";
-import {
-  CheckIcon,
-  FriendsIcon,
-  HomeIcon,
-  InfoIcon,
-  SearchIcon,
-  StoreIcon,
-  UserIcon,
-} from "../ui";
+import { CheckIcon, FriendsIcon, HomeIcon, InfoIcon, SearchIcon, StoreIcon, UserIcon } from "../ui";
 
 const adminLinks = [
   { href: "/admin", label: "Overview", end: true, icon: HomeIcon },
@@ -44,13 +36,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <aside className="admin-sidebar">
         <a href="/" className="admin-brand">
           <span aria-hidden="true">
-            <img
-              src="/sourceboard-logo.svg"
-              alt=""
-              width="34"
-              height="34"
-              decoding="async"
-            />
+            <img src="/sourceboard-logo.svg" alt="" width="34" height="34" decoding="async" />
           </span>
           <div>
             <strong>SourceBoard</strong>
