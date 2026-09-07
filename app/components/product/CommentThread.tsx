@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
+import { CosmeticIdentity } from "./CosmeticIdentity";
 import { Avatar, Badge, Button, Textarea } from "../ui";
 
 interface KlipyMediaItem {
@@ -58,21 +59,23 @@ function CommentItem({
 
   return (
     <article className={`product-comment${depth ? " product-comment--reply" : ""}`}>
-      <Avatar
-        name={comment.author.displayName}
-        src={comment.author.avatarUrl}
-        size="sm"
-        className={
-          comment.author.avatarFrame ? `sb-avatar--frame-${comment.author.avatarFrame}` : undefined
-        }
-      />
+      {comment.author.mode === "ANONYMOUS" ? (
+        <Avatar name="Anonymous Author" size="sm" />
+      ) : (
+        <CosmeticIdentity
+          displayName={comment.author.displayName}
+          avatarUrl={comment.author.avatarUrl}
+          avatarFrame={comment.author.avatarFrame}
+          profileEffect={comment.author.profileEffect}
+          nameFont={comment.author.nameFont}
+          mode="compact"
+          avatarSize="sm"
+          nameAs="strong"
+        />
+      )}
       <div className="product-comment__body">
         <div className="product-comment__heading">
-          <strong
-            style={comment.author.nameFont ? { fontFamily: comment.author.nameFont } : undefined}
-          >
-            {comment.author.displayName}
-          </strong>
+          {comment.author.mode === "ANONYMOUS" ? <strong>Anonymous Author</strong> : null}
           {comment.author.mode === "ANONYMOUS" ? <Badge>Anonymous Author</Badge> : null}
           <span>
             {new Date(comment.createdAt).toLocaleDateString("en-US", {
