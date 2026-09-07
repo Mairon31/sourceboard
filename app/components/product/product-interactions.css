@@ -1,0 +1,38 @@
+.product-post--clickable {
+  cursor: pointer;
+}
+
+.product-post--clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .product-mobile-nav {
+    min-height: 54px;
+    padding: 4px 6px;
+    border-radius: 18px;
+  }
+
+  .product-mobile-nav .product-nav__link {
+    min-height: 40px;
+    padding: 0;
+  }
+
+  .product-mobile-nav .product-nav__link svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .product-mobile-nav__create {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    font-size: 0;
+  }
+
+  .product-mobile-nav__create svg {
+    width: 24px;
+    height: 24px;
+  }
+}

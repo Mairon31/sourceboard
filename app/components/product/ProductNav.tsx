@@ -1,5 +1,6 @@
 import { NavLink, useRouteLoaderData } from "react-router";
 import { ThemeControl } from "../layout/ThemeControl";
+import { FriendsIcon, HomeIcon, PlusIcon, StoreIcon, UserIcon } from "../ui";
 import type { RootLoaderData } from "../../root";
 
 const primaryLinks = [
@@ -65,19 +66,25 @@ export function MobileProductNav() {
       className="product-mobile-nav glass-panel glass-panel--strong"
       aria-label="Mobile navigation"
     >
-      {primaryLinks.slice(0, 2).map((item) => (
-        <NavLink key={item.href} to={item.href} className={navClass} end={item.href === "/"}>
-          {item.short}
-        </NavLink>
-      ))}
-      <NavLink className="product-mobile-nav__create" to="/post/new" aria-label="Create post">
-        +
+      <NavLink to="/" className={navClass} end aria-label="Home" title="Home">
+        <HomeIcon />
       </NavLink>
-      <NavLink to={profileHref} className={navClass}>
-        Profile
+      <NavLink to="/friends" className={navClass} aria-label="Friends" title="Friends">
+        <FriendsIcon />
       </NavLink>
-      <NavLink to="/store" className={navClass}>
-        Store
+      <NavLink
+        className="product-mobile-nav__create"
+        to="/post/new"
+        aria-label="Create post"
+        title="Create post"
+      >
+        <PlusIcon />
+      </NavLink>
+      <NavLink to={profileHref} className={navClass} aria-label="Profile" title="Profile">
+        <UserIcon />
+      </NavLink>
+      <NavLink to="/store" className={navClass} aria-label="Store" title="Store">
+        <StoreIcon />
       </NavLink>
     </nav>
   );

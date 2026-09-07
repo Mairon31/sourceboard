@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { Link, useNavigate } from "react-router";
 import type { PostSummary } from "../../../shared/ui/contracts";
 import { Avatar, Badge, Button, Card } from "../ui";
 
@@ -10,7 +10,15 @@ function statusTone(status: PostSummary["status"]) {
   return "neutral" as const;
 }
 
+function isInteractivePostTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("a, button, input, textarea, select, label, [contenteditable='true']"))
+  );
+}
+
 export function PostCard({ post, compact = false }: { post: PostSummary; compact?: boolean }) {
+  const navigate = useNavigate();
   const [showNsfw, setShowNsfw] = useState(post.nsfwPresentation === "VISIBLE");
   const [liked, setLiked] = useState(post.reaction.viewerReacted);
   const [likes, setLikes] = useState(post.reaction.count);
@@ -18,6 +26,21 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
   const mediaClass = post.imageUrl
     ? "product-post__media product-post__media--image"
     : "product-post__media";
+
+  function openPostDetail() {
+    navigate(`/posts/${post.id}`);
+  }
+
+  function handleCardClick(event: ReactMouseEvent<HTMLDivElement>) {
+    if (isInteractivePostTarget(event.target)) return;
+    openPostDetail();
+  }
+
+  function handleCardKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget || event.key !== "Enter") return;
+    event.preventDefault();
+    openPostDetail();
+  }
 
   async function toggleLike() {
     setReactionStatus(null);
@@ -47,7 +70,14 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
   }
 
   return (
-    <Card className={`product-post${compact ? " product-post--compact" : ""}`}>
+    <Card
+      className={`product-post product-post--clickable${compact ? " product-post--compact" : ""}`}
+      role="link"
+      tabIndex={0}
+      aria-label={`Open post: ${post.title}`}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+    >
       <header className="product-post__header">
         {post.author.mode === "ANONYMOUS" ? (
           <Avatar name="Anonymous Author" />

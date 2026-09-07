@@ -18,6 +18,7 @@ import "./components/ui/ui.css";
 import "./components/layout/layout.css";
 import "./components/product/product.css";
 import "./components/product/post-media.css";
+import "./components/product/product-interactions.css";
 import "./components/admin/admin.css";
 
 // fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
