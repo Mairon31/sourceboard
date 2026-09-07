@@ -35,7 +35,6 @@ jobs:
         run: |
           git checkout HEAD -- \
             worker/auth/service.ts \
-            app/dev-fixtures/data.ts \
             app/routes/post-detail.tsx \
             app/routes/store.tsx \
             app/routes/admin-store.tsx \
@@ -71,11 +70,12 @@ jobs:
           worker/store/service.ts
           worker/store/admin.ts
           worker/catalog/api.ts
+          app/dev-fixtures/data.ts
           tests/unit/store-schema-compatibility.test.ts
       - name: Lint Store recovery
         run: |
-          npx eslint worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts
-          npx prettier --check worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts tests/unit/store-schema-compatibility.test.ts
+          npx eslint worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts app/dev-fixtures/data.ts
+          npx prettier --check worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts app/dev-fixtures/data.ts tests/unit/store-schema-compatibility.test.ts
       - name: Typecheck
         run: npm run typecheck
       - name: Focused Store tests
@@ -89,7 +89,7 @@ jobs:
         run: |
           git config user.name "SourceBoard CI"
           git config user.email "actions@users.noreply.github.com"
-          git add worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts
+          git add worker/store/service.ts worker/store/admin.ts worker/catalog/api.ts app/dev-fixtures/data.ts
           if git diff --cached --quiet; then
             echo "No Store implementation changes to commit."
             exit 0
