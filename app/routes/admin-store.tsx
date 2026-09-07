@@ -39,7 +39,9 @@ export default function AdminStoreRoute() {
   const loadPacks = useCallback(async () => {
     if (!access.authorized) return;
     const response = await fetch("/api/admin/catalog/emote-packs");
-    const payload = (await response.json().catch(() => null)) as { packs?: EmotePack[] } | null;
+    const payload = (await response.json().catch(() => null)) as {
+      packs?: EmotePack[];
+    } | null;
     if (!response.ok) {
       setStatus(errorMessage(payload, "Could not load emote packs."));
       return;
@@ -128,7 +130,9 @@ export default function AdminStoreRoute() {
         setStatus(errorMessage(payload, "Could not update this pack."));
         return;
       }
-      setStatus(nextStatus === "ACTIVE" ? "Emote pack published." : "Emote pack unpublished.");
+      setStatus(
+        nextStatus === "ACTIVE" ? "Emote pack published." : "Emote pack unpublished.",
+      );
       await loadPacks();
     } finally {
       setBusy(false);
@@ -171,7 +175,13 @@ export default function AdminStoreRoute() {
               pattern="[a-z0-9][a-z0-9-]{1,63}"
               placeholder="reaction-pack"
             />
-            <Input name="pricePoints" label="Price in points" type="number" min={1} required />
+            <Input
+              name="pricePoints"
+              label="Price in points"
+              type="number"
+              min={1}
+              required
+            />
             <Textarea name="description" label="Description" maxLength={500} />
             <Button type="submit" loading={busy}>
               Create pack
@@ -209,7 +219,12 @@ export default function AdminStoreRoute() {
             <Input name="label" label="Emote label" required maxLength={120} />
             <label className="sb-field">
               <span>Image</span>
-              <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
+              <input
+                name="file"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                required
+              />
             </label>
             <input type="hidden" name="packId" value={selectedPackId} />
             <Button type="submit" loading={busy} disabled={!selectedPackId}>
@@ -262,7 +277,11 @@ export default function AdminStoreRoute() {
         )}
       </section>
 
-      {status ? <div className="product-store-preview-status" role="status">{status}</div> : null}
+      {status ? (
+        <div className="product-store-preview-status" role="status">
+          {status}
+        </div>
+      ) : null}
     </AdminShell>
   );
 }
