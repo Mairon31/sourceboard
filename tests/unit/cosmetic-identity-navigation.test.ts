@@ -8,6 +8,8 @@ const read = (path: string) => {
 
 const contracts = read("../../shared/ui/contracts.ts");
 const profileStore = read("../../worker/profile/store.ts");
+const postsService = read("../../worker/posts/service.ts");
+const commentsService = read("../../worker/comments/service.ts");
 
 describe("public cosmetic identity contracts", () => {
   it("exposes profile effects on identified public authors", () => {
@@ -18,5 +20,15 @@ describe("public cosmetic identity contracts", () => {
     expect(profileStore).toContain("AvatarFramePreset");
     expect(profileStore).toContain("ProfileEffectPreset");
     expect(profileStore).toContain("NameFontFamily");
+  });
+
+  it("serializes the equipped profile effect for visible identified authors", () => {
+    expect(postsService).toContain("profileEffect: cosmetics?.profileEffect");
+    expect(commentsService).toContain("profileEffect: cosmetics?.profileEffect");
+  });
+
+  it("keeps anonymous author serialization cosmetic-free", () => {
+    expect(postsService).toContain('return { mode: "ANONYMOUS", displayName: "Anonymous Author" }');
+    expect(commentsService).toContain('return { mode: "ANONYMOUS", displayName: "Anonymous Author" }');
   });
 });
