@@ -4,7 +4,7 @@
 
 **Goal:** Replace the current sparse admin pages with a professional Linear/Vercel-style control center using SourceBoard Liquid Glass selectively, dedicated Users/Roles/Audit routes, real persisted metrics, responsive moderation/verifications, and server-authorized actions.
 
-**Architecture:** Add a focused `worker/admin/read.ts` query layer for read-only operational snapshots and keep writes routed through existing auth/moderation APIs. Redesign `AdminShell` and `admin.css` around route-based navigation, reusable metric/filter/action components, and card fallbacks below desktop widths. New admin routes remain SSR-first and capability-gated.
+**Architecture:** Add a focused `worker/admin/read.ts` query layer for read-only operational snapshots and keep writes routed through existing auth/moderation/source-verification APIs. Redesign `AdminShell` and `admin.css` around route-based navigation, reusable metric/action primitives, and mobile card fallbacks. New admin routes remain SSR-first and capability-gated.
 
 **Tech Stack:** React Router v8 SSR, React, TypeScript, Cloudflare Workers, D1, existing SourceBoard UI primitives, Vitest, Playwright.
 
@@ -20,6 +20,7 @@
 - Use SourceBoard Liquid Glass only for hierarchy/elevation, not as decorative blur over dense data.
 - Mobile layouts must not force wide desktop tables; convert to cards/lists where necessary.
 - Required responsive widths: 390, 430, 768, 1024, 1280 and 1440+ CSS px.
+- This plan executes before the Store lifecycle plan; `worker/admin/read.ts` starts with compatibility Store counts and the Store plan later upgrades those reads to lifecycle/moderation fields.
 
 ---
 
@@ -28,7 +29,7 @@
 - Create `worker/admin/read.ts`: centralized read-only D1 admin queries.
 - Create `worker/admin/types.ts`: typed admin snapshot rows shared by routes.
 - Create `app/components/admin/AdminMetric.tsx`: metric card primitive.
-- Create `app/components/admin/AdminActionMenu.tsx`: accessible overflow actions using existing Dropdown.
+- Create `app/components/admin/AdminActionMenu.tsx`: accessible overflow actions using existing `Dropdown`.
 - Modify `app/components/admin/AdminShell.tsx`: route-based grouped navigation with icons.
 - Modify `app/components/admin/admin.css`: hybrid Linear/Vercel + restrained Liquid Glass responsive system.
 - Modify `app/routes/admin.tsx`: real overview dashboard.
@@ -103,7 +104,7 @@ export interface AdminReadService {
 export function createAdminReadService(db: D1Database): AdminReadService;
 ```
 
-- [ ] **Step 1: Write failing source-contract tests**
+- [ ] **Step 1: Write the failing source-contract test**
 
 ```ts
 import { existsSync, readFileSync } from "node:fs";
@@ -136,27 +137,29 @@ Expected: FAIL because `worker/admin/read.ts` and `worker/admin/types.ts` do not
 
 - [ ] **Step 3: Implement exact D1 queries**
 
-`overview()` must execute real `COUNT(*)` queries for open moderation reports, verification candidates (`visible comments on visible posts without verified_source_id`), Store lifecycle counts if the Store lifecycle plan is already applied, and recent audit records. Before Store lifecycle migration lands, use existing `store_items.is_active`/pack status as the compatibility read and keep the query isolated so Task ordering between plans is safe.
+`overview()` reads real open report count, pending source-verification candidate count, compatibility Store counts (`store_items.is_active` and current emote `status`) and the latest audit rows. The Store lifecycle plan later replaces only those Store-specific compatibility expressions with lifecycle/moderation fields.
 
-`users(query)` must join `users` + `user_profiles` and aggregate roles without selecting `email_encrypted` or `email_lookup_hash`:
+`users(query)` uses:
 
 ```sql
-SELECT u.id, u.username, p.display_name AS displayName, u.status,
+SELECT u.id, u.username, COALESCE(p.display_name, u.username) AS displayName, u.status,
        u.created_at AS createdAt, u.last_seen_at AS lastSeenAt,
        GROUP_CONCAT(DISTINCT r.slug) AS roles
 FROM users u
 LEFT JOIN user_profiles p ON p.user_id = u.id
 LEFT JOIN user_roles ur ON ur.user_id = u.id
 LEFT JOIN roles r ON r.id = ur.role_id
-WHERE (? = '' OR u.username_normalized LIKE ? OR lower(p.display_name) LIKE ?)
+WHERE (? = '' OR u.username_normalized LIKE ? OR lower(COALESCE(p.display_name, '')) LIKE ?)
 GROUP BY u.id, u.username, p.display_name, u.status, u.created_at, u.last_seen_at
 ORDER BY u.created_at DESC
 LIMIT ?
 ```
 
-`roles()` joins `roles`, `role_permissions`, `permissions`, `user_roles` and returns unique capabilities plus assignment count.
+Bind normalized `%query%` values and clamp `limit` to 1-100. Do not select any email columns.
 
-`audit(filters)` builds a fixed allowlisted WHERE clause from optional filters; never interpolate user-provided column names.
+`roles()` joins `roles`, `role_permissions`, `permissions`, and a grouped `user_roles` assignment count. Deduplicate capabilities in TypeScript after reading rows.
+
+`audit(filters)` builds SQL only from fixed internal predicates (`actor_user_id`, `action`, `target_type`, `target_id`, `created_at >=`, `created_at <=`) and binds values; no user-controlled column/order interpolation.
 
 - [ ] **Step 4: Run focused test and typecheck**
 
@@ -189,12 +192,13 @@ export function AdminMetric(props: { label: string; value: string | number; hint
 export interface AdminActionItem {
   label: string;
   onSelect: () => void;
-  tone?: "default" | "danger";
   disabled?: boolean;
 }
 
 export function AdminActionMenu(props: { label: string; items: AdminActionItem[] }): JSX.Element;
 ```
+
+`AdminActionMenu` is a thin adapter over the existing `Dropdown` API and does not create a second menu implementation.
 
 - [ ] **Step 1: Add failing shell assertions**
 
@@ -218,7 +222,7 @@ Expected: FAIL on legacy anchor routes and missing responsive card-list system.
 
 - [ ] **Step 3: Implement the shell redesign**
 
-Replace anchor entries with route entries:
+Use existing SourceBoard icons:
 
 ```ts
 const adminLinks = [
@@ -232,19 +236,7 @@ const adminLinks = [
 ] as const;
 ```
 
-Render icon + label; add `aria-current` through `NavLink`. Keep Theme and Back to site in footer.
-
-Create visual tokens/classes in `admin.css` for:
-
-- `.admin-surface`
-- `.admin-metric-grid`
-- `.admin-filter-bar`
-- `.admin-desktop-table`
-- `.admin-mobile-card-list`
-- `.admin-status-badge`
-- `.admin-action-cell`
-
-At `max-width: 720px`, hide `.admin-desktop-table` and show `.admin-mobile-card-list`; do not use a 760px minimum-width table.
+Render icon + label and keep Theme/Back to site in the footer. Create `.admin-surface`, `.admin-filter-bar`, `.admin-desktop-table`, `.admin-mobile-card-list`, `.admin-status-badge`, `.admin-action-cell`. At `max-width: 720px`, hide desktop tables and show card lists; remove the current 760px minimum-width table behavior.
 
 - [ ] **Step 4: Run focused test, lint and typecheck**
 
@@ -286,13 +278,11 @@ it("loads persisted admin overview metrics", () => {
 
 Run: `npm test -- --run tests/unit/admin-control-center.test.ts`
 
-Expected: FAIL because current overview is descriptive placeholder content.
+Expected: FAIL because the current overview is placeholder content.
 
 - [ ] **Step 3: Implement the overview loader and presentation**
 
-Use `withOptionalServerSession` + `loadAdminAccess` and only call `createAdminReadService(runtime.db).overview()` when authorized. Render `AdminMetric` cards for real counts, then a Recent administrative activity section containing the latest audit rows and quick links to moderation/verifications/store.
-
-Do not show zero as a fabricated fallback when DB is unavailable; preserve explicit unavailable/denied state.
+Use `withOptionalServerSession` + `loadAdminAccess`; call `createAdminReadService(runtime.db).overview()` only when authorized. Render real `AdminMetric` cards, recent audit activity, and quick links to moderation, verifications, users and Store. Preserve explicit unavailable/denied states instead of fabricating zero metrics.
 
 - [ ] **Step 4: Run focused tests and typecheck**
 
@@ -315,47 +305,52 @@ git commit -m "feat: add real admin overview dashboard"
 - Modify: `tests/e2e/admin.spec.ts`
 
 **Interfaces:**
-- Consumes: current `createModerationService(...).listQueue()` and `POST /api/admin/moderation/action`.
-- Produces: filterable queue UI; actions use exact payload:
+- Consumes: `createModerationService(...).listQueue()` and `POST /api/admin/moderation/action`.
+- Produces target-specific actions that exactly match existing `MODERATION_ACTIONS` behavior:
+
+```ts
+const POST_ACTIONS = ["HIDE", "RESTORE", "LOCK", "UNLOCK", "REVOKE_SOURCE_VERIFICATION", "MARK_NSFW", "UNMARK_NSFW"] as const;
+const COMMENT_ACTIONS = ["HIDE", "RESTORE"] as const;
+const USER_ACTIONS = ["POSTING_RESTRICTION", "COMMENT_RESTRICTION", "SUSPEND", "BAN"] as const;
+```
+
+Request payload:
 
 ```ts
 {
   targetType: "POST" | "COMMENT" | "USER";
   targetId: string;
-  action: "HIDE" | "RESTORE" | "LOCK" | "UNLOCK" | "MARK_NSFW" | "UNMARK_NSFW" | "SUSPEND" | "BAN" | "DELETE_COMMENT" | "RESTORE_COMMENT" | "REVOKE_SOURCE_VERIFICATION";
+  action: (typeof POST_ACTIONS)[number] | (typeof COMMENT_ACTIONS)[number] | (typeof USER_ACTIONS)[number];
   reason: string;
   durationMs?: number;
 }
 ```
 
-Only expose actions valid for the row's target type and currently supported by `MODERATION_ACTIONS`.
+- [ ] **Step 1: Add failing UI assertions**
 
-- [ ] **Step 1: Add failing UI assertions and an E2E layout case**
+Assert the route has `statusFilter`, `targetFilter`, `categoryFilter`, uses `/api/admin/moderation/action`, and contains both desktop queue and `.admin-mobile-review-card` presentation.
 
-Unit/source assertions check for filter state (`statusFilter`, `targetFilter`, `categoryFilter`) and `/api/admin/moderation/action`. E2E at 390px checks queue items are `.admin-mobile-review-card` and page has no horizontal overflow.
+- [ ] **Step 2: Run focused unit test and verify RED**
 
-- [ ] **Step 2: Run the focused unit test and admin E2E**
+Run: `npm test -- --run tests/unit/admin-control-center.test.ts`
 
-Run:
-
-```bash
-npm test -- --run tests/unit/admin-control-center.test.ts
-npx playwright test tests/e2e/admin.spec.ts --project=chromium
-```
-
-Expected: new tests fail because the current route is a plain table with no actions.
+Expected: FAIL because the current route is a plain table with no filters/actions.
 
 - [ ] **Step 3: Implement filters and actions**
 
-Keep filtering client-side over the loader's bounded queue (maximum current queue limit) for this pass. Add select controls for status/target/category and newest/oldest sort. For each row/card, use `AdminActionMenu`; before a mutation open an existing `Modal` with a required reason textarea. Submit with `readCsrfToken()` and refresh through `useRevalidator()` on success.
+Filter client-side over the bounded loader queue. Add status/target/category filters and newest/oldest sort. Use `AdminActionMenu` with only the target-specific constants above. A selected action opens a required-reason `Modal`, posts with `readCsrfToken()`, then calls `useRevalidator().revalidate()` on success.
 
-- [ ] **Step 4: Re-run focused tests**
+- [ ] **Step 4: Extend browser coverage without assuming an admin session exists**
 
-Run the two commands from Step 2.
+Keep existing anonymous access-denied E2E. Add responsive structural coverage to the component/source unit test now; when an authorized admin fixture is introduced for Store/Admin work, reuse it to add live action E2E rather than weakening security or hard-coding a production credential.
+
+- [ ] **Step 5: Run focused tests and typecheck**
+
+Run: `npm test -- --run tests/unit/admin-control-center.test.ts && npm run typecheck`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/routes/admin-moderation.tsx tests/unit/admin-control-center.test.ts tests/e2e/admin.spec.ts
@@ -367,15 +362,14 @@ git commit -m "feat: redesign admin moderation workflow"
 **Files:**
 - Modify: `app/routes/admin-verifications.tsx`
 - Test: `tests/unit/admin-control-center.test.ts`
-- Modify: `tests/e2e/admin.spec.ts`
 
 **Interfaces:**
 - Consumes: existing `POST /api/posts/:postId/source/verify`.
-- Produces: split review-context + decision UI with `Open post` and persisted `Verify source` action only.
+- Produces split review-context + decision UI with `Open post` and persisted `Verify source` only.
 
 - [ ] **Step 1: Add failing assertions**
 
-Assert route contains `Open post`, `Verify source`, an `admin-verification-card__context` region and an `admin-verification-card__decision` region.
+Assert route contains `Open post`, `Verify source`, `admin-verification-card__context` and `admin-verification-card__decision`.
 
 - [ ] **Step 2: Run focused test and verify RED**
 
@@ -385,30 +379,18 @@ Expected: FAIL.
 
 - [ ] **Step 3: Implement candidate cards**
 
-Each candidate card renders:
+Render a post link, title, author and candidate comment in the context region; render canonical URL + evidence form in the decision region. On successful verification, show status feedback and `useRevalidator().revalidate()` instead of a full window reload. Do not add reject/defer persistence.
 
-- link `/posts/${postId}` or canonical known route;
-- title, author, comment body in context section;
-- URL/evidence form in decision section;
-- status feedback without full page reload; on success call `useRevalidator().revalidate()`.
+- [ ] **Step 4: Run unit test and typecheck**
 
-Do not add reject/defer persistence because the approved spec explicitly excludes unsupported decisions.
-
-- [ ] **Step 4: Run unit and admin E2E**
-
-Run:
-
-```bash
-npm test -- --run tests/unit/admin-control-center.test.ts
-npx playwright test tests/e2e/admin.spec.ts --project=chromium
-```
+Run: `npm test -- --run tests/unit/admin-control-center.test.ts && npm run typecheck`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/routes/admin-verifications.tsx tests/unit/admin-control-center.test.ts tests/e2e/admin.spec.ts
+git add app/routes/admin-verifications.tsx tests/unit/admin-control-center.test.ts
 git commit -m "feat: redesign source verification admin queue"
 ```
 
@@ -418,11 +400,10 @@ git commit -m "feat: redesign source verification admin queue"
 - Create: `app/routes/admin-users.tsx`
 - Modify: `app/routes.ts`
 - Test: `tests/unit/admin-control-center.test.ts`
-- Modify: `tests/e2e/admin.spec.ts`
 
 **Interfaces:**
-- Consumes: `createAdminReadService().users(query)` and existing `POST /api/admin/users/:userId/roles`.
-- Produces route: `/admin/users`.
+- Consumes: `createAdminReadService().users(query)`, `loadAdminAccess`, `loadCapabilityAccess(request, context, "user.assign_roles")`, and existing `POST /api/admin/users/:userId/roles`.
+- Produces route `/admin/users`.
 
 Role mutation payload remains:
 
@@ -436,7 +417,7 @@ Role mutation payload remains:
 
 - [ ] **Step 1: Add failing route assertions**
 
-Assert `app/routes.ts` includes `route("admin/users", "routes/admin-users.tsx")`; new route uses `user.assign_roles`, does not select/display email fields, contains search input and role action payload.
+Assert `app/routes.ts` contains `route("admin/users", "routes/admin-users.tsx")`; route references `user.assign_roles`, has search, and contains no email field names.
 
 - [ ] **Step 2: Run focused test and verify RED**
 
@@ -446,18 +427,18 @@ Expected: FAIL because the route is absent.
 
 - [ ] **Step 3: Implement `/admin/users`**
 
-Use `loadAdminAccess` for read access and root authorization/capability data to decide whether role controls are shown. Search is submitted as `?q=` and handled server-side by `AdminReadService.users`. Render desktop table and mobile cards. Role changes require a reason modal and call the existing API; never expose email ciphertext/hash.
+Loader returns `{ access, canAssignRoles, users, query }`. Read access is `admin.access`; `canAssignRoles` comes from the separate capability check. Search uses `?q=` and server-side `AdminReadService.users`. Render desktop rows and mobile cards. Only render role mutation controls when `canAssignRoles.authorized`; each mutation requires a reason and uses the existing API. Never display encrypted/hash email fields.
 
 - [ ] **Step 4: Run tests and typecheck**
 
-Run: `npm test -- --run tests/unit/admin-control-center.test.ts && npm run typecheck && npx playwright test tests/e2e/admin.spec.ts --project=chromium`
+Run: `npm test -- --run tests/unit/admin-control-center.test.ts && npm run typecheck`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/routes/admin-users.tsx app/routes.ts tests/unit/admin-control-center.test.ts tests/e2e/admin.spec.ts
+git add app/routes/admin-users.tsx app/routes.ts tests/unit/admin-control-center.test.ts
 git commit -m "feat: add admin users management route"
 ```
 
@@ -468,11 +449,10 @@ git commit -m "feat: add admin users management route"
 - Create: `app/routes/admin-audit.tsx`
 - Modify: `app/routes.ts`
 - Test: `tests/unit/admin-control-center.test.ts`
-- Modify: `tests/e2e/admin.spec.ts`
 
 **Interfaces:**
 - Consumes: `AdminReadService.roles()` and `AdminReadService.audit(filters)`.
-- Produces: `/admin/roles`, `/admin/audit`.
+- Produces `/admin/roles`, `/admin/audit`.
 
 - [ ] **Step 1: Add failing route assertions**
 
@@ -492,22 +472,22 @@ Expected: FAIL.
 
 - [ ] **Step 3: Implement Roles**
 
-SSR-load role rows, show role name/slug/rank/system status, assignment count and capability chips. Mutation controls may reuse the Users route/API; do not invent a capability-edit API if none exists. If the existing backend only supports user role assignments, this route remains an authoritative role/capability inspection surface plus links to user assignment management.
+SSR-load role rows, show name/slug/rank/system status, assignment count and capability chips. Do not invent capability-edit persistence; current role mutation support remains user assignment through `/admin/users`.
 
 - [ ] **Step 4: Implement Audit**
 
-Require `audit.read` via `loadCapabilityAccess`. Parse query-string filters (`actor`, `action`, `targetType`, `targetId`, `from`, `to`) into the fixed `AdminReadService.audit` filter object. Render responsive rows/cards with actor, action, target, reason, timestamp and safely parsed metadata summary.
+Require `audit.read` via `loadCapabilityAccess`. Parse `actor`, `action`, `targetType`, `targetId`, `from`, `to` into the fixed `AdminReadService.audit` filter object. Render actor, action, target, reason, timestamp and safely parsed metadata in responsive rows/cards.
 
 - [ ] **Step 5: Run tests**
 
-Run: `npm test -- --run tests/unit/admin-control-center.test.ts && npm run typecheck && npx playwright test tests/e2e/admin.spec.ts --project=chromium`
+Run: `npm test -- --run tests/unit/admin-control-center.test.ts && npm run typecheck`
 
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add app/routes/admin-roles.tsx app/routes/admin-audit.tsx app/routes.ts tests/unit/admin-control-center.test.ts tests/e2e/admin.spec.ts
+git add app/routes/admin-roles.tsx app/routes/admin-audit.tsx app/routes.ts tests/unit/admin-control-center.test.ts
 git commit -m "feat: add admin roles and audit routes"
 ```
 
@@ -515,15 +495,16 @@ git commit -m "feat: add admin roles and audit routes"
 
 **Files:**
 - Modify: `tests/e2e/responsive.spec.ts`
+- Modify: `tests/e2e/admin.spec.ts`
 - Modify: `docs/IMPLEMENTATION_PROGRESS.md`
 
 **Interfaces:**
 - Consumes: Tasks 1-7.
-- Produces: admin routes verified across all supported widths.
+- Produces admin routes verified across supported widths without weakening authorization behavior.
 
-- [ ] **Step 1: Add all new admin routes to responsive smoke coverage**
+- [ ] **Step 1: Add new admin routes to responsive smoke coverage**
 
-Add `/admin`, `/admin/moderation`, `/admin/verifications`, `/admin/users`, `/admin/roles`, `/admin/audit` to the existing responsive route matrix. Assert no document horizontal overflow at every required viewport.
+Add `/admin`, `/admin/moderation`, `/admin/verifications`, `/admin/users`, `/admin/roles`, `/admin/audit` to the route matrix. Anonymous E2E should continue seeing access-denied states while the document remains overflow-free.
 
 - [ ] **Step 2: Run the complete gate**
 
@@ -546,6 +527,6 @@ Record exact passing test totals/run IDs and the admin redesign scope. Do not st
 - [ ] **Step 4: Commit documentation**
 
 ```bash
-git add tests/e2e/responsive.spec.ts docs/IMPLEMENTATION_PROGRESS.md
+git add tests/e2e/responsive.spec.ts tests/e2e/admin.spec.ts docs/IMPLEMENTATION_PROGRESS.md
 git commit -m "docs: record admin control center verification"
 ```
