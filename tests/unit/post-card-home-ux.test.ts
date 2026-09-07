@@ -33,17 +33,22 @@ describe("home post card experience", () => {
   });
 
   it("opens the comment composer directly from the home Comment action", () => {
-    expect(postCardSource).toContain("#comments");
+    expect(postCardSource).toContain('to={`${detailHref}#comments`}');
     expect(commentThreadSource).toContain('id="comments"');
-    expect(commentThreadSource).toContain("focusComposer");
-    expect(commentThreadSource).toContain("composerRef");
-    expect(postDetailSource).toContain('location.hash === "#comments"');
+    expect(commentThreadSource).toContain('id="comment-composer"');
+    expect(postDetailSource).toContain('location.hash !== "#comments"');
+    expect(postDetailSource).toContain('document.getElementById("comments")');
+    expect(postDetailSource).toContain('document.getElementById("comment-composer")');
+    expect(postDetailSource).toContain("focus({ preventScroll: true })");
   });
 
-  it("keeps the card and title opening post detail without hijacking nested controls", () => {
-    expect(postCardSource).toContain('role="link"');
+  it("keeps real navigation targets without making the outer card a nested link", () => {
+    expect(postCardSource).not.toContain('role="link"');
+    expect(postCardSource).not.toContain("tabIndex={0}");
+    expect(postCardSource).not.toContain("handleCardKeyDown");
     expect(postCardSource).toContain("handleCardClick");
     expect(postCardSource).toContain("isInteractivePostTarget");
-    expect(postCardSource).toContain("product-post__title");
+    expect(postCardSource).toContain('<Link to={detailHref} className="product-post__title">');
+    expect(postCardSource).toContain("<Link to={detailHref} className={mediaClass}");
   });
 });
