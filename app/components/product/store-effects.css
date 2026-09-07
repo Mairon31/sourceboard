@@ -129,12 +129,7 @@
 
 .product-store-preview--blue-energy::before {
   border: 2px solid #5bd7ffcc;
-  background: radial-gradient(
-    circle,
-    transparent 54%,
-    #258dff1f 72%,
-    transparent 74%
-  );
+  background: radial-gradient(circle, transparent 54%, #258dff1f 72%, transparent 74%);
   box-shadow:
     0 0 16px #4acfffaa,
     inset 0 0 22px #277dff88;
@@ -201,12 +196,7 @@
 }
 
 .product-store-preview--dark-smoke::after {
-  background: radial-gradient(
-    circle,
-    transparent 45%,
-    #74518a33 66%,
-    transparent 75%
-  );
+  background: radial-gradient(circle, transparent 45%, #74518a33 66%, transparent 75%);
   animation: sb-fx-pulse 4s ease-in-out infinite;
 }
 
@@ -252,12 +242,7 @@
 }
 
 .product-store-preview--holy-glow::before {
-  background: radial-gradient(
-    circle,
-    #fffbd355 0 34%,
-    #ffe48533 52%,
-    transparent 72%
-  );
+  background: radial-gradient(circle, #fffbd355 0 34%, #ffe48533 52%, transparent 72%);
   box-shadow:
     0 0 30px #fff2a088,
     inset 0 0 26px #fffbd377;
@@ -299,11 +284,7 @@
 }
 
 .product-store-preview--rgb-glitch::after {
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0 11px,
-    #ffffff12 12px 13px
-  );
+  background: repeating-linear-gradient(0deg, transparent 0 11px, #ffffff12 12px 13px);
   animation: sb-fx-pulse 2.4s ease-in-out infinite;
 }
 
