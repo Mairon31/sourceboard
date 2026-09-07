@@ -47,12 +47,26 @@ test("deterministic post detail route responds directly", async ({ page }) => {
 });
 
 test("post title opens canonical detail", async ({ page }) => {
+  const navigationTraffic: string[] = [];
+  page.on("response", (response) => {
+    if (response.url().includes("e2e-navigation-post")) {
+      navigationTraffic.push(`${response.status()} ${response.url()}`);
+    }
+  });
+  page.on("requestfailed", (request) => {
+    if (request.url().includes("e2e-navigation-post")) {
+      navigationTraffic.push(`FAILED ${request.url()} ${request.failure()?.errorText ?? "unknown"}`);
+    }
+  });
+
   await page.goto("/");
   await waitForUiReady(page);
   const card = page.locator(".product-post", { hasText: "E2E navigation post" });
   const title = card.locator(".product-post__title");
   await expect(title).toHaveAttribute("href", "/posts/e2e-navigation-post/e2e-navigation-post");
   await title.click();
+  await page.waitForTimeout(1_000);
+  console.log(`POST_NAV_DIAGNOSTIC url=${page.url()} traffic=${JSON.stringify(navigationTraffic)}`);
   await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
 });
 
