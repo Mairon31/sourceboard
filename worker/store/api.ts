@@ -156,7 +156,10 @@ export async function handleStoreRequest(
         return failure("AUTHENTICATION_REQUIRED", "Sign in to continue.", requestId, 401);
       return response({ items: await service.inventory(userId) }, requestId);
     }
-    if (request.method === "PUT" && /^\/api\/me\/cosmetics\/[^/]+$/.test(url.pathname)) {
+    if (
+      (request.method === "PUT" || request.method === "DELETE") &&
+      /^\/api\/me\/cosmetics\/[^/]+$/.test(url.pathname)
+    ) {
       assertSameOrigin(request);
       assertCsrfToken(request);
       const userId = await sessionUser(request, env);
@@ -165,6 +168,9 @@ export async function handleStoreRequest(
       const slot = decodeURIComponent(url.pathname.split("/")[4] ?? "");
       if (!isSlot(slot))
         return failure("INVALID_SLOT", "That cosmetic slot is not supported.", requestId, 400);
+      if (request.method === "DELETE") {
+        return response({ cosmetic: await service.unequip(userId, slot) }, requestId);
+      }
       const body = parseBody(await request.json());
       if (typeof body.storeItemId !== "string")
         return failure("INVALID_REQUEST", "A store item is required.", requestId, 400);
