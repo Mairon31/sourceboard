@@ -81,7 +81,9 @@ export default function AdminRolesRoute() {
                     <span>{role.slug}</span>
                   </div>
                   <span>{role.rank}</span>
-                  <span className="admin-status-badge">{role.isSystem ? "System" : "Custom"}</span>
+                  <span className="admin-status-badge">
+                    {role.isSystem ? "System" : "Custom"}
+                  </span>
                   <span>{role.assignmentCount}</span>
                   <CapabilityBadges capabilities={role.capabilities} />
                 </div>
@@ -96,7 +98,9 @@ export default function AdminRolesRoute() {
                       <strong>{role.name}</strong>
                       <span>{role.slug}</span>
                     </div>
-                    <span className="admin-status-badge">{role.isSystem ? "System" : "Custom"}</span>
+                    <span className="admin-status-badge">
+                      {role.isSystem ? "System" : "Custom"}
+                    </span>
                   </div>
                   <small>Rank {role.rank}</small>
                   <small>{role.assignmentCount} assignments</small>
