@@ -70,10 +70,11 @@ test("post title opens canonical detail", async ({ page }) => {
   await expect(title).toHaveAttribute("href", "/posts/e2e-navigation-post/e2e-navigation-post");
   await title.click();
   await page.waitForTimeout(1_000);
-  expect(
-    { url: page.url(), traffic, failures },
-    "POST_NAV_DIAGNOSTIC",
-  ).toEqual({ url: "diagnostic", traffic: [], failures: [] });
+  expect({ url: page.url(), traffic, failures }, "POST_NAV_DIAGNOSTIC").toEqual({
+    url: "diagnostic",
+    traffic: [],
+    failures: [],
+  });
 });
 
 test("post card surface opens canonical detail", async ({ page }) => {
