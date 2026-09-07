@@ -37,7 +37,6 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
-    "@base-ui/react": "1.8.0",
     "@cloudflare/vite-plugin": "1.54.3",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
