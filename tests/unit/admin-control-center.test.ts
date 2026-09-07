@@ -12,6 +12,7 @@ const shell = read("../../app/components/admin/AdminShell.tsx");
 const css = read("../../app/components/admin/admin.css");
 const adminRoute = read("../../app/routes/admin.tsx");
 const moderationRoute = read("../../app/routes/admin-moderation.tsx");
+const verificationsRoute = read("../../app/routes/admin-verifications.tsx");
 
 describe("admin control center", () => {
   it("provides typed overview users roles and audit reads", () => {
@@ -52,5 +53,14 @@ describe("admin control center", () => {
     expect(moderationRoute).toContain("revalidator.revalidate()");
     expect(moderationRoute).toContain("admin-desktop-table");
     expect(moderationRoute).toContain("admin-mobile-review-card");
+  });
+
+  it("separates verification context from the persisted decision workflow", () => {
+    expect(verificationsRoute).toContain("admin-verification-card__context");
+    expect(verificationsRoute).toContain("admin-verification-card__decision");
+    expect(verificationsRoute).toContain("Open post");
+    expect(verificationsRoute).toContain("Verify source");
+    expect(verificationsRoute).toContain("readCsrfToken()");
+    expect(verificationsRoute).toContain("revalidator.revalidate()");
   });
 });
