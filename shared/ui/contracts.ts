@@ -1,3 +1,9 @@
+import type {
+  AvatarFramePreset,
+  NameFontFamily,
+  ProfileEffectPreset,
+} from "../store/cosmetics";
+
 export type AuthorMode = "IDENTIFIED" | "ANONYMOUS";
 export type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
 export type PostStatus = "OPEN" | "ANSWERED" | "VERIFIED" | "ARCHIVED" | "LOCKED";
@@ -10,7 +16,11 @@ export type StoreItemType =
   | "EMOTE_PACK"
   | "STICKER_PACK";
 export type StoreItemState =
-  "AVAILABLE" | "OWNED" | "EQUIPPED" | "DISABLED" | "INSUFFICIENT_POINTS";
+  | "AVAILABLE"
+  | "OWNED"
+  | "EQUIPPED"
+  | "DISABLED"
+  | "INSUFFICIENT_POINTS";
 
 export interface UserSummary {
   id: string;
@@ -27,8 +37,8 @@ export interface PublicPostAuthor {
   username?: string;
   avatarUrl?: string;
   profileUrl?: string;
-  avatarFrame?: "nebula";
-  nameFont?: "InterVariable" | "AtkinsonHyperlegible" | "Georgia";
+  avatarFrame?: AvatarFramePreset;
+  nameFont?: NameFontFamily;
 }
 
 export interface ReactionSummary {
@@ -158,7 +168,13 @@ export interface FriendView {
 
 export interface NotificationView {
   id: string;
-  type: "COMMENT" | "REPLY" | "SOURCE_ACCEPTED" | "SOURCE_VERIFIED" | "FRIEND_REQUEST" | "SYSTEM";
+  type:
+    | "COMMENT"
+    | "REPLY"
+    | "SOURCE_ACCEPTED"
+    | "SOURCE_VERIFIED"
+    | "FRIEND_REQUEST"
+    | "SYSTEM";
   actor?: UserSummary;
   title: string;
   body: string;
@@ -176,10 +192,11 @@ export interface StoreItemView {
   price: number;
   previewLabel: string;
   packSize?: number;
+  adminUnlocked?: boolean;
   preview: {
     config: {
-      preset?: "nebula" | "soft-glow" | "paper-grain" | "none";
-      family?: "InterVariable" | "AtkinsonHyperlegible" | "Georgia";
+      preset?: AvatarFramePreset | ProfileEffectPreset;
+      family?: NameFontFamily;
     };
     media: Array<{ id: string; label: string; url: string }>;
   };
