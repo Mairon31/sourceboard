@@ -15,6 +15,7 @@ const CAPABILITIES: Record<CatalogKind, Capability> = {
   emote: "emote.manage",
   sticker: "sticker.manage",
 };
+const EMOTE_PACK_ROUTE = "/api/admin/catalog/emote-packs";
 
 function response(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -31,6 +32,10 @@ function routeKind(pathname: string): CatalogKind | null {
   if (pathname.startsWith("/api/admin/catalog/emotes")) return "emote";
   if (pathname.startsWith("/api/admin/catalog/stickers")) return "sticker";
   return null;
+}
+
+function isEmotePackRoute(pathname: string): boolean {
+  return pathname === EMOTE_PACK_ROUTE || pathname.startsWith(`${EMOTE_PACK_ROUTE}/`);
 }
 
 function publicAsset(pathname: string): { kind: CatalogKind; id: string } | null {
@@ -98,6 +103,7 @@ async function handleCreate(
     .trim()
     .toLowerCase();
   const label = String(form.get("label") ?? "").trim();
+  const packId = String(form.get("packId") ?? "").trim() || null;
   const file = form.get("file");
   if (
     !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(key) ||
@@ -112,6 +118,12 @@ async function handleCreate(
       400,
     );
   }
+  if (kind === "emote" && packId) {
+    const pack = await env.DB.prepare("SELECT id FROM emote_packs WHERE id = ?")
+      .bind(packId)
+      .first<{ id: string }>();
+    if (!pack) return failure("PACK_NOT_FOUND", "Emote pack not found.", requestId, 404);
+  }
   const bytes = new Uint8Array(await file.arrayBuffer());
   const metadata = assertPostImage(bytes, file.type);
   const id = createIdentifier();
@@ -120,10 +132,10 @@ async function handleCreate(
   try {
     const columns = kind === "emote" ? "shortcode" : "slug";
     await env.DB.prepare(
-      `INSERT INTO ${table(kind)} (id, ${columns}, label, asset_key, status, sort_order, created_at)
-       VALUES (?, ?, ?, ?, 'ACTIVE', 0, ?)`,
+      `INSERT INTO ${table(kind)} (id, ${columns}, label, asset_key, pack_id, status, sort_order, created_at)
+       VALUES (?, ?, ?, ?, ?, 'ACTIVE', 0, ?)`,
     )
-      .bind(id, key, label, assetKey, Date.now())
+      .bind(id, key, label, assetKey, packId, Date.now())
       .run();
   } catch (error) {
     await env.MEDIA.delete(assetKey);
@@ -136,6 +148,7 @@ async function handleCreate(
       id,
       key,
       label,
+      packId,
       status: "ACTIVE",
       checksumSha256: await sha256Hex(bytes.buffer as ArrayBuffer),
     },
@@ -170,6 +183,195 @@ async function handleStatus(
   return response({ id, status: body.status }, requestId);
 }
 
+async function listEmotePacks(env: SourceBoardEnvironment, requestId: string): Promise<Response> {
+  if (!env.DB)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  const rows = await env.DB.prepare(
+    `SELECT p.id, p.slug, p.label, p.status, p.created_at AS createdAt,
+            s.id AS storeItemId, s.description, s.price_points AS pricePoints,
+            s.is_active AS isActive,
+            COUNT(CASE WHEN e.status = 'ACTIVE' THEN 1 END) AS emoteCount
+     FROM emote_packs p
+     LEFT JOIN store_items s
+       ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
+     LEFT JOIN emote_catalog e ON e.pack_id = p.id
+     GROUP BY p.id, p.slug, p.label, p.status, p.created_at, s.id, s.description,
+              s.price_points, s.is_active
+     ORDER BY p.created_at DESC LIMIT 100`,
+  ).all();
+  return response({ packs: rows.results }, requestId);
+}
+
+function parsePackBody(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+async function createEmotePack(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  if (!env.DB)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  assertSameOrigin(request);
+  assertCsrfToken(request);
+  const body = parsePackBody(await request.json());
+  const slug = String(body?.slug ?? "")
+    .trim()
+    .toLowerCase();
+  const label = String(body?.label ?? "").trim();
+  const description = String(body?.description ?? "").trim();
+  const pricePoints = Number(body?.pricePoints);
+  if (
+    !/^[a-z0-9][a-z0-9-]{1,63}$/.test(slug) ||
+    !label ||
+    label.length > 120 ||
+    description.length > 500 ||
+    !Number.isInteger(pricePoints) ||
+    pricePoints <= 0
+  ) {
+    return failure(
+      "INVALID_EMOTE_PACK",
+      "A valid slug, label, description and positive integer price are required.",
+      requestId,
+      400,
+    );
+  }
+  const id = createIdentifier();
+  const storeItemId = createIdentifier();
+  const now = Date.now();
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO emote_packs (id, slug, label, status, created_at)
+         VALUES (?, ?, ?, 'DISABLED', ?)`,
+      ).bind(id, slug, label, now),
+      env.DB.prepare(
+        `INSERT INTO store_items
+         (id, type, name, description, price_points, config_json, is_active, sort_order, created_at, updated_at)
+         VALUES (?, 'EMOTE_PACK', ?, ?, ?, ?, 0, 1000, ?, ?)`,
+      ).bind(storeItemId, label, description, pricePoints, JSON.stringify({ packId: id }), now, now),
+    ]);
+  } catch (error) {
+    if (String(error).includes("UNIQUE"))
+      return failure("PACK_SLUG_EXISTS", "That emote pack slug is already in use.", requestId, 409);
+    throw error;
+  }
+  return response(
+    { pack: { id, slug, label, description, pricePoints, status: "DISABLED", storeItemId } },
+    requestId,
+    201,
+  );
+}
+
+async function updateEmotePack(
+  packId: string,
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  if (!env.DB)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  assertSameOrigin(request);
+  assertCsrfToken(request);
+  const body = parsePackBody(await request.json());
+  if (!body) return failure("INVALID_EMOTE_PACK", "The request body is invalid.", requestId, 400);
+  if (body.status !== undefined && body.status !== "ACTIVE" && body.status !== "DISABLED")
+    return failure("INVALID_STATUS", "Status must be ACTIVE or DISABLED.", requestId, 400);
+  if (
+    body.pricePoints !== undefined &&
+    (!Number.isInteger(body.pricePoints) || Number(body.pricePoints) <= 0)
+  )
+    return failure("INVALID_EMOTE_PACK", "Price must be a positive integer.", requestId, 400);
+  if (body.label !== undefined && (typeof body.label !== "string" || !body.label.trim()))
+    return failure("INVALID_EMOTE_PACK", "Label cannot be empty.", requestId, 400);
+  if (body.status === "ACTIVE") {
+    const activeEmote = await env.DB.prepare(
+      "SELECT 1 AS available FROM emote_catalog WHERE pack_id = ? AND status = 'ACTIVE' LIMIT 1",
+    )
+      .bind(packId)
+      .first<{ available: number }>();
+    if (!activeEmote)
+      return failure(
+        "EMPTY_EMOTE_PACK",
+        "Add at least one active emote before publishing this pack.",
+        requestId,
+        409,
+      );
+  }
+  const pack = await env.DB.prepare("SELECT id FROM emote_packs WHERE id = ?")
+    .bind(packId)
+    .first<{ id: string }>();
+  if (!pack) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
+
+  const now = Date.now();
+  const packUpdates: string[] = [];
+  const packBinds: unknown[] = [];
+  if (body.label !== undefined) {
+    packUpdates.push("label = ?");
+    packBinds.push(String(body.label).trim());
+  }
+  if (body.status !== undefined) {
+    packUpdates.push("status = ?");
+    packBinds.push(body.status);
+  }
+  if (packUpdates.length) {
+    packBinds.push(packId);
+    await env.DB.prepare(`UPDATE emote_packs SET ${packUpdates.join(", ")} WHERE id = ?`)
+      .bind(...packBinds)
+      .run();
+  }
+
+  const storeUpdates: string[] = [];
+  const storeBinds: unknown[] = [];
+  if (body.label !== undefined) {
+    storeUpdates.push("name = ?");
+    storeBinds.push(String(body.label).trim());
+  }
+  if (body.description !== undefined) {
+    if (typeof body.description !== "string" || body.description.length > 500)
+      return failure("INVALID_EMOTE_PACK", "Description is too long.", requestId, 400);
+    storeUpdates.push("description = ?");
+    storeBinds.push(body.description.trim());
+  }
+  if (body.pricePoints !== undefined) {
+    storeUpdates.push("price_points = ?");
+    storeBinds.push(Number(body.pricePoints));
+  }
+  if (body.status !== undefined) {
+    storeUpdates.push("is_active = ?");
+    storeBinds.push(body.status === "ACTIVE" ? 1 : 0);
+  }
+  if (storeUpdates.length) {
+    storeUpdates.push("updated_at = ?");
+    storeBinds.push(now, packId);
+    await env.DB.prepare(
+      `UPDATE store_items SET ${storeUpdates.join(", ")}
+       WHERE type = 'EMOTE_PACK' AND json_extract(config_json, '$.packId') = ?`,
+    )
+      .bind(...storeBinds)
+      .run();
+  }
+  return response({ pack: { id: packId, updated: true } }, requestId);
+}
+
 async function handlePublicAsset(
   kind: CatalogKind,
   id: string,
@@ -202,7 +404,7 @@ async function handlePublicAsset(
 }
 
 export function isCatalogRoute(pathname: string): boolean {
-  return routeKind(pathname) !== null;
+  return routeKind(pathname) !== null || isEmotePackRoute(pathname) || publicAsset(pathname) !== null;
 }
 
 export async function handleCatalogRequest(
@@ -213,10 +415,27 @@ export async function handleCatalogRequest(
   const url = new URL(request.url);
   const kind = routeKind(url.pathname);
   const asset = publicAsset(url.pathname);
-  if (!kind && !asset) return null;
+  const packRoute = isEmotePackRoute(url.pathname);
+  if (!kind && !asset && !packRoute) return null;
   try {
     if (asset && request.method === "GET") {
       return await handlePublicAsset(asset.kind, asset.id, env, requestId);
+    }
+    if (packRoute) {
+      await requireCapability(request, requestId, env, "emote.manage");
+      if (request.method === "GET" && url.pathname === EMOTE_PACK_ROUTE)
+        return await listEmotePacks(env, requestId);
+      if (request.method === "POST" && url.pathname === EMOTE_PACK_ROUTE)
+        return await createEmotePack(request, requestId, env);
+      const match = url.pathname.match(/^\/api\/admin\/catalog\/emote-packs\/([^/]+)$/);
+      if (request.method === "PATCH" && match)
+        return await updateEmotePack(
+          decodeURIComponent(match[1] ?? ""),
+          request,
+          requestId,
+          env,
+        );
+      return failure("NOT_FOUND", "Emote pack endpoint not found.", requestId, 404);
     }
     if (!kind) return null;
     const actorUserId = await requireCapability(request, requestId, env, CAPABILITIES[kind]);
