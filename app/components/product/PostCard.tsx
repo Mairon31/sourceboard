@@ -1,4 +1,8 @@
-import { useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { Link, useNavigate } from "react-router";
 import type { PostSummary } from "../../../shared/ui/contracts";
 import { Avatar, Badge, Button, Card } from "../ui";
@@ -13,7 +17,9 @@ function statusTone(status: PostSummary["status"]) {
 function isInteractivePostTarget(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
-    Boolean(target.closest("a, button, input, textarea, select, label, [contenteditable='true']"))
+    Boolean(
+      target.closest("a, button, input, textarea, select, label, [contenteditable='true']"),
+    )
   );
 }
 
