@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import {
-  completeGoogleSignIn,
   getGoogleAuthErrorMessage,
+  signInWithGoogle,
   signOutFirebase,
-  startGoogleSignIn,
   type FirebasePublicConfig,
 } from "../../data/firebase-client";
 import { Button, GlassPanel, Input } from "../ui";
@@ -284,40 +283,6 @@ function useVerificationAction(
   }, [mode, navigate, setBusy, setFeedback, token]);
 }
 
-function useGoogleRedirectSignIn(
-  mode: AuthMode,
-  config: AuthConfig | null,
-  navigate: (to: string) => void,
-  setBusy: (busy: boolean) => void,
-  setFeedback: (feedback: AuthFeedback | null) => void,
-): void {
-  const handled = useRef(false);
-  // fallow-ignore-next-line complexity -- the redirect lifecycle must guard cancellation and provider errors.
-  useEffect(() => {
-    if ((mode !== "login" && mode !== "register") || !config?.firebase || handled.current) {
-      return;
-    }
-    handled.current = true;
-    let cancelled = false;
-    setBusy(true);
-    void completeGoogleSignIn(config.firebase)
-      .then((result) =>
-        result && !cancelled
-          ? completeGoogleSession(result.idToken, navigate, (feedback) => setFeedback(feedback))
-          : undefined,
-      )
-      .catch((error) => {
-        if (!cancelled) setFeedback({ tone: "error", message: getGoogleAuthErrorMessage(error) });
-      })
-      .finally(() => {
-        if (!cancelled) setBusy(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [config, mode, navigate, setBusy, setFeedback]);
-}
-
 function handleSuccessfulSubmit(
   mode: AuthMode,
   isReset: boolean,
@@ -444,7 +409,6 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const isReset = mode === "forgot" && Boolean(resetToken);
   const turnstileRequired = mode === "register" || mode === "forgot";
   useVerificationAction(mode, resetToken, navigate, setBusy, setFeedback);
-  useGoogleRedirectSignIn(mode, authConfig, navigate, setBusy, setFeedback);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -479,7 +443,8 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
       if (!authConfig?.firebase) {
         throw new Error("FIREBASE_NOT_CONFIGURED");
       }
-      await startGoogleSignIn(authConfig.firebase);
+      const { idToken } = await signInWithGoogle(authConfig.firebase);
+      await completeGoogleSession(idToken, navigate, (nextFeedback) => setFeedback(nextFeedback));
     } catch (error) {
       setFeedback({
         tone: "error",
