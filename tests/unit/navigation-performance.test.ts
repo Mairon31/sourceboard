@@ -78,4 +78,21 @@ describe("navigation session performance", () => {
     expect(serverRequest).toContain("requestContext.sessionPromise");
     expect(root).toContain("readServerSession");
   });
+
+  it("prefetches visible mobile nav destinations without prefetching every feed post", () => {
+    const productNav = read("../../app/components/product/ProductNav.tsx");
+    const postCard = read("../../app/components/product/PostCard.tsx");
+
+    expect(productNav).toContain('prefetch="viewport"');
+    expect(productNav).toContain('to="/store"');
+    expect(postCard).not.toContain('prefetch="viewport"');
+  });
+
+  it("starts post and comment detail reads together after one session resolution", () => {
+    const detailRoute = read("../../app/routes/post-detail.tsx");
+
+    expect(detailRoute).toContain("Promise.all");
+    expect(detailRoute).toContain("service.getPost");
+    expect(detailRoute).toContain("commentService.listForPost");
+  });
 });
