@@ -16,7 +16,7 @@ const storeApi = read("../../worker/store/api.ts");
 const storeService = read("../../worker/store/service.ts");
 const entitlements = read("../../worker/store/entitlements.ts");
 const cosmetics = read("../../shared/store/cosmetics.ts");
-const migration = read("../../migrations/0013_store_refresh.sql");
+const migration = read("../../migrations/0014_store_refresh.sql");
 
 describe("refreshed store experience", () => {
   it("filters the catalog by All, Frame, Effects, Font and Emotes", () => {
