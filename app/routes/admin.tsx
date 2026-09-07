@@ -64,8 +64,8 @@ export default function AdminRoute() {
 
       {access.unavailable || !access.overview ? (
         <Card className="product-empty-state admin-surface">
-          Operational metrics are temporarily unavailable. Administrative writes remain protected
-          by their server-side capabilities.
+          Operational metrics are temporarily unavailable. Administrative writes remain protected by
+          their server-side capabilities.
         </Card>
       ) : (
         <>
@@ -143,7 +143,9 @@ export default function AdminRoute() {
                     <Card className="admin-mobile-review-card admin-surface" key={entry.id}>
                       <div className="admin-mobile-review-card__row">
                         <strong>{entry.action}</strong>
-                        <span className="admin-status-badge">{formatAdminDate(entry.createdAt)}</span>
+                        <span className="admin-status-badge">
+                          {formatAdminDate(entry.createdAt)}
+                        </span>
                       </div>
                       <span>{entry.actorUsername ? `@${entry.actorUsername}` : "System"}</span>
                       <small>
