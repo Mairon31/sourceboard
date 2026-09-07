@@ -4,11 +4,12 @@ import { createProfileService } from "../../worker/profile/service";
 import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
 import { ProfileEditor } from "../components/product/ProfileEditor";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { SocialActionButton } from "../components/product/SocialActionButton";
-import { Avatar, Badge, Card } from "../components/ui";
+import { Badge, Card } from "../components/ui";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { username?: string };
@@ -111,25 +112,17 @@ function ProfileIdentity({ profile }: { profile: PublicProfile }) {
   return (
     <div className="product-profile-identity">
       <div className="product-list-row__identity">
-        <Avatar
-          name={profile.displayName}
-          src={profile.avatarUrl}
-          size="xl"
-          className={
-            profile.cosmetics?.avatarFrame
-              ? `sb-avatar--frame-${profile.cosmetics.avatarFrame}`
-              : undefined
-          }
-        />
         <div className="product-profile-name">
           <span className="product-eyebrow">Public profile</span>
-          <h1
-            style={
-              profile.cosmetics?.nameFont ? { fontFamily: profile.cosmetics.nameFont } : undefined
-            }
-          >
-            {profile.displayName}
-          </h1>
+          <CosmeticIdentity
+            displayName={profile.displayName}
+            avatarUrl={profile.avatarUrl}
+            avatarFrame={profile.cosmetics?.avatarFrame}
+            profileEffect={profile.cosmetics?.profileEffect}
+            nameFont={profile.cosmetics?.nameFont}
+            mode="profile"
+            nameAs="h1"
+          />
           <p>@{profile.username}</p>
         </div>
       </div>
@@ -172,9 +165,7 @@ function ProfileHero({ profile }: { profile: PublicProfile }) {
   return (
     <Card className="product-profile-hero">
       <ProfileBanner profile={profile} />
-      <div
-        className={`product-profile-content${profile.cosmetics?.profileEffect ? ` product-profile-content--${profile.cosmetics.profileEffect}` : ""}`}
-      >
+      <div className="product-profile-content">
         <ProfileIdentity profile={profile} />
         <p>{profile.bio || "This contributor has not added a bio yet."}</p>
         <ProfileStats profile={profile} />
