@@ -15,6 +15,9 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
   const [liked, setLiked] = useState(post.reaction.viewerReacted);
   const [likes, setLikes] = useState(post.reaction.count);
   const [reactionStatus, setReactionStatus] = useState<string | null>(null);
+  const mediaClass = post.imageUrl
+    ? "product-post__media product-post__media--image"
+    : "product-post__media";
 
   async function toggleLike() {
     setReactionStatus(null);
@@ -110,9 +113,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           ) : null}
         </div>
       ) : (
-        <div
-          className={`product-post__media${post.imageUrl ? " product-post__media--image" : ""}`}
-        >
+        <div className={mediaClass}>
           {post.imageUrl ? (
             <img
               src={post.imageUrl}

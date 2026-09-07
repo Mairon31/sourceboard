@@ -97,7 +97,9 @@ async function uploadProfileMedia(
     body: formData,
   });
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `Could not upload the ${purpose.toLowerCase()}.`));
+    throw new Error(
+      await readErrorMessage(response, `Could not upload the ${purpose.toLowerCase()}.`),
+    );
   }
   const result = (await response.json()) as { assetId: string };
   return result.assetId;
@@ -200,8 +202,12 @@ export function ProfileEditor() {
       const csrfToken = readCookie("__Host-sourceboard_csrf") ?? "";
       let avatarAssetId = source.profile.avatarAssetId;
       let bannerAssetId = source.profile.bannerAssetId;
-      if (avatarFile) avatarAssetId = await uploadProfileMedia("AVATAR", avatarFile, csrfToken);
-      if (bannerFile) bannerAssetId = await uploadProfileMedia("BANNER", bannerFile, csrfToken);
+      if (avatarFile) {
+        avatarAssetId = await uploadProfileMedia("AVATAR", avatarFile, csrfToken);
+      }
+      if (bannerFile) {
+        bannerAssetId = await uploadProfileMedia("BANNER", bannerFile, csrfToken);
+      }
       const response = await fetch("/api/profile/me", {
         method: "PATCH",
         headers: {
@@ -253,7 +259,9 @@ export function ProfileEditor() {
         </Button>
       </div>
       {status ? <span role="status">{status}</span> : null}
-      {open && !draft ? <span className="product-store-preview-status">Loading profile…</span> : null}
+      {open && !draft ? (
+        <span className="product-store-preview-status">Loading profile…</span>
+      ) : null}
       {open && draft ? (
         <form className="product-form-grid" onSubmit={(event) => void saveProfile(event)}>
           <Input
