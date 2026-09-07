@@ -37,15 +37,16 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "@base-ui/react": "1.8.0",
     "@cloudflare/vite-plugin": "1.54.3",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
     "@react-router/dev": "8.3.1",
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "drizzle-kit": "0.31.10",
     "eslint": "10.10.0",
-    "playwright": "1.63.0",
     "prettier": "3.9.6",
     "typescript": "5.9.3",
     "typescript-eslint": "8.69.0",
