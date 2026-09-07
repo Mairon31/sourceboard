@@ -22,15 +22,75 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Format changed implementation files
-        run: npx prettier --write worker/catalog/api.ts worker/store/admin.ts worker/store/api.ts tests/unit/navigation-performance.test.ts
-      - name: Commit canonical formatting
+      - name: Throttle session activity writes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("worker/auth/service.ts")
+          text = path.read_text()
+          marker = "export function createAuthService(dependencies: AuthServiceDependencies): AuthService {"
+          if "SESSION_TOUCH_INTERVAL_MS" not in text:
+              text = text.replace(marker, "const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;\n\n" + marker, 1)
+          old_current = '''    const current = await dependencies.store.findActiveSessionByTokenHash(
+              hashOpaqueToken(rawToken),
+              now(),
+            );
+            if (!current || current.status !== "ACTIVE" || !current.emailVerifiedAt) {
+              if (required) {
+                throw new AuthError(401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
+              }
+              return null;
+            }
+
+            await dependencies.store.touchSession(current.id, now());
+            return { session: current, user: { id: current.userId, username: current.username } };'''
+          new_current = '''    const at = now();
+            const current = await dependencies.store.findActiveSessionByTokenHash(
+              hashOpaqueToken(rawToken),
+              at,
+            );
+            if (!current || current.status !== "ACTIVE" || !current.emailVerifiedAt) {
+              if (required) {
+                throw new AuthError(401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
+              }
+              return null;
+            }
+
+            if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {
+              await dependencies.store.touchSession(current.id, at);
+            }
+            return { session: current, user: { id: current.userId, username: current.username } };'''
+          if old_current not in text:
+              raise SystemExit("currentSession source block not found")
+          text = text.replace(old_current, new_current, 1)
+          old_get = '''    await dependencies.store.touchSession(current.id, at);
+            return { session: current, user: { id: current.userId, username: current.username } };
+          }
+
+          async function logout'''
+          new_get = '''    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {
+              await dependencies.store.touchSession(current.id, at);
+            }
+            return { session: current, user: { id: current.userId, username: current.username } };
+          }
+
+          async function logout'''
+          if old_get not in text:
+              raise SystemExit("getSession source block not found")
+          text = text.replace(old_get, new_get, 1)
+          path.write_text(text)
+          PY
+      - name: Format navigation and Store changes
+        run: npx prettier --write worker/auth/service.ts shared/router-context.ts app/data/server-request.ts app/data/admin-access.ts app/root.tsx worker/catalog/api.ts worker/store/admin.ts worker/store/api.ts tests/unit/navigation-performance.test.ts
+      - name: Run focused tests
+        run: npm test -- --run tests/unit/navigation-performance.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-refresh.test.ts
+      - name: Commit implementation
         run: |
           if git diff --quiet; then
             exit 0
           fi
           git config user.name "SourceBoard CI"
           git config user.email "actions@users.noreply.github.com"
-          git add worker/catalog/api.ts worker/store/admin.ts worker/store/api.ts tests/unit/navigation-performance.test.ts
-          git commit -m "style: apply canonical prettier formatting"
+          git add worker/auth/service.ts shared/router-context.ts app/data/server-request.ts app/data/admin-access.ts app/root.tsx worker/catalog/api.ts worker/store/admin.ts worker/store/api.ts tests/unit/navigation-performance.test.ts
+          git commit -m "perf: reduce authenticated navigation round trips"
           git push origin HEAD:master
