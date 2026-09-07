@@ -1,12 +1,5 @@
 import { getApp, getApps, initializeApp, type FirebaseOptions } from "firebase/app";
-import {
-  getAuth,
-  getRedirectResult,
-  GoogleAuthProvider,
-  signInWithRedirect,
-  signOut,
-  type Auth,
-} from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, type Auth } from "firebase/auth";
 
 export interface FirebasePublicConfig extends FirebaseOptions {
   apiKey: string;
@@ -24,17 +17,10 @@ function getFirebaseAuth(config: FirebasePublicConfig): Auth {
   return authInstance;
 }
 
-export async function startGoogleSignIn(config: FirebasePublicConfig): Promise<void> {
+export async function signInWithGoogle(config: FirebasePublicConfig): Promise<{ idToken: string }> {
   const auth = getFirebaseAuth(config);
-  await signInWithRedirect(auth, new GoogleAuthProvider());
-}
-
-export async function completeGoogleSignIn(
-  config: FirebasePublicConfig,
-): Promise<{ idToken: string } | null> {
-  const auth = getFirebaseAuth(config);
-  const result = await getRedirectResult(auth);
-  return result ? { idToken: await result.user.getIdToken() } : null;
+  const result = await signInWithPopup(auth, new GoogleAuthProvider());
+  return { idToken: await result.user.getIdToken() };
 }
 
 export async function signOutFirebase(): Promise<void> {

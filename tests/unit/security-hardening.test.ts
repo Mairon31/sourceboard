@@ -15,6 +15,12 @@ describe("production security boundaries", () => {
     expect(response.headers.get("etag")).toBe("test");
   });
 
+  it("preserves opener communication required by Google OAuth popups", () => {
+    const response = withSecurityHeaders(new Response("ok"));
+
+    expect(response.headers.get("cross-origin-opener-policy")).toBe("same-origin-allow-popups");
+  });
+
   it("binds inline scripts to the per-response CSP nonce", () => {
     const response = withSecurityHeaders(new Response("ok"), false, "nonce-test");
     const policy = response.headers.get("content-security-policy") ?? "";
