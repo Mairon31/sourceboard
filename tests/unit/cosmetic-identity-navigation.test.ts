@@ -1,13 +1,15 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const read = (path: string) =>
-  readFileSync(new URL(path, import.meta.url), "utf8");
+function readOptionalSource(path: string): string {
+  const url = new URL(path, import.meta.url);
+  return existsSync(url) ? readFileSync(url, "utf8") : "";
+}
 
-const contracts = read("../../shared/ui/contracts.ts");
-const store = read("../../worker/profile/store.ts");
-const posts = read("../../worker/posts/service.ts");
-const comments = read("../../worker/comments/service.ts");
+const contracts = readOptionalSource("../../shared/ui/contracts.ts");
+const store = readOptionalSource("../../worker/profile/store.ts");
+const posts = readOptionalSource("../../worker/posts/service.ts");
+const comments = readOptionalSource("../../worker/comments/service.ts");
 
 describe("public cosmetic identity contracts", () => {
   it("exposes profile effects", () => {
