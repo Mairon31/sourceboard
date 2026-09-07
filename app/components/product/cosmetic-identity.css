@@ -169,7 +169,13 @@
 }
 
 .cosmetic-identity--effect-fire-pulse .cosmetic-identity__avatar-shell::before {
-  background: radial-gradient(circle, transparent 44%, #ff9a3c4d 58%, #ff492d52 65%, transparent 74%);
+  background: radial-gradient(
+    circle,
+    transparent 44%,
+    #ff9a3c4d 58%,
+    #ff492d52 65%,
+    transparent 74%
+  );
   box-shadow: 0 0.85rem 1.8rem #ff572f55;
   animation: cosmetic-identity-pulse 1.8s ease-in-out infinite;
 }
