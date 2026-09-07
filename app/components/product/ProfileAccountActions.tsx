@@ -3,11 +3,7 @@ import { Link } from "react-router";
 import { readCsrfToken } from "../../data/csrf";
 import { Card } from "../ui";
 
-export function ProfileAccountActions({
-  canAccessAdmin = false,
-}: {
-  canAccessAdmin?: boolean;
-}) {
+export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdmin?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
