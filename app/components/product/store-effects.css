@@ -1,0 +1,361 @@
+.product-store-preview--effect {
+  --fx-size: 150px;
+  background: color-mix(in srgb, var(--surface) 93%, black);
+  box-shadow: none;
+}
+
+.product-store-preview--effect::before,
+.product-store-preview--effect::after {
+  position: absolute;
+  z-index: 1;
+  top: 45%;
+  left: 50%;
+  width: var(--fx-size);
+  height: var(--fx-size);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+.product-store-preview--effect .product-store-preview__profile {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes sb-fx-orbit {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.98);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.04);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(0.98);
+  }
+}
+
+@keyframes sb-fx-pulse {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.09);
+  }
+}
+
+@keyframes sb-fx-drift {
+  0%,
+  100% {
+    transform: translate(-52%, -46%) rotate(-6deg);
+  }
+  50% {
+    transform: translate(-48%, -54%) rotate(7deg);
+  }
+}
+
+@keyframes sb-fx-float {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-50%, -44%) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -57%) scale(1.04);
+  }
+}
+
+@keyframes sb-fx-glitch {
+  0%,
+  88%,
+  100% {
+    transform: translate(-50%, -50%);
+    filter: hue-rotate(0deg);
+  }
+  90% {
+    transform: translate(calc(-50% - 4px), calc(-50% + 2px));
+    filter: hue-rotate(60deg);
+  }
+  94% {
+    transform: translate(calc(-50% + 5px), calc(-50% - 2px));
+    filter: hue-rotate(-45deg);
+  }
+}
+
+@keyframes sb-fx-profile-flow {
+  0%,
+  100% {
+    background-position: 0% 20%;
+  }
+  50% {
+    background-position: 100% 80%;
+  }
+}
+
+@keyframes sb-fx-profile-breathe {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    filter: saturate(1.12) brightness(1.045);
+  }
+}
+
+.product-store-preview--star-dust::before {
+  width: 5px;
+  height: 5px;
+  background: #fff;
+  box-shadow:
+    62px -45px 0 0 #b8ddff,
+    -58px -37px 0 1px #fff1a8,
+    70px 23px 0 1px #fff,
+    -69px 28px 0 0 #8fcfff,
+    34px 63px 0 0 #fff7c4,
+    -30px 66px 0 1px #fff;
+  animation: sb-fx-orbit 7s linear infinite;
+}
+
+.product-store-preview--star-dust::after {
+  border: 1px solid #9ecfff66;
+  box-shadow: 0 0 30px #7b8cff66;
+  animation: sb-fx-pulse 3s ease-in-out infinite;
+}
+
+.product-store-preview--blue-energy::before {
+  border: 2px solid #5bd7ffcc;
+  background: radial-gradient(circle, transparent 54%, #258dff1f 72%, transparent 74%);
+  box-shadow:
+    0 0 16px #4acfffaa,
+    inset 0 0 22px #277dff88;
+  animation: sb-fx-pulse 2.3s ease-in-out infinite;
+}
+
+.product-store-preview--blue-energy::after {
+  width: calc(var(--fx-size) + 18px);
+  height: calc(var(--fx-size) + 18px);
+  border: 1px dashed #8ce8ff77;
+  animation: sb-fx-orbit 8s linear infinite;
+}
+
+.product-store-preview--fire-pulse::before {
+  background: radial-gradient(circle, transparent 46%, #ff9a3c55 58%, #ff492d66 64%, transparent 74%);
+  box-shadow: 0 18px 34px #ff572f66;
+  animation: sb-fx-pulse 1.75s ease-in-out infinite;
+}
+
+.product-store-preview--fire-pulse::after {
+  width: 10px;
+  height: 10px;
+  background: #ffc75c;
+  box-shadow:
+    -56px 26px 0 -2px #ff6848,
+    57px 14px 0 -1px #ff9e43,
+    -35px -56px 0 -2px #ffb84e,
+    34px -62px 0 -2px #ff6240;
+  animation: sb-fx-orbit 4.5s linear infinite;
+}
+
+.product-store-preview--pink-hearts::before {
+  width: auto;
+  height: auto;
+  color: #ff79bd;
+  content: "♥";
+  font-size: 19px;
+  text-shadow:
+    58px -18px 0 #ffacd5,
+    -56px 4px 0 #ff70b4,
+    43px 53px 0 #ff91c8,
+    -39px 55px 0 #ffc0df;
+  animation: sb-fx-float 2.8s ease-in-out infinite;
+}
+
+.product-store-preview--pink-hearts::after {
+  border: 1px solid #ff8fc255;
+  box-shadow: 0 0 28px #ff75b944;
+  animation: sb-fx-pulse 3.2s ease-in-out infinite;
+}
+
+.product-store-preview--dark-smoke::before {
+  background:
+    radial-gradient(ellipse at 35% 55%, #8d63a966 0 18%, transparent 58%),
+    radial-gradient(ellipse at 70% 45%, #33394788 0 20%, transparent 62%);
+  filter: blur(13px);
+  animation: sb-fx-drift 4.8s ease-in-out infinite;
+}
+
+.product-store-preview--dark-smoke::after {
+  background: radial-gradient(circle, transparent 45%, #74518a33 66%, transparent 75%);
+  animation: sb-fx-pulse 4s ease-in-out infinite;
+}
+
+.product-store-preview--snow-drift::before {
+  width: 5px;
+  height: 5px;
+  background: #fff;
+  box-shadow:
+    60px -42px 0 0 #d9f3ff,
+    -62px -30px 0 1px #fff,
+    57px 34px 0 1px #c9ebff,
+    -54px 43px 0 0 #fff,
+    17px 68px 0 0 #e8f8ff,
+    -15px -70px 0 1px #fff;
+  animation: sb-fx-drift 3.7s ease-in-out infinite;
+}
+
+.product-store-preview--snow-drift::after {
+  border: 1px solid #d9f3ff44;
+  box-shadow: 0 0 26px #9cdfff55;
+  animation: sb-fx-pulse 3.6s ease-in-out infinite;
+}
+
+.product-store-preview--electric-burst::before {
+  background: conic-gradient(
+    from 12deg,
+    transparent 0 9%,
+    #65e9ffbb 10% 11%,
+    transparent 12% 32%,
+    #9b6cffaa 33% 34%,
+    transparent 35% 62%,
+    #59d7ff99 63% 64%,
+    transparent 65% 100%
+  );
+  filter: drop-shadow(0 0 8px #65e9ff99);
+  animation: sb-fx-orbit 3s linear infinite;
+}
+
+.product-store-preview--electric-burst::after {
+  border: 1px solid #766cff88;
+  box-shadow: 0 0 30px #5de6ff55;
+  animation: sb-fx-pulse 1.8s ease-in-out infinite;
+}
+
+.product-store-preview--holy-glow::before {
+  background: radial-gradient(circle, #fffbd355 0 34%, #ffe48533 52%, transparent 72%);
+  box-shadow:
+    0 0 30px #fff2a088,
+    inset 0 0 26px #fffbd377;
+  animation: sb-fx-pulse 2.6s ease-in-out infinite;
+}
+
+.product-store-preview--holy-glow::after {
+  width: calc(var(--fx-size) + 14px);
+  height: calc(var(--fx-size) + 14px);
+  border: 1px solid #fff7bd99;
+  animation: sb-fx-orbit 9s linear infinite;
+}
+
+.product-store-preview--butterfly::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 70% 30% 70% 30%;
+  background: #a7e6ff;
+  box-shadow:
+    61px -22px 0 2px #d4a6ff,
+    -57px -13px 0 1px #88dcff,
+    45px 50px 0 1px #efb8ff,
+    -48px 48px 0 2px #9ce5ff;
+  animation: sb-fx-orbit 5.2s ease-in-out infinite;
+}
+
+.product-store-preview--butterfly::after {
+  box-shadow: 0 0 25px #b79cff55;
+  animation: sb-fx-pulse 3.1s ease-in-out infinite;
+}
+
+.product-store-preview--rgb-glitch::before {
+  border: 2px solid #4ef4ff;
+  box-shadow:
+    6px 0 0 -2px #ff42d4,
+    -6px 0 0 -2px #6376ff,
+    0 0 24px #4ef4ff77;
+  animation: sb-fx-glitch 2.1s steps(1, end) infinite;
+}
+
+.product-store-preview--rgb-glitch::after {
+  background: repeating-linear-gradient(0deg, transparent 0 11px, #ffffff12 12px 13px);
+  animation: sb-fx-pulse 2.4s ease-in-out infinite;
+}
+
+.product-store-preview--moon-mist::before {
+  background:
+    radial-gradient(ellipse at 40% 50%, #b6d3ff44 0 25%, transparent 62%),
+    radial-gradient(ellipse at 65% 55%, #8f95d744 0 20%, transparent 60%);
+  filter: blur(11px);
+  animation: sb-fx-drift 5.5s ease-in-out infinite;
+}
+
+.product-store-preview--moon-mist::after {
+  border: 1px solid #b9ceff55;
+  box-shadow: 0 0 26px #8da8e755;
+  animation: sb-fx-pulse 4.2s ease-in-out infinite;
+}
+
+.product-store-preview--leaf-drift::before {
+  width: 7px;
+  height: 12px;
+  border-radius: 80% 20% 80% 20%;
+  background: #71dc8b;
+  box-shadow:
+    59px -26px 0 0 #9ee39c,
+    -56px -18px 0 1px #4fcf79,
+    43px 49px 0 0 #a2e78f,
+    -47px 44px 0 1px #66d982;
+  animation: sb-fx-orbit 6.2s ease-in-out infinite;
+}
+
+.product-store-preview--leaf-drift::after {
+  box-shadow: 0 0 26px #55d98044;
+  animation: sb-fx-pulse 3.7s ease-in-out infinite;
+}
+
+.product-profile-content--star-dust,
+.product-profile-content--snow-drift,
+.product-profile-content--pink-hearts,
+.product-profile-content--electric-burst,
+.product-profile-content--butterfly,
+.product-profile-content--leaf-drift {
+  background-size: 165% 165%;
+  animation:
+    sb-fx-profile-flow 8s ease-in-out infinite,
+    sb-fx-profile-breathe 3.8s ease-in-out infinite;
+}
+
+.product-profile-content--blue-energy,
+.product-profile-content--fire-pulse,
+.product-profile-content--dark-smoke,
+.product-profile-content--holy-glow,
+.product-profile-content--rgb-glitch,
+.product-profile-content--moon-mist {
+  animation: sb-fx-profile-breathe 2.8s ease-in-out infinite;
+}
+
+@media (max-width: 760px) {
+  .product-store-preview--effect {
+    --fx-size: 132px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-store-preview--effect::before,
+  .product-store-preview--effect::after,
+  .product-profile-content--star-dust,
+  .product-profile-content--blue-energy,
+  .product-profile-content--fire-pulse,
+  .product-profile-content--pink-hearts,
+  .product-profile-content--dark-smoke,
+  .product-profile-content--snow-drift,
+  .product-profile-content--electric-burst,
+  .product-profile-content--holy-glow,
+  .product-profile-content--butterfly,
+  .product-profile-content--rgb-glitch,
+  .product-profile-content--moon-mist,
+  .product-profile-content--leaf-drift {
+    animation: none !important;
+  }
+}
