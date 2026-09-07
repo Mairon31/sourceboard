@@ -19,6 +19,7 @@ import "./components/product/post-media.css";
 import "./components/product/post-card-refresh.css";
 import "./components/product/product-interactions.css";
 import "./components/product/store.css";
+import "./components/product/store-page.css";
 import "./components/product/store-responsive.css";
 import "./components/product/store-effects.css";
 import "./components/product/cosmetic-identity.css";
