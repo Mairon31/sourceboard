@@ -12,7 +12,6 @@ const postRoute = read("../../app/routes/post-new.tsx");
 const imageValidation = read("../../worker/posts/image.ts");
 const postsApi = read("../../worker/posts/api.ts");
 const postsStore = read("../../worker/posts/store.ts");
-const media = read("../../worker/media/r2.ts");
 
 describe("new post image upload pipeline", () => {
   it("uses a dedicated composer with replace/remove, paste/drop and object URL cleanup", () => {
@@ -38,8 +37,10 @@ describe("new post image upload pipeline", () => {
   });
 
   it("optimizes JPEG/PNG only when a smaller WebP candidate is available", () => {
-    expect(uploadField).toContain('file.type !== "image/jpeg" && file.type !== "image/png"');
-    expect(uploadField).toContain('canvas.toBlob');
+    expect(uploadField).toContain(
+      'file.type !== "image/jpeg" && file.type !== "image/png"',
+    );
+    expect(uploadField).toContain("canvas.toBlob");
     expect(uploadField).toContain('"image/webp"');
     expect(uploadField).toContain("optimized.size >= file.size");
   });
@@ -48,8 +49,8 @@ describe("new post image upload pipeline", () => {
     expect(postsApi).toContain("assertPostImage(bytes, fileEntry.type)");
     expect(postsApi).toContain("sha256Hex(bytes.buffer)");
     expect(postsApi).toContain("createIdentifier()");
-    expect(postsApi).toContain("media.putImage");
-    expect(media).toContain("putImage");
+    expect(postsApi).toContain("media.put(r2Key, bytes");
+    expect(postsApi).toContain("httpMetadata: { contentType: metadata.contentType }");
     expect(postsStore).toContain("checksum_sha256");
     expect(postsStore).toContain("byte_size");
     expect(postsStore).not.toMatch(/base64|body_blob|image_bytes/i);
