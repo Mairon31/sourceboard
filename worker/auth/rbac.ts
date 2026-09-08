@@ -15,6 +15,7 @@ export type Capability =
   | "user.read_private_admin_fields"
   | "user.suspend"
   | "user.ban"
+  | "user.delete"
   | "user.assign_roles"
   | "role.manage"
   | "post.moderate"
