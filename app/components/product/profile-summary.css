@@ -28,6 +28,14 @@
   justify-content: flex-end;
 }
 
+.product-profile-editor-inline__identity {
+  order: -2;
+}
+
+.product-profile-editor-inline__toolbar {
+  order: -1;
+}
+
 @media (max-width: 780px) {
   .product-profile-summary {
     gap: 6px 14px;
