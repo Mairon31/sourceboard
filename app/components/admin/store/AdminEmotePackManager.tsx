@@ -151,6 +151,26 @@ function EmoteEditor({
     }
   }
 
+  async function toggleEmoteEnabled() {
+    setLocalBusy(true);
+    try {
+      const response = await fetch(`/api/admin/catalog/emotes/${encodeURIComponent(emote.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({ isEnabled: !truthy(emote.isEnabled) }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not change this emote enablement."));
+        return;
+      }
+      onStatus(`${emote.label} ${truthy(emote.isEnabled) ? "disabled" : "enabled"}.`);
+      await onChanged();
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
   const disabled = busy || localBusy;
   const removed = emote.moderationState === "REMOVED";
 
@@ -304,6 +324,16 @@ function EmoteEditor({
           <div className="admin-store-card-actions">
             <Button type="button" size="sm" onClick={() => setEditing(true)} disabled={removed}>
               Edit
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              loading={disabled}
+              disabled={removed}
+              onClick={() => void toggleEmoteEnabled()}
+            >
+              {truthy(emote.isEnabled) ? "Disable" : "Enable"}
             </Button>
             <Button
               type="button"

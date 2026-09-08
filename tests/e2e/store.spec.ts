@@ -8,9 +8,9 @@ test("store presents the refreshed catalog and category filters", async ({ page 
   for (const label of ["All", "Frame", "Effects", "Font", "Emotes"]) {
     await expect(page.getByRole("button", { name: label, exact: true })).toBeVisible();
   }
-  await expect(page.getByRole("heading", { name: "Stellar Magic" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Star Dust" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Lujo Plata" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Stellar Magic" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Star Dust" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lujo Plata" }).first()).toBeVisible();
   await expect(page.getByText("Available").first()).toBeVisible();
 });
 
@@ -19,7 +19,7 @@ test("store filters items and sends signed-out actions to login", async ({ page 
   await waitForUiReady(page);
 
   await page.getByRole("button", { name: "Font", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Lujo Plata" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lujo Plata" }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stellar Magic" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "All", exact: true }).click();

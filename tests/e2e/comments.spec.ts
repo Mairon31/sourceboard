@@ -5,7 +5,7 @@ test("comment API rejects unauthenticated mutation and preserves its error envel
 }) => {
   const response = await request.post("/api/posts/post-missing/comments", {
     headers: {
-      origin: "http://127.0.0.1:5173",
+      origin: "http://localhost:5173",
       "x-csrf-token": "missing",
     },
     data: { plaintext: "This must not be persisted." },
@@ -20,7 +20,7 @@ test("comment API rejects unauthenticated mutation and preserves its error envel
 test("comment API does not accept HTML or arbitrary image uploads", async ({ request }) => {
   const response = await request.post("/api/posts/post-missing/comments", {
     headers: {
-      origin: "http://127.0.0.1:5173",
+      origin: "http://localhost:5173",
       "x-csrf-token": "missing",
     },
     data: {

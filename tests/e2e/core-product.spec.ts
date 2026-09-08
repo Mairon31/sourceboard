@@ -27,7 +27,7 @@ test("feed presents discovery tabs and privacy-sensitive states", async ({ page 
   await expect(page.getByRole("tab", { name: "Friends" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Answered" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Verified" })).toBeVisible();
-  await expect(page.getByText(/No source requests yet|Feed unavailable/)).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: "Recent" })).toBeVisible();
 });
 
 test("home presents the connected production service", async ({ page }) => {

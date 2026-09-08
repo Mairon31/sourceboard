@@ -602,6 +602,34 @@ prerequisites.
       pack previews are required in production; the active Source Hunters pack
       currently has no catalog assets.
 
+### 2026-09-07 Store catalog administration and navigation checkpoint
+
+- [x] Migration `0015_store_catalog_lifecycle.sql` defines the Draft,
+      Published and Archived catalog lifecycle, enablement/featured state and
+      emote moderation fields. A fresh local D1 persistence was migrated twice:
+      the first pass applied `0000` through `0015`; the second reported no
+      pending migrations.
+- [x] Admin Store exposes catalog lifecycle, metadata/configuration, price,
+      sort order, ownership/equipped counts and publish, enable, feature,
+      duplicate, archive and safe-delete actions. Emote packs and their
+      individual emotes support lifecycle, enablement, image replacement,
+      label/shortcode/sort edits and reason-gated moderation with audit events.
+- [x] Added the missing direct Enable/Disable control on each emote card. The
+      public Store presents Featured, New, Owned and All sections, category
+      filters and purchase/equip flows with responsive and reduced-motion
+      coverage.
+- [x] Navigation work removed duplicated session resolution and repeated admin
+      authorization, parallelized Store and post-detail reads, and throttles
+      `touchSession` writes to one per session per five minutes. Product links
+      prefetch on desktop intent and mobile viewport without artificial delays.
+- [x] Fixture cookies remain secure and are created for HTTPS localhost; the
+      E2E suite uses one worker because authorized fixtures share local D1.
+      Focused Store/Admin/Responsive coverage: 84 Chromium tests passed; the
+      complete Chromium suite passed 134 tests.
+- [x] Final local gates before the standard CI run: lint, formatting, typecheck,
+      166 unit tests, build and Workers deploy dry-run passed. Temporary
+      workflow `apply-emote-enable-control.yml` was removed.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B

@@ -6,7 +6,7 @@ test("robots exposes only the public sitemap entry point", async ({ request }) =
   expect(response.status()).toBe(200);
   const body = await response.text();
   expect(body).toContain("Disallow: /api/");
-  expect(body).toContain("Sitemap: http://127.0.0.1:5173/sitemap.xml");
+  expect(body).toContain("Sitemap: http://localhost:5173/sitemap.xml");
 });
 
 test("home exposes the SourceBoard brand asset in the document and as a public image", async ({
@@ -31,7 +31,7 @@ test("home exposes the SourceBoard brand asset in the document and as a public i
 test("post API does not allow unauthenticated mutations", async ({ request }) => {
   const response = await request.post("/api/posts", {
     headers: {
-      origin: "http://127.0.0.1:5173",
+      origin: "http://localhost:5173",
       "x-csrf-token": "missing",
     },
   });

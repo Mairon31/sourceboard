@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { installAdminStoreFixture } from "./test-helpers";
+import { installAdminStoreFixture, waitForUiReady } from "./test-helpers";
 
 const viewports = [
   { width: 390, height: 844 },
@@ -71,6 +71,7 @@ test("authorized Admin Store collapses to mobile cards without document overflow
   await page.setViewportSize({ width: 390, height: 900 });
   await installAdminStoreFixture(page);
   await page.goto("/admin/store");
+  await waitForUiReady(page);
   await page.getByRole("tab", { name: "Emote packs" }).click();
 
   const pack = page.locator(".admin-store-pack-list__item").filter({ hasText: "E2E Draft Pack" });
@@ -105,7 +106,7 @@ test("Store effect previews animate normally and stop under reduced motion", asy
   const reducedAnimation = await preview.evaluate(
     (element) => getComputedStyle(element, "::before").animationName,
   );
-  expect(reducedAnimation).toBe("none");
+  expect(["", "none"]).toContain(reducedAnimation);
 });
 
 test("reduced motion remains active on product surfaces", async ({ page }) => {

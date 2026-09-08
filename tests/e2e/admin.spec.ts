@@ -40,8 +40,9 @@ test("authorized Admin Store exposes published cosmetics and editable metadata",
   await expect(stellar.getByText(/equipped/)).toBeVisible();
 
   await stellar.getByRole("button", { name: "Edit" }).click();
-  await expect(page.getByRole("heading", { name: "Edit Stellar Magic" })).toBeVisible();
-  await expect(page.getByLabel("Config JSON")).toBeVisible();
+  const editor = page.locator(".admin-store-editor");
+  await expect(editor.getByRole("heading", { name: "Stellar Magic", exact: true })).toBeVisible();
+  await expect(editor.locator('textarea[name="config"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "Save changes" })).toBeVisible();
 });
 
@@ -68,6 +69,7 @@ test("authorized Admin Store opens draft packs and administers individual emotes
   await expect(emote.getByText(":e2e_wave:", { exact: true })).toBeVisible();
   await expect(emote.getByText("CLEAR", { exact: true })).toBeVisible();
   await expect(emote.getByRole("button", { name: "Edit" })).toBeVisible();
+  await expect(emote.getByRole("button", { name: "Disable", exact: true })).toBeVisible();
   await expect(emote.getByRole("button", { name: "Replace image" })).toBeVisible();
 
   await emote.getByRole("button", { name: "Edit" }).click();

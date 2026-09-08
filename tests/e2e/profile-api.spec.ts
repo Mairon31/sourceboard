@@ -5,7 +5,7 @@ test("profile mutations require authentication even when the request is same-ori
 }) => {
   const response = await request.patch("/api/profile/me", {
     headers: {
-      origin: "http://127.0.0.1:5173",
+      origin: "http://localhost:5173",
       "content-type": "application/json",
     },
     data: {

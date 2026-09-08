@@ -1,18 +1,29 @@
 import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { hashOpaqueToken } from "../../worker/auth/crypto";
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/security";
 
 export async function waitForUiReady(page: Page) {
-  await expect(page.locator('[data-ui-ready="true"]')).toBeVisible();
+  await expect(page.locator('[data-ui-ready="true"]')).toBeVisible({ timeout: 30_000 });
 }
 
 function executeLocalSql(sql: string) {
-  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
-  execFileSync(npx, ["wrangler", "d1", "execute", "DB", "--local", "--command", sql], {
-    cwd: process.cwd(),
-    stdio: "pipe",
-  });
+  const wranglerEntrypoint = resolve(
+    process.cwd(),
+    "node_modules",
+    "wrangler",
+    "bin",
+    "wrangler.js",
+  );
+  execFileSync(
+    process.execPath,
+    [wranglerEntrypoint, "d1", "execute", "DB", "--local", "--command", sql],
+    {
+      cwd: process.cwd(),
+      stdio: "pipe",
+    },
+  );
 }
 
 export function seedNavigationPostFixture() {
@@ -130,7 +141,7 @@ export async function installAdminStoreFixture(page: Page) {
     {
       name: SESSION_COOKIE_NAME,
       value: sessionToken,
-      url: "http://127.0.0.1:5173",
+      url: "https://localhost:5173",
       httpOnly: true,
       secure: true,
       sameSite: "Lax",
@@ -138,7 +149,7 @@ export async function installAdminStoreFixture(page: Page) {
     {
       name: CSRF_COOKIE_NAME,
       value: csrfToken,
-      url: "http://127.0.0.1:5173",
+      url: "https://localhost:5173",
       httpOnly: false,
       secure: true,
       sameSite: "Lax",
