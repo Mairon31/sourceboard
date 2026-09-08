@@ -32,6 +32,7 @@ const MAX_TEXT_LENGTH = 5_000;
 const MAX_LINK_LABEL = 300;
 const KLIPY_MEDIA_HOSTS = new Set(["static.klipy.com", "static1.klipy.com", "static2.klipy.com"]);
 const LEGACY_PICKER_EMOTE_PATTERN = /^emt_[a-z0-9_+-]{1,28}$/i;
+const LEGACY_MARKDOWN_HINT_PATTERN = /[*~`[]/;
 
 function invalid(message: string): never {
   throw new PostError(400, "INVALID_COMMENT_BODY", message);
@@ -186,6 +187,23 @@ function upgradeLegacyEmoteNodes(value: unknown): unknown {
   });
 }
 
+function upgradeLegacyMarkdownNodes(value: unknown): unknown {
+  const emoteUpgraded = upgradeLegacyEmoteNodes(value);
+  if (!Array.isArray(emoteUpgraded) || emoteUpgraded.length !== 1) return emoteUpgraded;
+  const node = emoteUpgraded[0];
+  if (!node || typeof node !== "object" || Array.isArray(node)) return emoteUpgraded;
+  const current = node as Record<string, unknown>;
+  if (
+    current.type !== "text" ||
+    typeof current.text !== "string" ||
+    current.marks !== undefined ||
+    !LEGACY_MARKDOWN_HINT_PATTERN.test(current.text)
+  ) {
+    return emoteUpgraded;
+  }
+  return flattenMarkdown(parseMarkdown(current.text));
+}
+
 export function normalizeCommentBody(input: {
   richtext?: unknown;
   plaintext?: unknown;
@@ -224,7 +242,7 @@ export function parseStoredCommentBody(
 ): NormalizedCommentBody {
   try {
     return normalizeCommentBody({
-      richtext: upgradeLegacyEmoteNodes(JSON.parse(richtextJson)),
+      richtext: upgradeLegacyMarkdownNodes(JSON.parse(richtextJson)),
       attachment: attachmentJson ? JSON.parse(attachmentJson) : null,
     });
   } catch (error) {
