@@ -13,8 +13,8 @@ const adminLinks = [
     icon: InfoIcon,
   },
   {
-    href: "/admin/verifications",
-    label: "Verifications",
+    href: "/admin/source-integrity",
+    label: "Source integrity",
     end: false,
     icon: CheckIcon,
   },
