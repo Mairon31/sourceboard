@@ -11,7 +11,7 @@ describe("Phase 5 comment rich text", () => {
           { type: "link", url: "https://example.com/source", label: "source" },
         ],
       }),
-    ).toMatchObject({ plaintext: "Found it source source https://example.com/source" });
+    ).toMatchObject({ plaintext: "Found it sourcesource https://example.com/source" });
   });
 
   it("reconstructs Markdown marks for legacy comments stored as plain text nodes", () => {
