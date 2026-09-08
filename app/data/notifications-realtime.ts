@@ -31,6 +31,7 @@ export interface NotificationPreview {
   ctaLabel?: string;
   actor?: NotificationPreviewActor;
   readAt: number | null;
+  createdAt: number;
   groupedIds?: string[];
   groupCount?: number;
   unreadCount?: number;
@@ -82,6 +83,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
       ctaLabel?: unknown;
       actor?: unknown;
       readAt?: unknown;
+      createdAt?: unknown;
       groupedIds?: unknown;
       groupCount?: unknown;
       unreadCount?: unknown;
@@ -91,7 +93,8 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
       typeof item.type !== "string" ||
       typeof item.title !== "string" ||
       typeof item.body !== "string" ||
-      typeof item.href !== "string"
+      typeof item.href !== "string" ||
+      typeof item.createdAt !== "number"
     ) {
       return [];
     }
@@ -109,6 +112,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
         ...(typeof item.ctaLabel === "string" ? { ctaLabel: item.ctaLabel } : {}),
         ...(actor ? { actor } : {}),
         readAt: typeof item.readAt === "number" ? item.readAt : null,
+        createdAt: item.createdAt,
         ...(Array.isArray(item.groupedIds)
           ? { groupedIds: item.groupedIds.filter((id): id is string => typeof id === "string") }
           : {}),
@@ -119,9 +123,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
   });
   const latest = previews.find(
     (notification): notification is NotificationPreview =>
-      Boolean(notification) &&
-      typeof notification === "object" &&
-      typeof notification.id === "string",
+      Boolean(notification) && typeof notification.id === "string",
   );
   return {
     unreadCount: Math.max(0, Math.floor(value.unreadCount)),
