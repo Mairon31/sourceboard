@@ -71,9 +71,19 @@
   line-height: 1.4;
 }
 
+.product-profile-editor-social-list {
+  border-top: 1px solid var(--border-subtle);
+}
+
 .product-profile-editor-social {
   grid-template-columns: minmax(150px, 0.65fr) minmax(130px, 0.45fr) minmax(0, 1fr) auto;
   align-items: end;
+  gap: 9px 12px;
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
 }
 
 .product-profile-editor-social__identity {
@@ -146,10 +156,15 @@
     display: none;
   }
 
+  .product-profile-editor-social-list {
+    border-top-color: color-mix(in srgb, var(--border-subtle) 78%, transparent);
+  }
+
   .product-profile-editor-social {
     grid-template-columns: 34px minmax(0, 1fr) auto;
     align-items: center;
     gap: 8px 9px;
+    padding: 11px 0;
   }
 
   .product-profile-editor-social__identity {
