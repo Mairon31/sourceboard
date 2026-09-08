@@ -28,6 +28,7 @@ export default [
   }),
   route("admin/users", "routes/admin-users.tsx"),
   route("admin/roles", "routes/admin-roles.tsx"),
+  route("admin/reputation", "routes/admin-reputation.tsx"),
   route("admin/store", "routes/admin-store.tsx"),
   route("admin/audit", "routes/admin-audit.tsx"),
   route("admin/anonymous/:postId", "routes/admin-anonymous.tsx"),
