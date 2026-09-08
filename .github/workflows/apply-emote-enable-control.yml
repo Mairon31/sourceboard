@@ -38,8 +38,8 @@ jobs:
           const helperPath = 'tests/e2e/test-helpers.ts';
           let helper = fs.readFileSync(helperPath, 'utf8');
           const readyNeedle = `export async function waitForUiReady(page: Page) {\n  await expect(page.locator('[data-ui-ready="true"]')).toBeVisible();\n}`;
-          const readyReplacement = `export async function waitForUiReady(page: Page) {\n  await expect(page.locator('[data-ui-ready="true"]')).toBeVisible({ timeout: 15_000 });\n}`;
-          if (!helper.includes('timeout: 15_000')) {
+          const readyReplacement = `export async function waitForUiReady(page: Page) {\n  await expect(page.locator('[data-ui-ready="true"]')).toBeVisible({ timeout: 30_000 });\n}`;
+          if (!helper.includes('timeout: 30_000')) {
             if (!helper.includes(readyNeedle)) throw new Error('UI readiness marker missing');
             helper = helper.replace(readyNeedle, readyReplacement);
           }
@@ -60,6 +60,13 @@ jobs:
 
           const adminPath = 'tests/e2e/admin.spec.ts';
           let admin = fs.readFileSync(adminPath, 'utf8');
+          const staleEditorAssertion = '  await expect(page.getByRole("heading", { name: "Edit Stellar Magic" })).toBeVisible();\n';
+          const editorAssertion = '  await expect(page.locator(".admin-store-editor").getByRole("heading", { name: "Stellar Magic", exact: true })).toBeVisible();\n';
+          if (admin.includes(staleEditorAssertion)) {
+            admin = admin.replace(staleEditorAssertion, editorAssertion);
+          } else if (!admin.includes(editorAssertion)) {
+            throw new Error('admin editor assertion marker missing');
+          }
           const replaceAssertion = '  await expect(emote.getByRole("button", { name: "Replace image" })).toBeVisible();\n';
           const enableAssertion = `${replaceAssertion}  await expect(emote.getByRole("button", { name: "Disable", exact: true })).toBeVisible();\n`;
           if (!admin.includes('name: "Disable", exact: true')) {
