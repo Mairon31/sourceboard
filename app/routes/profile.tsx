@@ -2,11 +2,14 @@ import { useState } from "react";
 import { useLoaderData, useRouteLoaderData, type MetaFunction } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
+import { createD1PostStore } from "../../worker/posts/store";
+import { createPostService } from "../../worker/posts/service";
 import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
 import { loadAdminAccess } from "../data/admin-access";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
+import { ProfileActivity } from "../components/product/ProfileActivity";
 import { ProfileEditor } from "../components/product/ProfileEditor";
 import { ProfileHero } from "../components/product/ProfileHero";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
@@ -21,14 +24,20 @@ export async function loader({ params, request, context }: LoaderArgs) {
     withServerSession(
       request,
       context,
-      (unavailable) => ({ profile: null, unavailable }),
-      async (runtime, userId) => ({
-        profile: await createProfileService({
-          store: createD1ProfileStore(runtime.db),
+      (unavailable) => ({ profile: null, activityPosts: [], unavailable }),
+      async (runtime, userId) => {
+        const profileStore = createD1ProfileStore(runtime.db);
+        const profile = await createProfileService({
+          store: profileStore,
           reputation: createReputationReader(runtime.db),
-        }).getPublicProfile(params.username ?? "", userId),
-        unavailable: false,
-      }),
+        }).getPublicProfile(params.username ?? "", userId);
+        if (!profile) return { profile: null, activityPosts: [], unavailable: false };
+        const activity = await createPostService({
+          store: createD1PostStore(runtime.db),
+          profileStore,
+        }).listProfileActivity({ authorId: profile.id, viewerId: userId, limit: 24 });
+        return { profile, activityPosts: activity.posts, unavailable: false };
+      },
     ),
     loadAdminAccess(request, context),
   ]);
@@ -134,7 +143,10 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
         ) : null}
       </div>
       {profile.achievements?.length ? (
-        <div className="product-profile-contributions__achievements" aria-label="Earned achievements">
+        <div
+          className="product-profile-contributions__achievements"
+          aria-label="Earned achievements"
+        >
           {profile.achievements.map((achievement) => (
             <Badge key={achievement.id} tone="neutral">
               {achievement.icon} {achievement.name}
@@ -149,7 +161,7 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
 }
 
 export default function ProfileRoute() {
-  const { profile, unavailable, canAccessAdmin } = useLoaderData<LoaderData>();
+  const { profile, activityPosts, unavailable, canAccessAdmin } = useLoaderData<LoaderData>();
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const [editingProfile, setEditingProfile] = useState(false);
   const isOwnProfile = Boolean(profile && rootData?.session?.user.id === profile.id);
@@ -162,10 +174,13 @@ export default function ProfileRoute() {
         <ProfileHero profile={profile} isOwnProfile={false} />
       )}
       {!editingProfile ? (
-        <div className="product-profile-secondary">
-          <ContributionHistory profile={profile} />
-          {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
-        </div>
+        <>
+          <div className="product-profile-secondary">
+            <ContributionHistory profile={profile} />
+            {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
+          </div>
+          <ProfileActivity posts={activityPosts} />
+        </>
       ) : null}
     </ProductShell>
   );
