@@ -604,11 +604,11 @@ prerequisites.
 
 ### 2026-09-07 Store catalog administration and navigation checkpoint
 
-- [x] Migration `0015_store_catalog_lifecycle.sql` defines the Draft,
-      Published and Archived catalog lifecycle, enablement/featured state and
-      emote moderation fields. A fresh local D1 persistence was migrated twice:
-      the first pass applied `0000` through `0015`; the second reported no
-      pending migrations.
+- [x] Migrations `0015_store_catalog_lifecycle.sql` and
+      `0016_name_effect_catalog.sql` define the catalog lifecycle, enablement,
+      featured state, name-effect catalog and emote moderation fields. A fresh
+      local D1 persistence was migrated twice: the first pass applied `0000`
+      through `0016`; the second reported no pending migrations.
 - [x] Admin Store exposes catalog lifecycle, metadata/configuration, price,
       sort order, ownership/equipped counts and publish, enable, feature,
       duplicate, archive and safe-delete actions. Emote packs and their
@@ -624,11 +624,27 @@ prerequisites.
       prefetch on desktop intent and mobile viewport without artificial delays.
 - [x] Fixture cookies remain secure and are created for HTTPS localhost; the
       E2E suite uses one worker because authorized fixtures share local D1.
-      Focused Store/Admin/Responsive coverage: 84 Chromium tests passed; the
-      complete Chromium suite passed 134 tests.
-- [x] Final local gates before the standard CI run: lint, formatting, typecheck,
-      166 unit tests, build and Workers deploy dry-run passed. Temporary
-      workflow `apply-emote-enable-control.yml` was removed.
+      The latest standard run passed all 144 Chromium E2E tests.
+- [x] The temporary workflow `apply-emote-enable-control.yml` and its helper
+      applicators were removed from the final repository.
+
+### 2026-09-08 CI and browser verification checkpoint
+
+- [x] Fixed the remaining Admin Store E2E race by waiting for the seeded Draft
+      Pack to become visible after the asynchronous pack catalog load.
+- [x] Removed the development-only React hydration warning caused by browsers
+      masking CSP nonce attributes during client hydration; script nonces remain
+      response-scoped and the generated HTML still matches the CSP policy.
+- [x] Local browser verification confirmed the connected Home and Store
+      surfaces, real cosmetic previews, protected post creation screen and
+      no horizontal overflow in the tested desktop viewport. Warm navigation
+      from Store to post creation completed in about 220 ms; the only observed
+      multi-second delay was the first Vite cold compilation.
+- [x] GitHub Actions CI run `#535` (`34197573960`) passed the complete standard
+      gate set on `6c3da12`: lint/Prettier, typecheck, 207 unit tests across 50
+      files, production build, Workers deploy dry-run, migrations and 144 E2E.
+- [x] GitHub Actions CI run `#536` (`34197934973`) passed the same complete
+      standard gate set on `bbcc5f9` after the CSP hydration fix.
 
 ## Known limitations
 
