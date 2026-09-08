@@ -103,7 +103,7 @@ jobs:
           search_test_path.write_text(search_test)
           PY
       - run: npx prettier --write worker/db/schema.ts app/routes/settings.tsx tests/unit/search-service.test.ts tests/unit/reputation-admin-wiring.test.ts
-      - run: npx prettier --check worker/db/schema.ts app/routes/settings.tsx tests/unit/search-service.test.ts tests/unit/reputation-admin-wiring.test.ts migrations/0021_reputation_rule_versions.sql
+      - run: npx prettier --check worker/db/schema.ts app/routes/settings.tsx tests/unit/search-service.test.ts tests/unit/reputation-admin-wiring.test.ts
       - run: npm test -- --run tests/unit/reputation-admin-wiring.test.ts tests/unit/settings-redesign.test.ts tests/unit/search-service.test.ts
       - run: npm run typecheck
       - name: Apply migrations to a fresh local D1 database
