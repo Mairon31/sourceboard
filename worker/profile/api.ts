@@ -89,96 +89,119 @@ async function handleDataExport(
   if (request.method !== "GET" || url.pathname !== "/api/profile/me/export") return null;
   const userId = await requireViewerId(request, env);
   const db = requireDatabase(env);
-  const [account, profile, socials, posts, comments, friendships, blocks, points, achievements] =
-    await Promise.all([
-      db
-        .prepare(
-          `SELECT id, username, status, email_verified_at AS emailVerifiedAt,
-                  created_at AS createdAt, updated_at AS updatedAt, last_seen_at AS lastSeenAt
-           FROM users WHERE id = ?`,
-        )
-        .bind(userId)
-        .first(),
-      db
-        .prepare(
-          `SELECT display_name AS displayName, bio, profile_visibility AS profileVisibility,
-                  allow_friend_requests AS allowFriendRequests, hide_nsfw AS hideNsfw,
-                  blur_nsfw AS blurNsfw, created_at AS createdAt, updated_at AS updatedAt
-           FROM user_profiles WHERE user_id = ?`,
-        )
-        .bind(userId)
-        .first(),
-      db
-        .prepare(
-          `SELECT platform, url, sort_order AS sortOrder, is_visible AS isVisible, created_at AS createdAt
-           FROM user_social_links WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC`,
-        )
-        .bind(userId)
-        .all(),
-      db
-        .prepare(
-          `SELECT id, title, slug, description, visibility, status, is_nsfw AS isNsfw,
-                  comment_count AS commentCount, like_count AS likeCount,
-                  created_at AS createdAt, updated_at AS updatedAt,
-                  archived_at AS archivedAt, deleted_at AS deletedAt
-           FROM posts WHERE author_id = ? ORDER BY created_at DESC`,
-        )
-        .bind(userId)
-        .all(),
-      db
-        .prepare(
-          `SELECT id, post_id AS postId, parent_comment_id AS parentCommentId,
-                  body_plaintext AS body, state, created_at AS createdAt,
-                  edited_at AS editedAt, deleted_at AS deletedAt
-           FROM comments WHERE author_id = ? ORDER BY created_at DESC`,
-        )
-        .bind(userId)
-        .all(),
-      db
-        .prepare(
-          `SELECT f.id, f.status, f.created_at AS createdAt, f.updated_at AS updatedAt,
-                  CASE WHEN f.requester_id = ? THEN 'OUTGOING' ELSE 'INCOMING' END AS direction,
-                  other.username AS otherUsername
-           FROM friendships f
-           JOIN users other ON other.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
-           WHERE f.requester_id = ? OR f.addressee_id = ?
-           ORDER BY f.updated_at DESC`,
-        )
-        .bind(userId, userId, userId, userId)
-        .all(),
-      db
-        .prepare(
-          `SELECT other.username AS username, b.created_at AS createdAt
-           FROM user_blocks b JOIN users other ON other.id = b.blocked_id
-           WHERE b.blocker_id = ? ORDER BY b.created_at DESC`,
-        )
-        .bind(userId)
-        .all(),
-      db
-        .prepare(
-          `SELECT amount, entry_type AS entryType, reward_type AS rewardType,
-                  source_event AS sourceEvent, source_event_id AS sourceEventId,
-                  metadata_json AS metadataJson, created_at AS createdAt
-           FROM point_ledger WHERE user_id = ? ORDER BY created_at DESC`,
-        )
-        .bind(userId)
-        .all(),
-      db
-        .prepare(
-          `SELECT a.slug, a.name, a.description, a.icon, ua.earned_at AS earnedAt
-           FROM user_achievements ua
-           JOIN achievement_catalog a ON a.id = ua.achievement_id
-           WHERE ua.user_id = ? ORDER BY ua.earned_at DESC`,
-        )
-        .bind(userId)
-        .all(),
-    ]);
+  const [
+    account,
+    profile,
+    preferences,
+    socials,
+    posts,
+    comments,
+    friendships,
+    blocks,
+    points,
+    achievements,
+  ] = await Promise.all([
+    db
+      .prepare(
+        `SELECT id, username, status, email_verified_at AS emailVerifiedAt,
+                created_at AS createdAt, updated_at AS updatedAt, last_seen_at AS lastSeenAt
+         FROM users WHERE id = ?`,
+      )
+      .bind(userId)
+      .first(),
+    db
+      .prepare(
+        `SELECT display_name AS displayName, bio, avatar_asset_id AS avatarAssetId,
+                banner_asset_id AS bannerAssetId, profile_visibility AS profileVisibility,
+                created_at AS createdAt, updated_at AS updatedAt
+         FROM user_profiles WHERE user_id = ?`,
+      )
+      .bind(userId)
+      .first(),
+    db
+      .prepare(
+        `SELECT hide_nsfw AS hideNsfw, blur_nsfw AS blurNsfw,
+                allow_nsfw_direct_override AS allowNsfwDirectOverride,
+                allow_friend_requests AS allowFriendRequests,
+                notify_activity AS notifyActivity, notify_friendships AS notifyFriendships,
+                created_at AS createdAt, updated_at AS updatedAt
+         FROM user_preferences WHERE user_id = ?`,
+      )
+      .bind(userId)
+      .first(),
+    db
+      .prepare(
+        `SELECT platform, url, sort_order AS sortOrder, is_visible AS isVisible
+         FROM user_social_links WHERE user_id = ? ORDER BY sort_order ASC, id ASC`,
+      )
+      .bind(userId)
+      .all(),
+    db
+      .prepare(
+        `SELECT id, title, slug, description, visibility, status, is_nsfw AS isNsfw,
+                comment_count AS commentCount, like_count AS likeCount,
+                created_at AS createdAt, updated_at AS updatedAt,
+                archived_at AS archivedAt, deleted_at AS deletedAt
+         FROM posts WHERE author_id = ? ORDER BY created_at DESC`,
+      )
+      .bind(userId)
+      .all(),
+    db
+      .prepare(
+        `SELECT id, post_id AS postId, parent_comment_id AS parentCommentId,
+                body_plaintext AS body, state, like_count AS likeCount,
+                created_at AS createdAt, updated_at AS updatedAt,
+                deleted_at AS deletedAt, hidden_at AS hiddenAt
+         FROM comments WHERE author_id = ? ORDER BY created_at DESC`,
+      )
+      .bind(userId)
+      .all(),
+    db
+      .prepare(
+        `SELECT f.id, f.status, f.created_at AS createdAt, f.updated_at AS updatedAt,
+                CASE WHEN f.requester_id = ? THEN 'OUTGOING' ELSE 'INCOMING' END AS direction,
+                other.username AS otherUsername
+         FROM friendships f
+         JOIN users other ON other.id = CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
+         WHERE f.requester_id = ? OR f.addressee_id = ?
+         ORDER BY f.updated_at DESC`,
+      )
+      .bind(userId, userId, userId, userId)
+      .all(),
+    db
+      .prepare(
+        `SELECT other.username AS username, b.created_at AS createdAt
+         FROM user_blocks b JOIN users other ON other.id = b.blocked_id
+         WHERE b.blocker_id = ? ORDER BY b.created_at DESC`,
+      )
+      .bind(userId)
+      .all(),
+    db
+      .prepare(
+        `SELECT amount, entry_type AS entryType, reward_type AS rewardType,
+                source_event AS sourceEvent, source_event_id AS sourceEventId,
+                metadata_json AS metadataJson, created_at AS createdAt
+         FROM point_ledger WHERE user_id = ? ORDER BY created_at DESC`,
+      )
+      .bind(userId)
+      .all(),
+    db
+      .prepare(
+        `SELECT a.slug, a.name, a.description, a.icon, ua.earned_at AS earnedAt
+         FROM user_achievements ua
+         JOIN achievement_catalog a ON a.id = ua.achievement_id
+         WHERE ua.user_id = ? ORDER BY ua.earned_at DESC`,
+      )
+      .bind(userId)
+      .all(),
+  ]);
 
   const payload = {
     source: "SourceBoard",
     exportedAt: new Date().toISOString(),
     account,
     profile,
+    preferences,
     socialLinks: socials.results,
     posts: posts.results,
     comments: comments.results,
