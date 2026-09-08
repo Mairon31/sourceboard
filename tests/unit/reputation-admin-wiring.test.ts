@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(path, "utf8");
@@ -14,14 +14,11 @@ describe("reputation admin wiring", () => {
     expect(routes).toContain('route("admin/reputation", "routes/admin-reputation.tsx")');
   });
 
-  it("models and migrates versioned reward rules with seeded active defaults", () => {
+  it("models the already-migrated versioned reward rules with seeded active defaults", () => {
     const schema = read("worker/db/schema.ts");
-    const migrationPath = "migrations/0021_reputation_reward_rules.sql";
+    const migration = read("migrations/0021_reputation_rule_versions.sql");
 
     expect(schema).toContain('"reputation_reward_rules"');
-    expect(existsSync(migrationPath)).toBe(true);
-
-    const migration = read(migrationPath);
     expect(migration).toContain("CREATE TABLE `reputation_reward_rules`");
     expect(migration).toContain("'ACCEPTED_SOURCE'");
     expect(migration).toContain("'VERIFIED_SOURCE'");
