@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLoaderData, useRouteLoaderData, type MetaFunction } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
@@ -150,19 +151,22 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
 export default function ProfileRoute() {
   const { profile, unavailable, canAccessAdmin } = useLoaderData<LoaderData>();
   const rootData = useRouteLoaderData<RootLoaderData>("root");
+  const [editingProfile, setEditingProfile] = useState(false);
   const isOwnProfile = Boolean(profile && rootData?.session?.user.id === profile.id);
   if (!profile) return <UnavailableProfile unavailable={unavailable} />;
   return (
     <ProductShell wide>
       {isOwnProfile ? (
-        <ProfileEditor profile={profile} />
+        <ProfileEditor profile={profile} onEditingChange={setEditingProfile} />
       ) : (
         <ProfileHero profile={profile} isOwnProfile={false} />
       )}
-      <div className="product-profile-secondary">
-        <ContributionHistory profile={profile} />
-        {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
-      </div>
+      {!editingProfile ? (
+        <div className="product-profile-secondary">
+          <ContributionHistory profile={profile} />
+          {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
+        </div>
+      ) : null}
     </ProductShell>
   );
 }
