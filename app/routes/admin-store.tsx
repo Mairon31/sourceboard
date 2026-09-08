@@ -114,7 +114,8 @@ export default function AdminStoreRoute() {
 
   async function createCosmetic(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     let config: Record<string, unknown> = {};
     const configText = String(form.get("config") ?? "").trim();
     if (configText) {
@@ -148,7 +149,7 @@ export default function AdminStoreRoute() {
         setStatus(errorMessage(payload, "Could not create this cosmetic."));
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       setStatus("Draft cosmetic created. Review it below before publishing.");
       await loadStoreCatalog();
     } finally {

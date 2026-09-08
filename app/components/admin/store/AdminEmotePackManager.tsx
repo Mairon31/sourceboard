@@ -95,7 +95,8 @@ function EmoteEditor({
 
   async function replaceImage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const file = form.get("file");
     if (!(file instanceof File) || !file.size) {
       onStatus("Choose a replacement image first.");
@@ -116,7 +117,7 @@ function EmoteEditor({
         onStatus(errorMessage(payload, "Could not replace this emote image."));
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       setReplacing(false);
       onStatus(`${emote.label} image replaced.`);
       await onChanged();
@@ -419,6 +420,7 @@ export function AdminEmotePackManager({
     try {
       const response = await fetch(
         `/api/admin/catalog/emote-packs/${encodeURIComponent(selectedPackId)}`,
+        { cache: "no-store" },
       );
       const payload = (await response.json().catch(() => null)) as {
         pack?: EmotePackDetail;
@@ -443,7 +445,8 @@ export function AdminEmotePackManager({
 
   async function createPack(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setBusy(true);
     try {
       const response = await fetch("/api/admin/catalog/emote-packs", {
@@ -463,7 +466,7 @@ export function AdminEmotePackManager({
         onStatus(errorMessage(payload, "Could not create this pack."));
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       await onRefreshPacks();
       if (payload?.pack?.id) onSelectPack(payload.pack.id);
       onStatus("Draft emote pack created.");
@@ -475,7 +478,8 @@ export function AdminEmotePackManager({
   async function uploadEmote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedPackId) return;
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     form.set("packId", selectedPackId);
     setBusy(true);
     try {
@@ -489,9 +493,10 @@ export function AdminEmotePackManager({
         onStatus(errorMessage(payload, "Could not add this emote."));
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       onStatus("Emote added to the selected pack.");
-      await Promise.all([onRefreshPacks(), loadDetail()]);
+      await loadDetail();
+      await onRefreshPacks();
     } finally {
       setBusy(false);
     }
