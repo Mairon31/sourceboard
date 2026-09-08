@@ -1,6 +1,7 @@
 import { Link, useLoaderData, type MetaFunction } from "react-router";
 import { useEffect, useState } from "react";
 import { readCsrfToken } from "../data/csrf";
+import { notificationDisplayTitle, notificationGroupMeta } from "../data/notification-display";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { presentNotifications } from "../../worker/notifications/presenter";
@@ -153,59 +154,60 @@ export default function NotificationsRoute() {
         </Card>
       ) : null}
       <div className="product-list product-notification-list">
-        {notifications.map((notification) => (
-          <Card
-            key={notification.id}
-            className={`product-list-row product-notification-row${notification.readAt ? "" : " product-notification--unread"}`}
-          >
-            <div className="product-notification-row__identity">
-              {notification.actor ? (
-                <CosmeticIdentity
-                  displayName={notification.actor.displayName}
-                  avatarUrl={notification.actor.avatarUrl}
-                  avatarFrame={notification.actor.cosmetics?.avatarFrame}
-                  profileEffect={notification.actor.cosmetics?.profileEffect}
-                  nameFont={notification.actor.cosmetics?.nameFont}
-                  nameEffect={notification.actor.cosmetics?.nameEffect}
-                  visuals={notification.actor.cosmetics?.visuals}
-                  mode="compact"
-                  nameAs="strong"
-                />
-              ) : (
-                <div className="product-notification-row__mark" aria-hidden="true" />
-              )}
-            </div>
-            <div className="product-list-row__copy product-notification-row__copy">
-              <div className="product-notification-row__title">
-                <strong>{notification.title}</strong>
-                <time dateTime={new Date(notification.createdAt).toISOString()}>
-                  {timeLabel(notification.createdAt)}
-                </time>
+        {notifications.map((notification) => {
+          const groupMeta = notificationGroupMeta(notification);
+          return (
+            <Card
+              key={notification.id}
+              className={`product-list-row product-notification-row${notification.readAt && !notification.unreadCount ? "" : " product-notification--unread"}`}
+            >
+              <div className="product-notification-row__identity">
+                {notification.actor ? (
+                  <CosmeticIdentity
+                    displayName={notification.actor.displayName}
+                    avatarUrl={notification.actor.avatarUrl}
+                    avatarFrame={notification.actor.cosmetics?.avatarFrame}
+                    profileEffect={notification.actor.cosmetics?.profileEffect}
+                    nameFont={notification.actor.cosmetics?.nameFont}
+                    nameEffect={notification.actor.cosmetics?.nameEffect}
+                    visuals={notification.actor.cosmetics?.visuals}
+                    mode="compact"
+                    nameAs="strong"
+                  />
+                ) : (
+                  <div className="product-notification-row__mark" aria-hidden="true" />
+                )}
               </div>
-              <span>{notification.body}</span>
-              {notification.groupCount && notification.groupCount > 1 ? (
-                <span className="product-notification-row__group-copy">
-                  {notification.groupCount} related events
-                </span>
-              ) : null}
-            </div>
-            <div className="product-notification-row__actions">
-              <Link
-                className="sb-button sb-button--secondary sb-button--sm motion-interactive"
-                to={notification.href}
-                onClick={() => void markGroupRead(notification)}
-              >
-                {notification.ctaLabel ?? "View"}
-              </Link>
-              {!notification.readAt || notification.unreadCount ? (
-                <Button size="sm" variant="ghost" onClick={() => void markGroupRead(notification)}>
-                  Mark read
-                </Button>
-              ) : null}
-              <Badge>{notification.readAt && !notification.unreadCount ? "Read" : "New"}</Badge>
-            </div>
-          </Card>
-        ))}
+              <div className="product-list-row__copy product-notification-row__copy">
+                <div className="product-notification-row__title">
+                  <strong>{notificationDisplayTitle(notification)}</strong>
+                  <time dateTime={new Date(notification.createdAt).toISOString()}>
+                    {timeLabel(notification.createdAt)}
+                  </time>
+                </div>
+                <span>{notification.body}</span>
+                {groupMeta ? (
+                  <span className="product-notification-row__group-copy">{groupMeta}</span>
+                ) : null}
+              </div>
+              <div className="product-notification-row__actions">
+                <Link
+                  className="sb-button sb-button--secondary sb-button--sm motion-interactive"
+                  to={notification.href}
+                  onClick={() => void markGroupRead(notification)}
+                >
+                  {notification.ctaLabel ?? "View"}
+                </Link>
+                {!notification.readAt || notification.unreadCount ? (
+                  <Button size="sm" variant="ghost" onClick={() => void markGroupRead(notification)}>
+                    Mark read
+                  </Button>
+                ) : null}
+                <Badge>{notification.readAt && !notification.unreadCount ? "Read" : "New"}</Badge>
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </ProductShell>
   );
