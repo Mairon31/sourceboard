@@ -64,9 +64,7 @@ function useAuthConfig(): AuthConfig | null {
   useEffect(() => {
     let cancelled = false;
     const setIfActive = (value: AuthConfig | null) => {
-      if (!cancelled) {
-        setConfig(value);
-      }
+      if (!cancelled) setConfig(value);
     };
     void fetch("/api/auth/config")
       .then(async (response) => {
@@ -88,14 +86,12 @@ function useTurnstileScript(siteKey: string | null): boolean {
 
   useEffect(() => {
     if (!siteKey) return;
-
     const scriptId = "sourceboard-turnstile-script";
     const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
     if (window.turnstile) {
       setScriptReady(true);
       return;
     }
-
     const script = existing ?? document.createElement("script");
     script.id = scriptId;
     script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
@@ -125,14 +121,12 @@ function useTurnstileWidget(
   useEffect(() => {
     const container = containerRef.current;
     if (!canRenderTurnstile(siteKey, scriptReady, container)) return;
-
     const widgetId = window.turnstile!.render(container!, {
       sitekey: siteKey!,
       callback: onToken,
       "expired-callback": () => onToken(undefined),
       "error-callback": () => onToken(undefined),
     });
-
     return () => {
       window.turnstile?.remove(widgetId);
       onToken(undefined);
@@ -241,17 +235,19 @@ async function submitVerificationToken(token: string): Promise<{ ok: boolean; bo
 
 async function completeGoogleSession(
   idToken: string,
+  turnstileToken: string,
   navigate: (to: string) => void,
   setFeedback: (feedback: AuthFeedback) => void,
-): Promise<void> {
-  const response = await postAuthJson("/api/auth/google", { idToken });
+): Promise<boolean> {
+  const response = await postAuthJson("/api/auth/google", { idToken, turnstileToken });
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     await signOutFirebase().catch(() => undefined);
     setFeedback({ tone: "error", message: getErrorMessage(body) });
-    return;
+    return false;
   }
   navigate("/");
+  return true;
 }
 
 function useVerificationAction(
@@ -462,7 +458,6 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
         refreshTurnstile();
         return;
       }
-
       handleSuccessfulSubmit(mode, isReset, result.body, navigate, setFeedback);
     } catch {
       setFeedback({ tone: "error", message: "The request could not be completed. Try again." });
@@ -473,13 +468,19 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   }
 
   async function handleGoogleSignIn() {
-    if (busy) return;
+    if (busy || !turnstileToken) return;
     setBusy(true);
     setFeedback(null);
     try {
       if (!authConfig?.firebase) throw new Error("FIREBASE_NOT_CONFIGURED");
       const { idToken } = await signInWithGoogle(authConfig.firebase);
-      await completeGoogleSession(idToken, navigate, (nextFeedback) => setFeedback(nextFeedback));
+      const completed = await completeGoogleSession(
+        idToken,
+        turnstileToken,
+        navigate,
+        (nextFeedback) => setFeedback(nextFeedback),
+      );
+      if (!completed) refreshTurnstile();
     } catch (error) {
       setFeedback({
         tone: "error",
@@ -488,6 +489,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
             ? "Google sign-in is not configured yet."
             : getGoogleAuthErrorMessage(error),
       });
+      refreshTurnstile();
     } finally {
       setBusy(false);
     }
@@ -534,8 +536,9 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
               className="product-google-button"
               type="button"
               onClick={() => void handleGoogleSignIn()}
-              disabled={busy}
+              disabled={busy || !turnstileToken}
               aria-busy={busy}
+              title={!turnstileToken ? "Complete the Cloudflare security check first" : undefined}
             >
               <span className="product-google-button__icon" aria-hidden="true">
                 G
