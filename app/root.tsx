@@ -19,6 +19,7 @@ import "./components/product/post-media.css";
 import "./components/product/post-card-refresh.css";
 import "./components/product/product-interactions.css";
 import "./components/product/comment-actions.css";
+import "./components/product/notifications.css";
 import "./components/product/store.css";
 import "./components/product/store-page.css";
 import "./components/product/store-responsive.css";
