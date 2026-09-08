@@ -1,12 +1,18 @@
 .product-source-card--accepted {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
 .product-source-card__heading {
   display: flex;
+  min-width: 0;
   align-items: flex-start;
   gap: var(--space-3);
+}
+
+.product-source-card__heading > div:last-child {
+  min-width: 0;
 }
 
 .product-source-card__heading h2,
@@ -16,6 +22,7 @@
 
 .product-source-answer {
   display: grid;
+  min-width: 0;
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--border-subtle);
@@ -26,6 +33,7 @@
 .product-source-answer__author {
   display: flex;
   min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   color: var(--text-secondary);
@@ -40,6 +48,7 @@
 
 .product-source-answer__content {
   min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--text-primary);
 }
 
@@ -80,6 +89,17 @@
   100% {
     background: transparent;
     box-shadow: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .product-source-card__heading {
+    align-items: center;
+  }
+
+  .product-source-answer__author > span:last-child {
+    width: 100%;
+    margin-left: 0;
   }
 }
 
