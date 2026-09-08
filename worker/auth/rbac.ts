@@ -27,6 +27,7 @@ export type Capability =
   | "source.verify"
   | "source.revoke_verification"
   | "points.adjust"
+  | "points.manage"
   | "store.manage"
   | "catalog.moderate"
   | "emote.manage"
