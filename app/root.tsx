@@ -41,6 +41,7 @@ import "./components/product/mobile-product-polish.css";
 import "./components/product/profile-layout-polish.css";
 import "./components/product/store-mobile-polish.css";
 import "./components/product/post-layout-polish.css";
+import "./components/product/friends-page-polish.css";
 
 // fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
 export async function loader({ request, context }: ServerLoaderArgs) {
