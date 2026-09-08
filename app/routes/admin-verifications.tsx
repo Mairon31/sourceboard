@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLoaderData, useRevalidator } from "react-router";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
+import { SourceDisputeCard } from "../components/admin/SourceDisputeCard";
 import { Badge, Button, Card, Input, Textarea } from "../components/ui";
 import { loadCapabilityAccess } from "../data/capability-access";
 import { readCsrfToken } from "../data/csrf";
@@ -88,6 +89,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
     () => ({
       access: { authorized: false, unavailable: false },
       canRevoke: false,
+      canReviewDisputes: false,
       view,
       candidates: [] as Candidate[],
       verified: [] as VerifiedSource[],
@@ -95,14 +97,16 @@ export async function loader({ request, context }: ServerLoaderArgs) {
       history: [] as ResolutionHistory[],
     }),
     async (runtime, userId) => {
-      const [access, revokeAccess] = await Promise.all([
+      const [access, revokeAccess, reportReviewAccess] = await Promise.all([
         loadCapabilityAccess(request, context, "source.verify"),
         loadCapabilityAccess(request, context, "source.revoke_verification"),
+        loadCapabilityAccess(request, context, "report.review"),
       ]);
       if (!userId || !access.authorized) {
         return {
           access,
           canRevoke: false,
+          canReviewDisputes: false,
           view,
           candidates: [] as Candidate[],
           verified: [] as VerifiedSource[],
@@ -134,6 +138,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
         return {
           access,
           canRevoke: revokeAccess.authorized,
+          canReviewDisputes: reportReviewAccess.authorized,
           view,
           candidates: result.results,
           verified: [] as VerifiedSource[],
@@ -164,6 +169,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
         return {
           access,
           canRevoke: revokeAccess.authorized,
+          canReviewDisputes: reportReviewAccess.authorized,
           view,
           candidates: [] as Candidate[],
           verified: result.results,
@@ -182,13 +188,14 @@ export async function loader({ request, context }: ServerLoaderArgs) {
              LEFT JOIN source_resolutions sr ON sr.id = mr.target_id
              LEFT JOIN posts p ON p.id = COALESCE(sr.post_id, mr.target_id)
              WHERE mr.target_type = 'SOURCE' AND mr.status IN ('OPEN', 'IN_REVIEW')
-             ORDER BY mr.created_at ASC
+             ORDER BY CASE mr.status WHEN 'IN_REVIEW' THEN 0 ELSE 1 END, mr.created_at ASC
              LIMIT 100`,
           )
           .all<SourceDispute>();
         return {
           access,
           canRevoke: revokeAccess.authorized,
+          canReviewDisputes: reportReviewAccess.authorized,
           view,
           candidates: [] as Candidate[],
           verified: [] as VerifiedSource[],
@@ -216,6 +223,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
       return {
         access,
         canRevoke: revokeAccess.authorized,
+        canReviewDisputes: reportReviewAccess.authorized,
         view,
         candidates: [] as Candidate[],
         verified: [] as VerifiedSource[],
@@ -254,7 +262,7 @@ function IntegrityTabs({ view }: { view: IntegrityView }) {
 }
 
 export default function AdminVerificationsRoute() {
-  const { access, canRevoke, view, candidates, verified, disputes, history } =
+  const { access, canRevoke, canReviewDisputes, view, candidates, verified, disputes, history } =
     useLoaderData<typeof loader>();
   if (!access.authorized) {
     return (
@@ -312,30 +320,11 @@ export default function AdminVerificationsRoute() {
           disputes.length ? (
             <div className="admin-integrity-list">
               {disputes.map((dispute) => (
-                <Card className="admin-integrity-card admin-surface" key={dispute.reportId}>
-                  <div className="product-chip-row">
-                    <Badge>{dispute.status}</Badge>
-                    <Badge>{dispute.category}</Badge>
-                  </div>
-                  <div>
-                    <h2>{dispute.postTitle ?? "Reported source"}</h2>
-                    <p>{dispute.detail || "No additional dispute detail was supplied."}</p>
-                    <small>Reported {formatDate(dispute.createdAt)}</small>
-                  </div>
-                  <div className="admin-card-actions">
-                    {dispute.postId ? (
-                      <Link
-                        className="product-text-action"
-                        to={postHref(dispute.postId, dispute.postSlug)}
-                      >
-                        Open post
-                      </Link>
-                    ) : null}
-                    <Link className="product-text-action" to="/admin/moderation">
-                      Open moderation queue
-                    </Link>
-                  </div>
-                </Card>
+                <SourceDisputeCard
+                  key={dispute.reportId}
+                  dispute={dispute}
+                  canReview={canReviewDisputes}
+                />
               ))}
             </div>
           ) : (
