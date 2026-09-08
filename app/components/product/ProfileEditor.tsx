@@ -1,6 +1,23 @@
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import { useRevalidator } from "react-router";
+import type { PublicProfileDto } from "../../../worker/profile/types";
+import {
+  canonicalSocialPlatform,
+  SOCIAL_PLATFORMS,
+  SOCIAL_PLATFORM_CATALOG,
+  type SocialPlatform,
+} from "../../../shared/profile/social-links";
 import { Button, Card, Checkbox, Input, Textarea } from "../ui";
+import { CosmeticIdentity } from "./CosmeticIdentity";
+import { ProfileHero } from "./ProfileHero";
+import { SocialIcon } from "./SocialIcon";
+import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 
 type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY";
 
@@ -23,7 +40,7 @@ type MyProfileResponse = {
 
 type SocialLinkDraft = {
   key: string;
-  platform: string;
+  platform: SocialPlatform;
   url: string;
   isVisible: boolean;
 };
@@ -60,26 +77,39 @@ function createDraft(data: MyProfileResponse): ProfileDraft {
     socialLinks: data.socialLinks
       .slice()
       .sort((left, right) => left.sortOrder - right.sortOrder)
-      .map((link) => ({
-        key: link.id,
-        platform: link.platform,
-        url: link.url,
-        isVisible: link.isVisible,
-      })),
+      .flatMap((link) => {
+        const platform = canonicalSocialPlatform(link.platform);
+        return platform
+          ? [
+              {
+                key: link.id,
+                platform,
+                url: link.url,
+                isVisible: link.isVisible,
+              },
+            ]
+          : [];
+      }),
   };
 }
 
 function normalizeSocialLinks(links: SocialLinkDraft[]) {
+  const seen = new Set<SocialPlatform>();
   return links.flatMap((link, index) => {
-    const platform = link.platform.trim();
     const url = link.url.trim();
-    if (!platform && !url) return [];
-    if (!platform || !url) throw new Error("Each social link needs a platform and URL.");
-    const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error("Social links must use http:// or https:// URLs.");
+    if (!url) return [];
+    if (seen.has(link.platform)) {
+      throw new Error(`Only one ${SOCIAL_PLATFORM_CATALOG[link.platform].label} link is allowed.`);
     }
-    return [{ platform, url, sortOrder: index, isVisible: link.isVisible }];
+    seen.add(link.platform);
+    return [
+      {
+        platform: link.platform,
+        url,
+        sortOrder: index,
+        isVisible: link.isVisible,
+      },
+    ];
   });
 }
 
@@ -113,21 +143,46 @@ function validateImage(file: File | null): void {
   }
 }
 
-export function ProfileEditor() {
+function useObjectUrl(file: File | null): string | undefined {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    if (!file) {
+      setUrl(undefined);
+      return;
+    }
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  return url;
+}
+
+function draftFingerprint(draft: ProfileDraft | null): string {
+  return draft ? JSON.stringify(draft) : "";
+}
+
+export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
   const revalidator = useRevalidator();
-  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [source, setSource] = useState<MyProfileResponse | null>(null);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
+  const [initialFingerprint, setInitialFingerprint] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const avatarPreview = useObjectUrl(avatarFile);
+  const bannerPreview = useObjectUrl(bannerFile);
+  const dirty = Boolean(
+    draft &&
+      (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
+  );
 
   useEffect(() => {
-    if (!open || draft) return;
+    if (!editing || draft) return;
     let cancelled = false;
     setStatus(null);
-    void fetch("/api/profile/me")
+    void fetch("/api/profile/me", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(await readErrorMessage(response, "Could not load your profile."));
@@ -136,8 +191,10 @@ export function ProfileEditor() {
       })
       .then((data) => {
         if (cancelled) return;
+        const nextDraft = createDraft(data);
         setSource(data);
-        setDraft(createDraft(data));
+        setDraft(nextDraft);
+        setInitialFingerprint(draftFingerprint(nextDraft));
       })
       .catch((error: unknown) => {
         if (!cancelled) {
@@ -147,7 +204,22 @@ export function ProfileEditor() {
     return () => {
       cancelled = true;
     };
-  }, [draft, open]);
+  }, [draft, editing]);
+
+  const availablePlatforms = useMemo(() => {
+    const selected = new Set(draft?.socialLinks.map((link) => link.platform) ?? []);
+    return SOCIAL_PLATFORMS.filter((platform) => !selected.has(platform));
+  }, [draft?.socialLinks]);
+
+  function cancelEditing() {
+    setEditing(false);
+    setSource(null);
+    setDraft(null);
+    setInitialFingerprint("");
+    setAvatarFile(null);
+    setBannerFile(null);
+    setStatus(null);
+  }
 
   function updateLink(key: string, change: Partial<SocialLinkDraft>) {
     setDraft((current) =>
@@ -163,22 +235,24 @@ export function ProfileEditor() {
   }
 
   function addLink() {
-    setDraft((current) =>
-      current && current.socialLinks.length < 8
-        ? {
-            ...current,
-            socialLinks: [
-              ...current.socialLinks,
-              {
-                key: `new-${Date.now()}-${current.socialLinks.length}`,
-                platform: "",
-                url: "",
-                isVisible: true,
-              },
-            ],
-          }
-        : current,
-    );
+    setDraft((current) => {
+      if (!current || current.socialLinks.length >= 10) return current;
+      const selected = new Set(current.socialLinks.map((link) => link.platform));
+      const platform = SOCIAL_PLATFORMS.find((candidate) => !selected.has(candidate));
+      if (!platform) return current;
+      return {
+        ...current,
+        socialLinks: [
+          ...current.socialLinks,
+          {
+            key: `new-${crypto.randomUUID()}`,
+            platform,
+            url: "",
+            isVisible: true,
+          },
+        ],
+      };
+    });
   }
 
   function removeLink(key: string) {
@@ -191,7 +265,7 @@ export function ProfileEditor() {
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!draft || !source) return;
+    if (!draft || !source || !dirty) return;
     setBusy(true);
     setStatus(null);
     try {
@@ -202,12 +276,8 @@ export function ProfileEditor() {
       const csrfToken = readCookie("__Host-sourceboard_csrf") ?? "";
       let avatarAssetId = source.profile.avatarAssetId;
       let bannerAssetId = source.profile.bannerAssetId;
-      if (avatarFile) {
-        avatarAssetId = await uploadProfileMedia("AVATAR", avatarFile, csrfToken);
-      }
-      if (bannerFile) {
-        bannerAssetId = await uploadProfileMedia("BANNER", bannerFile, csrfToken);
-      }
+      if (avatarFile) avatarAssetId = await uploadProfileMedia("AVATAR", avatarFile, csrfToken);
+      if (bannerFile) bannerAssetId = await uploadProfileMedia("BANNER", bannerFile, csrfToken);
       const response = await fetch("/api/profile/me", {
         method: "PATCH",
         headers: {
@@ -226,44 +296,127 @@ export function ProfileEditor() {
       if (!response.ok) {
         throw new Error(await readErrorMessage(response, "Could not save your profile."));
       }
-      setStatus("Profile updated.");
-      setOpen(false);
+      setEditing(false);
       setSource(null);
       setDraft(null);
+      setInitialFingerprint("");
       setAvatarFile(null);
       setBannerFile(null);
+      setStatus("Profile updated.");
       revalidator.revalidate();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not save your profile.");
-      revalidator.revalidate();
     } finally {
       setBusy(false);
     }
   }
 
+  if (!editing) {
+    return (
+      <>
+        <ProfileHero
+          profile={profile}
+          isOwnProfile
+          editControl={
+            <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+              Edit profile
+            </Button>
+          }
+        />
+        {status ? (
+          <div className="product-profile-edit-status" role="status">
+            {status}
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
+  if (!draft) {
+    return (
+      <Card className="product-profile-hero product-profile-editor-inline">
+        <div className="product-profile-editor-loading">
+          <span className="product-eyebrow">Edit profile</span>
+          <strong>Loading your profile…</strong>
+          {status ? <span role="alert">{status}</span> : null}
+          <Button variant="ghost" size="sm" onClick={cancelEditing}>
+            Cancel
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  const bannerVisual = profile.cosmetics?.visuals?.profileBanner;
+  const bannerStyle: CSSProperties = {
+    ...(cosmeticVisualStyle(bannerVisual) ?? {}),
+    backgroundImage: bannerPreview
+      ? `url("${bannerPreview}")`
+      : profile.bannerUrl
+        ? `url("${profile.bannerUrl}")`
+        : undefined,
+  };
+
   return (
-    <Card className="product-settings-section">
-      <span className="product-eyebrow">Your profile</span>
-      <h2>Edit profile</h2>
-      <p>Update how your profile appears to the SourceBoard community.</p>
-      <div className="product-chip-row">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            setOpen((current) => !current);
-            setStatus(null);
-          }}
-        >
-          {open ? "Close editor" : "Edit profile"}
-        </Button>
+    <Card className="product-profile-hero product-profile-editor-inline">
+      <div
+        className={`product-profile-banner${profile.cosmetics?.profileBanner ? ` product-profile-banner--${profile.cosmetics.profileBanner}` : ""}${cosmeticVisualClass(bannerVisual)}`}
+        style={bannerStyle}
+        aria-label="Profile banner preview"
+      >
+        <label className="product-profile-media-edit">
+          <span>Change banner</span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={(event) => setBannerFile(event.target.files?.[0] ?? null)}
+          />
+        </label>
       </div>
-      {status ? <span role="status">{status}</span> : null}
-      {open && !draft ? (
-        <span className="product-store-preview-status">Loading profile…</span>
-      ) : null}
-      {open && draft ? (
-        <form className="product-form-grid" onSubmit={(event) => void saveProfile(event)}>
+
+      <form
+        className="product-profile-content product-profile-editor-inline__form"
+        onSubmit={(event) => void saveProfile(event)}
+      >
+        <div className="product-profile-editor-inline__toolbar">
+          <div>
+            <span className="product-eyebrow">Edit profile</span>
+            <strong>{dirty ? "Unsaved changes" : "Profile preview"}</strong>
+          </div>
+          <div className="product-chip-row">
+            <Button type="submit" size="sm" loading={busy} disabled={!dirty}>
+              Save
+            </Button>
+            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={cancelEditing}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+
+        <div className="product-profile-editor-inline__identity">
+          <label className="product-profile-avatar-edit">
+            <CosmeticIdentity
+              displayName={draft.displayName.trim() || profile.username}
+              avatarUrl={avatarPreview ?? profile.avatarUrl}
+              avatarFrame={profile.cosmetics?.avatarFrame}
+              profileEffect={profile.cosmetics?.profileEffect}
+              nameFont={profile.cosmetics?.nameFont}
+              nameEffect={profile.cosmetics?.nameEffect}
+              visuals={profile.cosmetics?.visuals}
+              mode="profile"
+              nameAs="h1"
+            />
+            <span>Change avatar</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
+            />
+          </label>
+          <span className="product-profile-editor-inline__username">@{profile.username}</span>
+        </div>
+
+        <div className="product-profile-editor-inline__fields">
           <Input
             label="Display name"
             value={draft.displayName}
@@ -278,7 +431,7 @@ export function ProfileEditor() {
             label="Bio"
             value={draft.bio}
             maxLength={5000}
-            rows={5}
+            rows={4}
             onChange={(event) =>
               setDraft((current) => (current ? { ...current, bio: event.target.value } : current))
             }
@@ -302,88 +455,84 @@ export function ProfileEditor() {
               <option value="FRIENDS_ONLY">Friends only</option>
             </select>
           </label>
-          <Input
-            label="Avatar"
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            hint="PNG, JPEG, WebP or GIF. Maximum 5 MB."
-            onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
-          />
-          <Input
-            label="Banner"
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            hint="PNG, JPEG, WebP or GIF. Maximum 5 MB."
-            onChange={(event) => setBannerFile(event.target.files?.[0] ?? null)}
-          />
+        </div>
 
+        <section className="product-profile-editor-socials">
           <div className="product-section-heading">
             <div>
-              <span className="product-eyebrow">Links</span>
-              <h2>Social links</h2>
+              <span className="product-eyebrow">Social links</span>
+              <h2>Profiles people can recognize</h2>
             </div>
             <Button
-              variant="ghost"
+              type="button"
+              variant="secondary"
               size="sm"
-              disabled={draft.socialLinks.length >= 8}
+              disabled={!availablePlatforms.length || draft.socialLinks.length >= 10}
               onClick={addLink}
             >
               Add link
             </Button>
           </div>
 
-          <div className="product-list">
-            {draft.socialLinks.map((link) => (
-              <Card className="product-form-card" key={link.key}>
-                <Input
-                  label="Platform"
-                  value={link.platform}
-                  maxLength={32}
-                  placeholder="Instagram"
-                  onChange={(event) => updateLink(link.key, { platform: event.target.value })}
-                />
-                <Input
-                  label="URL"
-                  type="url"
-                  value={link.url}
-                  maxLength={2048}
-                  placeholder="https://example.com/you"
-                  onChange={(event) => updateLink(link.key, { url: event.target.value })}
-                />
-                <Checkbox
-                  label="Visible on profile"
-                  checked={link.isVisible}
-                  onCheckedChange={(checked) =>
-                    updateLink(link.key, { isVisible: checked === true })
-                  }
-                />
-                <Button variant="ghost" size="sm" onClick={() => removeLink(link.key)}>
-                  Remove link
-                </Button>
-              </Card>
-            ))}
+          <div className="product-profile-editor-social-list">
+            {draft.socialLinks.map((link) => {
+              const definition = SOCIAL_PLATFORM_CATALOG[link.platform];
+              const otherSelected = new Set(
+                draft.socialLinks
+                  .filter((candidate) => candidate.key !== link.key)
+                  .map((candidate) => candidate.platform),
+              );
+              return (
+                <div className="product-profile-editor-social" key={link.key}>
+                  <span className="product-profile-editor-social__icon">
+                    <SocialIcon platform={link.platform} />
+                  </span>
+                  <label className="product-field-native">
+                    <span>Platform</span>
+                    <select
+                      value={link.platform}
+                      onChange={(event) =>
+                        updateLink(link.key, { platform: event.target.value as SocialPlatform })
+                      }
+                    >
+                      {SOCIAL_PLATFORMS.filter(
+                        (platform) => platform === link.platform || !otherSelected.has(platform),
+                      ).map((platform) => (
+                        <option key={platform} value={platform}>
+                          {SOCIAL_PLATFORM_CATALOG[platform].label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Input
+                    label={definition.inputLabel}
+                    value={link.url}
+                    maxLength={2048}
+                    placeholder={definition.placeholder}
+                    onChange={(event) => updateLink(link.key, { url: event.target.value })}
+                  />
+                  <Checkbox
+                    label="Visible"
+                    checked={link.isVisible}
+                    onCheckedChange={(checked) =>
+                      updateLink(link.key, { isVisible: checked === true })
+                    }
+                  />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeLink(link.key)}>
+                    Remove
+                  </Button>
+                </div>
+              );
+            })}
           </div>
+        </section>
 
-          <div className="product-chip-row">
-            <Button type="submit" loading={busy}>
-              Save profile
-            </Button>
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() => {
-                setOpen(false);
-                setSource(null);
-                setDraft(null);
-                setAvatarFile(null);
-                setBannerFile(null);
-              }}
-            >
-              Cancel
-            </Button>
+        {status ? (
+          <div className="product-profile-edit-status" role="alert">
+            {status}
           </div>
-        </form>
-      ) : null}
+        ) : null}
+      </form>
     </Card>
   );
 }
