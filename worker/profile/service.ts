@@ -5,7 +5,7 @@ import {
   type ProfileServiceDependencies,
 } from "./service-core";
 import { toFriendsListDto } from "./store";
-import type { FriendsListDto } from "./types";
+import type { FriendsListDto, SocialUserRecord } from "./types";
 
 export type { ProfileServiceDependencies, PublicProfileResult } from "./service-core";
 
@@ -31,10 +31,29 @@ function normalizeFriendSearch(query: string): string {
   return normalized;
 }
 
+async function toCosmeticFriendsList(
+  users: SocialUserRecord[],
+  dependencies: ProfileServiceDependencies,
+): Promise<FriendsListDto> {
+  const base = toFriendsListDto(users);
+  const cosmetics = await Promise.all(
+    base.friends.map((friend) => dependencies.store.getEquippedCosmetics(friend.id).catch(() => ({}))),
+  );
+  return {
+    friends: base.friends.map((friend, index) => ({
+      ...friend,
+      cosmetics: Object.keys(cosmetics[index] ?? {}).length ? cosmetics[index] : undefined,
+    })),
+  };
+}
+
 export function createProfileService(dependencies: ProfileServiceDependencies): ProfileService {
   const core = createCoreProfileService(dependencies);
   return {
     ...core,
+    async listFriends(viewerId: string) {
+      return toCosmeticFriendsList(await dependencies.store.listSocialUsers(viewerId), dependencies);
+    },
     async searchFriendSuggestions(viewerId: string, query: string) {
       const normalizedQuery = normalizeFriendSearch(query);
       const users = await dependencies.store.searchFriendSuggestions(
@@ -42,7 +61,7 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
         normalizedQuery,
         MAX_FRIEND_SUGGESTIONS,
       );
-      return toFriendsListDto(users);
+      return toCosmeticFriendsList(users, dependencies);
     },
   };
 }
