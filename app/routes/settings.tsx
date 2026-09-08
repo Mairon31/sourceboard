@@ -121,7 +121,9 @@ function PreferencesPanel({ data }: { data: SettingsData }) {
       apply: setValues,
       persist: (candidate) => persistPreferences(candidate, allowNsfwDirectOverride),
     });
-    setStatus(saved ? "Saved" : "Could not save this preference. Your previous setting was restored.");
+    setStatus(
+      saved ? "Saved" : "Could not save this preference. Your previous setting was restored.",
+    );
     setSaving(false);
   }
 
@@ -292,7 +294,8 @@ function SessionSecurityPanel() {
               <div className="product-settings-session" key={session.id}>
                 <strong>{session.current ? "Current browser" : "Active browser"}</strong>
                 <span>
-                  Last used {new Date(session.lastUsedAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
+                  Last used{" "}
+                  {new Date(session.lastUsedAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
                 </span>
               </div>
             ))}
@@ -349,7 +352,9 @@ export default function SettingsRoute() {
             <Card className="product-settings-section product-settings-appearance-card">
               <div className="product-settings-control-block">
                 <strong>Theme</strong>
-                <span>Follow your operating system or use a SourceBoard light or dark override.</span>
+                <span>
+                  Follow your operating system or use a SourceBoard light or dark override.
+                </span>
                 <ThemeControl />
               </div>
               <div className="product-settings-control-block">
