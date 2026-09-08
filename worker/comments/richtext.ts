@@ -31,6 +31,7 @@ const MAX_NODES = 100;
 const MAX_TEXT_LENGTH = 5_000;
 const MAX_LINK_LABEL = 300;
 const KLIPY_MEDIA_HOSTS = new Set(["static.klipy.com", "static1.klipy.com", "static2.klipy.com"]);
+const LEGACY_PICKER_EMOTE_PATTERN = /^emt_[a-z0-9_+-]{1,28}$/i;
 
 function invalid(message: string): never {
   throw new PostError(400, "INVALID_COMMENT_BODY", message);
@@ -173,6 +174,18 @@ function normalizeAttachment(value: unknown): CommentAttachment | null {
   };
 }
 
+function upgradeLegacyEmoteNodes(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((node) => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return node;
+    const current = node as Record<string, unknown>;
+    if (current.type !== "text" || typeof current.text !== "string") return node;
+    const text = current.text.trim();
+    if (text !== current.text || !LEGACY_PICKER_EMOTE_PATTERN.test(text)) return node;
+    return { type: "emote", shortcode: text, ...(current.marks ? { marks: current.marks } : {}) };
+  });
+}
+
 export function normalizeCommentBody(input: {
   richtext?: unknown;
   plaintext?: unknown;
@@ -211,7 +224,7 @@ export function parseStoredCommentBody(
 ): NormalizedCommentBody {
   try {
     return normalizeCommentBody({
-      richtext: JSON.parse(richtextJson),
+      richtext: upgradeLegacyEmoteNodes(JSON.parse(richtextJson)),
       attachment: attachmentJson ? JSON.parse(attachmentJson) : null,
     });
   } catch (error) {
