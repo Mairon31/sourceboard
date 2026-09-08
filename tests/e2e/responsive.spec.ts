@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { friendsFixture, installFriendsFixture } from "./friends-fixture";
 import { installAdminStoreFixture, waitForUiReady } from "./test-helpers";
 
 const viewports = [
@@ -89,6 +90,26 @@ test("authorized Admin Store collapses to mobile cards without document overflow
   });
   expect(geometry.overflow).toBeLessThanOrEqual(1);
   expect(geometry.cardRight).toBeLessThanOrEqual(391);
+});
+
+test("friends workspace keeps requests and discovery contained on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installFriendsFixture(page);
+  await page.goto("/friends");
+  await waitForUiReady(page);
+
+  await page.getByRole("button", { name: "Requests" }).click();
+  await expect(page.getByText(`@${friendsFixture.incoming}`)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Accept" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Decline" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Discover" }).click();
+  await expect(page.getByText(`@${friendsFixture.eligible}`)).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
 });
 
 test("Store effect previews animate normally and stop under reduced motion", async ({ page }) => {
