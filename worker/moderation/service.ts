@@ -261,14 +261,33 @@ export function createModerationService(db: D1Database, options: { events?: Queu
             )
             .bind(input.targetId),
         );
-      if (input.action === "REVOKE_SOURCE_VERIFICATION")
+      if (input.action === "REVOKE_SOURCE_VERIFICATION") {
         statements.push(
+          db
+            .prepare(
+              `UPDATE moderation_reports
+               SET status = 'ACTIONED', assignee_user_id = ?, updated_at = ?
+               WHERE target_type = 'SOURCE' AND status IN ('OPEN', 'IN_REVIEW')
+                 AND (
+                   target_id = ? OR target_id = (SELECT verified_source_id FROM posts WHERE id = ?)
+                 )`,
+            )
+            .bind(input.actorUserId, now, input.targetId, input.targetId),
+          db
+            .prepare(
+              `UPDATE source_resolutions
+               SET state = 'REVOKED', revoked_at = ?, revoked_by_user_id = ?, revoke_reason = ?
+               WHERE id = (SELECT verified_source_id FROM posts WHERE id = ?)
+                 AND resolution_type = 'VERIFIED' AND state = 'ACTIVE'`,
+            )
+            .bind(now, input.actorUserId, reason, input.targetId),
           db
             .prepare(
               "UPDATE posts SET verified_source_id = NULL, status = CASE WHEN accepted_comment_id IS NULL THEN 'OPEN' ELSE 'ANSWERED' END, updated_at = ? WHERE id = ?",
             )
             .bind(now, input.targetId),
         );
+      }
     }
     if (input.targetType === "COMMENT") {
       if (input.action === "HIDE")
