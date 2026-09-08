@@ -27,6 +27,67 @@
   max-width: 100%;
 }
 
+.product-social-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-2);
+}
+
+.product-social-link {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-glass-soft);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.product-social-link:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-glass-soft));
+  transform: translateY(-1px);
+}
+
+.product-social-link__icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--bg-app-secondary);
+  color: var(--text-secondary);
+}
+
+.product-social-link__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.product-social-link__copy strong,
+.product-social-link__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-social-link__copy strong {
+  font-size: var(--text-sm);
+}
+
+.product-social-link__copy small {
+  color: var(--text-muted);
+}
+
 @keyframes sb-custom-pulse {
   0%,
   100% {
@@ -132,6 +193,10 @@
     animation: none !important;
     transform: none !important;
   }
+
+  .product-social-link:hover {
+    transform: none;
+  }
 }
 
 html[data-animations="off"] .sb-custom-cosmetic,
@@ -141,4 +206,12 @@ html[data-animations="off"] .sb-custom-cosmetic--float,
 html[data-animations="off"] .sb-custom-cosmetic--spin {
   animation: none !important;
   transform: none !important;
+}
+
+html[data-animations="off"] .product-social-link {
+  transition: none;
+}
+
+html[data-animations="off"] .product-social-link:hover {
+  transform: none;
 }
