@@ -10,6 +10,7 @@ import { createD1AuthStore } from "./auth/store";
 import { withSecurityHeaders } from "./security/headers";
 import { runMaintenance } from "./maintenance/service";
 import { observeBackgroundFailure, observeRequest } from "./observability";
+import { handlePublicSeoRequest } from "./seo/public";
 
 export { NotificationHub };
 
@@ -48,6 +49,9 @@ export default {
       const stub = env.NOTIFICATION_HUB.get(env.NOTIFICATION_HUB.idFromName(session.user.id));
       return finish(await stub.fetch(new Request(target, request)));
     }
+    const seoResponse = await handlePublicSeoRequest(request, env);
+    if (seoResponse) return finish(seoResponse);
+
     const apiResponse = await handleApiRequest(request, requestId, env);
 
     if (apiResponse) {

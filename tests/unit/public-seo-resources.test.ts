@@ -27,9 +27,7 @@ describe("public SEO resources", () => {
       {},
     );
     expect(robotsResponse?.status).toBe(200);
-    expect(robotsResponse?.headers.get("cache-control")).toBe(
-      "public, max-age=300, s-maxage=300",
-    );
+    expect(robotsResponse?.headers.get("cache-control")).toBe("public, max-age=300, s-maxage=300");
     const robots = await robotsResponse?.text();
     expect(robots).toContain("Disallow: /admin/");
     expect(robots).toContain("Disallow: /settings");
@@ -49,9 +47,7 @@ describe("public SEO resources", () => {
   });
 
   it("returns null for non-SEO paths and 503 when a dynamic sitemap lacks D1", async () => {
-    expect(
-      await handlePublicSeoRequest(new Request("https://srcboard.me/store"), {}),
-    ).toBeNull();
+    expect(await handlePublicSeoRequest(new Request("https://srcboard.me/store"), {})).toBeNull();
     const dynamic = await handlePublicSeoRequest(
       new Request("https://srcboard.me/sitemap.xml"),
       {},

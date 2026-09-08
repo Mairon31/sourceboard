@@ -88,6 +88,7 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   if (
     !post ||
     loaderData.unavailable ||
+    post.isNsfw ||
     post.visibility !== "PUBLIC" ||
     post.nsfwPresentation === "HIDDEN"
   ) {
