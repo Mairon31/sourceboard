@@ -34,6 +34,7 @@ import "./components/product/name-effect-extras.css";
 import "./components/product/custom-cosmetics.css";
 import "./components/product/cosmetic-identity.css";
 import "./components/product/profile-klipy.css";
+import "./components/product/docs-system.css";
 import "./components/admin/admin.css";
 import "./components/admin/store/admin-store.css";
 import "./components/product/visual-overhaul.css";
