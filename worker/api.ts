@@ -9,6 +9,7 @@ import { handleCatalogRequest } from "./catalog/api";
 import { handleSourceRequest } from "./source/api";
 import { handleReputationRequest } from "./reputation/api";
 import { handleStoreRequest } from "./store/api";
+import { handleCommunityCosmeticRequest } from "./store/community-api";
 import { handleModerationRequest } from "./moderation/api";
 import { handleSearchRequest } from "./search/api";
 
@@ -72,6 +73,11 @@ export async function handleApiRequest(
   const reputationResponse = await handleReputationRequest(request, requestId, env ?? {});
   if (reputationResponse) {
     return reputationResponse;
+  }
+
+  const cosmeticResponse = await handleCommunityCosmeticRequest(request, requestId, env ?? {});
+  if (cosmeticResponse) {
+    return cosmeticResponse;
   }
 
   const storeResponse = await handleStoreRequest(request, requestId, env ?? {});
