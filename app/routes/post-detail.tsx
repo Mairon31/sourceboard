@@ -82,6 +82,71 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
+type LoadedPost = NonNullable<LoaderData["post"]>;
+
+function findComment(comments: CommentView[], id?: string): CommentView | undefined {
+  if (!id) return undefined;
+  for (const comment of comments) {
+    if (comment.id === id) return comment;
+    const reply = findComment(comment.replies, id);
+    if (reply) return reply;
+  }
+  return undefined;
+}
+
+function sourceResolutionJsonLd(post: LoadedPost, pageUrl: string) {
+  const resolution = post.verifiedSource ?? post.acceptedSource;
+  if (!resolution) return undefined;
+  const acceptedComment = findComment(post.comments, resolution.commentId);
+  const canonicalSourceUrl = post.verifiedSource?.canonicalUrl ?? post.acceptedSource?.canonicalUrl;
+  const verified = Boolean(post.verifiedSource);
+  const evidence = post.verifiedSource?.evidenceSummary || acceptedComment?.body;
+  const properties: Array<Record<string, unknown>> = [
+    {
+      "@type": "PropertyValue",
+      name: "SourceBoard source status",
+      value: verified ? "VERIFIED" : "ACCEPTED",
+    },
+  ];
+  if (post.acceptedSource?.acceptedAt) {
+    properties.push({
+      "@type": "PropertyValue",
+      name: "Accepted at",
+      value: post.acceptedSource.acceptedAt,
+    });
+  }
+  if (post.verifiedSource?.verifiedAt) {
+    properties.push({
+      "@type": "PropertyValue",
+      name: "Verified at",
+      value: post.verifiedSource.verifiedAt,
+    });
+  }
+  if (post.verifiedSource?.verifierLabel) {
+    properties.push({
+      "@type": "PropertyValue",
+      name: "Verification authority",
+      value: post.verifiedSource.verifierLabel,
+    });
+  }
+  const contributor =
+    acceptedComment?.author.mode === "IDENTIFIED"
+      ? {
+          "@type": "Person",
+          name: acceptedComment.author.displayName,
+          ...(acceptedComment.author.profileUrl ? { url: acceptedComment.author.profileUrl } : {}),
+        }
+      : undefined;
+  return {
+    "@type": "CreativeWork",
+    "@id": `${pageUrl}#accepted-source`,
+    name: verified ? "Verified original-source resolution" : "Accepted source resolution",
+    ...(canonicalSourceUrl ? { url: canonicalSourceUrl } : {}),
+    ...(evidence ? { description: evidence.slice(0, 1000) } : {}),
+    ...(contributor ? { contributor } : {}),
+    additionalProperty: properties,
+  };
+}
 
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const post = loaderData?.post;
@@ -109,6 +174,16 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const imageUrl = post.imageUrl
     ? new URL(post.imageUrl, loaderData.canonicalUrl).toString()
     : undefined;
+  const sourceResolution = sourceResolutionJsonLd(post, loaderData.canonicalUrl);
+  const image = imageUrl
+    ? {
+        "@type": "ImageObject",
+        contentUrl: imageUrl,
+        caption: post.imageAlt,
+        ...(post.imageWidth ? { width: post.imageWidth } : {}),
+        ...(post.imageHeight ? { height: post.imageHeight } : {}),
+      }
+    : undefined;
   return [
     { title: `${post.title} · SourceBoard` },
     { name: "description", content: description.slice(0, 180) },
@@ -129,21 +204,37 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
         dateModified: post.updatedAt,
         mainEntityOfPage: loaderData.canonicalUrl,
         author,
-        ...(imageUrl ? { image: imageUrl } : {}),
+        ...(image ? { image } : {}),
+        ...(sourceResolution ? { citation: sourceResolution } : {}),
+        additionalProperty: [
+          {
+            "@type": "PropertyValue",
+            name: "SourceBoard request status",
+            value: post.status,
+          },
+          ...(post.acceptedSource
+            ? [
+                {
+                  "@type": "PropertyValue",
+                  name: "Accepted source",
+                  value: "Present",
+                },
+              ]
+            : []),
+          ...(post.verifiedSource
+            ? [
+                {
+                  "@type": "PropertyValue",
+                  name: "Source verification",
+                  value: "Verified",
+                },
+              ]
+            : []),
+        ],
       },
     },
   ];
 };
-
-function findComment(comments: CommentView[], id?: string): CommentView | undefined {
-  if (!id) return undefined;
-  for (const comment of comments) {
-    if (comment.id === id) return comment;
-    const reply = findComment(comment.replies, id);
-    if (reply) return reply;
-  }
-  return undefined;
-}
 
 function UnavailablePost({ unavailable }: { unavailable: boolean }) {
   return (
