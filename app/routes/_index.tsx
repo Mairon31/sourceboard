@@ -81,10 +81,10 @@ function FeedCollection({
   }
   if (!posts.length) {
     return (
-      <Card className="product-empty-state">
+      <div className="product-empty-state product-empty-state--compact">
         <strong>No source requests here yet</strong>
         <p>Try another feed or publish an image for the community to investigate.</p>
-      </Card>
+      </div>
     );
   }
   return (
@@ -119,30 +119,27 @@ export default function HomeRoute() {
       </section>
 
       <section className="product-feed-workspace" aria-labelledby="feed-heading">
-        <div className="product-feed-workspace__toolbar">
+        <div className="product-feed-workspace__heading">
           <div>
             <span className="product-eyebrow">Feed</span>
-            <h2 id="feed-heading">Source requests</h2>
+            <h2 id="feed-heading">{active.label}</h2>
             <p>{active.description}</p>
           </div>
-          <nav
-            className="product-store-filter-tabs product-feed-filter-tabs"
-            aria-label="Feed filters"
-          >
-            {feedOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={feed === option.value ? "is-active" : undefined}
-                aria-pressed={feed === option.value}
-                onClick={() => setFeed(option.value)}
-              >
-                {option.label}
-                <span>{feeds[option.value].length}</span>
-              </button>
-            ))}
-          </nav>
         </div>
+        <nav className="product-store-filter-bar product-feed-filter-tabs" aria-label="Feed filters">
+          {feedOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={`product-store-filter${feed === option.value ? " product-store-filter--active is-active" : ""}`}
+              aria-pressed={feed === option.value}
+              onClick={() => setFeed(option.value)}
+            >
+              <span className="product-feed-filter-tabs__label">{option.label}</span>
+              <span className="product-feed-filter-tabs__count">{feeds[option.value].length}</span>
+            </button>
+          ))}
+        </nav>
         <FeedCollection posts={posts} unavailable={unavailable} />
       </section>
     </ProductShell>
