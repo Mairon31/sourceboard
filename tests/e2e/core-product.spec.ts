@@ -31,13 +31,12 @@ test("feed presents discovery tabs and privacy-sensitive states", async ({ page 
   await expect(page.getByRole("tabpanel", { name: "Recent" })).toBeVisible();
 });
 
-test("home presents the connected production service", async ({ page }) => {
+test("home presents the connected production feed", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Presentation build" })).toHaveCount(0);
-  await expect(
-    page.getByText("Source requests are connected to the community service."),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find the original source" })).toBeVisible();
+  await expect(page.locator(".product-feed-cta").getByRole("link", { name: "Create post" })).toBeVisible();
 });
 
 test("signed-out home does not render a fixture account", async ({ page }) => {
