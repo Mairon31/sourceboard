@@ -138,6 +138,38 @@ async function rewardPostMutation(
   }
 }
 
+async function rewardReactionMutation(
+  request: Request,
+  env: SourceBoardEnvironment,
+  userId: string,
+  url: URL,
+): Promise<void> {
+  const reaction = url.pathname.match(/^\/api\/reactions\/(POST|COMMENT)\/([^/]+)$/);
+  if (!reaction || (request.method !== "POST" && request.method !== "DELETE")) return;
+  const targetType = reaction[1] as "POST" | "COMMENT";
+  const targetId = decodeURIComponent(reaction[2] ?? "");
+  const ownerId = await ownerForReaction(env.DB!, targetType, targetId);
+  if (!ownerId || ownerId === userId) return;
+  const rewardType: ContributionRewardType =
+    targetType === "POST" ? "POST_LIKED" : "COMMENT_LIKED";
+  const subjectKey = `${targetType}:${targetId}`;
+  if (request.method === "POST") {
+    await awardContribution(env.DB!, {
+      userId,
+      rewardType,
+      subjectKey,
+      metadata: { targetType, targetId },
+    });
+    return;
+  }
+  await reverseContribution(env.DB!, {
+    userId,
+    rewardType,
+    subjectKey,
+    reason: "like_removed",
+  });
+}
+
 async function rewardCommentMutation(
   request: Request,
   response: Response,
@@ -175,25 +207,7 @@ async function rewardCommentMutation(
         reason: "comment_deleted",
       });
     }
-    return;
   }
-
-  const reaction = url.pathname.match(/^\/api\/reactions\/(POST|COMMENT)\/([^/]+)$/);
-  if (request.method !== "POST" || !reaction) return;
-  const body = await jsonBody(response);
-  if (body?.liked !== true) return;
-  const targetType = reaction[1] as "POST" | "COMMENT";
-  const targetId = decodeURIComponent(reaction[2] ?? "");
-  const ownerId = await ownerForReaction(db, targetType, targetId);
-  if (!ownerId || ownerId === userId) return;
-  const rewardType: ContributionRewardType =
-    targetType === "POST" ? "POST_LIKED" : "COMMENT_LIKED";
-  await awardContribution(db, {
-    userId,
-    rewardType,
-    subjectKey: `${targetType}:${targetId}`,
-    metadata: { targetType, targetId },
-  });
 }
 
 async function rewardProfileMutation(
@@ -256,7 +270,11 @@ export async function applyContributionRewards(
       await rewardProfileMutation(request, env, userId, url);
       return;
     }
-    if (url.pathname.startsWith("/api/comments") || url.pathname.startsWith("/api/reactions") || /\/comments$/.test(url.pathname)) {
+    if (url.pathname.startsWith("/api/reactions")) {
+      await rewardReactionMutation(request, env, userId, url);
+      return;
+    }
+    if (url.pathname.startsWith("/api/comments") || /\/comments$/.test(url.pathname)) {
       await rewardCommentMutation(request, response, env, userId, url);
       return;
     }
