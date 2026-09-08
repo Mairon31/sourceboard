@@ -17,7 +17,7 @@ const richText = read("../../app/components/product/RichText.tsx");
 const overlays = read("../../app/components/ui/overlays.tsx");
 const icons = read("../../app/components/ui/icons.tsx");
 const css = read("../../app/components/product/profile-klipy.css");
-const productCss = read("../../app/components/product/product.css");
+const commentActionsCss = read("../../app/components/product/comment-actions.css");
 
 describe("responsive GIF, sticker and emote picker", () => {
   it("extracts one picker with abortable debounced cached KLIPY search", () => {
@@ -44,6 +44,7 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(markdown).toContain("normalizeEmoteShortcode");
     expect(markdown).toContain("formatEmoteMarkdown");
     expect(commentRichtext).toContain("normalizeEmoteShortcode");
+    expect(commentRichtext).toContain("upgradeLegacyEmoteNodes");
     expect(thread).toContain("formatEmoteMarkdown(item.shortcode)");
     expect(thread).not.toContain("}${item.shortcode}`");
   });
@@ -65,7 +66,7 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(thread).toContain("<HeartIcon");
     expect(thread).toContain("<MessageIcon");
     expect(thread).toContain("<CheckIcon");
-    expect(productCss).toContain("product-comment__action");
+    expect(commentActionsCss).toContain("product-comment__action");
   });
 
   it("keeps animated media URLs and applies the requested compact comment sizes", () => {
