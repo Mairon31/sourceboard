@@ -55,6 +55,7 @@ export function PostCard({
   const [showNsfw, setShowNsfw] = useState(post.nsfwPresentation === "VISIBLE");
   const [liked, setLiked] = useState(post.reaction.viewerReacted);
   const [likes, setLikes] = useState(post.reaction.count);
+  const [commentsClosed, setCommentsClosedState] = useState(Boolean(post.commentsClosed));
   const [reactionStatus, setReactionStatus] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title);
@@ -68,9 +69,15 @@ export function PostCard({
   const [mediaFailed, setMediaFailed] = useState(false);
   const mediaRef = useRef<HTMLImageElement>(null);
   const detailHref = postDetailHref(post);
+
   useEffect(() => {
     setMediaFailed(false);
   }, [post.imageUrl]);
+
+  useEffect(() => {
+    setCommentsClosedState(Boolean(post.commentsClosed));
+  }, [post.commentsClosed]);
+
   useEffect(() => {
     const image = mediaRef.current;
     if (!image || !post.imageUrl || mediaFailed) return;
@@ -79,11 +86,15 @@ export function PostCard({
     image.addEventListener("error", markFailed);
     return () => image.removeEventListener("error", markFailed);
   }, [mediaFailed, post.imageUrl]);
+
   const mediaClass =
     post.imageUrl && !mediaFailed
       ? "product-post__media product-post__media--image"
       : "product-post__media";
   const permissions = "permissions" in post ? post.permissions : undefined;
+  const canManageComments = Boolean(
+    permissions?.canCloseComments || permissions?.canReopenComments,
+  );
 
   function openPostDetail() {
     if (!editing) {
@@ -180,6 +191,8 @@ export function PostCard({
 
   async function setCommentsClosed(closed: boolean) {
     setManageStatus(null);
+    const previous = commentsClosed;
+    setCommentsClosedState(closed);
     try {
       const response = await fetch(
         `/api/posts/${encodeURIComponent(post.id)}/${closed ? "close-comments" : "reopen-comments"}`,
@@ -194,6 +207,7 @@ export function PostCard({
       setManageStatus(closed ? "Comments closed." : "Comments reopened.");
       onChanged?.();
     } catch (error) {
+      setCommentsClosedState(previous);
       setManageStatus(error instanceof Error ? error.message : "Could not update comments.");
     }
   }
@@ -217,10 +231,10 @@ export function PostCard({
               },
             ]
           : []),
-        ...(permissions?.canCloseComments
+        ...(canManageComments && !commentsClosed
           ? [{ label: "Close comments", onSelect: () => void setCommentsClosed(true) }]
           : []),
-        ...(permissions?.canReopenComments
+        ...(canManageComments && commentsClosed
           ? [{ label: "Reopen comments", onSelect: () => void setCommentsClosed(false) }]
           : []),
         ...(permissions?.canDelete
@@ -287,6 +301,7 @@ export function PostCard({
               ariaLabel="More post actions"
               triggerIcon={<MoreIcon width="18" height="18" />}
               iconOnly
+              className="product-post__menu"
               items={menuItems}
             />
           ) : null}
@@ -403,9 +418,7 @@ export function PostCard({
             <span className="product-meta-success">Source accepted</span>
           ) : null}
           {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
-          {post.commentsClosed ? (
-            <span className="product-meta-success">Comments closed</span>
-          ) : null}
+          {commentsClosed ? <span className="product-meta-success">Comments closed</span> : null}
         </div>
 
         <footer className="product-post__actions">
