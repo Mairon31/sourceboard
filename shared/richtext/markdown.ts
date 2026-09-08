@@ -30,9 +30,23 @@ export type SafeRichTextNode =
 const MAX_INPUT_LENGTH = 5_000;
 const MAX_NODES = 100;
 const MAX_DEPTH = 4;
+const EMOTE_SHORTCODE_PATTERN = /^[a-z0-9_+-]{1,32}$/i;
 
 function invalid(message: string): never {
   throw new Error(`Invalid Markdown: ${message}`);
+}
+
+export function normalizeEmoteShortcode(value: string): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  const unwrapped = trimmed.startsWith(":") && trimmed.endsWith(":") ? trimmed.slice(1, -1) : trimmed;
+  return EMOTE_SHORTCODE_PATTERN.test(unwrapped) ? unwrapped : null;
+}
+
+export function formatEmoteMarkdown(value: string): string {
+  const normalized = normalizeEmoteShortcode(value);
+  if (!normalized) invalid("the emote shortcode is invalid.");
+  return `:${normalized}:`;
 }
 
 function safeUrl(value: string): string {
@@ -55,7 +69,11 @@ function addMarks(node: SafeInlineRichTextNode, marks: RichTextMarks): SafeInlin
 function plainLabel(nodes: SafeInlineRichTextNode[]): string {
   return nodes
     .map((node) =>
-      node.type === "link" ? node.label : node.type === "emote" ? node.shortcode : node.text,
+      node.type === "link"
+        ? node.label
+        : node.type === "emote"
+          ? formatEmoteMarkdown(node.shortcode)
+          : node.text,
     )
     .join("");
 }
@@ -122,10 +140,13 @@ function parseInline(source: string, depth: number): SafeInlineRichTextNode[] {
     if (character === ":") {
       const match = source.slice(index).match(/^:[a-z0-9_+-]{1,32}:/i);
       if (match) {
-        flush();
-        nodes.push({ type: "emote", shortcode: match[0] });
-        index += match[0].length - 1;
-        continue;
+        const shortcode = normalizeEmoteShortcode(match[0]);
+        if (shortcode) {
+          flush();
+          nodes.push({ type: "emote", shortcode });
+          index += match[0].length - 1;
+          continue;
+        }
       }
     }
     text += character;
