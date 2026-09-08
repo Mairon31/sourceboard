@@ -38,6 +38,7 @@ import "./components/admin/store/admin-store.css";
 import "./components/product/visual-overhaul.css";
 import "./components/product/profile-summary.css";
 import "./components/product/mobile-product-polish.css";
+import "./components/product/profile-layout-polish.css";
 
 // fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
 export async function loader({ request, context }: ServerLoaderArgs) {
