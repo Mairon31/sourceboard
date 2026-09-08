@@ -31,7 +31,8 @@ jobs:
           s = s.replace('  const [items, setItems] = useState(comments);', '  const submitInFlightRef = useRef(false);\n  const [items, setItems] = useState(comments);');
           s = s.replace('    if (submitting || (!body.trim() && !attachment)) return;\n    setSubmitting(true);', '    if (submitInFlightRef.current || (!body.trim() && !attachment)) return;\n    submitInFlightRef.current = true;\n    setSubmitting(true);');
           s = s.replace('    } finally {\n      setSubmitting(false);\n    }\n  }', '    } finally {\n      submitInFlightRef.current = false;\n      setSubmitting(false);\n    }\n  }');
-          if (!s.includes('const submitInFlightRef = useRef(false);') || !s.includes('submitInFlightRef.current = true;') || !s.includes('submitInFlightRef.current = false;')) throw new Error('submit guard patch incomplete');
+          s = s.replace('disabled={!body.trim() && !attachment}', 'disabled={submitting || (!body.trim() && !attachment)}');
+          if (!s.includes('const submitInFlightRef = useRef(false);') || !s.includes('submitInFlightRef.current = true;') || !s.includes('submitInFlightRef.current = false;') || !s.includes('disabled={submitting || (!body.trim() && !attachment)}')) throw new Error('submit guard patch incomplete');
           fs.writeFileSync(path, s);
           NODE
       - run: npx prettier --write app/components/product/CommentThread.tsx
