@@ -3,24 +3,37 @@ import type { SearchFilter, SearchKind, SearchResult } from "../../worker/search
 import { createSearchService } from "../../worker/search/service";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { PostCard } from "../components/product/PostCard";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
-import { Avatar, Card } from "../components/ui";
+import { Card, SearchIcon } from "../components/ui";
 
 type LoaderArgs = ServerLoaderArgs;
 
 export const meta: MetaFunction = () => [
   { title: "Search · SourceBoard" },
-  { name: "description", content: "Search source requests and public profiles on SourceBoard." },
+  {
+    name: "description",
+    content: "Search public source requests, accepted sources and public contributors on SourceBoard.",
+  },
   { name: "robots", content: "noindex, follow" },
 ];
 
 function parseKind(value: string | null): SearchKind {
-  return value === "posts" || value === "profiles" ? value : "all";
+  return value === "posts" || value === "profiles" || value === "sources" ? value : "all";
 }
 
 function parseFilter(value: string | null): SearchFilter {
-  return value === "open" || value === "answered" || value === "verified" ? value : "recent";
+  if (
+    value === "relevant" ||
+    value === "open" ||
+    value === "unanswered" ||
+    value === "answered" ||
+    value === "verified"
+  ) {
+    return value;
+  }
+  return "recent";
 }
 
 function emptyResult(query: string, kind: SearchKind, filter: SearchFilter): SearchResult {
@@ -92,21 +105,23 @@ function SearchFilters({ result, query }: { result: SearchResult; query: string 
   const kinds: Array<{ value: SearchKind; label: string }> = [
     { value: "all", label: "All" },
     { value: "posts", label: "Posts" },
-    { value: "profiles", label: "People" },
+    { value: "profiles", label: "Users" },
+    { value: "sources", label: "Accepted Sources" },
   ];
   const filters: Array<{ value: SearchFilter; label: string }> = [
+    { value: "relevant", label: "Relevant" },
     { value: "recent", label: "Recent" },
-    { value: "open", label: "Open" },
+    { value: "unanswered", label: "Unanswered" },
     { value: "answered", label: "Answered" },
     { value: "verified", label: "Verified" },
   ];
   return (
-    <div className="product-search-filter-groups">
-      <nav className="product-chip-row" aria-label="Search result type">
+    <div className="product-search-filter-groups product-search-controls">
+      <nav className="product-store-filter-tabs" aria-label="Search result type">
         {kinds.map((item) => (
           <Link
             key={item.value}
-            className={`product-chip${result.kind === item.value ? " is-active" : ""}`}
+            className={result.kind === item.value ? "is-active" : undefined}
             to={searchHref(query, { kind: item.value, filter: result.filter })}
             aria-current={result.kind === item.value ? "page" : undefined}
           >
@@ -114,44 +129,58 @@ function SearchFilters({ result, query }: { result: SearchResult; query: string 
           </Link>
         ))}
       </nav>
-      <nav className="product-chip-row" aria-label="Search post filter">
-        {filters.map((item) => (
-          <Link
-            key={item.value}
-            className={`product-chip${result.filter === item.value ? " is-active" : ""}`}
-            to={searchHref(query, { kind: result.kind, filter: item.value })}
-            aria-current={result.filter === item.value ? "page" : undefined}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      {result.kind !== "profiles" ? (
+        <nav className="product-chip-row" aria-label="Search post filter">
+          {filters.map((item) => (
+            <Link
+              key={item.value}
+              className={`product-chip${result.filter === item.value ? " is-active" : ""}`}
+              to={searchHref(query, { kind: result.kind, filter: item.value })}
+              aria-current={result.filter === item.value ? "page" : undefined}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
     </div>
   );
 }
 
 function ProfileResults({ result }: { result: SearchResult }) {
-  if (result.kind === "posts" || !result.profiles.length) return null;
+  if (result.kind === "posts" || result.kind === "sources" || !result.profiles.length) return null;
   return (
     <section className="product-search-section" aria-labelledby="search-people-heading">
       <div className="product-search-section__header">
         <div>
           <span className="product-eyebrow">Public profiles</span>
-          <h2 id="search-people-heading">People</h2>
+          <h2 id="search-people-heading">Users</h2>
         </div>
         <span className="product-search-count">{result.profiles.length} results</span>
       </div>
       <div className="product-search-profile-list">
         {result.profiles.map((profile) => (
-          <Card className="product-search-profile" key={profile.id}>
-            <Avatar name={profile.displayName} src={profile.avatarUrl} size="lg" />
-            <div className="product-search-profile__copy">
-              <Link to={`/u/${encodeURIComponent(profile.username)}`}>
-                <strong>{profile.displayName}</strong>
-              </Link>
-              <span>@{profile.username}</span>
-              {profile.bio ? <p>{profile.bio}</p> : <p>No public bio.</p>}
-            </div>
+          <Card className="product-search-profile product-search-profile--identity" key={profile.id}>
+            <Link
+              className="product-search-profile__identity-link"
+              to={`/u/${encodeURIComponent(profile.username)}`}
+            >
+              <CosmeticIdentity
+                displayName={profile.displayName}
+                avatarUrl={profile.avatarUrl}
+                avatarFrame={profile.cosmetics?.avatarFrame}
+                profileEffect={profile.cosmetics?.profileEffect}
+                nameFont={profile.cosmetics?.nameFont}
+                nameEffect={profile.cosmetics?.nameEffect}
+                visuals={profile.cosmetics?.visuals}
+                mode="compact"
+                nameAs="strong"
+              />
+              <div className="product-search-profile__copy">
+                <span>@{profile.username}</span>
+                {profile.bio ? <p>{profile.bio}</p> : <p>No public bio.</p>}
+              </div>
+            </Link>
           </Card>
         ))}
       </div>
@@ -164,7 +193,7 @@ function ProfileResults({ result }: { result: SearchResult }) {
             profileCursor: result.nextProfileCursor,
           })}
         >
-          Load more people
+          Load more users
         </Link>
       ) : null}
     </section>
@@ -173,12 +202,15 @@ function ProfileResults({ result }: { result: SearchResult }) {
 
 function PostResults({ result }: { result: SearchResult }) {
   if (result.kind === "profiles" || !result.posts.length) return null;
+  const sourceMode = result.kind === "sources";
   return (
     <section className="product-search-section" aria-labelledby="search-posts-heading">
       <div className="product-search-section__header">
         <div>
-          <span className="product-eyebrow">Public source requests</span>
-          <h2 id="search-posts-heading">Posts</h2>
+          <span className="product-eyebrow">
+            {sourceMode ? "Resolved provenance" : "Public source requests"}
+          </span>
+          <h2 id="search-posts-heading">{sourceMode ? "Accepted Sources" : "Posts"}</h2>
         </div>
         <span className="product-search-count">{result.posts.length} results</span>
       </div>
@@ -196,7 +228,7 @@ function PostResults({ result }: { result: SearchResult }) {
             postCursor: result.nextPostCursor,
           })}
         >
-          Load more posts
+          Load more {sourceMode ? "accepted sources" : "posts"}
         </Link>
       ) : null}
     </section>
@@ -205,30 +237,40 @@ function PostResults({ result }: { result: SearchResult }) {
 
 export default function SearchRoute() {
   const { unavailable, query, result } = useLoaderData<LoaderData>();
+  const total = result.posts.length + result.profiles.length;
   return (
     <ProductShell wide>
       <PageHeader
         eyebrow="Discovery"
-        title={query ? `Search results for “${query}”` : "Search SourceBoard"}
-        description="Search public source requests and public profiles. Private and friends-only content stays outside discovery."
+        title={query ? `Results for “${query}”` : "Search SourceBoard"}
+        description="Find public source requests, contributors and accepted-source provenance. Private and friends-only content is excluded server-side."
       />
-      <Form className="product-search-form" method="get" role="search">
-        <label htmlFor="search-query">Search posts and people</label>
+      <Form className="product-search-form product-search-form--advanced" method="get" role="search">
+        <label htmlFor="search-query">Search SourceBoard</label>
         <div className="product-search-form__row">
-          <input
-            id="search-query"
-            name="q"
-            type="search"
-            defaultValue={query}
-            placeholder="Try a source, username or topic"
-            autoComplete="off"
-          />
+          <div className="product-search-input-shell">
+            <SearchIcon width="18" height="18" aria-hidden="true" />
+            <input
+              id="search-query"
+              name="q"
+              type="search"
+              defaultValue={query}
+              placeholder="Image source, creator, username or topic"
+              autoComplete="off"
+            />
+          </div>
           {result.kind !== "all" ? <input type="hidden" name="kind" value={result.kind} /> : null}
           {result.filter !== "recent" ? (
             <input type="hidden" name="filter" value={result.filter} />
           ) : null}
           <button type="submit">Search</button>
         </div>
+        {query && !unavailable ? (
+          <div className="product-search-query-summary" aria-live="polite">
+            <strong>{total}</strong> visible results in this page
+            {result.kind === "sources" ? <span>Accepted sources only</span> : null}
+          </div>
+        ) : null}
       </Form>
       {unavailable ? (
         <Card className="product-empty-state">
@@ -236,9 +278,10 @@ export default function SearchRoute() {
           <p>The public search index is not available in this environment yet.</p>
         </Card>
       ) : !query ? (
-        <Card className="product-empty-state">
-          <strong>Start with a source or contributor</strong>
-          <p>Use the search field above to find public posts, usernames or profile bios.</p>
+        <Card className="product-empty-state product-search-empty">
+          <SearchIcon width="24" height="24" aria-hidden="true" />
+          <strong>Search public SourceBoard knowledge</strong>
+          <p>Look for a source request, original creator, accepted source or contributor.</p>
         </Card>
       ) : (
         <>
@@ -248,7 +291,7 @@ export default function SearchRoute() {
           {!result.posts.length && !result.profiles.length ? (
             <Card className="product-empty-state">
               <strong>No public matches</strong>
-              <p>Try a broader term or a different post filter.</p>
+              <p>Try a broader term, another category or a different status filter.</p>
             </Card>
           ) : null}
         </>
