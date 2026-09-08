@@ -35,7 +35,7 @@ jobs:
           fs.writeFileSync(path, s);
           NODE
       - run: npx prettier --write app/components/product/CommentThread.tsx
-      - run: npm test -- --run tests/unit/comment-submission-concurrency.test.ts
+      - run: npm test -- --run tests/unit/profile-account-klipy-picker.test.ts
       - name: Commit repair and remove helper
         run: |
           rm .github/workflows/fix-comment-submit-guard.yml
