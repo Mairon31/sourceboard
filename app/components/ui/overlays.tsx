@@ -154,7 +154,9 @@ export function Drawer({ triggerLabel, title, description, children }: DrawerPro
 
 export interface DropdownItem {
   label: string;
+  icon?: ReactNode;
   disabled?: boolean;
+  destructive?: boolean;
   onSelect?: () => void;
 }
 
@@ -163,22 +165,37 @@ export interface DropdownProps {
   items: DropdownItem[];
   align?: "start" | "center" | "end";
   className?: string;
+  triggerIcon?: ReactNode;
+  iconOnly?: boolean;
+  ariaLabel?: string;
 }
 
-export function Dropdown({ label, items, align = "end", className }: DropdownProps) {
+export function Dropdown({
+  label,
+  items,
+  align = "end",
+  className,
+  triggerIcon,
+  iconOnly = false,
+  ariaLabel,
+}: DropdownProps) {
   return (
     <Menu.Root>
       <Menu.Trigger
+        aria-label={ariaLabel ?? label}
+        title={iconOnly ? label : undefined}
         className={joinClassNames(
           "sb-button",
           "sb-button--ghost",
-          "sb-button--md",
+          iconOnly ? "sb-button--sm" : "sb-button--md",
+          iconOnly ? "sb-icon-button" : undefined,
           "motion-interactive",
           className,
         )}
       >
-        <span>{label}</span>
-        <ChevronDownIcon width="16" height="16" />
+        {triggerIcon}
+        {!iconOnly ? <span>{label}</span> : null}
+        {!iconOnly && !triggerIcon ? <ChevronDownIcon width="16" height="16" /> : null}
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className="sb-menu-positioner" sideOffset={8} align={align}>
@@ -186,11 +203,15 @@ export function Dropdown({ label, items, align = "end", className }: DropdownPro
             {items.map((item) => (
               <Menu.Item
                 key={item.label}
-                className="sb-menu__item"
+                className={joinClassNames(
+                  "sb-menu__item",
+                  item.destructive ? "sb-menu__item--destructive" : undefined,
+                )}
                 disabled={item.disabled}
                 onClick={item.onSelect}
               >
-                {item.label}
+                {item.icon ? <span className="sb-menu__item-icon">{item.icon}</span> : null}
+                <span>{item.label}</span>
               </Menu.Item>
             ))}
           </Menu.Popup>
