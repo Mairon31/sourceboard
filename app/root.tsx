@@ -35,6 +35,7 @@ import "./components/product/cosmetic-identity.css";
 import "./components/product/profile-klipy.css";
 import "./components/admin/admin.css";
 import "./components/admin/store/admin-store.css";
+import "./components/product/visual-overhaul.css";
 
 // fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
 export async function loader({ request, context }: ServerLoaderArgs) {
