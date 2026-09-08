@@ -3,14 +3,16 @@ import { useLoaderData } from "react-router";
 import { hasCapability } from "../../worker/auth/rbac";
 import { createD1AuthStore } from "../../worker/auth/store";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
+import { AdminCommunityCosmeticReviews } from "../components/admin/store/AdminCommunityCosmeticReviews";
 import { AdminCosmeticCatalog } from "../components/admin/store/AdminCosmeticCatalog";
 import { AdminEmotePackManager } from "../components/admin/store/AdminEmotePackManager";
+import { AdminPackStoreCatalog } from "../components/admin/store/AdminPackStoreCatalog";
 import type { AdminStoreItem, EmotePackSummary } from "../components/admin/store/types";
 import { Button, Card, Input, Textarea } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
-type AdminStoreMode = "COSMETICS" | "EMOTE_PACKS";
+type AdminStoreMode = "COSMETICS" | "COMMUNITY" | "EMOTE_PACKS" | "STICKER_PACKS";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
   return withOptionalServerSession(
@@ -70,7 +72,7 @@ export default function AdminStoreRoute() {
   const loadStoreCatalog = useCallback(async () => {
     if (!access.storeManage) return;
     try {
-      const response = await fetch("/api/admin/store/catalog");
+      const response = await fetch("/api/admin/store/catalog", { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as {
         items?: AdminStoreItem[];
       } | null;
@@ -87,7 +89,7 @@ export default function AdminStoreRoute() {
   const loadPacks = useCallback(async () => {
     if (!access.emoteManage) return;
     try {
-      const response = await fetch("/api/admin/catalog/emote-packs");
+      const response = await fetch("/api/admin/catalog/emote-packs", { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as {
         packs?: EmotePackSummary[];
       } | null;
@@ -180,12 +182,14 @@ export default function AdminStoreRoute() {
     );
   }
 
+  const stickerPacks = items.filter((item) => item.type === "STICKER_PACK");
+
   return (
     <AdminShell>
       <AdminPageHeader
         eyebrow="Store"
         title="Catalog control center"
-        description="Manage published cosmetics, inspect draft packs and moderate individual emotes without leaving Admin."
+        description="Manage cosmetics, community submissions, draft packs and individual emotes without mixing unrelated catalog types."
       />
 
       <div className="admin-store-summary-grid">
@@ -202,7 +206,7 @@ export default function AdminStoreRoute() {
             {items.filter((item) => item.lifecycleState === "DRAFT").length +
               packs.filter((pack) => pack.lifecycleState === "DRAFT").length}
           </strong>
-          <small>Cosmetics and emote packs awaiting publication</small>
+          <small>Cosmetics and packs awaiting publication</small>
         </Card>
         <Card className="admin-store-summary-card">
           <span>Emote packs</span>
@@ -211,19 +215,44 @@ export default function AdminStoreRoute() {
             {packs.reduce((total, pack) => total + Number(pack.emoteCount || 0), 0)} emotes
           </small>
         </Card>
+        <Card className="admin-store-summary-card">
+          <span>Sticker packs</span>
+          <strong>{stickerPacks.length}</strong>
+          <small>{stickerPacks.filter((item) => item.lifecycleState === "PUBLISHED").length} published</small>
+        </Card>
       </div>
 
       <div className="admin-store-mode-tabs" role="tablist" aria-label="Store catalog mode">
         {access.storeManage ? (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "COSMETICS"}
-            className={mode === "COSMETICS" ? "admin-store-mode-tab--active" : undefined}
-            onClick={() => setMode("COSMETICS")}
-          >
-            Cosmetics
-          </button>
+          <>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "COSMETICS"}
+              className={mode === "COSMETICS" ? "admin-store-mode-tab--active" : undefined}
+              onClick={() => setMode("COSMETICS")}
+            >
+              Cosmetics
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "COMMUNITY"}
+              className={mode === "COMMUNITY" ? "admin-store-mode-tab--active" : undefined}
+              onClick={() => setMode("COMMUNITY")}
+            >
+              Community review
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "STICKER_PACKS"}
+              className={mode === "STICKER_PACKS" ? "admin-store-mode-tab--active" : undefined}
+              onClick={() => setMode("STICKER_PACKS")}
+            >
+              Sticker packs
+            </button>
+          </>
         ) : null}
         {access.emoteManage ? (
           <button
@@ -275,7 +304,7 @@ export default function AdminStoreRoute() {
                 <Textarea
                   name="config"
                   label="Config JSON"
-                  placeholder={'{"preset":"stellar"} or {"family":"Georgia"}'}
+                  placeholder={'{"preset":"stellar"} or {"visual":{"namespace":"sourceboard.cosmetic.v1"}}'}
                 />
                 <Button type="submit" loading={creatingCosmetic}>
                   Create draft cosmetic
@@ -285,6 +314,24 @@ export default function AdminStoreRoute() {
           </details>
           <AdminCosmeticCatalog items={items} onRefresh={loadStoreCatalog} onStatus={setStatus} />
         </>
+      ) : null}
+
+      {!loading && mode === "COMMUNITY" && access.storeManage ? (
+        <AdminCommunityCosmeticReviews
+          onStatus={setStatus}
+          onCatalogRefresh={loadStoreCatalog}
+        />
+      ) : null}
+
+      {!loading && mode === "STICKER_PACKS" && access.storeManage ? (
+        <AdminPackStoreCatalog
+          items={items}
+          type="STICKER_PACK"
+          title="Sticker packs"
+          description="Manage sticker pack pricing, publication, lifecycle and availability separately from cosmetics and emotes."
+          onRefresh={loadStoreCatalog}
+          onStatus={setStatus}
+        />
       ) : null}
 
       {!loading && mode === "EMOTE_PACKS" && access.emoteManage ? (
