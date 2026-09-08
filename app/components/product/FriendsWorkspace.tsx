@@ -19,7 +19,10 @@ const relationshipLabel: Record<Relationship, string> = {
   NONE: "Not connected",
 };
 
-function actionEndpoint(friend: Friend, action: ConfirmedAction): { endpoint: string; method: "POST" | "DELETE" } {
+function actionEndpoint(
+  friend: Friend,
+  action: ConfirmedAction,
+): { endpoint: string; method: "POST" | "DELETE" } {
   if (action === "remove") {
     return { endpoint: `/api/friends/${encodeURIComponent(friend.id)}`, method: "DELETE" };
   }
@@ -89,7 +92,13 @@ function RelationshipConfirmAction({
   );
 }
 
-function FriendActions({ friend, onChanged }: { friend: Friend; onChanged: (friend: Friend) => void }) {
+function FriendActions({
+  friend,
+  onChanged,
+}: {
+  friend: Friend;
+  onChanged: (friend: Friend) => void;
+}) {
   if (friend.relationship === "INCOMING") {
     return (
       <div className="product-chip-row">
@@ -126,10 +135,19 @@ function FriendActions({ friend, onChanged }: { friend: Friend; onChanged: (frie
   return null;
 }
 
-function FriendRow({ friend, onChanged }: { friend: Friend; onChanged: (friend: Friend) => void }) {
+function FriendRow({
+  friend,
+  onChanged,
+}: {
+  friend: Friend;
+  onChanged: (friend: Friend) => void;
+}) {
   return (
     <article className="product-list-row">
-      <Link className="product-list-row__identity" to={`/u/${encodeURIComponent(friend.username)}`}>
+      <Link
+        className="product-list-row__identity"
+        to={`/u/${encodeURIComponent(friend.username)}`}
+      >
         <CosmeticIdentity
           displayName={friend.displayName}
           avatarUrl={friend.avatarUrl}
@@ -245,10 +263,30 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
   return (
     <section className="product-stack" aria-label="Friends workspace">
       <div className="product-chip-row" role="tablist" aria-label="Friend views">
-        <Button variant={mode === "friends" ? "secondary" : "ghost"} onClick={() => selectMode("friends")}>Friends</Button>
-        <Button variant={mode === "requests" ? "secondary" : "ghost"} onClick={() => selectMode("requests")}>Requests</Button>
-        <Button variant={mode === "add" ? "secondary" : "ghost"} onClick={() => selectMode("add")}>Add</Button>
-        <Button variant={mode === "discover" ? "secondary" : "ghost"} onClick={() => selectMode("discover")}>Discover</Button>
+        <Button
+          variant={mode === "friends" ? "secondary" : "ghost"}
+          onClick={() => selectMode("friends")}
+        >
+          <span>Friends</span>
+        </Button>
+        <Button
+          variant={mode === "requests" ? "secondary" : "ghost"}
+          onClick={() => selectMode("requests")}
+        >
+          <span>Requests</span>
+        </Button>
+        <Button
+          variant={mode === "add" ? "secondary" : "ghost"}
+          onClick={() => selectMode("add")}
+        >
+          <span>Add</span>
+        </Button>
+        <Button
+          variant={mode === "discover" ? "secondary" : "ghost"}
+          onClick={() => selectMode("discover")}
+        >
+          <span>Discover</span>
+        </Button>
       </div>
 
       {mode === "friends" ? (
@@ -331,7 +369,9 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
           </div>
           {!searching && !searchError && suggestions.length === 0 ? (
             <Card className="product-empty-state">
-              <h2>{mode === "discover" ? "No suggestions available" : "Search for someone"}</h2>
+              <h2>
+                {mode === "discover" ? "No suggestions available" : "Search for someone"}
+              </h2>
               <p>
                 {mode === "discover"
                   ? "Only public accounts accepting friend requests can be suggested."
