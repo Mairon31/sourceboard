@@ -184,7 +184,10 @@ export default function PostDetailRoute() {
     if (!target) return;
     target.scrollIntoView({ behavior: "auto", block: "center" });
     target.classList.add("product-comment--deeplink-target");
-    const timer = window.setTimeout(() => target.classList.remove("product-comment--deeplink-target"), 1800);
+    const timer = window.setTimeout(
+      () => target.classList.remove("product-comment--deeplink-target"),
+      1800,
+    );
     return () => window.clearTimeout(timer);
   }, [authenticated, location.hash]);
 

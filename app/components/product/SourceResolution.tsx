@@ -74,7 +74,9 @@ export function SourceResolution({
             <div>
               <Badge tone="accent">Accepted Source</Badge>
               <h2>Accepted answer</h2>
-              <p>The post author marked this contribution as the source that resolved the request.</p>
+              <p>
+                The post author marked this contribution as the source that resolved the request.
+              </p>
             </div>
           </div>
           {acceptedComment ? <AcceptedComment comment={acceptedComment} /> : null}

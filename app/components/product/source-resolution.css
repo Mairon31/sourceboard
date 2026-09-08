@@ -72,7 +72,8 @@
 }
 
 @keyframes product-comment-deeplink {
-  0%, 25% {
+  0%,
+  25% {
     background: color-mix(in srgb, var(--accent) 13%, transparent);
     box-shadow: 0 0 0 4px var(--accent-soft);
   }

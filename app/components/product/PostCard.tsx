@@ -193,7 +193,9 @@ export function PostCard({
     : [];
 
   const shareUrl =
-    typeof window === "undefined" ? detailHref : new URL(detailHref, window.location.origin).toString();
+    typeof window === "undefined"
+      ? detailHref
+      : new URL(detailHref, window.location.origin).toString();
 
   return (
     <Card
@@ -331,7 +333,9 @@ export function PostCard({
           <span>
             <strong>{post.commentCount}</strong> {post.commentCount === 1 ? "comment" : "comments"}
           </span>
-          {post.acceptedSource ? <span className="product-meta-success">Source accepted</span> : null}
+          {post.acceptedSource ? (
+            <span className="product-meta-success">Source accepted</span>
+          ) : null}
           {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
         </div>
 
