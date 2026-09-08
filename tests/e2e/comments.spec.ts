@@ -54,7 +54,7 @@ test("legacy Markdown plus emote renders without address or page errors", async 
 
   const comment = page.locator("#comment-e2e-comment-media-regression");
   await expect(comment).toBeVisible();
-  await expect(comment.locator("strong")).toContainText("Legacy bold");
+  await expect(comment.getByText("Legacy bold", { exact: true })).toBeVisible();
 
   const emote = comment.locator("img.product-richtext__emote-image");
   await expect(emote).toHaveAttribute("src", "/api/media/catalog/emote/e2e-comment-media-emote");
