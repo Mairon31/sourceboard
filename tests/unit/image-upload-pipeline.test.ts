@@ -37,9 +37,7 @@ describe("new post image upload pipeline", () => {
   });
 
   it("optimizes JPEG/PNG only when a smaller WebP candidate is available", () => {
-    expect(uploadField).toContain(
-      'file.type !== "image/jpeg" && file.type !== "image/png"',
-    );
+    expect(uploadField).toContain('file.type !== "image/jpeg" && file.type !== "image/png"');
     expect(uploadField).toContain("canvas.toBlob");
     expect(uploadField).toContain('"image/webp"');
     expect(uploadField).toContain("optimized.size >= file.size");
