@@ -138,3 +138,19 @@ test("reduced motion remains active on product surfaces", async ({ page }) => {
   const reduced = await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
   expect(reduced).toBe(true);
 });
+
+test("desktop home uses the available content column instead of a narrow mobile-width feed", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await waitForUiReady(page);
+
+  const layout = await page.locator(".product-page").evaluate((element) => ({
+    width: element.getBoundingClientRect().width,
+    documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  }));
+
+  expect(layout.width).toBeGreaterThanOrEqual(900);
+  expect(layout.documentOverflow).toBeLessThanOrEqual(1);
+});
