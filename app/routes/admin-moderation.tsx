@@ -72,7 +72,7 @@ function actionLabel(action: ModerationAction): string {
 }
 
 function reportDate(report: QueueReport): string {
-  return new Date(Number(report.createdAt)).toLocaleString();
+  return new Date(Number(report.createdAt)).toLocaleString("en-US", { timeZone: "UTC" });
 }
 
 export default function AdminModerationRoute() {

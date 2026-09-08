@@ -200,7 +200,7 @@ function EmoteEditor({
         </div>
         <div className="admin-store-emote-meta">
           <span>Order {emote.sortOrder}</span>
-          <span>{new Date(emote.createdAt).toLocaleDateString()}</span>
+          <span>{new Date(emote.createdAt).toLocaleDateString("en-US", { timeZone: "UTC" })}</span>
         </div>
 
         {editing ? (

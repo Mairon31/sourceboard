@@ -125,7 +125,7 @@ export function StoreItemCard({
         <div>
           <span className="product-store-item__price">
             <i className="product-store-coin" aria-hidden="true" />
-            {item.price.toLocaleString()} pts
+            {item.price.toLocaleString("en-US")} pts
           </span>
           <div className="product-store-state">
             {item.equipped

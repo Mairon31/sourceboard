@@ -233,7 +233,7 @@ export function AdminCosmeticCatalog({
                   </div>
                   <p>{item.description}</p>
                   <div className="admin-store-metric-row">
-                    <span>{item.pricePoints.toLocaleString()} pts</span>
+                    <span>{item.pricePoints.toLocaleString("en-US")} pts</span>
                     <span>{item.ownerCount} owners</span>
                     <span>{item.equippedCount} equipped</span>
                   </div>

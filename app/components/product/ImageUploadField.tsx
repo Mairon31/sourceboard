@@ -175,7 +175,7 @@ export function ImageUploadField({
             <img src={previewUrl} alt="Selected source request preview" />
             <div className="product-image-upload-field__preview-meta">
               <strong>{file.name}</strong>
-              <span>{Math.max(1, Math.round(file.size / 1024)).toLocaleString()} KB</span>
+              <span>{Math.max(1, Math.round(file.size / 1024)).toLocaleString("en-US")} KB</span>
             </div>
             <div className="product-image-upload-field__actions">
               <button

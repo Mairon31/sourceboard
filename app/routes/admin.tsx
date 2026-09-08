@@ -46,6 +46,7 @@ function formatAdminDate(value: number): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "UTC",
   }).format(new Date(value));
 }
 
