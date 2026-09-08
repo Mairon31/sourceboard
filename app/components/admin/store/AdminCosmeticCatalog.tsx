@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Avatar, Badge, Button, Card } from "../../ui";
 import { readCsrfToken } from "../../../data/csrf";
+import { extractCosmeticVisualDefinition } from "../../../../shared/store/custom-cosmetics";
+import { cosmeticVisualClass, cosmeticVisualStyle } from "../../product/cosmetic-visual";
 import { AdminStoreEditor } from "./AdminStoreEditor";
 import type { AdminStoreItem } from "./types";
 
@@ -16,15 +18,28 @@ type StoreAction =
   | "DELETE";
 
 type CosmeticType =
-  "ALL" | "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_EFFECT" | "NAME_FONT";
+  | "AVATAR_FRAME"
+  | "PROFILE_BANNER"
+  | "PROFILE_EFFECT"
+  | "NAME_EFFECT"
+  | "NAME_FONT";
+type StateFilter = "ALL" | "DRAFT" | "PUBLISHED" | "ARCHIVED" | "DISABLED" | "FEATURED";
 
 const cosmeticFilters: Array<{ value: CosmeticType; label: string }> = [
-  { value: "ALL", label: "All" },
-  { value: "AVATAR_FRAME", label: "Frames" },
-  { value: "PROFILE_BANNER", label: "Banners" },
-  { value: "PROFILE_EFFECT", label: "Profile effects" },
-  { value: "NAME_EFFECT", label: "Name effects" },
-  { value: "NAME_FONT", label: "Fonts" },
+  { value: "AVATAR_FRAME", label: "Avatar Frames" },
+  { value: "PROFILE_EFFECT", label: "Profile Effects" },
+  { value: "NAME_EFFECT", label: "Name Effects" },
+  { value: "NAME_FONT", label: "Name Fonts" },
+  { value: "PROFILE_BANNER", label: "Profile Banners" },
+];
+
+const stateFilters: Array<{ value: StateFilter; label: string }> = [
+  { value: "ALL", label: "All states" },
+  { value: "DRAFT", label: "Draft" },
+  { value: "PUBLISHED", label: "Published" },
+  { value: "ARCHIVED", label: "Archived" },
+  { value: "DISABLED", label: "Disabled" },
+  { value: "FEATURED", label: "Featured" },
 ];
 
 function truthy(value: boolean | number): boolean {
@@ -59,10 +74,14 @@ function parseConfig(configJson: string): Record<string, unknown> {
 
 function CosmeticPreview({ item }: { item: AdminStoreItem }) {
   const config = parseConfig(item.configJson);
+  const visual = extractCosmeticVisualDefinition(config);
   if (item.type === "AVATAR_FRAME") {
     const preset = typeof config.preset === "string" ? config.preset : undefined;
     return (
-      <div className="admin-store-cosmetic-preview admin-store-cosmetic-preview--avatar">
+      <div
+        className={`admin-store-cosmetic-preview admin-store-cosmetic-preview--avatar${cosmeticVisualClass(visual)}`}
+        style={cosmeticVisualStyle(visual)}
+      >
         <Avatar
           name={item.name}
           size="xl"
@@ -75,7 +94,12 @@ function CosmeticPreview({ item }: { item: AdminStoreItem }) {
     const preset = typeof config.preset === "string" ? config.preset : "red";
     return (
       <div className="admin-store-cosmetic-preview admin-store-cosmetic-preview--font">
-        <strong className={`sb-name-effect--${preset}`}>SourceBoard</strong>
+        <strong
+          className={`sb-name-effect--${preset}${cosmeticVisualClass(visual)}`}
+          style={cosmeticVisualStyle(visual)}
+        >
+          SourceBoard
+        </strong>
         <span>{preset}</span>
       </div>
     );
@@ -84,7 +108,12 @@ function CosmeticPreview({ item }: { item: AdminStoreItem }) {
     const family = typeof config.family === "string" ? config.family : undefined;
     return (
       <div className="admin-store-cosmetic-preview admin-store-cosmetic-preview--font">
-        <strong style={family ? { fontFamily: family } : undefined}>SourceBoard</strong>
+        <strong
+          className={cosmeticVisualClass(visual).trim() || undefined}
+          style={{ ...(family ? { fontFamily: family } : {}), ...(cosmeticVisualStyle(visual) ?? {}) }}
+        >
+          SourceBoard
+        </strong>
         <span>{family ?? "Default family"}</span>
       </div>
     );
@@ -93,7 +122,8 @@ function CosmeticPreview({ item }: { item: AdminStoreItem }) {
     const preset = typeof config.preset === "string" ? config.preset : "none";
     return (
       <div
-        className={`admin-store-cosmetic-preview admin-store-cosmetic-preview--effect product-store-preview--${preset}`}
+        className={`admin-store-cosmetic-preview admin-store-cosmetic-preview--effect product-store-preview--${preset}${item.type === "PROFILE_BANNER" ? ` product-profile-banner--${preset}` : ""}${cosmeticVisualClass(visual)}`}
+        style={cosmeticVisualStyle(visual)}
       >
         <Avatar name={item.name} size="lg" />
         <span>{preset}</span>
@@ -105,6 +135,13 @@ function CosmeticPreview({ item }: { item: AdminStoreItem }) {
       <span>{item.type}</span>
     </div>
   );
+}
+
+function matchesState(item: AdminStoreItem, filter: StateFilter): boolean {
+  if (filter === "ALL") return true;
+  if (filter === "DISABLED") return !truthy(item.isEnabled);
+  if (filter === "FEATURED") return truthy(item.isFeatured);
+  return item.lifecycleState === filter;
 }
 
 export function AdminCosmeticCatalog({
@@ -120,10 +157,14 @@ export function AdminCosmeticCatalog({
     () => items.filter((item) => item.type !== "EMOTE_PACK" && item.type !== "STICKER_PACK"),
     [items],
   );
-  const [typeFilter, setTypeFilter] = useState<CosmeticType>("ALL");
+  const [typeFilter, setTypeFilter] = useState<CosmeticType>("AVATAR_FRAME");
+  const [stateFilter, setStateFilter] = useState<StateFilter>("ALL");
   const visibleCosmetics = useMemo(
-    () => (typeFilter === "ALL" ? cosmetics : cosmetics.filter((item) => item.type === typeFilter)),
-    [cosmetics, typeFilter],
+    () =>
+      cosmetics.filter(
+        (item) => item.type === typeFilter && matchesState(item, stateFilter),
+      ),
+    [cosmetics, stateFilter, typeFilter],
   );
   const [editing, setEditing] = useState<AdminStoreItem | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -183,22 +224,42 @@ export function AdminCosmeticCatalog({
       <div className="admin-store-section-heading">
         <div>
           <span className="product-eyebrow">Public Store catalog</span>
-          <h2>Cosmetics</h2>
-          <p>Manage every frame, profile effect, banner, name effect and name font in one place.</p>
+          <h2>{cosmeticFilters.find((filter) => filter.value === typeFilter)?.label}</h2>
+          <p>
+            Each cosmetic family has its own workspace. Lifecycle and availability are controlled
+            independently from visual configuration.
+          </p>
         </div>
         <span className="product-search-count">
-          {visibleCosmetics.length} shown · {cosmetics.length} total
+          {visibleCosmetics.length} shown · {cosmetics.filter((item) => item.type === typeFilter).length} in category
         </span>
       </div>
 
-      <nav className="admin-store-type-filters" aria-label="Cosmetic type">
-        {cosmeticFilters.map((filter) => (
+      <nav className="admin-store-type-filters" aria-label="Cosmetic category">
+        {cosmeticFilters.map((filter) => {
+          const count = cosmetics.filter((item) => item.type === filter.value).length;
+          return (
+            <button
+              key={filter.value}
+              type="button"
+              aria-pressed={typeFilter === filter.value}
+              className={typeFilter === filter.value ? "is-active" : undefined}
+              onClick={() => setTypeFilter(filter.value)}
+            >
+              {filter.label} <span>{count}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      <nav className="admin-store-type-filters admin-store-state-filters" aria-label="Catalog state">
+        {stateFilters.map((filter) => (
           <button
             key={filter.value}
             type="button"
-            aria-pressed={typeFilter === filter.value}
-            className={typeFilter === filter.value ? "is-active" : undefined}
-            onClick={() => setTypeFilter(filter.value)}
+            aria-pressed={stateFilter === filter.value}
+            className={stateFilter === filter.value ? "is-active" : undefined}
+            onClick={() => setStateFilter(filter.value)}
           >
             {filter.label}
           </button>
@@ -255,6 +316,7 @@ export function AdminCosmeticCatalog({
           {visibleCosmetics.map((item) => {
             const enabled = truthy(item.isEnabled);
             const featured = truthy(item.isFeatured);
+            const archived = item.lifecycleState === "ARCHIVED";
             return (
               <Card key={item.id} className="admin-store-cosmetic-card">
                 <CosmeticPreview item={item} />
@@ -291,20 +353,32 @@ export function AdminCosmeticCatalog({
                     <Button type="button" size="sm" onClick={() => setEditing(item)}>
                       Edit
                     </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      loading={busyId === item.id}
-                      onClick={() =>
-                        void perform(
-                          item,
-                          item.lifecycleState === "PUBLISHED" ? "UNPUBLISH" : "PUBLISH",
-                        )
-                      }
-                    >
-                      {item.lifecycleState === "PUBLISHED" ? "Unpublish" : "Publish"}
-                    </Button>
+                    {archived ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        loading={busyId === item.id}
+                        onClick={() => void perform(item, "UNPUBLISH")}
+                      >
+                        Restore to draft
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        loading={busyId === item.id}
+                        onClick={() =>
+                          void perform(
+                            item,
+                            item.lifecycleState === "PUBLISHED" ? "UNPUBLISH" : "PUBLISH",
+                          )
+                        }
+                      >
+                        {item.lifecycleState === "PUBLISHED" ? "Unpublish" : "Publish"}
+                      </Button>
+                    )}
                     <details className="admin-store-action-menu">
                       <summary>More actions</summary>
                       <div className="admin-store-action-menu__panel">
@@ -323,15 +397,17 @@ export function AdminCosmeticCatalog({
                         <button type="button" onClick={() => void perform(item, "DUPLICATE")}>
                           Duplicate
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDanger({ item, action: "ARCHIVE" });
-                            setReason("");
-                          }}
-                        >
-                          Archive
-                        </button>
+                        {!archived ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDanger({ item, action: "ARCHIVE" });
+                              setReason("");
+                            }}
+                          >
+                            Archive
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="admin-store-action-menu__danger"
@@ -352,13 +428,8 @@ export function AdminCosmeticCatalog({
         </div>
       ) : (
         <Card className="product-empty-state">
-          No{" "}
-          {typeFilter === "ALL"
-            ? "cosmetic Store"
-            : cosmeticFilters
-                .find((filter) => filter.value === typeFilter)
-                ?.label.toLowerCase()}{" "}
-          items were found.
+          No {cosmeticFilters.find((filter) => filter.value === typeFilter)?.label.toLowerCase()} match
+          this catalog state.
         </Card>
       )}
     </section>
