@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "react-router";
+import { Form, Link, useLoaderData, type MetaFunction } from "react-router";
 import type { SearchFilter, SearchKind, SearchResult } from "../../worker/search/service";
 import { createSearchService } from "../../worker/search/service";
 import { createD1ProfileStore } from "../../worker/profile/store";
@@ -8,6 +8,12 @@ import { PageHeader, ProductShell } from "../components/product/ProductShell";
 import { Avatar, Card } from "../components/ui";
 
 type LoaderArgs = ServerLoaderArgs;
+
+export const meta: MetaFunction = () => [
+  { title: "Search · SourceBoard" },
+  { name: "description", content: "Search source requests and public profiles on SourceBoard." },
+  { name: "robots", content: "noindex, follow" },
+];
 
 function parseKind(value: string | null): SearchKind {
   return value === "posts" || value === "profiles" ? value : "all";
@@ -206,6 +212,24 @@ export default function SearchRoute() {
         title={query ? `Search results for “${query}”` : "Search SourceBoard"}
         description="Search public source requests and public profiles. Private and friends-only content stays outside discovery."
       />
+      <Form className="product-search-form" method="get" role="search">
+        <label htmlFor="search-query">Search posts and people</label>
+        <div className="product-search-form__row">
+          <input
+            id="search-query"
+            name="q"
+            type="search"
+            defaultValue={query}
+            placeholder="Try a source, username or topic"
+            autoComplete="off"
+          />
+          {result.kind !== "all" ? <input type="hidden" name="kind" value={result.kind} /> : null}
+          {result.filter !== "recent" ? (
+            <input type="hidden" name="filter" value={result.filter} />
+          ) : null}
+          <button type="submit">Search</button>
+        </div>
+      </Form>
       {unavailable ? (
         <Card className="product-empty-state">
           <strong>Search unavailable</strong>

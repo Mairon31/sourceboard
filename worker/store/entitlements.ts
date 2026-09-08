@@ -60,7 +60,7 @@ export async function listEntitledEmotePacks(
          WHERE e.lifecycle_state = 'PUBLISHED' AND e.is_enabled = 1
            AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
            AND p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
-           AND (? = 1 OR i.user_id IS NOT NULL)
+           AND (p.is_global = 1 OR ? = 1 OR i.user_id IS NOT NULL)
          ORDER BY p.label ASC, e.sort_order ASC, e.created_at ASC`,
       )
       .bind(userId, adminUnlocked ? 1 : 0)
@@ -115,12 +115,12 @@ export function createEntitlementChecker(db: D1Database) {
                AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
                AND (e.pack_id IS NULL OR (
                  p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
-                 AND EXISTS (
+                 AND (p.is_global = 1 OR EXISTS (
                    SELECT 1 FROM user_inventory i JOIN store_items s ON s.id = i.store_item_id
                    WHERE i.user_id = ? AND s.type = 'EMOTE_PACK'
                      AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
                      AND json_extract(s.config_json, '$.packId') = e.pack_id
-                 )
+                 ))
                ))`,
           )
           .bind(shortcode, userId)

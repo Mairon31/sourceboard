@@ -44,7 +44,8 @@ describe("mobile product UX regressions", () => {
     expect(postCardSource).toContain("isInteractivePostTarget");
     expect(postCardSource).toContain("handleCardClick");
     expect(postCardSource).toContain("onClick={handleCardClick}");
-    expect(postCardSource).toContain("<Link to={detailHref} className={mediaClass}");
+    expect(postCardSource).toContain("className={mediaClass}");
+    expect(postCardSource).toContain("to={detailHref}");
     expect(postCardSource).not.toContain('role="link"');
     expect(postCardSource).not.toContain("tabIndex={0}");
     expect(postCardSource).not.toContain("handleCardKeyDown");

@@ -27,9 +27,10 @@ describe("profile and friends workspace", () => {
 
   it("provides Friends, Requests, Add and Discover modes with search", () => {
     expect(friendsRoute).toContain("<FriendsWorkspace");
-    for (const mode of ["Friends", "Requests", "Add", "Discover"]) {
-      expect(friendsWorkspace).toContain(`>${mode}<`);
-    }
+    expect(friendsWorkspace).toContain("Friends <span");
+    expect(friendsWorkspace).toContain("Requests <span");
+    expect(friendsWorkspace).toContain("Add");
+    expect(friendsWorkspace).toContain("Discover");
     expect(friendsWorkspace).toContain('type="search"');
     expect(friendsWorkspace).toContain("searchFriendSuggestions");
     expect(friendsWorkspace).toContain("<CosmeticIdentity");

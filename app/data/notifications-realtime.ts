@@ -20,6 +20,9 @@ export interface NotificationPreview {
   href: string;
   ctaLabel?: string;
   readAt: number | null;
+  groupedIds?: string[];
+  groupCount?: number;
+  unreadCount?: number;
 }
 
 export function readNotificationSnapshot(payload: unknown): NotificationSnapshot | null {
@@ -40,6 +43,9 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
       href?: unknown;
       ctaLabel?: unknown;
       readAt?: unknown;
+      groupedIds?: unknown;
+      groupCount?: unknown;
+      unreadCount?: unknown;
     };
     if (
       typeof item.id !== "string" ||
@@ -62,6 +68,11 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
         href: item.href,
         ...(typeof item.ctaLabel === "string" ? { ctaLabel: item.ctaLabel } : {}),
         readAt: typeof item.readAt === "number" ? item.readAt : null,
+        ...(Array.isArray(item.groupedIds)
+          ? { groupedIds: item.groupedIds.filter((id): id is string => typeof id === "string") }
+          : {}),
+        ...(typeof item.groupCount === "number" ? { groupCount: item.groupCount } : {}),
+        ...(typeof item.unreadCount === "number" ? { unreadCount: item.unreadCount } : {}),
       },
     ];
   });

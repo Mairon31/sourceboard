@@ -62,6 +62,7 @@ export interface ProfileService {
   ): Promise<{ notifications: NotificationRecord[]; unreadCount: number }>;
   markNotificationRead(userId: string, notificationId: string): Promise<boolean>;
   markAllNotificationsRead(userId: string): Promise<number>;
+  clearNotifications(userId: string): Promise<number>;
 }
 
 function validateProfileInput(input: ProfileUpdateInput): void {
@@ -420,6 +421,10 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
     return dependencies.store.markAllNotificationsRead(userId, now());
   }
 
+  async function clearNotifications(userId: string) {
+    return dependencies.store.clearNotifications(userId);
+  }
+
   return {
     getPublicProfile,
     getMyProfile,
@@ -436,6 +441,7 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
     listNotifications,
     markNotificationRead,
     markAllNotificationsRead,
+    clearNotifications,
   };
 }
 

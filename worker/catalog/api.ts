@@ -190,7 +190,7 @@ async function legacyListEmotePacks(
   const rows = await env
     .DB!.prepare(
       `SELECT p.id, p.slug, p.label, p.status, CASE WHEN p.status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
-            CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, p.created_at AS createdAt, p.created_at AS updatedAt, s.id AS storeItemId,
+            CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, 0 AS isGlobal, p.created_at AS createdAt, p.created_at AS updatedAt, s.id AS storeItemId,
             s.description, s.price_points AS pricePoints, CASE WHEN s.is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS storeLifecycleState,
             s.is_active AS storeEnabled, 0 AS isFeatured, s.is_active AS isActive, COUNT(e.id) AS emoteCount
      FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
@@ -209,7 +209,7 @@ async function legacyGetEmotePackDetail(
   const pack = await env
     .DB!.prepare(
       `SELECT p.id, p.slug, p.label, p.status, CASE WHEN p.status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
-            CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, p.created_at AS createdAt, p.created_at AS updatedAt, s.id AS storeItemId,
+            CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, 0 AS isGlobal, p.created_at AS createdAt, p.created_at AS updatedAt, s.id AS storeItemId,
             s.name AS storeName, s.description, s.price_points AS pricePoints, CASE WHEN s.is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS storeLifecycleState,
             s.is_active AS storeEnabled, 0 AS isFeatured, s.sort_order AS storeSortOrder
      FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id WHERE p.id = ?`,
@@ -394,11 +394,11 @@ async function listEmotePacks(env: SourceBoardEnvironment, requestId: string): P
     );
   try {
     const rows = await env.DB.prepare(
-      `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.created_at AS createdAt, p.updated_at AS updatedAt,
+      `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.is_global AS isGlobal, p.created_at AS createdAt, p.updated_at AS updatedAt,
               s.id AS storeItemId, s.description, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState, s.is_enabled AS storeEnabled,
               s.is_featured AS isFeatured, s.is_active AS isActive, COUNT(e.id) AS emoteCount
        FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
-       LEFT JOIN emote_catalog e ON e.pack_id = p.id GROUP BY p.id, p.slug, p.label, p.status, p.lifecycle_state, p.is_enabled, p.created_at, p.updated_at,
+       LEFT JOIN emote_catalog e ON e.pack_id = p.id GROUP BY p.id, p.slug, p.label, p.status, p.lifecycle_state, p.is_enabled, p.is_global, p.created_at, p.updated_at,
                 s.id, s.description, s.price_points, s.lifecycle_state, s.is_enabled, s.is_featured, s.is_active ORDER BY p.created_at DESC LIMIT 200`,
     ).all();
     return response({ packs: rows.results }, requestId);
@@ -422,7 +422,7 @@ async function getEmotePackDetail(
     );
   try {
     const pack = await env.DB.prepare(
-      `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.created_at AS createdAt, p.updated_at AS updatedAt,
+      `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.is_global AS isGlobal, p.created_at AS createdAt, p.updated_at AS updatedAt,
               s.id AS storeItemId, s.name AS storeName, s.description, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState,
               s.is_enabled AS storeEnabled, s.is_featured AS isFeatured, s.sort_order AS storeSortOrder
        FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id WHERE p.id = ?`,
@@ -465,17 +465,18 @@ async function createEmotePack(
   const label = String(body.label ?? "").trim();
   const description = String(body.description ?? "").trim();
   const pricePoints = Number(body.pricePoints);
+  const isGlobal = body.isGlobal === true;
   if (
     !/^[a-z0-9][a-z0-9-]{1,63}$/.test(slug) ||
     !label ||
     label.length > 120 ||
     description.length > 500 ||
     !Number.isInteger(pricePoints) ||
-    pricePoints <= 0
+    pricePoints < 0
   ) {
     return failure(
       "INVALID_EMOTE_PACK",
-      "A valid slug, label, description and positive integer price are required.",
+      "A valid slug, label, description and non-negative integer price are required.",
       requestId,
       400,
     );
@@ -487,9 +488,9 @@ async function createEmotePack(
     await env.DB.batch([
       env.DB.prepare(
         `INSERT INTO emote_packs
-         (id, slug, label, status, lifecycle_state, is_enabled, created_at, updated_at)
-         VALUES (?, ?, ?, 'DISABLED', 'DRAFT', 0, ?, ?)`,
-      ).bind(id, slug, label, now, now),
+         (id, slug, label, status, lifecycle_state, is_enabled, is_global, created_at, updated_at)
+         VALUES (?, ?, ?, 'DISABLED', 'DRAFT', 0, ?, ?, ?)`,
+      ).bind(id, slug, label, isGlobal ? 1 : 0, now, now),
       env.DB.prepare(
         `INSERT INTO store_items
          (id, type, name, description, price_points, config_json, is_active,
@@ -651,13 +652,15 @@ async function updateEmotePack(
     body.pricePoints !== undefined &&
     (typeof body.pricePoints !== "number" ||
       !Number.isInteger(body.pricePoints) ||
-      body.pricePoints <= 0)
+      body.pricePoints < 0)
   )
-    return failure("INVALID_EMOTE_PACK", "Price must be a positive integer.", requestId, 400);
+    return failure("INVALID_EMOTE_PACK", "Price must be a non-negative integer.", requestId, 400);
   if (body.lifecycleState !== undefined && !isLifecycle(body.lifecycleState))
     return failure("INVALID_LIFECYCLE", "Lifecycle state is invalid.", requestId, 400);
   if (body.isEnabled !== undefined && typeof body.isEnabled !== "boolean")
     return failure("INVALID_ENABLEMENT", "isEnabled must be boolean.", requestId, 400);
+  if (body.isGlobal !== undefined && typeof body.isGlobal !== "boolean")
+    return failure("INVALID_GLOBAL_ENTITLEMENT", "isGlobal must be boolean.", requestId, 400);
   if (body.status !== undefined && body.status !== "ACTIVE" && body.status !== "DISABLED")
     return failure("INVALID_STATUS", "Status must be ACTIVE or DISABLED.", requestId, 400);
 
@@ -665,7 +668,7 @@ async function updateEmotePack(
     return legacyUpdateEmotePack(packId, body, requestId, env);
 
   const current = await env.DB.prepare(
-    `SELECT p.id, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled,
+    `SELECT p.id, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.is_global AS isGlobal,
             s.id AS storeItemId
      FROM emote_packs p
      LEFT JOIN store_items s
@@ -677,6 +680,7 @@ async function updateEmotePack(
       id: string;
       lifecycleState: LifecycleState;
       isEnabled: number;
+      isGlobal: number;
       storeItemId: string | null;
     }>();
   if (!current) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
@@ -690,6 +694,7 @@ async function updateEmotePack(
   const isEnabled = legacyStatus
     ? legacyStatus === "ACTIVE"
     : ((body.isEnabled as boolean | undefined) ?? Number(current.isEnabled) === 1);
+  const isGlobal = body.isGlobal === undefined ? Number(current.isGlobal) === 1 : body.isGlobal;
 
   if (lifecycleState === "PUBLISHED") {
     const usable = await env.DB.prepare(
@@ -721,6 +726,8 @@ async function updateEmotePack(
     lifecycleState === "PUBLISHED" && isEnabled ? "ACTIVE" : "DISABLED",
     now,
   ];
+  packUpdates.push("is_global = ?");
+  packBinds.push(isGlobal ? 1 : 0);
   const storeUpdates: string[] = [
     "lifecycle_state = ?",
     "is_enabled = ?",
@@ -846,8 +853,8 @@ async function duplicateEmotePack(
     const statements = [
       env.DB.prepare(
         `INSERT INTO emote_packs
-         (id, slug, label, status, lifecycle_state, is_enabled, created_at, updated_at)
-         VALUES (?, ?, ?, 'DISABLED', 'DRAFT', 0, ?, ?)`,
+         (id, slug, label, status, lifecycle_state, is_enabled, is_global, created_at, updated_at)
+         VALUES (?, ?, ?, 'DISABLED', 'DRAFT', 0, 0, ?, ?)`,
       ).bind(
         newPackId,
         `${source.slug}-copy-${newPackId

@@ -317,6 +317,14 @@ function registrationError(error: unknown): AuthError {
   );
 }
 
+function accountUnavailableError(): AuthError {
+  return new AuthError(
+    409,
+    "ACCOUNT_UNAVAILABLE",
+    "Unable to create an account with those details.",
+  );
+}
+
 function actionCodeError(
   error: unknown,
   code: "VERIFICATION_TOKEN_INVALID" | "RESET_TOKEN_INVALID",
@@ -679,6 +687,48 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     );
   }
 
+  async function recoverPendingFirebaseRegistration(
+    existing: UserRecord,
+    input: { email: string; password: string },
+    requestContext: AuthServiceContext,
+  ): Promise<{ verificationRequired: boolean }> {
+    if (!firebase) throw accountUnavailableError();
+    try {
+      const remote = await firebase.signInWithPassword({
+        email: normalizeEmail(input.email),
+        password: input.password,
+      });
+      const account = await firebase.getAccountInfo(remote.idToken);
+      if (
+        account.disabled ||
+        remote.localId !== existing.id ||
+        normalizeEmail(account.email) !== normalizeEmail(input.email)
+      ) {
+        throw accountUnavailableError();
+      }
+      if (account.emailVerified) {
+        const verifiedAt = now();
+        await dependencies.store.markEmailVerified(existing.id, verifiedAt);
+        await writeAudit(requestContext, {
+          actorUserId: existing.id,
+          action: "auth.email_verified",
+          targetType: "user",
+          targetId: existing.id,
+        });
+        return { verificationRequired: false };
+      }
+      await firebase.sendEmailVerification(
+        remote.idToken,
+        new URL("/verify-email", requestContext.request.url).toString(),
+      );
+      return { verificationRequired: true };
+    } catch (error) {
+      if (error instanceof AuthError) throw error;
+      if (providerUnavailable(error)) throw registrationError(error);
+      throw accountUnavailableError();
+    }
+  }
+
   async function persistFirebaseRegistration(
     input: { username: string; email: string; password: string },
     requestContext: AuthServiceContext,
@@ -764,12 +814,16 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       dependencies.store.findUserByEmailLookupHash(emailLookupHash),
       dependencies.store.findUserByUsernameNormalized(usernameNormalized),
     ]);
+    if (
+      existingEmail &&
+      firebase &&
+      existingEmail.status === "PENDING_VERIFICATION" &&
+      existingEmail.usernameNormalized === usernameNormalized
+    ) {
+      return recoverPendingFirebaseRegistration(existingEmail, input, requestContext);
+    }
     if (existingEmail || existingUsername) {
-      throw new AuthError(
-        409,
-        "ACCOUNT_UNAVAILABLE",
-        "Unable to create an account with those details.",
-      );
+      throw accountUnavailableError();
     }
 
     if (firebase) {

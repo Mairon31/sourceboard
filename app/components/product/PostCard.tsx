@@ -1,4 +1,4 @@
-import { useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import type { PostDetail, PostSummary } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
@@ -65,10 +65,24 @@ export function PostCard({
   const [manageStatus, setManageStatus] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [mediaFailed, setMediaFailed] = useState(false);
+  const mediaRef = useRef<HTMLImageElement>(null);
   const detailHref = postDetailHref(post);
-  const mediaClass = post.imageUrl
-    ? "product-post__media product-post__media--image"
-    : "product-post__media";
+  useEffect(() => {
+    setMediaFailed(false);
+  }, [post.imageUrl]);
+  useEffect(() => {
+    const image = mediaRef.current;
+    if (!image || !post.imageUrl || mediaFailed) return;
+    const markFailed = () => setMediaFailed(true);
+    if (image.complete && image.naturalWidth === 0) markFailed();
+    image.addEventListener("error", markFailed);
+    return () => image.removeEventListener("error", markFailed);
+  }, [mediaFailed, post.imageUrl]);
+  const mediaClass =
+    post.imageUrl && !mediaFailed
+      ? "product-post__media product-post__media--image"
+      : "product-post__media";
   const permissions = "permissions" in post ? post.permissions : undefined;
 
   function openPostDetail() {
@@ -164,6 +178,26 @@ export function PostCard({
     navigate("/");
   }
 
+  async function setCommentsClosed(closed: boolean) {
+    setManageStatus(null);
+    try {
+      const response = await fetch(
+        `/api/posts/${encodeURIComponent(post.id)}/${closed ? "close-comments" : "reopen-comments"}`,
+        { method: "POST", headers: { "x-csrf-token": readCsrfToken() } },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
+        throw new Error(payload?.error?.message ?? "Could not update comments.");
+      }
+      setManageStatus(closed ? "Comments closed." : "Comments reopened.");
+      onChanged?.();
+    } catch (error) {
+      setManageStatus(error instanceof Error ? error.message : "Could not update comments.");
+    }
+  }
+
   const menuItems = manage
     ? [
         ...(permissions?.canEdit
@@ -182,6 +216,12 @@ export function PostCard({
                 onSelect: () => setConfirmArchive(true),
               },
             ]
+          : []),
+        ...(permissions?.canCloseComments
+          ? [{ label: "Close comments", onSelect: () => void setCommentsClosed(true) }]
+          : []),
+        ...(permissions?.canReopenComments
+          ? [{ label: "Reopen comments", onSelect: () => void setCommentsClosed(false) }]
           : []),
         ...(permissions?.canDelete
           ? [
@@ -325,14 +365,21 @@ export function PostCard({
           aria-label={`Open post: ${displayTitle}`}
           onClick={() => markNavigationStart(detailHref)}
         >
-          {post.imageUrl ? (
+          {post.imageUrl && !mediaFailed ? (
             <img
+              ref={mediaRef}
               src={post.imageUrl}
               alt={post.imageAlt}
               width={post.imageWidth}
               height={post.imageHeight}
               loading="lazy"
+              onError={() => setMediaFailed(true)}
             />
+          ) : mediaFailed ? (
+            <div className="product-post__media-unavailable" role="img" aria-label={post.imageAlt}>
+              <strong>Image unavailable</strong>
+              <span>This media could not be loaded.</span>
+            </div>
           ) : (
             <div className="product-post__media-frame" role="img" aria-label={post.imageAlt}>
               <span />
@@ -355,6 +402,9 @@ export function PostCard({
             <span className="product-meta-success">Source accepted</span>
           ) : null}
           {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
+          {post.commentsClosed ? (
+            <span className="product-meta-success">Comments closed</span>
+          ) : null}
         </div>
 
         <footer className="product-post__actions">

@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "react-router";
+import { Link, useLoaderData, type MetaFunction } from "react-router";
 import { useEffect, useState } from "react";
 import { readCsrfToken } from "../data/csrf";
 import { createD1ProfileStore } from "../../worker/profile/store";
@@ -30,6 +30,11 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
+
+export const meta: MetaFunction = () => [
+  { title: "Notifications · SourceBoard" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 export default function NotificationsRoute() {
   const data = useLoaderData<LoaderData>();
@@ -76,6 +81,10 @@ export default function NotificationsRoute() {
     );
     setUnreadCount((count) => Math.max(0, count - 1));
     setStatus(undefined);
+  }
+
+  async function markGroupRead(notification: (typeof notifications)[number]) {
+    await Promise.all((notification.groupedIds ?? [notification.id]).map((id) => markRead(id)));
   }
 
   async function clearAll() {
@@ -151,16 +160,19 @@ export default function NotificationsRoute() {
               <Link
                 className="sb-button sb-button--secondary sb-button--sm motion-interactive"
                 to={notification.href}
-                onClick={() => void markRead(notification.id)}
+                onClick={() => void markGroupRead(notification)}
               >
                 {notification.ctaLabel ?? "View"}
               </Link>
               {!notification.readAt ? (
-                <Button size="sm" variant="ghost" onClick={() => void markRead(notification.id)}>
+                <Button size="sm" variant="ghost" onClick={() => void markGroupRead(notification)}>
                   Mark read
                 </Button>
               ) : null}
               <Badge>{notification.readAt ? "Read" : "New"}</Badge>
+              {notification.groupCount && notification.groupCount > 1 ? (
+                <Badge>{notification.groupCount} events</Badge>
+              ) : null}
             </div>
           </Card>
         ))}

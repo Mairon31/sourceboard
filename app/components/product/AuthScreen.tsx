@@ -200,6 +200,7 @@ function getAuthEndpoint(mode: AuthMode, isReset: boolean): string {
 function buildAuthValues(
   form: HTMLFormElement,
   mode: AuthMode,
+  isReset: boolean,
   resetToken: string | null,
   turnstileToken: string | undefined,
 ): Record<string, FormDataEntryValue> {
@@ -207,7 +208,7 @@ function buildAuthValues(
   if (turnstileToken) {
     values.turnstileToken = turnstileToken;
   }
-  if (mode === "verify" && resetToken) {
+  if (isReset && resetToken) {
     values.token = resetToken;
   }
   return values;
@@ -222,7 +223,7 @@ async function submitAuthForm(
 ): Promise<{ ok: boolean; body: unknown }> {
   const response = await postAuthJson(
     getAuthEndpoint(mode, isReset),
-    buildAuthValues(form, mode, resetToken, turnstileToken),
+    buildAuthValues(form, mode, isReset, resetToken, turnstileToken),
   );
   return { ok: response.ok, body: await response.json() };
 }
@@ -397,7 +398,6 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const [turnstileToken, setTurnstileToken] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
-
   const isReset = mode === "forgot" && Boolean(resetToken);
   const turnstileRequired = mode === "register" || mode === "forgot";
   useVerificationAction(mode, resetToken, navigate, setBusy, setFeedback);

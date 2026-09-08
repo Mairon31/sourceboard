@@ -398,6 +398,10 @@ async function handleProfileRequest(
       const viewerId = await requireViewerId(request, env);
       return jsonResponse(await service.listNotifications(viewerId), requestId);
     },
+    "DELETE /api/notifications": async () => {
+      const viewerId = await requireViewerId(request, env);
+      return jsonResponse({ cleared: await service.clearNotifications(viewerId) }, requestId);
+    },
   };
   const staticHandler = staticHandlers[`${request.method} ${url.pathname}`];
   if (staticHandler) return staticHandler();

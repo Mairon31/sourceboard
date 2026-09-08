@@ -32,6 +32,8 @@ function post(overrides: Partial<PostWithAuthor["post"]> = {}): PostWithAuthor {
       deletedAt: null,
       hiddenAt: null,
       lockedAt: null,
+      commentsClosed: false,
+      commentsClosedAt: null,
       ...overrides,
     },
     author: {
@@ -100,6 +102,7 @@ function dependencies() {
     createPost: vi.fn(async () => undefined),
     updatePost: vi.fn(async () => true),
     archivePost: vi.fn(async () => true),
+    setCommentsClosed: vi.fn(async () => true),
     deletePost: vi.fn(async () => true),
     getMediaAsset: vi.fn(async () => null),
     listIndexablePosts: vi.fn(async () => []),
@@ -234,5 +237,27 @@ describe("Phase 4 post policy", () => {
     expect(store.updatePost).toHaveBeenCalledWith(
       expect.objectContaining({ allowNonOwner: true, editorUserId: "moderator-1" }),
     );
+  });
+
+  it("only lets the author close comments after accepting a source", async () => {
+    const { profileStore, store, getPost } = dependencies();
+    const service = createPostService({ store, profileStore, now: () => 2 });
+    const setCommentsClosed = (
+      service as unknown as {
+        setCommentsClosed(postId: string, authorId: string, closed: boolean): Promise<unknown>;
+      }
+    ).setCommentsClosed;
+
+    await expect(setCommentsClosed.call(service, "post-1", "author-1", true)).rejects.toMatchObject(
+      {
+        code: "POST_SOURCE_REQUIRED",
+      },
+    );
+    getPost.mockResolvedValue(
+      post({ acceptedCommentId: "comment-1" }) as Awaited<ReturnType<typeof getPost>>,
+    );
+    await expect(
+      setCommentsClosed.call(service, "post-1", "author-1", true),
+    ).resolves.toBeDefined();
   });
 });

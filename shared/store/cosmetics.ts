@@ -36,6 +36,10 @@ export const PROFILE_EFFECT_PRESETS = [
 
 export type ProfileEffectPreset = (typeof PROFILE_EFFECT_PRESETS)[number];
 
+export const PROFILE_BANNER_PRESETS = ["nebula", "aurora", "ember"] as const;
+
+export type ProfileBannerPreset = (typeof PROFILE_BANNER_PRESETS)[number];
+
 export const NAME_EFFECT_PRESETS = [
   "red",
   "blue",
@@ -72,6 +76,10 @@ export function isAvatarFramePreset(value: unknown): value is AvatarFramePreset 
 
 export function isProfileEffectPreset(value: unknown): value is ProfileEffectPreset {
   return PROFILE_EFFECT_PRESETS.includes(value as ProfileEffectPreset);
+}
+
+export function isProfileBannerPreset(value: unknown): value is ProfileBannerPreset {
+  return PROFILE_BANNER_PRESETS.includes(value as ProfileBannerPreset);
 }
 
 export function isNameEffectPreset(value: unknown): value is NameEffectPreset {

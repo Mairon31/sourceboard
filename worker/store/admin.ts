@@ -106,9 +106,9 @@ function validateMetadata(input: StoreItemEditInput, type: StoreType) {
     if (
       typeof input.pricePoints !== "number" ||
       !Number.isInteger(input.pricePoints) ||
-      input.pricePoints <= 0
+      input.pricePoints < 0
     )
-      throw new StoreError(400, "INVALID_STORE_ITEM", "Price must be a positive integer.");
+      throw new StoreError(400, "INVALID_STORE_ITEM", "Price must be a non-negative integer.");
     updates.push("price_points = ?");
     binds.push(input.pricePoints);
     metadata.pricePoints = input.pricePoints;

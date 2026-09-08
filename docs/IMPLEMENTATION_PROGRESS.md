@@ -681,18 +681,18 @@ prerequisites.
 ### 2026-09-08 accumulated navigation and media checkpoint
 
 - [x] Added browser-local navigation marks for primary navigation, Store,
-  post detail/media/author links, search and notification deep links. Marks are
-  classified to route families, cleared after measurement and contain no
-  user/content identifiers.
+      post detail/media/author links, search and notification deep links. Marks are
+      classified to route families, cleared after measurement and contain no
+      user/content identifiers.
 - [x] Kept the existing warm-navigation fixes and documented their causes and
-  evidence in [`docs/PERFORMANCE_PHASE_13.md`](PERFORMANCE_PHASE_13.md).
+      evidence in [`docs/PERFORMANCE_PHASE_13.md`](PERFORMANCE_PHASE_13.md).
 - [x] Scoped the MediaPicker emote-pack cache to the active picker instance so
-  entitled emotes cannot leak between users sharing a long-lived browser
-  process.
+      entitled emotes cannot leak between users sharing a long-lived browser
+      process.
 - [x] Focal verification for the accumulated code passed: 8 tests across
-  navigation metrics, MediaPicker and auth-request boundaries, plus
-  TypeScript and formatting checks. The final standard CI remains the release
-  gate after the accumulated change is pushed.
+      navigation metrics, MediaPicker and auth-request boundaries, plus
+      TypeScript and formatting checks. The final standard CI remains the release
+      gate after the accumulated change is pushed.
 
 ## Known limitations
 
@@ -704,3 +704,46 @@ prerequisites.
   current public FTS5 projection is D1-backed and viewer-sensitive results are not cached.
 - Auth and profile mutations require the configured Firebase provider and the
   remaining real-flow verification; no insecure local bypass is used.
+
+### 2026-09-08 accumulated implementation checkpoint
+
+- [x] Google authentication now uses the Firebase popup flow and exchanges the
+      browser ID token with `POST /api/auth/google`; CSP/COOP allow only the
+      Firebase and Google origins needed by that flow.
+- [x] Password-reset tokens, pending-profile recovery and Firebase email
+      verification synchronization preserve generic auth errors and never
+      delete an account during recovery.
+- [x] Comments support lock/reopen, edit/delete/report/share, safe Markdown
+      preview, persisted allowlisted media metadata and the KLIPY proxy.
+- [x] Notification groups now carry an exact unread count through realtime
+      payloads, and local read actions update the badge without waiting for a
+      second fetch.
+- [x] Store/Admin Store changes cover lifecycle, metadata/config, previews,
+      ownership/equipped counts, emote member controls, moderation reasons,
+      bulk upload and network error states. Public sections include Featured,
+      New, Owned and All with category filters.
+- [x] Product routes include profile metadata/structured data, public Store and
+      search metadata, docs/legal routes, footer navigation and responsive
+      auth-required states.
+- [x] Browser audit found and fixed the broken-image fallback for completed
+      failed loads (`naturalWidth = 0`), and confirmed real production login,
+      Store/Admin Store, profile, notifications and Admin overview behavior.
+- [x] Production D1 migrations `0014` through `0018` are now applied. Migration
+      `0016` was hardened to rebuild referenced catalog tables while preserving
+      inventory, purchases and equipped cosmetics; local fresh application is
+      idempotent.
+- [x] Final local gates pass on the accumulated tree: ESLint/Prettier,
+      TypeScript, 214 unit tests across 52 files, production build and
+      Wrangler deploy dry-run. The generated Worker config contains the
+      production D1, R2, KV, Queue/DLQ, Durable Object and four Rate Limit
+      bindings with the configured limits.
+- [x] Local D1 migration verification is idempotent: both consecutive runs
+      against the persisted verification database reported no migrations to
+      apply; production D1 is applied through `0018`.
+- [x] The complete local E2E suite reached 143/144 before correcting a stale
+      role assertion for the redesigned Friends tabs; the corrected Friends
+      mobile test passes, and the final standard CI run remains the complete
+      browser gate.
+- [ ] Workers Build and standard CI for the final pushed `master` commit,
+      plus interactive Google popup and Firebase action-link verification,
+      remain external release checks.

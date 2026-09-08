@@ -2,10 +2,12 @@ import {
   isAvatarFramePreset,
   isNameEffectPreset,
   isNameFontFamily,
+  isProfileBannerPreset,
   isProfileEffectPreset,
   type AvatarFramePreset,
   type NameEffectPreset,
   type NameFontFamily,
+  type ProfileBannerPreset,
   type ProfileEffectPreset,
 } from "../../shared/store/cosmetics";
 import type {
@@ -46,7 +48,7 @@ export interface SocialLinkInput {
 
 export interface EquippedCosmetics {
   avatarFrame?: AvatarFramePreset;
-  profileBanner?: "nebula";
+  profileBanner?: ProfileBannerPreset;
   profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
@@ -99,6 +101,7 @@ export interface ProfileStore {
   ): Promise<{ notifications: NotificationRecord[]; unreadCount: number }>;
   markNotificationRead(userId: string, notificationId: string, now: number): Promise<boolean>;
   markAllNotificationsRead(userId: string, now: number): Promise<number>;
+  clearNotifications(userId: string): Promise<number>;
   getFriendship(firstUserId: string, secondUserId: string): Promise<FriendshipRecord | null>;
   getRelationship(viewerId: string | null, targetId: string): Promise<Relationship>;
   getBlock(blockerId: string, blockedId: string): Promise<boolean>;
@@ -369,8 +372,8 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       if (row.type === "AVATAR_FRAME" && isAvatarFramePreset(value.preset)) {
         cosmetics.avatarFrame = value.preset;
       }
-      if (row.type === "PROFILE_BANNER" && value.preset === "nebula") {
-        cosmetics.profileBanner = "nebula";
+      if (row.type === "PROFILE_BANNER" && isProfileBannerPreset(value.preset)) {
+        cosmetics.profileBanner = value.preset;
       }
       if (row.type === "PROFILE_EFFECT" && isProfileEffectPreset(value.preset)) {
         cosmetics.profileEffect = value.preset;
@@ -834,6 +837,14 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       const result = await db
         .prepare("UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL")
         .bind(now, userId)
+        .run();
+      return result.meta.changes;
+    },
+
+    async clearNotifications(userId) {
+      const result = await db
+        .prepare("DELETE FROM notifications WHERE user_id = ?")
+        .bind(userId)
         .run();
       return result.meta.changes;
     },

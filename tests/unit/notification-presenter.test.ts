@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   presentNotification,
+  groupPresentedNotifications,
   type NotificationPresentationContext,
 } from "../../worker/notifications/presenter";
 import type { NotificationRecord } from "../../worker/profile/types";
@@ -52,6 +54,20 @@ function record(overrides: Partial<NotificationRecord>): NotificationRecord {
 }
 
 describe("notification presenter", () => {
+  it("keeps clear-inbox deletion scoped to the authenticated user", () => {
+    const apiSource = readFileSync(
+      new URL("../../worker/profile/api-core.ts", import.meta.url),
+      "utf8",
+    );
+    const storeSource = readFileSync(
+      new URL("../../worker/profile/store-core.ts", import.meta.url),
+      "utf8",
+    );
+    expect(apiSource).toContain('"DELETE /api/notifications"');
+    expect(apiSource).toContain("service.clearNotifications(viewerId)");
+    expect(storeSource).toContain("DELETE FROM notifications WHERE user_id = ?");
+  });
+
   it("turns comment events into human copy and a stable comment deeplink", () => {
     const notification = presentNotification(record({}), context);
     expect(notification.title).toBe("Helpful User commented on your post");
@@ -104,5 +120,32 @@ describe("notification presenter", () => {
     expect(notification.title).toBe("New activity");
     expect(notification.body).toBe("There is new activity on SourceBoard.");
     expect(notification.title).not.toContain("future.event");
+  });
+
+  it("groups nearby comments on the same post without losing notification ids", () => {
+    const first = presentNotification(record({ id: "notification-1", createdAt: 200 }), context);
+    const second = presentNotification(
+      record({ id: "notification-2", createdAt: 150, entityId: "comment-1" }),
+      context,
+    );
+    const grouped = groupPresentedNotifications([first, second]);
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0]?.title).toBe("2 new comments on your post");
+    expect(grouped[0]?.groupedIds).toEqual(["notification-1", "notification-2"]);
+    expect(grouped[0]?.unreadCount).toBe(2);
+  });
+
+  it("keeps grouped unread counts exact when older activity was already read", () => {
+    const first = presentNotification(
+      record({ id: "notification-1", readAt: 100, createdAt: 200 }),
+      context,
+    );
+    const second = presentNotification(
+      record({ id: "notification-2", readAt: null, createdAt: 150 }),
+      context,
+    );
+    const grouped = groupPresentedNotifications([first, second]);
+    expect(grouped[0]?.groupCount).toBe(2);
+    expect(grouped[0]?.unreadCount).toBe(1);
   });
 });

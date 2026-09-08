@@ -27,7 +27,7 @@ describe("profile account actions and KLIPY media picker", () => {
     expect(accountActions).toContain('to="/settings"');
     expect(accountActions).toContain('fetch("/api/auth/logout"');
     expect(accountActions).toContain("readCsrfToken()");
-    expect(accountActions).toContain('window.location.assign("/login")');
+    expect(accountActions).toContain('navigate("/login")');
   });
 
   it("loads KLIPY featured media when the picker opens and supports GIF/sticker tabs", () => {

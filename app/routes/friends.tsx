@@ -1,4 +1,4 @@
-import { useLoaderData } from "react-router";
+import { useLoaderData, type MetaFunction } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
@@ -21,6 +21,11 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
+
+export const meta: MetaFunction = () => [
+  { title: "Friends · SourceBoard" },
+  { name: "robots", content: "noindex, nofollow" },
+];
 
 export default function FriendsRoute() {
   const data = useLoaderData<LoaderData>();

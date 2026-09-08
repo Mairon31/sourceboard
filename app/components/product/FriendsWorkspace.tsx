@@ -19,6 +19,13 @@ const relationshipLabel: Record<Relationship, string> = {
   NONE: "Not connected",
 };
 
+const workspaceLabels: Record<WorkspaceMode, string> = {
+  friends: "Your friends",
+  requests: "Pending requests",
+  add: "Find someone",
+  discover: "Suggested accounts",
+};
+
 function actionEndpoint(
   friend: Friend,
   action: ConfirmedAction,
@@ -253,32 +260,65 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
 
   return (
     <section className="product-stack" aria-label="Friends workspace">
-      <div className="product-chip-row" role="tablist" aria-label="Friend views">
+      <div className="product-friends-summary">
+        <div>
+          <span className="product-eyebrow">Your network</span>
+          <h2>{workspaceLabels[mode]}</h2>
+        </div>
+        <div className="product-friends-summary__metrics" aria-label="Connection counts">
+          <span>
+            <strong>{friends.length}</strong> friends
+          </span>
+          <span>
+            <strong>{requests.length}</strong> pending
+          </span>
+          <span>
+            <strong>{blocked.length}</strong> blocked
+          </span>
+        </div>
+      </div>
+
+      <div className="product-friends-tabs" role="tablist" aria-label="Friend views">
         <Button
           variant={mode === "friends" ? "secondary" : "ghost"}
+          role="tab"
+          aria-selected={mode === "friends"}
+          aria-controls="friends-panel"
           onClick={() => selectMode("friends")}
         >
-          <span>Friends</span>
+          Friends <span className="product-friends-tab-count">{friends.length}</span>
         </Button>
         <Button
           variant={mode === "requests" ? "secondary" : "ghost"}
+          role="tab"
+          aria-selected={mode === "requests"}
+          aria-controls="requests-panel"
           onClick={() => selectMode("requests")}
         >
-          <span>Requests</span>
+          Requests <span className="product-friends-tab-count">{requests.length}</span>
         </Button>
-        <Button variant={mode === "add" ? "secondary" : "ghost"} onClick={() => selectMode("add")}>
-          <span>Add</span>
+        <Button
+          variant={mode === "add" ? "secondary" : "ghost"}
+          role="tab"
+          aria-selected={mode === "add"}
+          aria-controls="add-panel"
+          onClick={() => selectMode("add")}
+        >
+          Add
         </Button>
         <Button
           variant={mode === "discover" ? "secondary" : "ghost"}
+          role="tab"
+          aria-selected={mode === "discover"}
+          aria-controls="discover-panel"
           onClick={() => selectMode("discover")}
         >
-          <span>Discover</span>
+          Discover
         </Button>
       </div>
 
       {mode === "friends" ? (
-        <>
+        <div id="friends-panel" role="tabpanel" aria-label="Your friends">
           <FriendList
             items={friends}
             emptyTitle="No friends yet"
@@ -296,20 +336,27 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
               />
             </div>
           ) : null}
-        </>
+        </div>
       ) : null}
 
       {mode === "requests" ? (
-        <FriendList
-          items={requests}
-          emptyTitle="No pending requests"
-          emptyDescription="Incoming and outgoing friend requests will appear here."
-          onChanged={updateFriend}
-        />
+        <div id="requests-panel" role="tabpanel" aria-label="Pending requests">
+          <FriendList
+            items={requests}
+            emptyTitle="No pending requests"
+            emptyDescription="Incoming and outgoing friend requests will appear here."
+            onChanged={updateFriend}
+          />
+        </div>
       ) : null}
 
       {mode === "add" || mode === "discover" ? (
-        <div className="product-stack">
+        <div
+          id={`${mode}-panel`}
+          role="tabpanel"
+          aria-label={workspaceLabels[mode]}
+          className="product-stack"
+        >
           <form
             className="product-stack"
             onSubmit={(event) => {

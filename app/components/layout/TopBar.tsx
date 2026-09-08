@@ -8,6 +8,7 @@ import {
   type NotificationPreview,
 } from "../../data/notifications-realtime";
 import { markNavigationStart } from "../../data/performance-metrics";
+import { readCsrfToken } from "../../data/csrf";
 import { ThemeControl } from "./ThemeControl";
 
 export function TopBar() {
@@ -102,6 +103,19 @@ export function TopBar() {
     };
   }, [notificationsOpen]);
 
+  function markNotificationGroupLocally(notification: NotificationPreview): void {
+    const ids = new Set(notification.groupedIds ?? [notification.id]);
+    const now = Date.now();
+    const unreadIds = new Set(
+      recentNotifications.filter((item) => ids.has(item.id) && !item.readAt).map((item) => item.id),
+    );
+    const unreadInGroup = notification.unreadCount ?? unreadIds.size;
+    setRecentNotifications((items) =>
+      items.map((item) => (ids.has(item.id) ? { ...item, readAt: item.readAt ?? now } : item)),
+    );
+    setUnreadCount((count) => Math.max(0, count - unreadInGroup));
+  }
+
   return (
     <header className="sb-topbar glass-panel glass-panel--strong">
       <Link
@@ -187,11 +201,23 @@ export function TopBar() {
                       to={notification.href}
                       onClick={() => {
                         markNavigationStart(notification.href);
+                        markNotificationGroupLocally(notification);
+                        for (const id of notification.groupedIds ?? [notification.id]) {
+                          void fetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
+                            method: "POST",
+                            headers: { "x-csrf-token": readCsrfToken() },
+                          });
+                        }
                         setNotificationsOpen(false);
                       }}
                     >
                       <strong>{notification.title}</strong>
-                      <span>{notification.body}</span>
+                      <span>
+                        {notification.body}
+                        {notification.groupCount && notification.groupCount > 1
+                          ? ` (${notification.groupCount})`
+                          : ""}
+                      </span>
                     </Link>
                   ))}
                 </div>

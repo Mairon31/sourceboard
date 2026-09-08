@@ -21,6 +21,10 @@ function actionLabel(item: StoreItemView, adminUnlocked: boolean, authenticated:
   return "Redeem";
 }
 
+function priceLabel(price: number): string {
+  return price === 0 ? "Free" : `${price.toLocaleString("en-US")} pts`;
+}
+
 export function StorePreview({
   item,
   name,
@@ -124,8 +128,8 @@ export function StoreItemCard({
       <div className="product-store-item__footer">
         <div>
           <span className="product-store-item__price">
-            <i className="product-store-coin" aria-hidden="true" />
-            {item.price.toLocaleString("en-US")} pts
+            {item.price > 0 ? <i className="product-store-coin" aria-hidden="true" /> : null}
+            {priceLabel(item.price)}
           </span>
           <div className="product-store-state">
             {item.equipped

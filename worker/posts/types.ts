@@ -27,6 +27,8 @@ export interface PostRecord {
   deletedAt: number | null;
   hiddenAt: number | null;
   lockedAt: number | null;
+  commentsClosed: boolean;
+  commentsClosedAt: number | null;
 }
 
 export interface PostAuthorRecord {

@@ -54,6 +54,7 @@ export interface PostService {
     options?: { allowModeration?: boolean },
   ): Promise<PostDetail>;
   archivePost(postId: string, authorId: string, archived: boolean): Promise<void>;
+  setCommentsClosed(postId: string, authorId: string, closed: boolean): Promise<PostDetail>;
   deletePost(postId: string, authorId: string): Promise<void>;
   getVisibleMedia(
     assetId: string,
@@ -223,6 +224,7 @@ async function toPostSummary(
     nsfwPresentation,
     reaction: { type: "LIKE", count: post.post.likeCount, viewerReacted: false },
     commentCount: post.post.commentCount,
+    commentsClosed: post.post.commentsClosed,
     imageAlt: post.post.title,
     imageUrl: isMediaVisible ? `/api/media/post/${encodeURIComponent(post.media.id)}` : undefined,
     imageWidth: post.media.width ?? undefined,
@@ -269,6 +271,12 @@ async function toPostDetail(
       canVerifySource: false,
       canRevealAnonymous: false,
       canMarkNsfw: isOwner && !post.post.deletedAt,
+      canCloseComments:
+        isOwner &&
+        !post.post.deletedAt &&
+        Boolean(post.post.acceptedCommentId) &&
+        !post.post.commentsClosed,
+      canReopenComments: isOwner && !post.post.deletedAt && post.post.commentsClosed,
     },
   };
 }
@@ -446,6 +454,28 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
       if (!(await dependencies.store.archivePost(postId, authorId, now(), archived))) {
         throw new PostError(403, "POST_ARCHIVE_FORBIDDEN", "The post could not be archived.");
       }
+    },
+
+    async setCommentsClosed(postId, authorId, closed) {
+      const current = await requirePost(postId);
+      if (current.post.authorId !== authorId || current.post.deletedAt) {
+        throw new PostError(403, "POST_COMMENTS_FORBIDDEN", "You cannot change this discussion.");
+      }
+      if (closed && !current.post.acceptedCommentId) {
+        throw new PostError(
+          409,
+          "POST_SOURCE_REQUIRED",
+          "Accept a source before closing comments.",
+        );
+      }
+      if (!(await dependencies.store.setCommentsClosed(postId, authorId, now(), closed))) {
+        throw new PostError(
+          409,
+          "POST_COMMENTS_STATE_CHANGED",
+          "The discussion changed. Refresh and try again.",
+        );
+      }
+      return toPostDetail(await requirePost(postId), authorId, policyDependencies);
     },
 
     async deletePost(postId, authorId) {

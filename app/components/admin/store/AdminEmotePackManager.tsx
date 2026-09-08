@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Badge, Button, Card, Input, Textarea } from "../../ui";
 import { readCsrfToken } from "../../../data/csrf";
 import type {
@@ -19,6 +19,20 @@ function errorMessage(payload: unknown, fallback: string): string {
   if (!error || typeof error !== "object") return fallback;
   const message = (error as { message?: unknown }).message;
   return typeof message === "string" && message ? message : fallback;
+}
+
+function catalogKeyFromFilename(filename: string): string {
+  const base = filename.replace(/\.[^.]+$/, "").toLowerCase();
+  const key = base.replace(/[^a-z0-9_-]+/g, "_").replace(/^[_-]+|[_-]+$/g, "");
+  return (key || "emote").slice(0, 56);
+}
+
+function catalogLabelFromFilename(filename: string): string {
+  const base = filename
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  return (base || "Emote").slice(0, 120);
 }
 
 function lifecycleTone(state: StoreLifecycleState): "success" | "neutral" | "warning" {
@@ -88,6 +102,8 @@ function EmoteEditor({
       onStatus(`${label} updated.`);
       setEditing(false);
       await onChanged();
+    } catch {
+      onStatus("Could not update this emote. Check your connection and try again.");
     } finally {
       setLocalBusy(false);
     }
@@ -121,6 +137,8 @@ function EmoteEditor({
       setReplacing(false);
       onStatus(`${emote.label} image replaced.`);
       await onChanged();
+    } catch {
+      onStatus("Could not replace this emote image. Check your connection and try again.");
     } finally {
       setLocalBusy(false);
     }
@@ -147,6 +165,8 @@ function EmoteEditor({
       setModerationAction(null);
       setModerationReason("");
       await onChanged();
+    } catch {
+      onStatus("Could not moderate this emote. Check your connection and try again.");
     } finally {
       setLocalBusy(false);
     }
@@ -167,6 +187,8 @@ function EmoteEditor({
       }
       onStatus(`${emote.label} ${truthy(emote.isEnabled) ? "disabled" : "enabled"}.`);
       await onChanged();
+    } catch {
+      onStatus("Could not change this emote enablement. Check your connection and try again.");
     } finally {
       setLocalBusy(false);
     }
@@ -403,8 +425,11 @@ export function AdminEmotePackManager({
   const [packLabel, setPackLabel] = useState("");
   const [packDescription, setPackDescription] = useState("");
   const [packPrice, setPackPrice] = useState(1);
+  const [packIsGlobal, setPackIsGlobal] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [archiving, setArchiving] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<string[]>([]);
+  const uploadedBulkFiles = useRef(new Set<string>());
 
   const selectedSummary = useMemo(
     () => packs.find((pack) => pack.id === selectedPackId) ?? null,
@@ -434,6 +459,10 @@ export function AdminEmotePackManager({
       setPackLabel(payload.pack.label);
       setPackDescription(payload.pack.description ?? "");
       setPackPrice(payload.pack.pricePoints ?? 1);
+      setPackIsGlobal(truthy(payload.pack.isGlobal));
+    } catch {
+      onStatus("Could not open this emote pack. Check your connection and try again.");
+      setDetail(null);
     } finally {
       setLoadingDetail(false);
     }
@@ -457,6 +486,7 @@ export function AdminEmotePackManager({
           label: form.get("label"),
           description: form.get("description"),
           pricePoints: Number(form.get("pricePoints")),
+          isGlobal: form.get("isGlobal") === "on",
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -470,6 +500,8 @@ export function AdminEmotePackManager({
       await onRefreshPacks();
       if (payload?.pack?.id) onSelectPack(payload.pack.id);
       onStatus("Draft emote pack created.");
+    } catch {
+      onStatus("Could not create this pack. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -480,23 +512,68 @@ export function AdminEmotePackManager({
     if (!selectedPackId) return;
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    form.set("packId", selectedPackId);
+    const files = form
+      .getAll("file")
+      .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+    if (!files.length) {
+      onStatus("Choose at least one emote image.");
+      return;
+    }
+    const existing = new Set(detail?.emotes.map((emote) => emote.shortcode) ?? []);
+    const submittedShortcode = String(form.get("shortcode") ?? "")
+      .trim()
+      .toLowerCase();
+    const submittedLabel = String(form.get("label") ?? "").trim();
+    const results: string[] = [];
     setBusy(true);
     try {
-      const response = await fetch("/api/admin/catalog/emotes", {
-        method: "POST",
-        headers: { "x-csrf-token": readCsrfToken() },
-        body: form,
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        onStatus(errorMessage(payload, "Could not add this emote."));
-        return;
+      for (const [index, file] of files.entries()) {
+        const fileKey = `${selectedPackId}:${file.name}:${file.size}:${file.lastModified}`;
+        if (uploadedBulkFiles.current.has(fileKey)) {
+          results.push(`${file.name}: already uploaded, skipped.`);
+          continue;
+        }
+        let shortcode = submittedShortcode || catalogKeyFromFilename(file.name);
+        if (files.length > 1 || !submittedShortcode) {
+          let suffix = 1;
+          const base = shortcode;
+          while (existing.has(shortcode))
+            shortcode = `${base.slice(0, 58 - String(suffix).length)}_${suffix++}`;
+        }
+        let label = submittedLabel || catalogLabelFromFilename(file.name);
+        if (files.length > 1 && submittedLabel) label = `${submittedLabel} ${index + 1}`;
+        const upload = new FormData();
+        upload.set("packId", selectedPackId);
+        upload.set("shortcode", shortcode);
+        upload.set("label", label);
+        upload.set("file", file);
+        setBulkStatus((current) => [
+          ...current,
+          `Uploading ${index + 1}/${files.length}: ${file.name}`,
+        ]);
+        const response = await fetch("/api/admin/catalog/emotes", {
+          method: "POST",
+          headers: { "x-csrf-token": readCsrfToken() },
+          body: upload,
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          results.push(`${file.name}: ${errorMessage(payload, "upload failed")}`);
+          continue;
+        }
+        existing.add(shortcode);
+        uploadedBulkFiles.current.add(fileKey);
+        results.push(`${file.name}: added as :${shortcode}:`);
       }
       formElement.reset();
-      onStatus("Emote added to the selected pack.");
+      setBulkStatus(results);
+      onStatus(results.join(" "));
       await loadDetail();
       await onRefreshPacks();
+    } catch {
+      const message = "Could not finish the emote upload. Check your connection and try again.";
+      setBulkStatus((current) => [...current, message]);
+      onStatus(message);
     } finally {
       setBusy(false);
     }
@@ -522,6 +599,8 @@ export function AdminEmotePackManager({
       setEditingPack(false);
       onStatus(successMessage);
       await Promise.all([onRefreshPacks(), loadDetail()]);
+    } catch {
+      onStatus("Could not update this pack. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -548,6 +627,8 @@ export function AdminEmotePackManager({
       await onRefreshPacks();
       if (payload?.pack?.id) onSelectPack(payload.pack.id);
       onStatus("Independent draft copy created with separate media assets.");
+    } catch {
+      onStatus("Could not duplicate this pack. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -574,6 +655,8 @@ export function AdminEmotePackManager({
       setArchiveReason("");
       onStatus("Linked Store offering archived; historical ownership remains intact.");
       await Promise.all([onRefreshPacks(), loadDetail()]);
+    } catch {
+      onStatus("Could not archive this Store offering. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -594,8 +677,18 @@ export function AdminEmotePackManager({
           <form className="product-form-grid" onSubmit={(event) => void createPack(event)}>
             <Input name="label" label="Pack name" required maxLength={120} />
             <Input name="slug" label="Slug" required pattern="[a-z0-9](?:[a-z0-9]|-){1,63}" />
-            <Input name="pricePoints" label="Price in points" type="number" min={1} required />
+            <Input
+              name="pricePoints"
+              label="Price in points (0 = free)"
+              type="number"
+              min={0}
+              required
+            />
             <Textarea name="description" label="Description" maxLength={500} />
+            <label className="admin-store-check-row">
+              <input name="isGlobal" type="checkbox" />
+              <span>Global entitlement (no inventory row)</span>
+            </label>
             <Button type="submit" loading={busy}>
               Create draft pack
             </Button>
@@ -630,8 +723,18 @@ export function AdminEmotePackManager({
                   pattern="[a-z0-9](?:[a-z0-9]|-){1,63}"
                   placeholder="reaction-pack"
                 />
-                <Input name="pricePoints" label="Price in points" type="number" min={1} required />
+                <Input
+                  name="pricePoints"
+                  label="Price in points (0 = free)"
+                  type="number"
+                  min={0}
+                  required
+                />
                 <Textarea name="description" label="Description" maxLength={500} />
+                <label className="admin-store-check-row">
+                  <input name="isGlobal" type="checkbox" />
+                  <span>Global entitlement (no inventory row)</span>
+                </label>
                 <Button type="submit" loading={busy}>
                   Create draft
                 </Button>
@@ -685,12 +788,15 @@ export function AdminEmotePackManager({
                         Store {detail.storeLifecycleState}
                       </Badge>
                     ) : null}
+                    {truthy(detail.isGlobal) ? <Badge tone="accent">Global</Badge> : null}
                   </div>
                 </div>
 
                 <div className="admin-store-metric-row">
                   <span>{detail.emotes.length} emotes</span>
-                  <span>{detail.pricePoints ?? 0} pts</span>
+                  <span>
+                    {detail.pricePoints === 0 ? "Free" : `${detail.pricePoints ?? 0} pts`}
+                  </span>
                   <span>{truthy(detail.isFeatured) ? "Featured" : "Standard"}</span>
                 </div>
 
@@ -704,6 +810,14 @@ export function AdminEmotePackManager({
                         onChange={(event) => setPackLabel(event.target.value)}
                       />
                     </label>
+                    <label className="admin-store-check-row">
+                      <input
+                        type="checkbox"
+                        checked={packIsGlobal}
+                        onChange={(event) => setPackIsGlobal(event.target.checked)}
+                      />
+                      <span>Global entitlement (no inventory row)</span>
+                    </label>
                     <label className="sb-field">
                       <span>Description</span>
                       <textarea
@@ -714,10 +828,10 @@ export function AdminEmotePackManager({
                       />
                     </label>
                     <label className="sb-field">
-                      <span>Price in points</span>
+                      <span>Price in points (0 = free)</span>
                       <input
                         type="number"
-                        min={1}
+                        min={0}
                         value={packPrice}
                         onChange={(event) => setPackPrice(Number(event.target.value))}
                       />
@@ -733,6 +847,7 @@ export function AdminEmotePackManager({
                               label: packLabel,
                               description: packDescription,
                               pricePoints: packPrice,
+                              isGlobal: packIsGlobal,
                             },
                             "Pack metadata updated.",
                           )
@@ -858,25 +973,36 @@ export function AdminEmotePackManager({
                 >
                   <Input
                     name="shortcode"
-                    label="Shortcode"
-                    required
+                    label="Shortcode (optional for bulk)"
                     pattern="[a-z0-9](?:[a-z0-9_]|-){1,63}"
                     placeholder="party_blob"
                   />
-                  <Input name="label" label="Label" required maxLength={120} />
+                  <Input name="label" label="Label (optional for bulk)" maxLength={120} />
                   <label className="sb-field">
                     <span>Image</span>
                     <input
                       name="file"
                       type="file"
+                      multiple
                       accept="image/png,image/jpeg,image/webp"
                       required
                     />
                   </label>
                   <Button type="submit" size="sm" loading={busy}>
-                    Add emote
+                    Add emote(s)
                   </Button>
                 </form>
+                <small className="admin-store-bulk-help">
+                  Select several images to derive labels and unique shortcodes from their filenames.
+                  Successful files are skipped on retry.
+                </small>
+                {bulkStatus.length ? (
+                  <ul className="admin-store-bulk-status" aria-live="polite">
+                    {bulkStatus.slice(-8).map((message, index) => (
+                      <li key={`${message}-${index}`}>{message}</li>
+                    ))}
+                  </ul>
+                ) : null}
               </Card>
 
               <div className="admin-store-emote-grid">

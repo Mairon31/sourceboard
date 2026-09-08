@@ -229,7 +229,11 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
 
     async create(input) {
       const post = await requireVisiblePost(input.postId, input.authorId);
-      if (post.post.status === "LOCKED" || post.post.status === "ARCHIVED") {
+      if (
+        post.post.status === "LOCKED" ||
+        post.post.status === "ARCHIVED" ||
+        post.post.commentsClosed
+      ) {
         throw new PostError(409, "POST_NOT_COMMENTABLE", "This post is not accepting comments.");
       }
       if (input.parentCommentId) {

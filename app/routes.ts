@@ -16,6 +16,8 @@ export default [
   route("notifications", "routes/notifications.tsx"),
   route("store", "routes/store.tsx"),
   route("settings", "routes/settings.tsx"),
+  route("docs", "routes/docs.tsx"),
+  route("legal", "routes/legal.tsx"),
   route("admin", "routes/admin.tsx"),
   route("admin/moderation", "routes/admin-moderation.tsx"),
   route("admin/verifications", "routes/admin-verifications.tsx"),

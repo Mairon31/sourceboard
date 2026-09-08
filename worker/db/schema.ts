@@ -435,6 +435,8 @@ export const posts = sqliteTable(
     deletedAt: integer("deleted_at", { mode: "number" }),
     hiddenAt: integer("hidden_at", { mode: "number" }),
     lockedAt: integer("locked_at", { mode: "number" }),
+    commentsClosed: integer("comments_closed", { mode: "boolean" }).notNull().default(false),
+    commentsClosedAt: integer("comments_closed_at", { mode: "number" }),
   },
   (table) => [
     index("posts_feed_index").on(table.visibility, table.status, table.createdAt, table.id),
@@ -848,6 +850,7 @@ export const emotePacks = sqliteTable(
     status: text("status").notNull().default("ACTIVE"),
     lifecycleState: text("lifecycle_state").notNull().default("PUBLISHED"),
     isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
+    isGlobal: integer("is_global", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
     updatedAt: integer("updated_at", { mode: "number" }),
   },

@@ -33,6 +33,12 @@ export interface PostStore {
     allowNonOwner?: boolean;
   }): Promise<boolean>;
   archivePost(postId: string, authorId: string, now: number, archived: boolean): Promise<boolean>;
+  setCommentsClosed(
+    postId: string,
+    authorId: string,
+    now: number,
+    closed: boolean,
+  ): Promise<boolean>;
   deletePost(postId: string, authorId: string, now: number): Promise<boolean>;
   getMediaAsset(assetId: string): Promise<PostMediaRecord | null>;
   listIndexablePosts(): Promise<Array<{ id: string; slug: string; updatedAt: number }>>;
@@ -62,6 +68,8 @@ interface PostWithAuthorRow {
   deleted_at: number | null;
   hidden_at: number | null;
   locked_at: number | null;
+  comments_closed: number;
+  comments_closed_at: number | null;
   author_username: string;
   author_display_name: string | null;
   author_avatar_asset_id: string | null;
@@ -113,7 +121,7 @@ const POST_COLUMNS = `
   p.title, p.slug, p.description, p.image_asset_id, p.visibility, p.status,
   p.comment_count, p.like_count, p.accepted_comment_id, p.verified_source_id,
   p.created_at, p.updated_at, p.edit_deadline_at, p.archived_at, p.deleted_at,
-  p.hidden_at, p.locked_at,
+  p.hidden_at, p.locked_at, p.comments_closed, p.comments_closed_at,
   u.username AS author_username, up.display_name AS author_display_name,
   up.avatar_asset_id AS author_avatar_asset_id,
   m.owner_user_id AS media_owner_user_id, m.purpose AS media_purpose,
@@ -157,6 +165,8 @@ function toPost(row: PostWithAuthorRow): PostWithAuthor {
       deletedAt: row.deleted_at,
       hiddenAt: row.hidden_at,
       lockedAt: row.locked_at,
+      commentsClosed: row.comments_closed === 1,
+      commentsClosedAt: row.comments_closed_at,
     },
     author: {
       userId: row.author_id,
@@ -266,8 +276,9 @@ export function createD1PostStore(db: D1Database): PostStore {
                (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
                 title, slug, description, image_asset_id, visibility, status,
                 comment_count, like_count, accepted_comment_id, verified_source_id,
-                created_at, updated_at, edit_deadline_at, archived_at, deleted_at, hidden_at, locked_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', 0, 0, NULL, NULL, ?, ?, ?, NULL, NULL, NULL, NULL)`,
+                created_at, updated_at, edit_deadline_at, archived_at, deleted_at, hidden_at, locked_at,
+                comments_closed, comments_closed_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', 0, 0, NULL, NULL, ?, ?, ?, NULL, NULL, NULL, NULL, 0, NULL)`,
           )
           .bind(
             input.id,
@@ -448,6 +459,23 @@ export function createD1PostStore(db: D1Database): PostStore {
                WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND status = 'ARCHIVED'`,
         )
         .bind(...(archived ? [now, now, postId, authorId] : [now, postId, authorId]))
+        .run();
+      return result.meta.changes === 1;
+    },
+
+    async setCommentsClosed(postId, authorId, now, closed) {
+      const result = await db
+        .prepare(
+          closed
+            ? `UPDATE posts
+               SET comments_closed = 1, comments_closed_at = ?, updated_at = ?
+               WHERE id = ? AND author_id = ? AND accepted_comment_id IS NOT NULL
+                 AND deleted_at IS NULL AND comments_closed = 0`
+            : `UPDATE posts
+               SET comments_closed = 0, comments_closed_at = NULL, updated_at = ?
+               WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND comments_closed = 1`,
+        )
+        .bind(...(closed ? [now, now, postId, authorId] : [now, postId, authorId]))
         .run();
       return result.meta.changes === 1;
     },

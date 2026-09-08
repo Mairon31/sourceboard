@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { readCsrfToken } from "../../data/csrf";
 import { Card } from "../ui";
 
 export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdmin?: boolean }) {
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -20,7 +21,7 @@ export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdm
         setStatus("Could not log out. Try again.");
         return;
       }
-      window.location.assign("/login");
+      navigate("/login");
     } catch {
       setStatus("Could not log out. Try again.");
     } finally {

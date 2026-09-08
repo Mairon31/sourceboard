@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 
 import { postAuthJson } from "../../app/data/auth-client";
 
 describe("browser authentication requests", () => {
+  it("forwards Firebase reset oobCode as the reset token", () => {
+    const authScreen = readFileSync(
+      new URL("../../app/components/product/AuthScreen.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(authScreen).toContain("if (isReset && resetToken)");
+    expect(authScreen).toContain("values.token = resetToken");
+  });
+
   it("sends the readable CSRF cookie with JSON auth mutations", async () => {
     const previousDocument = (globalThis as { document?: unknown }).document;
     Object.defineProperty(globalThis, "document", {

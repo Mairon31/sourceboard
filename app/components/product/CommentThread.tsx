@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
-import { formatEmoteMarkdown, type SafeRichTextNode } from "../../../shared/richtext/markdown";
+import {
+  formatEmoteMarkdown,
+  renderMarkdownPreview,
+  type SafeRichTextNode,
+} from "../../../shared/richtext/markdown";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
@@ -39,6 +43,14 @@ function commentNodes(comment: CommentView): SafeRichTextNode[] {
   return [
     { type: "paragraph", children: comment.richtext ?? [{ type: "text", text: comment.body }] },
   ];
+}
+
+function commentPreviewNodes(input: string): SafeRichTextNode[] {
+  try {
+    return renderMarkdownPreview(input);
+  } catch {
+    return [{ type: "paragraph", children: [{ type: "text", text: input }] }];
+  }
 }
 
 const REPORT_CATEGORIES = [
@@ -138,6 +150,7 @@ function CommentItem({
   const [likes, setLikes] = useState(comment.reaction.count);
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
+  const [previewingEdit, setPreviewingEdit] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [status, setStatus] = useState<string>();
@@ -184,6 +197,7 @@ function CommentItem({
       const payload = (await response.json()) as { comment: CommentView };
       onUpdated(payload.comment);
       setEditing(false);
+      setPreviewingEdit(false);
     } catch (cause) {
       setStatus(cause instanceof Error ? cause.message : "Could not save this comment.");
     } finally {
@@ -261,7 +275,10 @@ function CommentItem({
                       {
                         label: "Edit",
                         icon: <EditIcon width="16" height="16" />,
-                        onSelect: () => setEditing(true),
+                        onSelect: () => {
+                          setPreviewingEdit(false);
+                          setEditing(true);
+                        },
                       },
                     ]
                   : []),
@@ -298,11 +315,45 @@ function CommentItem({
         >
           {editing ? (
             <>
-              <Textarea
-                label="Edit comment"
-                value={editBody}
-                onChange={(event) => setEditBody(event.target.value)}
-              />
+              <div
+                className="product-comment-editor-tabs"
+                role="tablist"
+                aria-label="Comment editor"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={!previewingEdit}
+                  className={!previewingEdit ? "is-active" : undefined}
+                  onClick={() => setPreviewingEdit(false)}
+                >
+                  Write
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={previewingEdit}
+                  className={previewingEdit ? "is-active" : undefined}
+                  onClick={() => setPreviewingEdit(true)}
+                >
+                  Preview
+                </button>
+              </div>
+              {previewingEdit ? (
+                <div className="product-comment-editor-preview" role="tabpanel">
+                  {editBody.trim() ? (
+                    <RichText nodes={commentPreviewNodes(editBody)} />
+                  ) : (
+                    <span>Nothing to preview yet.</span>
+                  )}
+                </div>
+              ) : (
+                <Textarea
+                  label="Edit comment"
+                  value={editBody}
+                  onChange={(event) => setEditBody(event.target.value)}
+                />
+              )}
               <div className="product-chip-row">
                 <Button size="sm" loading={busy} onClick={() => void saveEdit()}>
                   Save
@@ -312,6 +363,7 @@ function CommentItem({
                   variant="ghost"
                   onClick={() => {
                     setEditBody(comment.body);
+                    setPreviewingEdit(false);
                     setEditing(false);
                   }}
                 >
@@ -440,12 +492,14 @@ export function CommentThread({
   postId,
   comments,
   authenticated = true,
+  commentsClosed = false,
   canAcceptSource,
   onAcceptSource,
 }: {
   postId: string;
   comments: CommentView[];
   authenticated?: boolean;
+  commentsClosed?: boolean;
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
 }) {
@@ -501,6 +555,14 @@ export function CommentThread({
           title="Sign in to join the discussion"
           description="Create an account or sign in to comment, reply and react to source requests."
         />
+      ) : commentsClosed ? (
+        <div className="product-comment-locked glass-panel" role="status">
+          <strong>Comments are closed</strong>
+          <span>
+            The author accepted a source and closed this discussion. Existing comments remain
+            visible.
+          </span>
+        </div>
       ) : (
         <div className="product-comment-composer glass-panel">
           <Avatar name="SourceBoard member" size="sm" />

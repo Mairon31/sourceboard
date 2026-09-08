@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLoaderData } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
@@ -44,17 +43,27 @@ type PreferenceUpdate = {
   hideNsfw: boolean;
   blurNsfw: boolean;
   allowFriendRequests: boolean;
+  notifyActivity: boolean;
+  notifyFriendships: boolean;
 };
 
 function createInitialPreferenceValues(data: SettingsData): PreferenceUpdate {
   const preferences = data.preferences;
   if (!preferences) {
-    return { hideNsfw: true, blurNsfw: true, allowFriendRequests: true };
+    return {
+      hideNsfw: true,
+      blurNsfw: true,
+      allowFriendRequests: true,
+      notifyActivity: true,
+      notifyFriendships: true,
+    };
   }
   return {
     hideNsfw: preferences.hideNsfw,
     blurNsfw: preferences.blurNsfw,
     allowFriendRequests: preferences.allowFriendRequests,
+    notifyActivity: preferences.notifyActivity ?? true,
+    notifyFriendships: preferences.notifyFriendships ?? true,
   };
 }
 
@@ -103,6 +112,8 @@ function SensitiveContentCard({
   hideNsfw,
   blurNsfw,
   allowFriendRequests,
+  notifyActivity,
+  notifyFriendships,
   preferenceStatus,
   onUpdate,
   onValueChange,
@@ -111,6 +122,8 @@ function SensitiveContentCard({
   hideNsfw: boolean;
   blurNsfw: boolean;
   allowFriendRequests: boolean;
+  notifyActivity: boolean;
+  notifyFriendships: boolean;
   preferenceStatus: string | null;
   onUpdate: (next: PreferenceUpdate) => void;
   onValueChange: (key: keyof PreferenceUpdate, value: boolean) => void;
@@ -126,7 +139,13 @@ function SensitiveContentCard({
         disabled={!authenticated}
         onCheckedChange={(checked) => {
           onValueChange("hideNsfw", checked);
-          onUpdate({ hideNsfw: checked, blurNsfw, allowFriendRequests });
+          onUpdate({
+            hideNsfw: checked,
+            blurNsfw,
+            allowFriendRequests,
+            notifyActivity,
+            notifyFriendships,
+          });
         }}
       />
       <Switch
@@ -135,7 +154,13 @@ function SensitiveContentCard({
         disabled={!authenticated}
         onCheckedChange={(checked) => {
           onValueChange("blurNsfw", checked);
-          onUpdate({ hideNsfw, blurNsfw: checked, allowFriendRequests });
+          onUpdate({
+            hideNsfw,
+            blurNsfw: checked,
+            allowFriendRequests,
+            notifyActivity,
+            notifyFriendships,
+          });
         }}
       />
       {preferenceStatus ? (
@@ -150,6 +175,8 @@ function FriendRequestsCard({
   allowFriendRequests,
   hideNsfw,
   blurNsfw,
+  notifyActivity,
+  notifyFriendships,
   onUpdate,
   onValueChange,
 }: {
@@ -157,6 +184,8 @@ function FriendRequestsCard({
   allowFriendRequests: boolean;
   hideNsfw: boolean;
   blurNsfw: boolean;
+  notifyActivity: boolean;
+  notifyFriendships: boolean;
   onUpdate: (next: PreferenceUpdate) => void;
   onValueChange: (key: keyof PreferenceUpdate, value: boolean) => void;
 }) {
@@ -171,7 +200,53 @@ function FriendRequestsCard({
         disabled={!authenticated}
         onCheckedChange={(checked) => {
           onValueChange("allowFriendRequests", checked);
-          onUpdate({ hideNsfw, blurNsfw, allowFriendRequests: checked });
+          onUpdate({
+            hideNsfw,
+            blurNsfw,
+            allowFriendRequests: checked,
+            notifyActivity,
+            notifyFriendships,
+          });
+        }}
+      />
+    </Card>
+  );
+}
+
+function NotificationPreferencesCard({
+  authenticated,
+  values,
+  onUpdate,
+  onValueChange,
+}: {
+  authenticated: boolean;
+  values: PreferenceUpdate;
+  onUpdate: (next: PreferenceUpdate) => void;
+  onValueChange: (key: keyof PreferenceUpdate, value: boolean) => void;
+}) {
+  return (
+    <Card className="product-settings-section">
+      <span className="product-eyebrow">Notifications</span>
+      <h2>What should reach you</h2>
+      <p>Choose which activity is stored in your private notification feed.</p>
+      <Switch
+        label="Post and comment activity"
+        description="Replies, accepted sources and other activity on your contributions."
+        checked={values.notifyActivity}
+        disabled={!authenticated}
+        onCheckedChange={(checked) => {
+          onValueChange("notifyActivity", checked);
+          onUpdate({ ...values, notifyActivity: checked });
+        }}
+      />
+      <Switch
+        label="Friendship activity"
+        description="Friend requests, accepts and related account activity."
+        checked={values.notifyFriendships}
+        disabled={!authenticated}
+        onCheckedChange={(checked) => {
+          onValueChange("notifyFriendships", checked);
+          onUpdate({ ...values, notifyFriendships: checked });
         }}
       />
     </Card>
@@ -196,6 +271,8 @@ function PreferencesPanel({ data }: { data: SettingsData }) {
         hideNsfw={values.hideNsfw}
         blurNsfw={values.blurNsfw}
         allowFriendRequests={values.allowFriendRequests}
+        notifyActivity={values.notifyActivity}
+        notifyFriendships={values.notifyFriendships}
         preferenceStatus={preferenceStatus}
         onUpdate={updatePreferences}
         onValueChange={setPreferenceValue}
@@ -203,8 +280,16 @@ function PreferencesPanel({ data }: { data: SettingsData }) {
       <FriendRequestsCard
         authenticated={data.authenticated}
         allowFriendRequests={values.allowFriendRequests}
+        notifyActivity={values.notifyActivity}
+        notifyFriendships={values.notifyFriendships}
         hideNsfw={values.hideNsfw}
         blurNsfw={values.blurNsfw}
+        onUpdate={updatePreferences}
+        onValueChange={setPreferenceValue}
+      />
+      <NotificationPreferencesCard
+        authenticated={data.authenticated}
+        values={values}
         onUpdate={updatePreferences}
         onValueChange={setPreferenceValue}
       />
@@ -228,8 +313,10 @@ function SessionSecurityPanel() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
 
   async function loadSessions() {
+    setStatus(null);
     const sessionResponse = await fetch("/api/auth/session");
     const session = (await sessionResponse.json()) as { authenticated?: boolean };
     setAuthenticated(Boolean(session.authenticated));
@@ -242,21 +329,33 @@ function SessionSecurityPanel() {
     if (response.ok) {
       const body = (await response.json()) as { sessions?: SessionSummary[] };
       setSessions(body.sessions ?? []);
+    } else {
+      setStatus("Sessions could not be loaded. Try again shortly.");
     }
   }
 
   useEffect(() => {
-    void loadSessions().catch(() => setAuthenticated(false));
+    void loadSessions().catch(() => {
+      setAuthenticated(false);
+      setStatus("Session security is temporarily unavailable.");
+    });
   }, []);
 
   async function logoutAll() {
     setBusy(true);
+    setStatus(null);
     try {
-      await fetch("/api/auth/logout-all", {
+      const response = await fetch("/api/auth/logout-all", {
         method: "POST",
         headers: { "x-csrf-token": readCookie("__Host-sourceboard_csrf") ?? "" },
       });
+      if (!response.ok) {
+        setStatus("Could not log out the other sessions.");
+        return;
+      }
       await loadSessions();
+    } catch {
+      setStatus("Could not log out the other sessions. Try again.");
     } finally {
       setBusy(false);
     }
@@ -290,6 +389,7 @@ function SessionSecurityPanel() {
           </Button>
         </>
       ) : null}
+      {status ? <span role="status">{status}</span> : null}
     </Card>
   );
 }

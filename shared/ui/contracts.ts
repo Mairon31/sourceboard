@@ -2,6 +2,7 @@ import type {
   AvatarFramePreset,
   NameEffectPreset,
   NameFontFamily,
+  ProfileBannerPreset,
   ProfileEffectPreset,
 } from "../store/cosmetics";
 import type { RichTextMarks } from "../richtext/markdown";
@@ -137,6 +138,7 @@ export interface PostSummary {
   imageHeight?: number;
   acceptedSource?: AcceptedSourceView;
   verifiedSource?: VerifiedSourceView;
+  commentsClosed?: boolean;
 }
 
 export interface PostPermissionView {
@@ -148,6 +150,8 @@ export interface PostPermissionView {
   canVerifySource: boolean;
   canRevealAnonymous: boolean;
   canMarkNsfw: boolean;
+  canCloseComments?: boolean;
+  canReopenComments?: boolean;
 }
 
 export interface PostDetail extends PostSummary {
@@ -220,7 +224,7 @@ export interface StoreItemView {
   adminUnlocked?: boolean;
   preview: {
     config: {
-      preset?: AvatarFramePreset | ProfileEffectPreset | NameEffectPreset;
+      preset?: AvatarFramePreset | ProfileBannerPreset | ProfileEffectPreset | NameEffectPreset;
       family?: NameFontFamily;
     };
     media: Array<{ id: string; label: string; url: string }>;

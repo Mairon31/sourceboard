@@ -5,6 +5,7 @@ import {
   isAvatarFramePreset,
   isNameEffectPreset,
   isNameFontFamily,
+  isProfileBannerPreset,
   isProfileEffectPreset,
 } from "../../shared/store/cosmetics";
 
@@ -401,6 +402,12 @@ export function validateStoreConfig(type: StoreType, config: unknown): string {
       400,
       "UNSAFE_STORE_CONFIG",
       "The config cannot contain executable or external style fields.",
+    );
+  if (type === "PROFILE_BANNER" && !isProfileBannerPreset(value.preset))
+    throw new StoreError(
+      400,
+      "STORE_CONFIG_NOT_ALLOWED",
+      "PROFILE_BANNER preset is not allowlisted.",
     );
   return serialized;
 }

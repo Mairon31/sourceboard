@@ -11,11 +11,11 @@ const authScreenSource = readFileSync(
 );
 
 describe("Google auth hosting compatibility", () => {
-  it("uses popup auth instead of redirect helpers on the Cloudflare-hosted app", () => {
+  it("uses popup auth on the Cloudflare-hosted app", () => {
     expect(firebaseClientSource).toContain("signInWithPopup");
     expect(firebaseClientSource).not.toContain("signInWithRedirect");
     expect(firebaseClientSource).not.toContain("getRedirectResult");
     expect(authScreenSource).toContain("signInWithGoogle(authConfig.firebase)");
-    expect(authScreenSource).not.toContain("useGoogleRedirectSignIn");
+    expect(authScreenSource).toContain('postAuthJson("/api/auth/google"');
   });
 });

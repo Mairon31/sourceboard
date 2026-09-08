@@ -290,11 +290,11 @@ export async function handleStoreRequest(
         typeof body.description !== "string" ||
         typeof body.pricePoints !== "number" ||
         !Number.isInteger(body.pricePoints) ||
-        body.pricePoints <= 0
+        body.pricePoints < 0
       )
         return failure(
           "INVALID_STORE_ITEM",
-          "A valid type, name, description and positive price are required.",
+          "A valid type, name, description and non-negative price are required.",
           requestId,
           400,
         );

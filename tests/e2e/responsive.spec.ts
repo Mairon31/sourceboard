@@ -98,12 +98,12 @@ test("friends workspace keeps requests and discovery contained on mobile", async
   await page.goto("/friends");
   await waitForUiReady(page);
 
-  await page.getByRole("button", { name: "Requests" }).click();
+  await page.getByRole("tab", { name: /Requests/ }).click();
   await expect(page.getByText(`@${friendsFixture.incoming}`)).toBeVisible();
   await expect(page.getByRole("button", { name: "Accept" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Decline" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Discover" }).click();
+  await page.getByRole("tab", { name: "Discover" }).click();
   await expect(page.getByText(`@${friendsFixture.eligible}`)).toBeVisible();
 
   const overflow = await page.evaluate(

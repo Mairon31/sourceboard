@@ -15,6 +15,18 @@ type StoreAction =
   | "ARCHIVE"
   | "DELETE";
 
+type CosmeticType =
+  "ALL" | "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_EFFECT" | "NAME_FONT";
+
+const cosmeticFilters: Array<{ value: CosmeticType; label: string }> = [
+  { value: "ALL", label: "All" },
+  { value: "AVATAR_FRAME", label: "Frames" },
+  { value: "PROFILE_BANNER", label: "Banners" },
+  { value: "PROFILE_EFFECT", label: "Profile effects" },
+  { value: "NAME_EFFECT", label: "Name effects" },
+  { value: "NAME_FONT", label: "Fonts" },
+];
+
 function truthy(value: boolean | number): boolean {
   return value === true || Number(value) === 1;
 }
@@ -108,6 +120,11 @@ export function AdminCosmeticCatalog({
     () => items.filter((item) => item.type !== "EMOTE_PACK" && item.type !== "STICKER_PACK"),
     [items],
   );
+  const [typeFilter, setTypeFilter] = useState<CosmeticType>("ALL");
+  const visibleCosmetics = useMemo(
+    () => (typeFilter === "ALL" ? cosmetics : cosmetics.filter((item) => item.type === typeFilter)),
+    [cosmetics, typeFilter],
+  );
   const [editing, setEditing] = useState<AdminStoreItem | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [danger, setDanger] = useState<{
@@ -119,25 +136,29 @@ export function AdminCosmeticCatalog({
   async function perform(item: AdminStoreItem, action: StoreAction, actionReason?: string) {
     setBusyId(item.id);
     try {
-      const response = await fetch(`/api/admin/store/${encodeURIComponent(item.id)}/actions`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({ action, reason: actionReason }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        const details = errorDetails(payload, `Could not ${action.toLowerCase()} this item.`);
-        onStatus(
-          details.code === "STORE_ITEM_REFERENCED"
-            ? `${details.message} Existing ownership or usage is preserved; use Archive instead.`
-            : details.message,
-        );
-        return;
+      try {
+        const response = await fetch(`/api/admin/store/${encodeURIComponent(item.id)}/actions`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+          body: JSON.stringify({ action, reason: actionReason }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          const details = errorDetails(payload, `Could not ${action.toLowerCase()} this item.`);
+          onStatus(
+            details.code === "STORE_ITEM_REFERENCED"
+              ? `${details.message} Existing ownership or usage is preserved; use Archive instead.`
+              : details.message,
+          );
+          return;
+        }
+        onStatus(`${item.name}: ${action.toLowerCase()} completed.`);
+        setDanger(null);
+        setReason("");
+        await onRefresh();
+      } catch {
+        onStatus(`${item.name}: the action could not be completed. Check your connection.`);
       }
-      onStatus(`${item.name}: ${action.toLowerCase()} completed.`);
-      setDanger(null);
-      setReason("");
-      await onRefresh();
     } finally {
       setBusyId(null);
     }
@@ -165,8 +186,24 @@ export function AdminCosmeticCatalog({
           <h2>Cosmetics</h2>
           <p>Manage every frame, profile effect, banner, name effect and name font in one place.</p>
         </div>
-        <span className="product-search-count">{cosmetics.length} items</span>
+        <span className="product-search-count">
+          {visibleCosmetics.length} shown · {cosmetics.length} total
+        </span>
       </div>
+
+      <nav className="admin-store-type-filters" aria-label="Cosmetic type">
+        {cosmeticFilters.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            aria-pressed={typeFilter === filter.value}
+            className={typeFilter === filter.value ? "is-active" : undefined}
+            onClick={() => setTypeFilter(filter.value)}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </nav>
 
       {danger ? (
         <Card className="admin-store-danger-panel">
@@ -213,9 +250,9 @@ export function AdminCosmeticCatalog({
         </Card>
       ) : null}
 
-      {cosmetics.length ? (
+      {visibleCosmetics.length ? (
         <div className="admin-store-cosmetic-grid">
-          {cosmetics.map((item) => {
+          {visibleCosmetics.map((item) => {
             const enabled = truthy(item.isEnabled);
             const featured = truthy(item.isFeatured);
             return (
@@ -233,7 +270,11 @@ export function AdminCosmeticCatalog({
                   </div>
                   <p>{item.description}</p>
                   <div className="admin-store-metric-row">
-                    <span>{item.pricePoints.toLocaleString("en-US")} pts</span>
+                    <span>
+                      {item.pricePoints === 0
+                        ? "Free"
+                        : `${item.pricePoints.toLocaleString("en-US")} pts`}
+                    </span>
                     <span>{item.ownerCount} owners</span>
                     <span>{item.equippedCount} equipped</span>
                   </div>
@@ -310,7 +351,15 @@ export function AdminCosmeticCatalog({
           })}
         </div>
       ) : (
-        <Card className="product-empty-state">No cosmetic Store items were found.</Card>
+        <Card className="product-empty-state">
+          No{" "}
+          {typeFilter === "ALL"
+            ? "cosmetic Store"
+            : cosmeticFilters
+                .find((filter) => filter.value === typeFilter)
+                ?.label.toLowerCase()}{" "}
+          items were found.
+        </Card>
       )}
     </section>
   );

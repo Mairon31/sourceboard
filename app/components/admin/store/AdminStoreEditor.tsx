@@ -84,7 +84,7 @@ export function AdminStoreEditor({
           name="pricePoints"
           label="Price in points"
           type="number"
-          min={1}
+          min={0}
           step={1}
           defaultValue={item.pricePoints}
           required

@@ -3,6 +3,7 @@ import { useLocation } from "react-router";
 import { AppShell } from "../layout/AppShell";
 import { MobileProductNav, ProductContextRail, ProductNav } from "./ProductNav";
 import { markNavigationReady } from "../../data/performance-metrics";
+import { ProductFooter } from "./ProductFooter";
 
 export interface ProductShellProps {
   children: ReactNode;
@@ -26,6 +27,7 @@ export function ProductShell({ children, rightRail, wide = false }: ProductShell
         <div className={wide ? "product-page product-page--wide" : "product-page"}>{children}</div>
       </AppShell>
       <MobileProductNav />
+      <ProductFooter />
     </>
   );
 }

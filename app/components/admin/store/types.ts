@@ -45,6 +45,7 @@ export interface EmotePackSummary {
   status: "ACTIVE" | "DISABLED";
   lifecycleState: StoreLifecycleState;
   isEnabled: boolean | number;
+  isGlobal: boolean | number;
   createdAt: number;
   updatedAt: number | null;
   storeItemId: string | null;

@@ -221,6 +221,7 @@ export default function PostDetailRoute() {
         postId={currentPost.id}
         comments={currentPost.comments}
         authenticated={authenticated}
+        commentsClosed={currentPost.commentsClosed}
         canAcceptSource={currentPost.permissions.canAcceptSource}
         onAcceptSource={(commentId) => void acceptSource(commentId)}
       />

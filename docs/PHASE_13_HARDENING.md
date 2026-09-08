@@ -212,6 +212,21 @@ and `srcboard.me` authorized. Email login promotes a pending D1 profile after
 Firebase confirms its email, including the Firebase-hosted action-handler path.
 When an action code returns to SourceBoard, the verify-email screen consumes it
 automatically and keeps the manual fallback available.
-The CSP includes only the Firebase and Google origins required by the redirect
+The CSP includes only the Firebase and Google origins required by the popup
 flow, and signed-out notification refresh is skipped before it can call the
 private endpoint. A real Google login/profile-creation check remains pending.
+
+### 2026-09-08 Store and production-schema checkpoint
+
+The Store/Admin Store implementation now includes catalog lifecycle, cosmetic
+previews, emote-pack/member administration, moderation reasons, bulk uploads,
+ownership/equipped counts and public Featured/New/Owned/All sections. Comments,
+grouped notifications, profile metadata and route-level SEO are also wired to
+the existing D1/R2 services.
+
+Production D1 had `0014` through `0018` pending. They are now applied. The
+catalog rebuild in `0016` was corrected to preserve the dependent inventory,
+purchase and equipped-cosmetic rows while satisfying D1 foreign keys. Local
+lint/Prettier, typecheck, 214 unit tests, build, Worker dry-run and migration
+idempotency now pass. The final Worker build and standard CI gate are performed
+after the coherent `master` push.

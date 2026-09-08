@@ -1,5 +1,8 @@
 PRAGMA defer_foreign_keys = ON;
 
+-- Rebuild the catalog without dropping a referenced parent table. D1 keeps
+-- foreign-key enforcement enabled, so preserve every dependent row first and
+-- recreate the three dependent tables after the new catalog exists.
 CREATE TABLE store_items_name_effect (
   id TEXT PRIMARY KEY NOT NULL,
   type TEXT NOT NULL,
@@ -26,28 +29,64 @@ INSERT INTO store_items_name_effect
 SELECT id, type, name, description, price_points, asset_id, config_json, is_active, lifecycle_state, is_enabled, is_featured, starts_at, ends_at, sort_order, created_at, updated_at
 FROM store_items;
 
+CREATE TABLE store_purchases_backup AS SELECT * FROM store_purchases;
+CREATE TABLE user_inventory_backup AS SELECT * FROM user_inventory;
+CREATE TABLE user_cosmetics_backup AS SELECT * FROM user_cosmetics;
+
+DROP TABLE store_purchases;
+DROP TABLE user_inventory;
+DROP TABLE user_cosmetics;
 DROP TABLE store_items;
 ALTER TABLE store_items_name_effect RENAME TO store_items;
-CREATE INDEX store_items_active_order_index ON store_items (is_active, sort_order);
-CREATE INDEX store_items_lifecycle_discovery_index ON store_items (lifecycle_state, is_enabled, is_featured, sort_order);
 
-CREATE TABLE user_cosmetics_name_effect (
+CREATE INDEX store_items_active_order_index ON store_items (is_active, sort_order);
+CREATE INDEX store_items_lifecycle_discovery_index
+ON store_items (lifecycle_state, is_enabled, is_featured, sort_order);
+
+CREATE TABLE store_purchases (
+  id TEXT PRIMARY KEY NOT NULL,
+  user_id TEXT NOT NULL,
+  store_item_id TEXT NOT NULL,
+  price_paid INTEGER NOT NULL,
+  ledger_debit_id TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE no action ON DELETE cascade,
+  FOREIGN KEY (store_item_id) REFERENCES store_items(id) ON UPDATE no action ON DELETE restrict
+);
+CREATE UNIQUE INDEX store_purchases_idempotency_unique ON store_purchases (idempotency_key);
+CREATE INDEX store_purchases_user_created_index ON store_purchases (user_id, created_at);
+INSERT INTO store_purchases SELECT * FROM store_purchases_backup;
+
+CREATE TABLE user_inventory (
+  user_id TEXT NOT NULL,
+  store_item_id TEXT NOT NULL,
+  acquired_at INTEGER NOT NULL,
+  source TEXT NOT NULL,
+  PRIMARY KEY (user_id, store_item_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE no action ON DELETE cascade,
+  FOREIGN KEY (store_item_id) REFERENCES store_items(id) ON UPDATE no action ON DELETE restrict,
+  CONSTRAINT user_inventory_source_check CHECK(source IN ('PURCHASE', 'ACHIEVEMENT', 'ADMIN_GRANT'))
+);
+CREATE INDEX user_inventory_user_acquired_index ON user_inventory (user_id, acquired_at);
+INSERT INTO user_inventory SELECT * FROM user_inventory_backup;
+
+CREATE TABLE user_cosmetics (
   user_id TEXT NOT NULL,
   slot TEXT NOT NULL,
   store_item_id TEXT NOT NULL,
   updated_at INTEGER NOT NULL,
-  PRIMARY KEY(user_id, slot),
+  PRIMARY KEY (user_id, slot),
   FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE no action ON DELETE cascade,
   FOREIGN KEY (store_item_id) REFERENCES store_items(id) ON UPDATE no action ON DELETE restrict,
   CONSTRAINT user_cosmetics_slot_check CHECK(slot IN ('AVATAR_FRAME', 'PROFILE_BANNER', 'PROFILE_EFFECT', 'NAME_FONT', 'NAME_EFFECT'))
 );
-
-INSERT INTO user_cosmetics_name_effect (user_id, slot, store_item_id, updated_at)
-SELECT user_id, slot, store_item_id, updated_at FROM user_cosmetics;
-
-DROP TABLE user_cosmetics;
-ALTER TABLE user_cosmetics_name_effect RENAME TO user_cosmetics;
 CREATE UNIQUE INDEX user_cosmetics_item_unique ON user_cosmetics (user_id, store_item_id);
+INSERT INTO user_cosmetics SELECT * FROM user_cosmetics_backup;
+
+DROP TABLE store_purchases_backup;
+DROP TABLE user_inventory_backup;
+DROP TABLE user_cosmetics_backup;
 
 INSERT OR IGNORE INTO store_items
 (id, type, name, description, price_points, config_json, is_active, lifecycle_state, is_enabled, is_featured, sort_order, created_at, updated_at)

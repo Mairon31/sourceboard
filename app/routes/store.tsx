@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLoaderData, useRevalidator } from "react-router";
+import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "react-router";
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
@@ -12,10 +12,12 @@ import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server
 const STORE_FILTERS = [
   { key: "ALL", label: "All" },
   { key: "AVATAR_FRAME", label: "Frame" },
+  { key: "PROFILE_BANNER", label: "Banner" },
   { key: "PROFILE_EFFECT", label: "Profile effects" },
   { key: "NAME_EFFECT", label: "Name effects" },
   { key: "NAME_FONT", label: "Font" },
   { key: "EMOTE_PACK", label: "Emotes" },
+  { key: "STICKER_PACK", label: "Stickers" },
 ] as const;
 
 type StoreFilter = (typeof STORE_FILTERS)[number]["key"];
@@ -26,6 +28,24 @@ const COSMETIC_TYPES = new Set<StoreItemType>([
   "NAME_FONT",
   "NAME_EFFECT",
 ]);
+
+export const meta: MetaFunction = () => [
+  { title: "Store · SourceBoard" },
+  {
+    name: "description",
+    content: "Equip profile cosmetics and collect expressive emote packs on SourceBoard.",
+  },
+  { name: "robots", content: "index, follow" },
+  { tagName: "link", rel: "canonical", href: "https://srcboard.me/store" },
+  { property: "og:type", content: "website" },
+  { property: "og:title", content: "SourceBoard Store" },
+  {
+    property: "og:description",
+    content: "Equip profile cosmetics and collect expressive emote packs on SourceBoard.",
+  },
+  { property: "og:url", content: "https://srcboard.me/store" },
+  { property: "og:image", content: "https://srcboard.me/sourceboard-og.png" },
+];
 
 function parseConfig(value: unknown): StoreItemView["preview"]["config"] {
   try {
@@ -134,6 +154,7 @@ export default function StoreRoute() {
     previewName,
     previewAvatarUrl,
   } = useLoaderData<LoaderData>();
+  const navigate = useNavigate();
   const revalidator = useRevalidator();
   const [activeFilter, setActiveFilter] = useState<StoreFilter>("ALL");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -163,6 +184,8 @@ export default function StoreRoute() {
       }
       setFeedback(`${item.name} unlocked.`);
       revalidator.revalidate();
+    } catch {
+      setFeedback("This item could not be redeemed. Check your connection and try again.");
     } finally {
       setBusyId(null);
     }
@@ -183,6 +206,8 @@ export default function StoreRoute() {
       }
       setFeedback(`${item.name} equipped.`);
       revalidator.revalidate();
+    } catch {
+      setFeedback("This cosmetic could not be equipped. Check your connection and try again.");
     } finally {
       setBusyId(null);
     }
@@ -202,6 +227,8 @@ export default function StoreRoute() {
       }
       setFeedback(`${item.name} unequipped.`);
       revalidator.revalidate();
+    } catch {
+      setFeedback("This cosmetic could not be unequipped. Check your connection and try again.");
     } finally {
       setBusyId(null);
     }
@@ -209,7 +236,7 @@ export default function StoreRoute() {
 
   function actOnItem(item: StoreItemView) {
     if (!authenticated) {
-      window.location.assign("/login");
+      navigate("/login");
       return;
     }
     if (item.state === "EQUIPPED") {

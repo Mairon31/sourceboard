@@ -13,6 +13,9 @@ export interface PresentedNotification extends NotificationRecord {
   href: string;
   ctaLabel?: string;
   actor?: NotificationActorView;
+  groupedIds?: string[];
+  groupCount?: number;
+  unreadCount?: number;
 }
 
 interface PostContext {
@@ -229,6 +232,48 @@ function unique(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
+export function groupPresentedNotifications(
+  notifications: PresentedNotification[],
+): PresentedNotification[] {
+  const grouped: PresentedNotification[] = [];
+  const groups = new Map<string, PresentedNotification>();
+  for (const notification of notifications) {
+    if (notification.type !== "comment.created" && notification.type !== "comment.reply") {
+      grouped.push(notification);
+      continue;
+    }
+    const payload = parsePayload(notification.payloadJson);
+    const postId = typeof payload.postId === "string" ? payload.postId : notification.entityId;
+    const key = `${notification.type}:${postId ?? "unknown"}`;
+    const previous = groups.get(key);
+    if (!previous || previous.createdAt - notification.createdAt > 15 * 60 * 1000) {
+      const next = {
+        ...notification,
+        groupedIds: [notification.id],
+        groupCount: 1,
+        unreadCount: notification.readAt ? 0 : 1,
+      };
+      groups.set(key, next);
+      grouped.push(next);
+      continue;
+    }
+    const ids = [...(previous.groupedIds ?? [previous.id]), notification.id];
+    const count = ids.length;
+    previous.groupedIds = ids;
+    previous.groupCount = count;
+    previous.unreadCount =
+      (previous.unreadCount ?? (previous.readAt ? 0 : 1)) + (notification.readAt ? 0 : 1);
+    previous.readAt = previous.readAt && notification.readAt ? previous.readAt : null;
+    previous.title =
+      notification.type === "comment.created"
+        ? `${count} new comments on your post`
+        : `${count} new replies to your comment`;
+    previous.body = "Open the discussion to review the latest activity.";
+    previous.ctaLabel = "View discussion";
+  }
+  return grouped;
+}
+
 export async function presentNotifications(
   db: D1Database,
   records: NotificationRecord[],
@@ -328,5 +373,5 @@ export async function presentNotifications(
     storeItems: new Map(storeRows.results.map((row) => [row.id, row.name])),
     achievements: new Map(achievementRows.results.map((row) => [row.id, row.name])),
   };
-  return records.map((record) => presentNotification(record, context));
+  return groupPresentedNotifications(records.map((record) => presentNotification(record, context)));
 }

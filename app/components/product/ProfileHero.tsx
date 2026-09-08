@@ -1,8 +1,11 @@
-import type { PublicProfileDto } from "../../../worker/profile/types";
+import { useEffect, useState } from "react";
+import type { PublicProfileDto, Relationship } from "../../../worker/profile/types";
 import { Badge, Card } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
+import { ConfirmAction } from "./ConfirmAction";
 import { ShareAction } from "./ShareAction";
 import { SocialActionButton } from "./SocialActionButton";
+import { readCsrfToken } from "../../data/csrf";
 
 const relationshipLabel = {
   NONE: "Not connected",
@@ -20,7 +23,7 @@ interface ProfileHeroProps {
 function ProfileBanner({ profile }: { profile: PublicProfileDto }) {
   return (
     <div
-      className={`product-profile-banner${profile.cosmetics?.profileBanner ? " product-profile-banner--nebula" : ""}`}
+      className={`product-profile-banner${profile.cosmetics?.profileBanner ? ` product-profile-banner--${profile.cosmetics.profileBanner}` : ""}`}
       aria-label={`${profile.displayName} profile banner`}
       style={profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined}
     />
@@ -42,22 +45,114 @@ function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
   );
 }
 
-function RelationshipAction({ profile, isOwnProfile }: ProfileHeroProps) {
-  if (isOwnProfile || !profile.canRequestFriend) return null;
+function relationshipLabelFor(relationship: Relationship) {
+  return relationshipLabel[relationship];
+}
+
+function RelationshipAction({
+  profile,
+  isOwnProfile,
+  relationship,
+  onRelationshipChange,
+}: ProfileHeroProps & {
+  relationship: Relationship;
+  onRelationshipChange: (relationship: Relationship) => void;
+}) {
+  if (isOwnProfile) return null;
+  if (relationship === "NONE" && profile.canRequestFriend) {
+    return (
+      <SocialActionButton
+        endpoint={`/api/friends/${encodeURIComponent(profile.id)}/request`}
+        method="POST"
+        variant="secondary"
+        onSuccess={() => onRelationshipChange("OUTGOING")}
+        successLabel="Request sent"
+      >
+        Send friend request
+      </SocialActionButton>
+    );
+  }
+  if (relationship === "INCOMING" && profile.canAcceptFriend) {
+    return (
+      <SocialActionButton
+        endpoint={`/api/friends/${encodeURIComponent(profile.id)}/accept`}
+        method="POST"
+        variant="secondary"
+        onSuccess={() => onRelationshipChange("FRIEND")}
+        successLabel="Friends"
+      >
+        Accept request
+      </SocialActionButton>
+    );
+  }
+  if (relationship === "OUTGOING" && (profile.canCancelFriend || profile.canRequestFriend)) {
+    return (
+      <SocialActionButton
+        endpoint={`/api/friends/${encodeURIComponent(profile.id)}/cancel`}
+        method="POST"
+        onSuccess={() => onRelationshipChange("NONE")}
+        successLabel="Request cancelled"
+      >
+        Cancel request
+      </SocialActionButton>
+    );
+  }
+  if (relationship === "FRIEND" && (profile.canRemoveFriend || profile.canAcceptFriend)) {
+    return (
+      <ConfirmAction
+        title="Remove friend?"
+        description={`Remove ${profile.displayName} from your friends. Friends-only access will end immediately.`}
+        triggerLabel="Remove friend"
+        confirmLabel="Remove friend"
+        destructive
+        onConfirm={async () => {
+          const response = await fetch(`/api/friends/${encodeURIComponent(profile.id)}`, {
+            method: "DELETE",
+            headers: { "x-csrf-token": readCsrfToken() },
+          });
+          if (!response.ok) throw new Error("Could not remove this friend.");
+          onRelationshipChange("NONE");
+        }}
+      />
+    );
+  }
+  return null;
+}
+
+function BlockAction({
+  profile,
+  relationship,
+  onRelationshipChange,
+}: {
+  profile: PublicProfileDto;
+  relationship: Relationship;
+  onRelationshipChange: (relationship: Relationship) => void;
+}) {
+  if (!profile.canBlock || relationship === "BLOCKED") return null;
   return (
-    <SocialActionButton
-      endpoint={`/api/friends/${encodeURIComponent(profile.id)}/request`}
-      method="POST"
-      variant="secondary"
-      onSuccess={() => undefined}
-      successLabel="Request sent"
-    >
-      Send friend request
-    </SocialActionButton>
+    <ConfirmAction
+      title="Block this account?"
+      description={`${profile.displayName} will not be able to interact with you or view content that your privacy settings protect.`}
+      triggerLabel="Block"
+      confirmLabel="Block account"
+      destructive
+      onConfirm={async () => {
+        const response = await fetch(`/api/users/${encodeURIComponent(profile.id)}/block`, {
+          method: "POST",
+          headers: { "x-csrf-token": readCsrfToken() },
+        });
+        if (!response.ok) throw new Error("Could not block this account.");
+        onRelationshipChange("BLOCKED");
+      }}
+    />
   );
 }
 
 export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
+  const [relationship, setRelationship] = useState<Relationship>(profile.relationship);
+  useEffect(() => {
+    setRelationship(profile.relationship);
+  }, [profile.relationship]);
   return (
     <Card className="product-profile-hero">
       <ProfileBanner profile={profile} />
@@ -83,11 +178,21 @@ export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
           </div>
           <div className="product-chip-row">
             {!isOwnProfile ? (
-              <Badge tone={profile.relationship === "BLOCKED" ? "warning" : "neutral"}>
-                {relationshipLabel[profile.relationship]}
+              <Badge tone={relationship === "BLOCKED" ? "warning" : "neutral"}>
+                {relationshipLabelFor(relationship)}
               </Badge>
             ) : null}
-            <RelationshipAction profile={profile} isOwnProfile={isOwnProfile} />
+            <RelationshipAction
+              profile={profile}
+              isOwnProfile={isOwnProfile}
+              relationship={relationship}
+              onRelationshipChange={setRelationship}
+            />
+            <BlockAction
+              profile={profile}
+              relationship={relationship}
+              onRelationshipChange={setRelationship}
+            />
             <ShareAction
               url={`/u/${encodeURIComponent(profile.username)}`}
               title={`${profile.displayName} on SourceBoard`}

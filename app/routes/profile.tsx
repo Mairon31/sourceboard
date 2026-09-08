@@ -1,4 +1,4 @@
-import { Link, useLoaderData, useRouteLoaderData } from "react-router";
+import { useLoaderData, useRouteLoaderData, type MetaFunction } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { createReputationReader } from "../../worker/reputation/read";
@@ -37,6 +37,52 @@ export async function loader({ params, request, context }: LoaderArgs) {
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 type PublicProfile = NonNullable<LoaderData["profile"]>;
 
+export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
+  const profile = loaderData?.profile;
+  if (!profile || loaderData.unavailable) {
+    return [
+      { title: "Profile unavailable · SourceBoard" },
+      { name: "robots", content: "noindex, nofollow" },
+    ];
+  }
+  const description =
+    profile.bio.trim() ||
+    `See ${profile.displayName}'s public source contributions on SourceBoard.`;
+  const canonicalUrl = new URL(
+    `/u/${encodeURIComponent(profile.username)}`,
+    "https://srcboard.me",
+  ).toString();
+  const imageUrl = profile.avatarUrl
+    ? new URL(profile.avatarUrl, canonicalUrl).toString()
+    : undefined;
+  return [
+    { title: `${profile.displayName} (@${profile.username}) · SourceBoard` },
+    { name: "description", content: description.slice(0, 180) },
+    { name: "robots", content: "index, follow" },
+    { tagName: "link", rel: "canonical", href: canonicalUrl },
+    { property: "og:type", content: "profile" },
+    { property: "og:title", content: `${profile.displayName} on SourceBoard` },
+    { property: "og:description", content: description.slice(0, 180) },
+    ...(imageUrl ? [{ property: "og:image", content: imageUrl }] : []),
+    { name: "twitter:card", content: imageUrl ? "summary_large_image" : "summary" },
+    {
+      "script:ld+json": {
+        "@context": "https://schema.org",
+        "@type": "ProfilePage",
+        name: profile.displayName,
+        description: description.slice(0, 500),
+        url: canonicalUrl,
+        mainEntity: {
+          "@type": "Person",
+          name: profile.displayName,
+          identifier: `@${profile.username}`,
+          ...(imageUrl ? { image: imageUrl } : {}),
+        },
+      },
+    },
+  ];
+};
+
 function UnavailableProfile({ unavailable }: { unavailable: boolean }) {
   return (
     <ProductShell wide>
@@ -58,30 +104,49 @@ function UnavailableProfile({ unavailable }: { unavailable: boolean }) {
 
 function ContributionHistory({ profile }: { profile: PublicProfile }) {
   return (
-    <>
-      <PageHeader
-        eyebrow="Contribution history"
-        title="Reputation is earned in SourceBoard"
-        description="Contribution points and achievements are calculated from the server-side ledger."
-      />
-      <Card className="product-empty-state">
-        <p>
-          Verified source rewards and achievement history are server-authoritative and append-only.
-        </p>
-        {profile.achievements?.length ? (
-          <div className="product-chip-row" aria-label="Earned achievements">
-            {profile.achievements.map((achievement) => (
-              <Badge key={achievement.id} tone="neutral">
-                {achievement.icon} {achievement.name}
-              </Badge>
-            ))}
+    <Card className="product-profile-contributions">
+      <div className="product-profile-contributions__header">
+        <div>
+          <span className="product-eyebrow">Contribution</span>
+          <h2>What this contributor has earned</h2>
+        </div>
+        <p>Updated from SourceBoard activity</p>
+      </div>
+      <div className="product-profile-contributions__metrics" aria-label="Contribution metrics">
+        {profile.reputation !== undefined ? (
+          <div className="product-profile-contributions__metric">
+            <strong>{profile.reputation}</strong>
+            <span>Reputation</span>
           </div>
         ) : null}
-        <Link className="product-text-action" to="/">
-          Return to feed
-        </Link>
-      </Card>
-    </>
+        {profile.points !== undefined ? (
+          <div className="product-profile-contributions__metric">
+            <strong>{profile.points}</strong>
+            <span>Points</span>
+          </div>
+        ) : null}
+        {profile.verifiedSources !== undefined ? (
+          <div className="product-profile-contributions__metric">
+            <strong>{profile.verifiedSources}</strong>
+            <span>Verified sources</span>
+          </div>
+        ) : null}
+      </div>
+      {profile.achievements?.length ? (
+        <div
+          className="product-profile-contributions__achievements"
+          aria-label="Earned achievements"
+        >
+          {profile.achievements.map((achievement) => (
+            <Badge key={achievement.id} tone="neutral">
+              {achievement.icon} {achievement.name}
+            </Badge>
+          ))}
+        </div>
+      ) : (
+        <p className="product-store-preview-status">No achievements have been earned yet.</p>
+      )}
+    </Card>
   );
 }
 

@@ -1,104 +1,73 @@
-# SourceBoard — auditoría de la fase Social UX, Media y Performance
+# SourceBoard — auditoría Social UX, Media y Performance
 
-Fecha: 2026-09-07  
+Fecha: 2026-09-08
 Repositorio: `Mairon31/sourceboard`  
-Rama auditada: `master`  
-HEAD auditado: `b77b306` (`feat: complete store catalog administration rollout`)
+Rama: `master`
 
-## Estado del repositorio y CI
+## Alcance y fuentes
 
-- El checkout local está limpio y `master` coincide con `origin/master`.
-- No hubo commit automático posterior al rollout de Store; el workflow temporal
-  `.github/workflows/apply-emote-enable-control.yml` está eliminado.
-- El run estándar CI `#408` / `34176055696` está verde para `b77b306`.
-- El run helper `34174254326` y el CI estándar `#407` fallaron antes del commit
-  final del rollout; no representan el estado actual.
-- GitHub muestra los PR históricos 16, 17 y 18 fusionados; no hay PR abierto.
+Se revisaron el plan canónico, `docs/IMPLEMENTATION_PROGRESS.md`, los planes y
+especificaciones de `docs/superpowers/`, rutas React Router, componentes de
+producto/admin, servicios Worker, migraciones, Wrangler, tests y workflows. La
+revisión se hizo sobre el checkout real y sobre la aplicación en localhost.
 
-## Fuentes revisadas
+La versión disponible de Unslop solo audita React con Tailwind. SourceBoard usa
+React con CSS propio y no tiene configuración Tailwind, por lo que no se pudo
+generar un informe Unslop válido. Se hizo en su lugar la inspección visual
+manual de las superficies equivalentes, sin cambiar la arquitectura para forzar
+una herramienta no aplicable.
 
-Se leyeron el plan canónico `plan-foro-fuentes-imagenes-cloudflare.md`,
-`docs/IMPLEMENTATION_PROGRESS.md`, los planes y especificaciones Superpowers
-existentes, y la documentación de fases 1–13, diseño, seguridad, rendimiento,
-producción e incidentes. También se revisaron las áreas React Router/Vite,
-Worker, D1, R2, Wrangler, tests unitarios/E2E y el repositorio `bretes.app`.
+## Evidencia visual y funcional
 
-Bretes no contiene un picker KLIPY/GIF/stickers. Sí aporta patrones útiles de
-notificaciones, estados loading/empty/error, abortado de carga, acciones
-optimistas y accesibilidad; no se copiará su arquitectura ni su UI literalmente.
+- Local: `/`, `/store`, `/search?q=source`, `/settings` y `/docs` cargan con
+  datos D1 locales, enlaces semánticos, estados de sesión claros y sin overflow
+  horizontal en el viewport de escritorio disponible.
+- Local: el fixture de navegación apunta a una media inexistente; el `PostCard`
+  ahora detecta también imágenes completadas con `naturalWidth = 0` y muestra
+  un estado accesible `Image unavailable`, sin dejar el alt de una imagen rota.
+- Producción: el login con la cuenta proporcionada funcionó contra Firebase,
+  Worker y D1; Store mostró cosméticos reales, previews de identidad y cuatro
+  emotes reales del pack. Admin Store mostró catálogo persistido, lifecycle,
+  ownership/equipped counts y controles de emotes.
+- Producción: tras aplicar las migraciones pendientes, `/admin` dejó de mostrar
+  el aviso de métricas no disponibles y mostró reportes, verificaciones,
+  catálogo y auditoría reales.
+- La navegación caliente no tiene `setTimeout` artificial. Se conservan la
+  memoización de sesión, el throttling de `touchSession` a cinco minutos, los
+  loaders paralelos y el prefetch por intención/viewport.
 
-## Hallazgos del código actual
+## Cambios realizados en esta auditoría
 
-### Lo que ya es real y debe conservarse
+- El badge local de notificaciones conserva el conteo real de elementos no
+  leídos cuando el presenter agrupa comentarios; el DTO realtime transporta
+  `unreadCount` por grupo.
+- El Admin Store informa fallos de red en carga, creación, edición, duplicado,
+  archivo, uploads bulk y cambios de emotes, evitando promesas rechazadas sin
+  feedback.
+- Logout navega mediante React Router y no fuerza una recarga completa.
+- Store, Search, Docs, Legal, Friends y Notifications tienen metadata de ruta;
+  la búsqueda y las superficies privadas llevan `noindex` cuando corresponde.
+- La migración `0016_name_effect_catalog.sql` reconstruye el catálogo y sus
+  tablas dependientes preservando filas y claves foráneas. También se corrigió
+  su inserción de presets para que el número de columnas coincida.
 
-- D1 es la fuente de verdad para posts, comentarios, perfiles, amistades,
-  notificaciones, Store, inventario y moderación.
-- R2 es privado y el acceso a media pasa por gateways autorizados.
-- Comentarios, replies, likes, Accepted/Verified Source, reportes, KLIPY,
-  emote/sticker entitlement y Store/Admin Store ya tienen servicios y APIs
-  persistentes.
-- La sesión memoizada y el throttling `SESSION_TOUCH_INTERVAL_MS = 5 min`
-  existen en `worker/auth/service.ts`; los loaders principales ya comparten
-  sesión y usan `Promise.all` en los puntos auditados.
-- Store ya muestra previews reales de avatar/frame, efectos, fuente y hasta
-  cuatro assets de packs publicados.
+## Restricciones preservadas
 
-### Deuda funcional/UX confirmada
+- D1 continúa siendo la fuente de verdad; no se añadieron mocks de persistencia
+  ni se publicó R2.
+- Media, comentarios, Store, entitlements, moderación y auth mantienen sus
+  validaciones server-side, CSRF, capabilities, privacidad y allowlists.
+- No se eliminaron recursos Cloudflare, no se inventaron IDs ni se expusieron
+  secretos. Se reutilizó el D1 de producción existente y se aplicaron solo las
+  migraciones forward-only pendientes.
 
-- `CommentThread` renderiza texto/emotes como texto, no tiene edición/eliminación
-  inline, menú contextual, reportes, preview Markdown, picker de emotes propios,
-  debounce, caché ni cancelación de búsquedas; publicar recarga toda la página.
-- El backend de comentarios acepta el AST limitado a texto, emote y link. La
-  ampliación Markdown debe seguir siendo AST allowlisted y compartida entre SSR
-  y cliente.
-- `/api/reports` valida y deduplica, pero la UI no ofrece reportar y el registro
-  no enlaza explícitamente el reporte con el audit trail de moderación.
-- `PostCard` tiene Share deshabilitado. Post detail solo tiene edición básica y
-  Archive; el composer de nuevo post es un formulario simple sin drag/drop,
-  paste, preview, replace/remove ni progreso.
-- Notificaciones muestran tipos internos y combinaciones de `entityType`/UUID;
-  falta una vista de presentación contextual con actor, nombre, título y CTA.
-  No existe Clear all.
-- Perfil y Friends son persistentes pero visualmente básicos: faltan variantes
-  pública/propia, descubrimiento, búsqueda y sugerencias; las acciones sociales
-  no usan confirmación para operaciones destructivas.
-- Los efectos de nombre no existen como categoría allowlisted; `NAME_FONT`
-  solo resuelve familia. El modelo actual permite extender el contrato sin CSS
-  arbitrario y debe mantener fuente + efecto simultáneos.
-- La navegación ya no contiene un delay artificial, pero aún falta instrumentar
-  click→loader→hydration y verificar cada ruta con datos representativos.
-- Todavía existen mensajes de presentación en algunos límites administrativos o
-  de servicio; las rutas de producto no deben exponer Worker/D1/R2/bindings.
+## Pendientes que no se declaran falsamente resueltos
 
-## Restricciones canónicas
-
-- No se reescribe la aplicación ni se reemplaza el trabajo de `master`.
-- No se agregan mocks de persistencia ni funcionalidades falsas.
-- Los comentarios pueden tener texto, emoji, links, emotes autorizados, GIFs y
-  stickers. El plan canónico prohíbe imágenes arbitrarias subidas al comentario;
-  la frase de la nueva fase sobre “comment image attachments” se interpreta como
-  continuidad del pipeline permitido, no como autorización para fotos libres.
-- No se guardan CSS, URLs de fuentes, scripts ni HTML arbitrarios; efectos,
-  fuentes y Markdown se resuelven mediante allowlists.
-- Se preservan anonimato, privacidad, CSRF, capabilities, rate limits, R2
-  privado, reduced-motion, focus visible y responsive 390/430/768/1024/1280/1440.
-
-## Componentes y servicios reutilizables
-
-- UI: `Button`, `IconButton`, `Input`, `Textarea`, `Card`, `GlassPanel`, `Tabs`,
-  `Modal`, `Drawer`, `Dropdown`, `Tooltip`, Toast e iconos SourceBoard.
-- Producto: `CommentThread`, `PostCard`, `CosmeticIdentity`, `AuthRequiredCard`,
-  `SocialActionButton`, `StoreItemCard`, `StoreSection`, `ProductShell`.
-- Datos: `withOptionalServerSession`, stores D1 de posts/comments/profile/store,
-  richtext normalizer, entitlement checker, moderation service y notificaciones.
-- Referencia Bretes: estados de carga/error/empty, abortado y actualización
-  optimista; no se encontró código KLIPY reutilizable.
-
-## Diseño aprobado
-
-Se aprobó implementar una serie de cortes verticales pequeños que compartan
-primitivas y contratos existentes: primero confirmaciones/menús/share/Markdown y
-comentarios; después media/emotes/notificaciones; luego composer/posts, perfil,
-friends, Store/Home y finalmente instrumentación, responsive y gates completos.
-Cada corte tendrá test rojo, implementación mínima, test verde y verificación de
-regresión antes de continuar.
+- El árbol local ya pasa lint/Prettier, typecheck, 214 unit tests, build,
+  dry-run y la migración idempotente. Falta completar el build de Workers y
+  el CI estándar sobre el commit final que se va a subir a `master`.
+- Google popup y el enlace real de verificación de Firebase aún requieren una
+  comprobación interactiva completa en el entorno final; el intercambio
+  server-side ya está implementado.
+- WAF, backups/restore, alertas y la revisión externa de seguridad siguen siendo
+  requisitos operativos fuera del código.

@@ -69,33 +69,41 @@ export default function AdminStoreRoute() {
 
   const loadStoreCatalog = useCallback(async () => {
     if (!access.storeManage) return;
-    const response = await fetch("/api/admin/store/catalog");
-    const payload = (await response.json().catch(() => null)) as {
-      items?: AdminStoreItem[];
-    } | null;
-    if (!response.ok) {
-      setStatus(errorMessage(payload, "Could not load the Store catalog."));
-      return;
+    try {
+      const response = await fetch("/api/admin/store/catalog");
+      const payload = (await response.json().catch(() => null)) as {
+        items?: AdminStoreItem[];
+      } | null;
+      if (!response.ok) {
+        setStatus(errorMessage(payload, "Could not load the Store catalog."));
+        return;
+      }
+      setItems(Array.isArray(payload?.items) ? payload.items : []);
+    } catch {
+      setStatus("Could not load the Store catalog. Check your connection and try again.");
     }
-    setItems(Array.isArray(payload?.items) ? payload.items : []);
   }, [access.storeManage]);
 
   const loadPacks = useCallback(async () => {
     if (!access.emoteManage) return;
-    const response = await fetch("/api/admin/catalog/emote-packs");
-    const payload = (await response.json().catch(() => null)) as {
-      packs?: EmotePackSummary[];
-    } | null;
-    if (!response.ok) {
-      setStatus(errorMessage(payload, "Could not load emote packs."));
-      return;
+    try {
+      const response = await fetch("/api/admin/catalog/emote-packs");
+      const payload = (await response.json().catch(() => null)) as {
+        packs?: EmotePackSummary[];
+      } | null;
+      if (!response.ok) {
+        setStatus(errorMessage(payload, "Could not load emote packs."));
+        return;
+      }
+      const next = Array.isArray(payload?.packs) ? payload.packs : [];
+      setPacks(next);
+      setSelectedPackId((current) => {
+        if (current && next.some((pack) => pack.id === current)) return current;
+        return next[0]?.id ?? "";
+      });
+    } catch {
+      setStatus("Could not load emote packs. Check your connection and try again.");
     }
-    const next = Array.isArray(payload?.packs) ? payload.packs : [];
-    setPacks(next);
-    setSelectedPackId((current) => {
-      if (current && next.some((pack) => pack.id === current)) return current;
-      return next[0]?.id ?? "";
-    });
   }, [access.emoteManage]);
 
   useEffect(() => {
@@ -256,7 +264,13 @@ export default function AdminStoreRoute() {
                 </label>
                 <Input name="name" label="Name" required maxLength={120} />
                 <Textarea name="description" label="Description" required maxLength={500} />
-                <Input name="pricePoints" label="Price in points" type="number" min={1} required />
+                <Input
+                  name="pricePoints"
+                  label="Price in points (0 = free)"
+                  type="number"
+                  min={0}
+                  required
+                />
                 <Input name="sortOrder" label="Sort order" type="number" defaultValue="0" />
                 <Textarea
                   name="config"
