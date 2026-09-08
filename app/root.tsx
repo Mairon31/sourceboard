@@ -19,6 +19,7 @@ import "./components/layout/notification-popover.css";
 import "./components/product/product.css";
 import "./components/product/home-redesign.css";
 import "./components/product/search-redesign.css";
+import "./components/product/settings-redesign.css";
 import "./components/product/post-media.css";
 import "./components/product/post-card-refresh.css";
 import "./components/product/product-interactions.css";
