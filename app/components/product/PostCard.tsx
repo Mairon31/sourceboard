@@ -1,6 +1,6 @@
 import { useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Link, useNavigate } from "react-router";
-import type { PostSummary } from "../../../shared/ui/contracts";
+import type { PostDetail, PostSummary } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ShareAction } from "./ShareAction";
@@ -45,7 +45,7 @@ export function PostCard({
   manage = false,
   onChanged,
 }: {
-  post: PostSummary;
+  post: PostSummary | PostDetail;
   compact?: boolean;
   manage?: boolean;
   onChanged?: () => void;
