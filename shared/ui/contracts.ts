@@ -68,8 +68,30 @@ export interface CommentAttachmentView {
 
 export type CommentRichTextViewNode =
   | { type: "text"; text: string; marks?: RichTextMarks }
-  | { type: "emote"; shortcode: string; marks?: RichTextMarks }
+  | {
+      type: "emote";
+      shortcode: string;
+      id?: string;
+      label?: string;
+      url?: string;
+      marks?: RichTextMarks;
+    }
   | { type: "link"; url: string; label: string; marks?: RichTextMarks };
+
+export interface CommentEmoteView {
+  id: string;
+  label: string;
+  shortcode: string;
+  url: string;
+  type: "EMOTE";
+  packId: string;
+}
+
+export interface CommentEmotePackView {
+  id: string;
+  label: string;
+  emotes: CommentEmoteView[];
+}
 
 export interface CommentView {
   id: string;

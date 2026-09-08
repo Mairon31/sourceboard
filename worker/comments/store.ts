@@ -1,6 +1,14 @@
+import { isStoreLifecycleSchemaError } from "../store/service";
 import { encodePostCursor } from "../posts/pagination";
 import { parseStoredCommentBody } from "./richtext";
 import type { CommentCursor, CommentRecord, CommentWithAuthor } from "./types";
+
+export interface CommentEmoteAsset {
+  id: string;
+  shortcode: string;
+  label: string;
+  url: string;
+}
 
 export interface CommentStore {
   listForPost(input: {
@@ -36,6 +44,7 @@ export interface CommentStore {
   }): Promise<boolean>;
   hasLike(userId: string, targetType: "POST" | "COMMENT", targetId: string): Promise<boolean>;
   getLikedCommentIds?(userId: string, commentIds: string[]): Promise<Set<string>>;
+  getEmoteAssets?(shortcodes: string[]): Promise<Map<string, CommentEmoteAsset>>;
 }
 
 interface CommentRow {
@@ -282,6 +291,35 @@ export function createD1CommentStore(db: D1Database): CommentStore {
           .run();
       }
       return true;
+    },
+
+    async getEmoteAssets(shortcodes) {
+      const unique = [...new Set(shortcodes)];
+      if (!unique.length) return new Map();
+      const placeholders = unique.map(() => "?").join(", ");
+      let rows;
+      try {
+        rows = await db
+          .prepare(
+            `SELECT e.id, e.shortcode, e.label FROM emote_catalog e LEFT JOIN emote_packs p ON p.id = e.pack_id WHERE e.shortcode IN (${placeholders}) AND e.lifecycle_state = 'PUBLISHED' AND e.is_enabled = 1 AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED') AND (e.pack_id IS NULL OR (p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1))`,
+          )
+          .bind(...unique)
+          .all<{ id: string; shortcode: string; label: string }>();
+      } catch (error) {
+        if (!isStoreLifecycleSchemaError(error)) throw error;
+        rows = await db
+          .prepare(
+            `SELECT e.id, e.shortcode, e.label FROM emote_catalog e LEFT JOIN emote_packs p ON p.id = e.pack_id WHERE e.shortcode IN (${placeholders}) AND e.status = 'ACTIVE' AND (e.pack_id IS NULL OR p.status = 'ACTIVE')`,
+          )
+          .bind(...unique)
+          .all<{ id: string; shortcode: string; label: string }>();
+      }
+      return new Map(
+        rows.results.map((row) => [
+          row.shortcode,
+          { ...row, url: `/api/media/catalog/emote/${encodeURIComponent(row.id)}` },
+        ]),
+      );
     },
 
     async hasLike(userId, targetType, targetId) {

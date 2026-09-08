@@ -6,7 +6,7 @@ import type { PostStore } from "../posts/store";
 import { PostError } from "../posts/errors";
 import { decodePostCursor } from "../posts/pagination";
 import { normalizeCommentBody } from "./richtext";
-import type { CommentStore } from "./store";
+import type { CommentEmoteAsset, CommentStore } from "./store";
 import type { CommentCursor, CommentWithAuthor } from "./types";
 import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
 
@@ -90,6 +90,7 @@ async function toView(
   profileStore: ProfileStore,
   now: () => number,
   viewerReacted = false,
+  emoteAssets: Map<string, CommentEmoteAsset> = new Map(),
 ): Promise<CommentView> {
   const profileVisible =
     record.post.authorMode !== "ANONYMOUS" || record.comment.authorId !== record.post.authorId
@@ -103,7 +104,14 @@ async function toView(
     parentCommentId: record.comment.parentCommentId ?? undefined,
     author: publicAuthor(record, profileVisible, cosmetics),
     body: record.comment.state === "DELETED" ? "Comment deleted" : record.comment.plaintext,
-    richtext: record.comment.state === "DELETED" ? undefined : record.comment.richtext,
+    richtext:
+      record.comment.state === "DELETED"
+        ? undefined
+        : record.comment.richtext.map((node) => {
+            if (node.type !== "emote") return node;
+            const asset = emoteAssets.get(node.shortcode);
+            return asset ? { ...node, id: asset.id, label: asset.label, url: asset.url } : node;
+          }),
     createdAt: new Date(record.comment.createdAt).toISOString(),
     editedAt:
       record.comment.updatedAt > record.comment.createdAt
@@ -191,6 +199,18 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
               ).then((ids) => ids.filter((id): id is string => Boolean(id))),
             )
         : new Set<string>();
+      const emoteShortcodes = [
+        ...new Set(
+          page.comments.flatMap((record) =>
+            record.comment.richtext
+              .filter((node) => node.type === "emote")
+              .map((node) => node.shortcode),
+          ),
+        ),
+      ];
+      const emoteAssets = dependencies.store.getEmoteAssets
+        ? await dependencies.store.getEmoteAssets(emoteShortcodes)
+        : new Map<string, CommentEmoteAsset>();
       const views = await Promise.all(
         page.comments.map((comment) =>
           toView(
@@ -199,6 +219,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
             dependencies.profileStore,
             now,
             likedIds.has(comment.comment.id),
+            emoteAssets,
           ),
         ),
       );
@@ -240,6 +261,11 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         richtextJson: JSON.stringify(body.richtext),
         attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,
       });
+      const createdEmoteAssets = dependencies.store.getEmoteAssets
+        ? await dependencies.store.getEmoteAssets(
+            body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode),
+          )
+        : new Map<string, CommentEmoteAsset>();
       return toView(
         {
           comment: record,
@@ -261,6 +287,8 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         input.authorId,
         dependencies.profileStore,
         now,
+        false,
+        createdEmoteAssets,
       );
     },
 
@@ -300,7 +328,19 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           "The comment changed before it could be saved.",
         );
       }
-      return toView({ ...current, comment: updated }, authorId, dependencies.profileStore, now);
+      const updatedEmoteAssets = dependencies.store.getEmoteAssets
+        ? await dependencies.store.getEmoteAssets(
+            body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode),
+          )
+        : new Map<string, CommentEmoteAsset>();
+      return toView(
+        { ...current, comment: updated },
+        authorId,
+        dependencies.profileStore,
+        now,
+        false,
+        updatedEmoteAssets,
+      );
     },
 
     async delete(commentId, authorId) {

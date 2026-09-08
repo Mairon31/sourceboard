@@ -7,7 +7,14 @@ export interface RichTextMarks {
 
 export type SafeInlineRichTextNode =
   | { type: "text"; text: string; marks?: RichTextMarks }
-  | { type: "emote"; shortcode: string; marks?: RichTextMarks }
+  | {
+      type: "emote";
+      shortcode: string;
+      id?: string;
+      label?: string;
+      url?: string;
+      marks?: RichTextMarks;
+    }
   | { type: "link"; url: string; label: string; marks?: RichTextMarks };
 
 export type SafeRichTextNode =

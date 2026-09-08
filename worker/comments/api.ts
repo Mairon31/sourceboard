@@ -15,7 +15,7 @@ import { createD1PostStore } from "../posts/store";
 import { createD1ProfileStore } from "../profile/store";
 import { createD1CommentStore } from "./store";
 import { createCommentService } from "./service";
-import { createEntitlementChecker } from "../store/entitlements";
+import { createEntitlementChecker, listEntitledEmotePacks } from "../store/entitlements";
 import { createModerationService } from "../moderation/service";
 import { enforceRateLimit } from "../security/rate-limit";
 
@@ -24,6 +24,7 @@ function isCommentRoute(pathname: string): boolean {
     /^\/api\/posts\/[^/]+\/comments$/.test(pathname) ||
     /^\/api\/comments\/[^/]+$/.test(pathname) ||
     pathname === "/api/comments/media/search" ||
+    pathname === "/api/comments/emotes" ||
     /^\/api\/reactions\/(POST|COMMENT)\/[^/]+$/.test(pathname)
   );
 }
@@ -239,6 +240,10 @@ export async function handleCommentApiRequest(
   try {
     if (url.pathname === "/api/comments/media/search" && request.method === "GET") {
       return await searchKlipy(request, requestId, env);
+    }
+    if (url.pathname === "/api/comments/emotes" && request.method === "GET") {
+      const userId = await requiredViewer(request, env);
+      return json({ packs: await listEntitledEmotePacks(database(env), userId) }, requestId);
     }
     const commentService = service(env);
     const postMatch = url.pathname.match(/^\/api\/posts\/([^/]+)\/comments$/);

@@ -18,9 +18,19 @@ function renderInline(node: SafeInlineRichTextNode, index: number) {
         {node.label}
       </a>
     ) : node.type === "emote" ? (
-      <span className="product-richtext__emote" title={node.shortcode}>
-        {node.shortcode}
-      </span>
+      node.url ? (
+        <img
+          className="product-richtext__emote-image"
+          src={node.url}
+          alt={node.label ?? node.shortcode}
+          title={node.shortcode}
+          loading="lazy"
+        />
+      ) : (
+        <span className="product-richtext__emote" title={node.shortcode}>
+          {node.shortcode}
+        </span>
+      )
     ) : (
       node.text
     );
@@ -28,16 +38,14 @@ function renderInline(node: SafeInlineRichTextNode, index: number) {
 }
 
 function renderBlock(node: SafeRichTextNode, index: number): ReactNode {
-  if (node.type === "paragraph") {
+  if (node.type === "paragraph")
     return <p key={`paragraph-${index}`}>{node.children.map(renderInline)}</p>;
-  }
-  if (node.type === "code-block") {
+  if (node.type === "code-block")
     return (
       <pre key={`code-${index}`}>
         <code>{node.code}</code>
       </pre>
     );
-  }
   if (node.type === "list") {
     const List = node.ordered ? "ol" : "ul";
     return (

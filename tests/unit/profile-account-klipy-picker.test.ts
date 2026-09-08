@@ -9,6 +9,7 @@ function read(path: string): string {
 const profileRoute = read("../../app/routes/profile.tsx");
 const accountActions = read("../../app/components/product/ProfileAccountActions.tsx");
 const commentThread = read("../../app/components/product/CommentThread.tsx");
+const mediaPicker = read("../../app/components/product/MediaPicker.tsx");
 const commentsApi = read("../../worker/comments/api.ts");
 const root = read("../../app/root.tsx");
 const storeEffectsCss = read("../../app/components/product/store-effects.css");
@@ -30,12 +31,12 @@ describe("profile account actions and KLIPY media picker", () => {
   });
 
   it("loads KLIPY featured media when the picker opens and supports GIF/sticker tabs", () => {
-    expect(commentThread).toContain("loadMedia");
-    expect(commentThread).toContain("useEffect(() =>");
-    expect(commentThread).toContain('role="tablist"');
-    expect(commentThread).toContain('role="tab"');
-    expect(commentThread).toContain("onKindChange");
-    expect(commentThread).toContain("product-comment-media-picker__results");
+    expect(mediaPicker).toContain("mediaCache");
+    expect(mediaPicker).toContain("useEffect(() =>");
+    expect(mediaPicker).toContain('role="tablist"');
+    expect(mediaPicker).toContain('role="tab"');
+    expect(mediaPicker).toContain("onKindChange");
+    expect(mediaPicker).toContain("product-comment-media-picker__results");
   });
 
   it("allows authenticated same-site GET media reads without requiring an Origin header", () => {
@@ -62,7 +63,7 @@ describe("profile account actions and KLIPY media picker", () => {
 
   it("uses real animated GIF media instead of provider preview strips", () => {
     expect(commentThread).toContain("attachment.url ?? attachment.preview");
-    expect(commentThread).toContain("item.url || item.preview");
+    expect(mediaPicker).toContain("item.url || item.preview");
     expect(commentsApi).not.toContain(
       'formatUrl(formats, ["tinygifpreview", "gifpreview", "nanogif"])',
     );

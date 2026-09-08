@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
 import type { SafeRichTextNode } from "../../../shared/richtext/markdown";
 import { readCsrfToken } from "../../data/csrf";
@@ -7,17 +7,8 @@ import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ConfirmAction } from "./ConfirmAction";
 import { RichText } from "./RichText";
 import { ShareAction } from "./ShareAction";
+import { MediaPicker, type MediaPickerKind } from "./MediaPicker";
 import { Avatar, Badge, Button, Dropdown, Textarea } from "../ui";
-
-interface KlipyMediaItem {
-  id: string;
-  title: string;
-  label: string;
-  url: string;
-  preview: string;
-  type: "GIF" | "STICKER";
-  provider: "klipy";
-}
 
 function CommentAttachment({ attachment }: { attachment: CommentAttachmentView }) {
   const imageUrl = attachment.url ?? attachment.preview;
@@ -347,111 +338,6 @@ function CommentItem({
   );
 }
 
-function MediaPicker({
-  kind,
-  onKindChange,
-  onSelect,
-  onClose,
-}: {
-  kind: "GIF" | "STICKER";
-  onKindChange: (kind: "GIF" | "STICKER") => void;
-  onSelect: (item: KlipyMediaItem) => void;
-  onClose: () => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [items, setItems] = useState<KlipyMediaItem[]>([]);
-  const [status, setStatus] = useState<string>();
-  const [busy, setBusy] = useState(false);
-  const loadMedia = useCallback(
-    async (searchQuery: string) => {
-      const params = new URLSearchParams({ type: kind });
-      if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      setBusy(true);
-      setStatus(undefined);
-      try {
-        const response = await fetch(`/api/comments/media/search?${params.toString()}`);
-        const payload = (await response.json().catch(() => null)) as {
-          items?: KlipyMediaItem[];
-          error?: { message?: string };
-        } | null;
-        if (!response.ok)
-          throw new Error(payload?.error?.message ?? "Media search is unavailable.");
-        const nextItems = Array.isArray(payload?.items) ? payload.items : [];
-        setItems(nextItems);
-        if (!nextItems.length)
-          setStatus(searchQuery.trim() ? "No results found." : "No featured media found.");
-      } catch (cause) {
-        setItems([]);
-        setStatus(cause instanceof Error ? cause.message : "Media search is unavailable.");
-      } finally {
-        setBusy(false);
-      }
-    },
-    [kind],
-  );
-  useEffect(() => {
-    setQuery("");
-    setItems([]);
-    void loadMedia("");
-  }, [loadMedia]);
-  return (
-    <div className="product-comment-media-picker" aria-label="Media picker">
-      <div className="product-comment-media-picker__header">
-        <strong>Add media</strong>
-        <button type="button" onClick={onClose} aria-label="Close media picker">
-          ×
-        </button>
-      </div>
-      <div className="product-comment-media-picker__tabs" role="tablist" aria-label="Media type">
-        {(["GIF", "STICKER"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={kind === value}
-            className={kind === value ? "is-active" : undefined}
-            onClick={() => onKindChange(value)}
-          >
-            {value === "GIF" ? "GIFs" : "Stickers"}
-          </button>
-        ))}
-      </div>
-      <form
-        className="product-comment-media-picker__search"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void loadMedia(query);
-        }}
-      >
-        <input
-          type="search"
-          value={query}
-          aria-label="Search media"
-          placeholder={`Search ${kind === "GIF" ? "GIFs" : "stickers"}`}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <button type="submit" disabled={busy}>
-          {busy ? "…" : "Search"}
-        </button>
-      </form>
-      <div className="product-comment-media-picker__results" aria-label={`${kind} results`}>
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            aria-label={`Add ${item.title}`}
-            onClick={() => onSelect(item)}
-          >
-            <img src={item.url || item.preview} alt={item.title} loading="lazy" />
-          </button>
-        ))}
-      </div>
-      {busy && !items.length ? <small role="status">Loading {kind.toLowerCase()}s…</small> : null}
-      {!busy && status ? <small role="status">{status}</small> : null}
-    </div>
-  );
-}
-
 function replaceComment(comments: CommentView[], next: CommentView): CommentView[] {
   return comments.map((comment) =>
     comment.id === next.id
@@ -493,7 +379,7 @@ export function CommentThread({
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<string>();
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const [mediaKind, setMediaKind] = useState<"GIF" | "STICKER" | null>(null);
+  const [mediaKind, setMediaKind] = useState<MediaPickerKind | null>(null);
   const [attachment, setAttachment] = useState<CommentAttachmentView | null>(null);
   const [submitting, setSubmitting] = useState(false);
   useEffect(() => setItems(comments), [comments]);
@@ -568,6 +454,13 @@ export function CommentThread({
                 >
                   Sticker
                 </button>
+                <button
+                  type="button"
+                  aria-expanded={mediaKind === "EMOTE"}
+                  onClick={() => setMediaKind(mediaKind === "EMOTE" ? null : "EMOTE")}
+                >
+                  Emote
+                </button>
                 {attachment ? (
                   <button type="button" onClick={() => setAttachment(null)}>
                     Remove media
@@ -593,14 +486,21 @@ export function CommentThread({
                 kind={mediaKind}
                 onKindChange={setMediaKind}
                 onSelect={(item) => {
-                  setAttachment({
-                    type: item.type,
-                    id: item.id,
-                    label: item.label,
-                    provider: item.provider,
-                    url: item.url,
-                    preview: item.preview,
-                  });
+                  if (item.type === "EMOTE") {
+                    setBody(
+                      (current) =>
+                        `${current}${current && !/\s$/.test(current) ? " " : ""}${item.shortcode}`,
+                    );
+                  } else {
+                    setAttachment({
+                      type: item.type,
+                      id: item.id,
+                      label: item.label,
+                      provider: item.provider,
+                      url: item.url,
+                      preview: item.preview,
+                    });
+                  }
                   setMediaKind(null);
                 }}
                 onClose={() => setMediaKind(null)}
