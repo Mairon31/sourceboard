@@ -1,3 +1,5 @@
+import type { PublicCosmeticsDto } from "../profile/types";
+
 export interface AdminAuditRow {
   id: string;
   actorUserId: string | null;
@@ -23,6 +25,8 @@ export interface AdminUserRow {
   id: string;
   username: string;
   displayName: string;
+  avatarUrl?: string;
+  cosmetics?: PublicCosmeticsDto;
   status: string;
   createdAt: number;
   lastSeenAt: number | null;
