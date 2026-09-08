@@ -1,0 +1,89 @@
+.product-notification-actor-stack {
+  display: flex;
+  min-width: max-content;
+  align-items: center;
+  padding-left: 8px;
+}
+
+.product-notification-actor-stack__item {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  margin-left: -8px;
+  place-items: center;
+  overflow: visible;
+  border: 2px solid var(--surface-solid);
+  border-radius: 50%;
+  background: var(--surface-solid);
+}
+
+.product-notification-actor-stack__item:first-child {
+  margin-left: 0;
+}
+
+.product-notification-actor-stack__item .cosmetic-identity {
+  display: block;
+  width: 30px;
+  height: 30px;
+}
+
+.product-notification-actor-stack__item .cosmetic-identity__avatar-shell,
+.product-notification-actor-stack__item .sb-avatar {
+  width: 30px;
+  height: 30px;
+}
+
+.product-notification-actor-stack__item .cosmetic-identity__name {
+  display: none;
+}
+
+.product-notification-actor-stack__more {
+  display: grid;
+  min-width: 30px;
+  height: 30px;
+  margin-left: -7px;
+  place-items: center;
+  border: 2px solid var(--surface-solid);
+  border-radius: 50%;
+  background: var(--bg-app-secondary);
+  color: var(--text-secondary);
+  font-size: 0.67rem;
+  font-weight: 800;
+}
+
+.sb-topbar-notification-menu__identity .product-notification-actor-stack {
+  padding-left: 0;
+}
+
+.sb-topbar-notification-menu__identity .product-notification-actor-stack__item {
+  width: 30px;
+  height: 30px;
+}
+
+.sb-topbar-notification-menu__identity .product-notification-actor-stack__item .cosmetic-identity,
+.sb-topbar-notification-menu__identity .product-notification-actor-stack__item .cosmetic-identity__avatar-shell,
+.sb-topbar-notification-menu__identity .product-notification-actor-stack__item .sb-avatar {
+  width: 26px;
+  height: 26px;
+}
+
+.sb-topbar-notification-menu__identity .product-notification-actor-stack__more {
+  min-width: 26px;
+  height: 26px;
+  font-size: 0.6rem;
+}
+
+@media (max-width: 620px) {
+  .product-notification-actor-stack__item {
+    width: 32px;
+    height: 32px;
+  }
+
+  .product-notification-actor-stack__item .cosmetic-identity,
+  .product-notification-actor-stack__item .cosmetic-identity__avatar-shell,
+  .product-notification-actor-stack__item .sb-avatar {
+    width: 28px;
+    height: 28px;
+  }
+}
