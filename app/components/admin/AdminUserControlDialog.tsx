@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { AdminUserRow } from "../../../worker/admin/types";
 import type { AdminUserSanction } from "../../../worker/admin/user-control";
 import { readCsrfToken } from "../../data/csrf";
+import { CosmeticIdentity } from "../product/CosmeticIdentity";
 import { Badge, Button, Modal, OverlayActionRow, Textarea } from "../ui";
 
 type UserControlAction =
@@ -197,8 +198,18 @@ export function AdminUserControlDialog({
     >
       <div className="admin-user-control">
         <div className="admin-user-control__summary">
-          <div>
-            <strong>{user.displayName}</strong>
+          <div className="admin-user-control__identity">
+            <CosmeticIdentity
+              displayName={user.displayName}
+              avatarUrl={user.avatarUrl}
+              avatarFrame={user.cosmetics?.avatarFrame}
+              profileEffect={user.cosmetics?.profileEffect}
+              nameFont={user.cosmetics?.nameFont}
+              nameEffect={user.cosmetics?.nameEffect}
+              visuals={user.cosmetics?.visuals}
+              mode="compact"
+              nameAs="strong"
+            />
             <span>@{user.username}</span>
           </div>
           <Badge>{user.status}</Badge>
