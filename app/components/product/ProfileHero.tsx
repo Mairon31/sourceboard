@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import type { PublicProfileDto, Relationship } from "../../../worker/profile/types";
+import {
+  canonicalSocialPlatform,
+  SOCIAL_PLATFORM_CATALOG,
+  socialHandleFromUrl,
+} from "../../../shared/profile/social-links";
 import { Badge, Card } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ConfirmAction } from "./ConfirmAction";
 import { ShareAction } from "./ShareAction";
 import { SocialActionButton } from "./SocialActionButton";
+import { SocialIcon } from "./SocialIcon";
+import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 import { readCsrfToken } from "../../data/csrf";
 
 const relationshipLabel = {
@@ -21,26 +28,52 @@ interface ProfileHeroProps {
 }
 
 function ProfileBanner({ profile }: { profile: PublicProfileDto }) {
+  const visual = profile.cosmetics?.visuals?.profileBanner;
+  const style: CSSProperties = {
+    ...(cosmeticVisualStyle(visual) ?? {}),
+    ...(profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : {}),
+  };
   return (
     <div
-      className={`product-profile-banner${profile.cosmetics?.profileBanner ? ` product-profile-banner--${profile.cosmetics.profileBanner}` : ""}`}
+      className={`product-profile-banner${profile.cosmetics?.profileBanner ? ` product-profile-banner--${profile.cosmetics.profileBanner}` : ""}${cosmeticVisualClass(visual)}`}
       aria-label={`${profile.displayName} profile banner`}
-      style={profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined}
+      style={style}
     />
   );
 }
 
 function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
-  if (!profile.socialLinks.length) {
+  const links = profile.socialLinks
+    .map((link) => {
+      const platform = canonicalSocialPlatform(link.platform);
+      return platform ? { ...link, platform } : null;
+    })
+    .filter((link): link is NonNullable<typeof link> => Boolean(link));
+  if (!links.length) {
     return <p className="product-store-preview-status">No public social links.</p>;
   }
   return (
-    <div className="product-social-links">
-      {profile.socialLinks.map((link) => (
-        <a key={`${link.platform}-${link.url}`} href={link.url} target="_blank" rel="noreferrer">
-          {link.platform}
-        </a>
-      ))}
+    <div className="product-social-links" aria-label="Social links">
+      {links.map((link) => {
+        const definition = SOCIAL_PLATFORM_CATALOG[link.platform];
+        return (
+          <a
+            key={`${link.platform}-${link.url}`}
+            className="product-social-link"
+            href={link.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span className="product-social-link__icon">
+              <SocialIcon platform={link.platform} />
+            </span>
+            <span className="product-social-link__copy">
+              <strong>{definition.label}</strong>
+              <small>{socialHandleFromUrl(link.platform, link.url)}</small>
+            </span>
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -170,6 +203,7 @@ export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
                 profileEffect={profile.cosmetics?.profileEffect}
                 nameFont={profile.cosmetics?.nameFont}
                 nameEffect={profile.cosmetics?.nameEffect}
+                visuals={profile.cosmetics?.visuals}
                 mode="profile"
                 nameAs="h1"
               />
