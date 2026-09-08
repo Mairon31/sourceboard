@@ -1,0 +1,32 @@
+name: Format regression tests
+
+on:
+  push:
+    paths:
+      - .github/workflows/format-regression-tests.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --progress=false
+      - run: npx prettier --write tests/unit/comment-richtext.test.ts tests/unit/store-entitlements.test.ts tests/unit/comment-rendering-regressions.test.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "sourceboard-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add tests/unit/comment-richtext.test.ts tests/unit/store-entitlements.test.ts tests/unit/comment-rendering-regressions.test.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "style: format regression tests"
+          git push origin master
