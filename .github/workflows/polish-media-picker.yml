@@ -1,0 +1,51 @@
+name: Polish media picker
+
+on:
+  push:
+    paths:
+      - .github/workflows/polish-media-picker.yml
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --progress=false
+      - name: Keep media compact and motion-safe
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const cssPath = 'app/components/product/profile-klipy.css';
+          let css = fs.readFileSync(cssPath, 'utf8');
+          const oldMobile = `.product-comment-attachment--gif {\n    width: min(100%, 360px);\n  }`;
+          const newMobile = `.product-comment-attachment--gif {\n    width: min(100%, 220px);\n  }`;
+          if (!css.includes(oldMobile)) throw new Error('mobile GIF rule not found');
+          fs.writeFileSync(cssPath, css.replace(oldMobile, newMobile));
+
+          const pickerPath = 'app/components/product/MediaPicker.tsx';
+          let picker = fs.readFileSync(pickerPath, 'utf8');
+          const oldScroll = `?.scrollIntoView({ block: "nearest", behavior: "smooth" });`;
+          const newScroll = `?.scrollIntoView({ block: "nearest", behavior: "auto" });`;
+          if (!picker.includes(oldScroll)) throw new Error('pack scroll behavior not found');
+          fs.writeFileSync(pickerPath, picker.replace(oldScroll, newScroll));
+          NODE
+          npx prettier --write app/components/product/MediaPicker.tsx app/components/product/profile-klipy.css
+      - run: npx vitest run tests/unit/media-picker.test.ts && npm run typecheck
+      - name: Commit verified polish
+        run: |
+          rm .github/workflows/polish-media-picker.yml
+          git config user.name "sourceboard-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/components/product/MediaPicker.tsx app/components/product/profile-klipy.css .github/workflows/polish-media-picker.yml
+          git commit -m "fix: keep comment media compact on mobile"
+          git push origin master
