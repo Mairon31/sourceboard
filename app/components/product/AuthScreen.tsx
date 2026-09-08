@@ -32,7 +32,7 @@ const copy = {
     eyebrow: "Email verification",
     title: "Verify your email",
     description:
-      "Use the single-use link sent to your email. SourceBoard will sync the account after Firebase confirms it.",
+      "SourceBoard and Firebase share one verification flow. Open the email link and return here to finish account setup.",
   },
 } satisfies Record<AuthMode, { eyebrow: string; title: string; description: string }>;
 
@@ -104,7 +104,7 @@ function useTurnstileScript(siteKey: string | null): boolean {
     script.async = true;
     script.defer = true;
     script.addEventListener("load", () => setScriptReady(true), { once: true });
-    document.head.appendChild(script);
+    if (!existing) document.head.appendChild(script);
   }, [siteKey]);
   return scriptReady;
 }
@@ -155,10 +155,10 @@ function TurnstileContent({
   containerRef: RefObject<HTMLDivElement | null>;
 }) {
   return enabled ? (
-    <div ref={containerRef} aria-label="Security check" />
+    <div ref={containerRef} aria-label="Cloudflare security check" />
   ) : (
-    <p className="product-auth-security-note">
-      This form requires Cloudflare Turnstile after the site security configuration is available.
+    <p className="product-auth-security-note" role="status">
+      Cloudflare Turnstile is required before this form can be submitted.
     </p>
   );
 }
@@ -174,7 +174,14 @@ function TurnstileField({
   const siteKey = getTurnstileSiteKey(config);
   const scriptReady = useTurnstileScript(siteKey);
   useTurnstileWidget(siteKey, scriptReady, containerRef, onToken);
-  return <TurnstileContent enabled={Boolean(siteKey)} containerRef={containerRef} />;
+  return (
+    <div className="product-auth-security">
+      <TurnstileContent enabled={Boolean(siteKey)} containerRef={containerRef} />
+      {siteKey ? (
+        <p className="product-auth-security-note">Protected by Cloudflare Turnstile.</p>
+      ) : null}
+    </div>
+  );
 }
 
 function getErrorMessage(value: unknown): string {
@@ -182,24 +189,25 @@ function getErrorMessage(value: unknown): string {
   if (error?.code === "ACCOUNT_UNAVAILABLE") {
     return "We couldn't create that account. If you already registered this email, sign in or reset your password.";
   }
+  if (error?.code === "CSRF_TOKEN_INVALID") {
+    return "Your previous session security state expired. Retry this request; you do not need to refresh the page.";
+  }
   const message = error?.message;
   return typeof message === "string" ? message : "The request could not be completed. Try again.";
 }
 
-const endpointByMode: Record<AuthMode, string> = {
+const endpointByMode: Record<Exclude<AuthMode, "verify">, string> = {
   login: "/api/auth/login",
   register: "/api/auth/register",
   forgot: "/api/auth/password/forgot",
-  verify: "/api/auth/email/verify",
 };
 
-function getAuthEndpoint(mode: AuthMode, isReset: boolean): string {
+function getAuthEndpoint(mode: Exclude<AuthMode, "verify">, isReset: boolean): string {
   return isReset ? "/api/auth/password/reset" : endpointByMode[mode];
 }
 
 function buildAuthValues(
   form: HTMLFormElement,
-  mode: AuthMode,
   isReset: boolean,
   resetToken: string | null,
   turnstileToken: string | undefined,
@@ -216,14 +224,14 @@ function buildAuthValues(
 
 async function submitAuthForm(
   form: HTMLFormElement,
-  mode: AuthMode,
+  mode: Exclude<AuthMode, "verify">,
   isReset: boolean,
   resetToken: string | null,
   turnstileToken: string | undefined,
 ): Promise<{ ok: boolean; body: unknown }> {
   const response = await postAuthJson(
     getAuthEndpoint(mode, isReset),
-    buildAuthValues(form, mode, isReset, resetToken, turnstileToken),
+    buildAuthValues(form, isReset, resetToken, turnstileToken),
   );
   return { ok: response.ok, body: await response.json() };
 }
@@ -260,11 +268,11 @@ function useVerificationAction(
     if (mode !== "verify" || !token || attempted.current) return;
     attempted.current = true;
     setBusy(true);
-    setFeedback(null);
+    setFeedback({ tone: "status", message: "Confirming your email with Firebase…" });
     void submitVerificationToken(token)
       .then((result) => {
         if (result.ok) {
-          navigate("/login");
+          navigate("/login?verified=1");
           return;
         }
         setFeedback({ tone: "error", message: getErrorMessage(result.body) });
@@ -277,33 +285,27 @@ function useVerificationAction(
 }
 
 function handleSuccessfulSubmit(
-  mode: AuthMode,
+  mode: Exclude<AuthMode, "verify">,
   isReset: boolean,
   body: unknown,
   navigate: (to: string) => void,
   setFeedback: (feedback: AuthFeedback) => void,
 ): void {
-  const redirectByMode: Partial<Record<AuthMode, string>> = {
-    login: "/",
-    verify: "/login",
-  };
-  const redirect = redirectByMode[mode];
-  if (redirect) {
-    navigate(redirect);
+  if (mode === "login") {
+    navigate("/");
     return;
   }
-  if (
-    mode === "register" &&
-    (body as { verificationRequired?: unknown } | null)?.verificationRequired === false
-  ) {
-    navigate("/");
+  if (mode === "register") {
+    const verificationRequired =
+      (body as { verificationRequired?: unknown } | null)?.verificationRequired !== false;
+    navigate(verificationRequired ? "/verify-email?sent=1" : "/");
     return;
   }
   setFeedback({
     tone: "status",
     message: isReset
       ? "Your password was changed. You can sign in with the new password."
-      : "If the account exists, a single-use link will arrive shortly.",
+      : "If the account exists, a password reset link will arrive shortly.",
   });
 }
 
@@ -340,35 +342,22 @@ function AuthPasswordField({ mode, isReset }: { mode: AuthMode; isReset: boolean
 
 function AuthSecurityFields({
   mode,
-  resetToken,
   config,
   onToken,
 }: {
   mode: AuthMode;
-  resetToken: string | null;
   config: AuthConfig | null;
   onToken: (token: string | undefined) => void;
 }) {
-  const turnstileRequired = new Set<AuthMode>(["register", "forgot"]).has(mode);
-  return (
-    <>
-      {turnstileRequired ? <TurnstileField config={config} onToken={onToken} /> : null}
-      {mode === "verify" && !resetToken ? (
-        <p className="product-auth-security-note">
-          Open the verification link from your email to continue. If Firebase already confirmed it,
-          sign in once so SourceBoard can synchronize your account.
-        </p>
-      ) : null}
-    </>
-  );
+  const turnstileRequired = mode === "login" || mode === "register" || mode === "forgot";
+  return turnstileRequired ? <TurnstileField config={config} onToken={onToken} /> : null;
 }
 
-function getSubmitLabel(mode: AuthMode, isReset: boolean): string {
-  const labels: Record<AuthMode, string> = {
+function getSubmitLabel(mode: Exclude<AuthMode, "verify">, isReset: boolean): string {
+  const labels: Record<Exclude<AuthMode, "verify">, string> = {
     login: "Sign in",
     register: "Create account",
     forgot: "Send reset link",
-    verify: "Verify email",
   };
   return isReset ? "Set new password" : labels[mode];
 }
@@ -389,31 +378,77 @@ function AuthLinks({ mode }: { mode: AuthMode }) {
   );
 }
 
+function VerificationHandoff({
+  token,
+  sent,
+  busy,
+  onContinue,
+}: {
+  token: string | null;
+  sent: boolean;
+  busy: boolean;
+  onContinue: () => void;
+}) {
+  if (token) {
+    return (
+      <div className="product-form-grid" aria-live="polite">
+        <p className="product-auth-security-note">
+          {busy
+            ? "Confirming the verification link with Firebase…"
+            : "Verification link detected. SourceBoard is finishing the account sync."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="product-form-grid">
+      <p className="product-auth-security-note">
+        {sent
+          ? "We sent the verification email. Open it in this browser. If Firebase shows that your email is already verified, return here and sign in to finish the SourceBoard sync."
+          : "If Firebase already confirmed your email, you do not need another verification token here. Sign in and SourceBoard will synchronize the verified account automatically."}
+      </p>
+      <Button type="button" onClick={onContinue}>
+        Continue to sign in
+      </Button>
+    </div>
+  );
+}
+
 export function AuthScreen({ mode }: { mode: AuthMode }) {
   const content = copy[mode];
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const authConfig = useAuthConfig();
-  const resetToken = searchParams.get("token") ?? searchParams.get("oobCode");
+  const verificationToken =
+    mode === "verify" ? searchParams.get("oobCode") ?? searchParams.get("token") : null;
+  const resetToken =
+    mode === "forgot" ? searchParams.get("oobCode") ?? searchParams.get("token") : null;
   const [turnstileToken, setTurnstileToken] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
   const isReset = mode === "forgot" && Boolean(resetToken);
-  const turnstileRequired = mode === "register" || mode === "forgot";
-  useVerificationAction(mode, resetToken, navigate, setBusy, setFeedback);
+  const turnstileRequired = mode === "login" || mode === "register" || mode === "forgot";
+  const verificationSent = mode === "verify" && searchParams.get("sent") === "1";
+  useVerificationAction(mode, verificationToken, navigate, setBusy, setFeedback);
+
+  useEffect(() => {
+    if (mode === "login" && searchParams.get("verified") === "1") {
+      setFeedback({
+        tone: "status",
+        message: "Email verified. Sign in to finish synchronizing your SourceBoard account.",
+      });
+    }
+  }, [mode, searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mode === "verify") return;
+    const form = event.currentTarget;
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await submitAuthForm(
-        event.currentTarget,
-        mode,
-        isReset,
-        resetToken,
-        turnstileToken,
-      );
+      const result = await submitAuthForm(form, mode, isReset, resetToken, turnstileToken);
       if (!result.ok) {
         setFeedback({ tone: "error", message: getErrorMessage(result.body) });
         return;
@@ -459,19 +494,23 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           <p>{content.description}</p>
         </header>
 
-        <form className="product-form-grid" onSubmit={handleSubmit}>
-          <AuthIdentityFields mode={mode} isReset={isReset} />
-          <AuthPasswordField mode={mode} isReset={isReset} />
-          <AuthSecurityFields
-            mode={mode}
-            resetToken={resetToken}
-            config={authConfig}
-            onToken={setTurnstileToken}
+        {mode === "verify" ? (
+          <VerificationHandoff
+            token={verificationToken}
+            sent={verificationSent}
+            busy={busy}
+            onContinue={() => navigate("/login")}
           />
-          <Button type="submit" loading={busy} disabled={turnstileRequired && !turnstileToken}>
-            {getSubmitLabel(mode, isReset)}
-          </Button>
-        </form>
+        ) : (
+          <form className="product-form-grid" onSubmit={handleSubmit}>
+            <AuthIdentityFields mode={mode} isReset={isReset} />
+            <AuthPasswordField mode={mode} isReset={isReset} />
+            <AuthSecurityFields mode={mode} config={authConfig} onToken={setTurnstileToken} />
+            <Button type="submit" loading={busy} disabled={turnstileRequired && !turnstileToken}>
+              {getSubmitLabel(mode, isReset)}
+            </Button>
+          </form>
+        )}
 
         {mode === "login" || mode === "register" ? (
           <>
