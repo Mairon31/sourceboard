@@ -2,7 +2,6 @@ export type MediaBody = ReadableStream | ArrayBuffer | ArrayBufferView | string 
 
 export interface MediaService {
   put(key: string, value: MediaBody, options?: R2PutOptions): Promise<R2Object>;
-  putImage(key: string, value: ArrayBufferView, contentType: string): Promise<R2Object>;
   get(key: string, options?: R2GetOptions): Promise<R2ObjectBody | null>;
   head(key: string): Promise<R2Object | null>;
   delete(key: string): Promise<void>;
@@ -15,10 +14,6 @@ export interface MediaService {
 export function createMediaService(bucket: R2Bucket): MediaService {
   return {
     put: (key, value, options) => bucket.put(key, value, options),
-    putImage: (key, value, contentType) =>
-      bucket.put(key, value, {
-        httpMetadata: { contentType },
-      }),
     get: (key, options) => bucket.get(key, options),
     head: (key) => bucket.head(key),
     delete: (key) => bucket.delete(key),
