@@ -104,13 +104,13 @@ function UnavailableProfile({ unavailable }: { unavailable: boolean }) {
 
 function ContributionHistory({ profile }: { profile: PublicProfile }) {
   return (
-    <Card className="product-profile-contributions">
+    <section className="product-profile-contributions">
       <div className="product-profile-contributions__header">
         <div>
           <span className="product-eyebrow">Contribution</span>
-          <h2>What this contributor has earned</h2>
+          <h2>SourceBoard activity</h2>
         </div>
-        <p>Updated from SourceBoard activity</p>
+        <p>Earned from useful source-finding activity</p>
       </div>
       <div className="product-profile-contributions__metrics" aria-label="Contribution metrics">
         {profile.reputation !== undefined ? (
@@ -133,10 +133,7 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
         ) : null}
       </div>
       {profile.achievements?.length ? (
-        <div
-          className="product-profile-contributions__achievements"
-          aria-label="Earned achievements"
-        >
+        <div className="product-profile-contributions__achievements" aria-label="Earned achievements">
           {profile.achievements.map((achievement) => (
             <Badge key={achievement.id} tone="neutral">
               {achievement.icon} {achievement.name}
@@ -144,9 +141,9 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
           ))}
         </div>
       ) : (
-        <p className="product-store-preview-status">No achievements have been earned yet.</p>
+        <p className="product-store-preview-status">No achievements earned yet.</p>
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -162,8 +159,10 @@ export default function ProfileRoute() {
       ) : (
         <ProfileHero profile={profile} isOwnProfile={false} />
       )}
-      <ContributionHistory profile={profile} />
-      {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
+      <div className="product-profile-secondary">
+        <ContributionHistory profile={profile} />
+        {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
+      </div>
     </ProductShell>
   );
 }
