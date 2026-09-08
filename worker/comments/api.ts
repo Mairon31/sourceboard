@@ -298,6 +298,7 @@ export async function handleCommentApiRequest(
         parentCommentId,
         richtext: input.richtext,
         plaintext: input.plaintext,
+        markdown: input.markdown,
         attachment: input.attachment,
       });
       if (env.EVENTS && recipient && recipient.userId !== authorId) {

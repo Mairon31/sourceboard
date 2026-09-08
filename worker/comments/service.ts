@@ -40,12 +40,13 @@ export interface CommentService {
     parentCommentId?: string | null;
     richtext?: unknown;
     plaintext?: unknown;
+    markdown?: unknown;
     attachment?: unknown;
   }): Promise<CommentView>;
   update(
     commentId: string,
     authorId: string,
-    input: { richtext?: unknown; plaintext?: unknown; attachment?: unknown },
+    input: { richtext?: unknown; plaintext?: unknown; markdown?: unknown; attachment?: unknown },
   ): Promise<CommentView>;
   delete(commentId: string, authorId: string): Promise<void>;
   toggleLike(targetType: "POST" | "COMMENT", targetId: string, userId: string): Promise<boolean>;

@@ -1,9 +1,15 @@
 import { PostError } from "../posts/errors";
+import {
+  parseMarkdown,
+  type RichTextMarks,
+  type SafeInlineRichTextNode,
+  type SafeRichTextNode,
+} from "../../shared/richtext/markdown";
 
 export type RichTextNode =
-  | { type: "text"; text: string }
-  | { type: "emote"; shortcode: string }
-  | { type: "link"; url: string; label: string };
+  | { type: "text"; text: string; marks?: RichTextMarks }
+  | { type: "emote"; shortcode: string; marks?: RichTextMarks }
+  | { type: "link"; url: string; label: string; marks?: RichTextMarks };
 
 export interface CommentAttachment {
   type: "GIF" | "STICKER";
@@ -59,14 +65,15 @@ function normalizeNode(node: unknown): RichTextNode {
   if (!node || typeof node !== "object" || Array.isArray(node))
     invalid("A comment node is invalid.");
   const value = node as Record<string, unknown>;
+  const marks = normalizeMarks(value.marks);
   if (value.type === "text" && typeof value.text === "string") {
     if (value.text.includes("<") || value.text.includes(">"))
       invalid("HTML is not allowed in comments.");
-    return { type: "text", text: value.text };
+    return { type: "text", text: value.text, ...(marks ? { marks } : {}) };
   }
   if (value.type === "emote" && typeof value.shortcode === "string") {
     if (!/^:[a-z0-9_+-]{1,32}:$/i.test(value.shortcode)) invalid("The emote shortcode is invalid.");
-    return { type: "emote", shortcode: value.shortcode };
+    return { type: "emote", shortcode: value.shortcode, ...(marks ? { marks } : {}) };
   }
   if (
     value.type === "link" &&
@@ -74,9 +81,55 @@ function normalizeNode(node: unknown): RichTextNode {
     typeof value.label === "string" &&
     value.label.length <= MAX_LINK_LABEL
   ) {
-    return { type: "link", url: safeUrl(value.url), label: value.label };
+    return {
+      type: "link",
+      url: safeUrl(value.url),
+      label: value.label,
+      ...(marks ? { marks } : {}),
+    };
   }
   invalid("Only text, custom emotes and HTTP(S) links are allowed in comments.");
+}
+
+function normalizeMarks(value: unknown): RichTextMarks | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    invalid("Comment formatting is invalid.");
+  const input = value as Record<string, unknown>;
+  const marks: RichTextMarks = {};
+  for (const key of ["bold", "italic", "strike", "code"] as const) {
+    if (input[key] !== undefined && input[key] !== true) invalid("Comment formatting is invalid.");
+    if (input[key] === true) marks[key] = true;
+  }
+  return Object.keys(marks).length ? marks : undefined;
+}
+
+function flattenMarkdown(nodes: SafeRichTextNode[]): RichTextNode[] {
+  const flattened: RichTextNode[] = [];
+  const appendInline = (inline: SafeInlineRichTextNode[]) => {
+    flattened.push(...inline.map((node) => normalizeNode(node)));
+  };
+  nodes.forEach((node, index) => {
+    if (node.type === "paragraph") appendInline(node.children);
+    if (node.type === "code-block")
+      flattened.push({ type: "text", text: node.code, marks: { code: true } });
+    if (node.type === "list") {
+      node.items.forEach((item, itemIndex) => {
+        if (itemIndex || index) flattened.push({ type: "text", text: "\n" });
+        flattened.push({ type: "text", text: `${node.ordered ? `${itemIndex + 1}.` : "•"} ` });
+        appendInline(item.children);
+      });
+    }
+    if (node.type === "quote") {
+      if (index) flattened.push({ type: "text", text: "\n" });
+      flattened.push({ type: "text", text: "> " });
+      node.children.forEach((child) => {
+        if (child.type === "paragraph") appendInline(child.children);
+      });
+    }
+    if (index < nodes.length - 1) flattened.push({ type: "text", text: "\n" });
+  });
+  return flattened;
 }
 
 function normalizeAttachment(value: unknown): CommentAttachment | null {
@@ -121,10 +174,13 @@ function normalizeAttachment(value: unknown): CommentAttachment | null {
 export function normalizeCommentBody(input: {
   richtext?: unknown;
   plaintext?: unknown;
+  markdown?: unknown;
   attachment?: unknown;
 }): NormalizedCommentBody {
   const nodes = Array.isArray(input.richtext)
     ? input.richtext
+    : typeof input.markdown === "string"
+      ? flattenMarkdown(parseMarkdown(input.markdown))
     : typeof input.plaintext === "string"
       ? [{ type: "text", text: input.plaintext }]
       : [];

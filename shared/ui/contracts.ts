@@ -1,4 +1,5 @@
 import type { AvatarFramePreset, NameFontFamily, ProfileEffectPreset } from "../store/cosmetics";
+import type { RichTextMarks } from "../richtext/markdown";
 
 export type AuthorMode = "IDENTIFIED" | "ANONYMOUS";
 export type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
@@ -66,9 +67,9 @@ export interface CommentAttachmentView {
 }
 
 export type CommentRichTextViewNode =
-  | { type: "text"; text: string }
-  | { type: "emote"; shortcode: string }
-  | { type: "link"; url: string; label: string };
+  | { type: "text"; text: string; marks?: RichTextMarks }
+  | { type: "emote"; shortcode: string; marks?: RichTextMarks }
+  | { type: "link"; url: string; label: string; marks?: RichTextMarks };
 
 export interface CommentView {
   id: string;

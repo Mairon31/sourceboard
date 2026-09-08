@@ -1051,6 +1051,43 @@
   color: var(--text-primary);
 }
 
+.product-richtext {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.product-richtext p,
+.product-richtext blockquote,
+.product-richtext pre,
+.product-richtext ul,
+.product-richtext ol {
+  margin: 0;
+}
+
+.product-richtext blockquote {
+  border-left: 2px solid var(--accent);
+  padding-left: var(--space-3);
+  color: var(--text-secondary);
+}
+
+.product-richtext pre {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--bg-app-secondary);
+}
+
+.product-richtext a {
+  color: var(--accent);
+}
+
+.product-richtext__emote {
+  color: var(--accent);
+  font-weight: 750;
+}
+
 .sb-confirm-dialog {
   display: grid;
   gap: var(--space-4);
