@@ -211,7 +211,7 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
               <p>@{profile.username}</p>
             </div>
           </div>
-          <div className="product-chip-row">
+          <div className="product-chip-row product-profile-actions">
             {!isOwnProfile ? (
               <Badge tone={relationship === "BLOCKED" ? "warning" : "neutral"}>
                 {relationshipLabelFor(relationship)}
@@ -238,28 +238,12 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
 
         <p>{profile.bio || "This contributor has not added a bio yet."}</p>
 
-        <dl className="product-profile-stats product-profile-stats--compact">
-          <div className="product-stat">
-            <dt>Friends</dt>
-            <dd>{profile.friendCount}</dd>
-          </div>
-          {profile.points !== undefined ? (
-            <div className="product-stat">
-              <dt>Points</dt>
-              <dd>{profile.points}</dd>
-            </div>
-          ) : null}
-          {profile.verifiedSources !== undefined ? (
-            <div className="product-stat">
-              <dt>Verified</dt>
-              <dd>{profile.verifiedSources}</dd>
-            </div>
-          ) : null}
-          <div className="product-stat">
-            <dt>Visibility</dt>
-            <dd>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends"}</dd>
-          </div>
-        </dl>
+        <div className="product-profile-summary" aria-label="Profile summary">
+          <span>
+            <strong>{profile.friendCount}</strong> {profile.friendCount === 1 ? "friend" : "friends"}
+          </span>
+          <span>{profile.profileVisibility === "PUBLIC" ? "Public profile" : "Friends-only profile"}</span>
+        </div>
 
         <ProfileSocialLinks profile={profile} />
       </div>
