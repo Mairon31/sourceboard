@@ -3,6 +3,7 @@ import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "r
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
+import { CommunityCosmeticStudio } from "../components/product/CommunityCosmeticStudio";
 import { ProductShell, PresentationNotice } from "../components/product/ProductShell";
 import { StoreItemCard } from "../components/product/StoreItemCard";
 import { StoreSection } from "../components/product/StoreSection";
@@ -363,7 +364,11 @@ export default function StoreRoute() {
         {feedback ? <div className="product-store-feedback" role="status">{feedback}</div> : null}
 
         {sections.featured.length ? (
-          <StoreSection eyebrow="Curated" title="Featured" description="Items highlighted by the SourceBoard catalog team.">
+          <StoreSection
+            eyebrow="Curated"
+            title="Featured"
+            description="Items highlighted by the SourceBoard catalog team."
+          >
             {renderItems(sections.featured)}
           </StoreSection>
         ) : null}
@@ -385,6 +390,8 @@ export default function StoreRoute() {
             {renderItems(sections.browse)}
           </StoreSection>
         ) : null}
+
+        {authenticated ? <CommunityCosmeticStudio /> : null}
       </div>
     </ProductShell>
   );
