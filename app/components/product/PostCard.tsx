@@ -225,6 +225,7 @@ export function PostCard({
             {new Date(post.createdAt).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
+              timeZone: "UTC",
             })}
           </span>
         </div>

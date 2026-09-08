@@ -40,6 +40,7 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
           {new Date(comment.createdAt).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
+            timeZone: "UTC",
           })}
         </span>
       </header>

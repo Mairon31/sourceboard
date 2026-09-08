@@ -246,6 +246,7 @@ function CommentItem({
             {new Date(comment.createdAt).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
+              timeZone: "UTC",
             })}
           </a>
           {hasMenuActions ? (
