@@ -16,6 +16,7 @@ export interface PresentedNotification extends NotificationRecord {
   href: string;
   ctaLabel?: string;
   actor?: NotificationActorView;
+  groupActors?: NotificationActorView[];
   groupedIds?: string[];
   groupCount?: number;
   unreadCount?: number;
@@ -292,6 +293,17 @@ function groupedCopy(
   };
 }
 
+function appendGroupActor(
+  actors: NotificationActorView[] | undefined,
+  actor: NotificationActorView | undefined,
+): NotificationActorView[] | undefined {
+  const next = actors ? [...actors] : [];
+  if (actor && !next.some((candidate) => candidate.id === actor.id) && next.length < 3) {
+    next.push(actor);
+  }
+  return next.length ? next : undefined;
+}
+
 export function groupPresentedNotifications(
   notifications: PresentedNotification[],
 ): PresentedNotification[] {
@@ -316,6 +328,7 @@ export function groupPresentedNotifications(
     if (!previous || previous.createdAt - notification.createdAt > groupingWindowMs) {
       const next = {
         ...notification,
+        ...(notification.actor ? { groupActors: [notification.actor] } : {}),
         groupedIds: [notification.id],
         groupCount: 1,
         unreadCount: notification.readAt ? 0 : 1,
@@ -329,6 +342,7 @@ export function groupPresentedNotifications(
     const copy = groupedCopy(notification, count);
     previous.groupedIds = ids;
     previous.groupCount = count;
+    previous.groupActors = appendGroupActor(previous.groupActors, notification.actor);
     previous.unreadCount =
       (previous.unreadCount ?? (previous.readAt ? 0 : 1)) + (notification.readAt ? 0 : 1);
     previous.readAt = previous.readAt && notification.readAt ? previous.readAt : null;
