@@ -1,8 +1,24 @@
 import { useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import type { PostSummary } from "../../../shared/ui/contracts";
+import { readCsrfToken } from "../../data/csrf";
 import { CosmeticIdentity } from "./CosmeticIdentity";
-import { Avatar, Badge, Button, Card, HeartIcon, MessageIcon, ShareIcon } from "../ui";
+import { ShareAction } from "./ShareAction";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  ConfirmDialog,
+  Dropdown,
+  EditIcon,
+  HeartIcon,
+  Input,
+  MessageIcon,
+  MoreIcon,
+  Textarea,
+  TrashIcon,
+} from "../ui";
 
 function statusTone(status: PostSummary["status"]) {
   if (status === "VERIFIED") return "success" as const;
@@ -23,19 +39,39 @@ function postDetailHref(post: PostSummary): string {
   return post.slug ? `${base}/${encodeURIComponent(post.slug)}` : base;
 }
 
-export function PostCard({ post, compact = false }: { post: PostSummary; compact?: boolean }) {
+export function PostCard({
+  post,
+  compact = false,
+  manage = false,
+  onChanged,
+}: {
+  post: PostSummary;
+  compact?: boolean;
+  manage?: boolean;
+  onChanged?: () => void;
+}) {
   const navigate = useNavigate();
   const [showNsfw, setShowNsfw] = useState(post.nsfwPresentation === "VISIBLE");
   const [liked, setLiked] = useState(post.reaction.viewerReacted);
   const [likes, setLikes] = useState(post.reaction.count);
   const [reactionStatus, setReactionStatus] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title);
+  const [editDescription, setEditDescription] = useState(post.description ?? "");
+  const [displayTitle, setDisplayTitle] = useState(post.title);
+  const [displayDescription, setDisplayDescription] = useState(post.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const [manageStatus, setManageStatus] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const detailHref = postDetailHref(post);
   const mediaClass = post.imageUrl
     ? "product-post__media product-post__media--image"
     : "product-post__media";
+  const permissions = "permissions" in post ? post.permissions : undefined;
 
   function openPostDetail() {
-    navigate(detailHref);
+    if (!editing) navigate(detailHref);
   }
 
   function handleCardClick(event: ReactMouseEvent<HTMLDivElement>) {
@@ -51,18 +87,10 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
     setLiked(nextLiked);
     setLikes(Math.max(0, previousLikes + (nextLiked ? 1 : -1)));
 
-    const csrf = document.cookie
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith("__Host-sourceboard_csrf="));
     try {
       const response = await fetch(`/api/reactions/POST/${encodeURIComponent(post.id)}`, {
         method: previousLiked ? "DELETE" : "POST",
-        headers: {
-          "x-csrf-token": csrf
-            ? decodeURIComponent(csrf.slice("__Host-sourceboard_csrf=".length))
-            : "",
-        },
+        headers: { "x-csrf-token": readCsrfToken() },
       });
       if (!response.ok) {
         setLiked(previousLiked);
@@ -81,6 +109,91 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
       setReactionStatus("Like unavailable.");
     }
   }
+
+  async function saveEdit() {
+    if (!permissions?.canEdit || !editTitle.trim()) return;
+    setSaving(true);
+    setManageStatus(null);
+    try {
+      const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          description: editDescription,
+          visibility: post.visibility,
+          authorMode: post.author.mode,
+          isNsfw: post.isNsfw,
+        }),
+      });
+      if (!response.ok) throw new Error("Could not save this post.");
+      setDisplayTitle(editTitle.trim());
+      setDisplayDescription(editDescription);
+      setEditing(false);
+      setManageStatus("Post updated.");
+      onChanged?.();
+    } catch (error) {
+      setManageStatus(error instanceof Error ? error.message : "Could not save this post.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function archivePost() {
+    const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}/archive`, {
+      method: "POST",
+      headers: { "x-csrf-token": readCsrfToken() },
+    });
+    if (!response.ok) throw new Error("Could not archive this post.");
+    setManageStatus("Post archived.");
+    setConfirmArchive(false);
+    onChanged?.();
+  }
+
+  async function deletePost() {
+    const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}`, {
+      method: "DELETE",
+      headers: { "x-csrf-token": readCsrfToken() },
+    });
+    if (!response.ok) throw new Error("Could not delete this post.");
+    setConfirmDelete(false);
+    navigate("/");
+  }
+
+  const menuItems = manage
+    ? [
+        ...(permissions?.canEdit
+          ? [
+              {
+                label: "Edit post",
+                icon: <EditIcon width="16" height="16" />,
+                onSelect: () => setEditing(true),
+              },
+            ]
+          : []),
+        ...(permissions?.canArchive
+          ? [
+              {
+                label: "Archive post",
+                onSelect: () => setConfirmArchive(true),
+              },
+            ]
+          : []),
+        ...(permissions?.canDelete
+          ? [
+              {
+                label: "Delete post",
+                icon: <TrashIcon width="16" height="16" />,
+                destructive: true,
+                onSelect: () => setConfirmDelete(true),
+              },
+            ]
+          : []),
+      ]
+    : [];
+
+  const shareUrl =
+    typeof window === "undefined" ? detailHref : new URL(detailHref, window.location.origin).toString();
 
   return (
     <Card
@@ -116,14 +229,57 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           {post.author.mode === "ANONYMOUS" ? <Badge>Anonymous</Badge> : null}
           {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
           <Badge tone={statusTone(post.status)}>{post.status.toLowerCase()}</Badge>
+          {menuItems.length ? (
+            <Dropdown
+              label="More"
+              ariaLabel="More post actions"
+              triggerIcon={<MoreIcon width="18" height="18" />}
+              iconOnly
+              items={menuItems}
+            />
+          ) : null}
         </div>
       </header>
 
       <div className="product-post__copy">
-        <Link to={detailHref} className="product-post__title">
-          {post.title}
-        </Link>
-        {post.description ? <p>{post.description}</p> : null}
+        {editing ? (
+          <div className="product-post__inline-editor" onClick={(event) => event.stopPropagation()}>
+            <Input
+              label="Title"
+              value={editTitle}
+              onChange={(event) => setEditTitle(event.target.value)}
+              required
+            />
+            <Textarea
+              label="Description"
+              value={editDescription}
+              onChange={(event) => setEditDescription(event.target.value)}
+            />
+            <div className="product-chip-row">
+              <Button size="sm" loading={saving} onClick={() => void saveEdit()}>
+                Save changes
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setEditTitle(displayTitle);
+                  setEditDescription(displayDescription);
+                  setEditing(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Link to={detailHref} className="product-post__title">
+              {displayTitle}
+            </Link>
+            {displayDescription ? <p>{displayDescription}</p> : null}
+          </>
+        )}
       </div>
 
       {post.isNsfw && (post.nsfwPresentation === "HIDDEN" || !showNsfw) ? (
@@ -148,7 +304,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           ) : null}
         </div>
       ) : (
-        <Link to={detailHref} className={mediaClass} aria-label={`Open post: ${post.title}`}>
+        <Link to={detailHref} className={mediaClass} aria-label={`Open post: ${displayTitle}`}>
           {post.imageUrl ? (
             <img
               src={post.imageUrl}
@@ -175,9 +331,7 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
           <span>
             <strong>{post.commentCount}</strong> {post.commentCount === 1 ? "comment" : "comments"}
           </span>
-          {post.acceptedSource ? (
-            <span className="product-meta-success">Source accepted</span>
-          ) : null}
+          {post.acceptedSource ? <span className="product-meta-success">Source accepted</span> : null}
           {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
         </div>
 
@@ -196,17 +350,36 @@ export function PostCard({ post, compact = false }: { post: PostSummary; compact
             <MessageIcon />
             <span>Comment</span>
           </Link>
-          <button type="button" className="product-post__action" disabled aria-label="Share post">
-            <ShareIcon />
-            <span>Share</span>
-          </button>
+          <ShareAction url={shareUrl} title={displayTitle} text={displayDescription || undefined} />
         </footer>
         {reactionStatus ? (
           <small className="product-post__reaction-status" role="status">
             {reactionStatus}
           </small>
         ) : null}
+        {manageStatus ? (
+          <small className="product-post__reaction-status" role="status">
+            {manageStatus}
+          </small>
+        ) : null}
       </div>
+      <ConfirmDialog
+        title="Archive this post?"
+        description="The post will no longer appear as an active source request."
+        confirmLabel="Archive post"
+        open={confirmArchive}
+        onConfirm={() => void archivePost()}
+        onOpenChange={setConfirmArchive}
+      />
+      <ConfirmDialog
+        title="Delete this post?"
+        description="This permanently removes the post from SourceBoard."
+        confirmLabel="Delete post"
+        destructive
+        open={confirmDelete}
+        onConfirm={() => void deletePost()}
+        onOpenChange={setConfirmDelete}
+      />
     </Card>
   );
 }
