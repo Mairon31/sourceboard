@@ -17,6 +17,7 @@ export default [
   route("store", "routes/store.tsx"),
   route("settings", "routes/settings.tsx"),
   route("docs", "routes/docs.tsx"),
+  route("docs/:slug", "routes/docs-article.tsx"),
   route("legal", "routes/legal.tsx"),
   route("admin", "routes/admin.tsx"),
   route("admin/moderation", "routes/admin-moderation.tsx"),
