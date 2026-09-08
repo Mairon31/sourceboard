@@ -57,6 +57,15 @@ const roleChangeSchema = z.object({
 
 type InputRecord = Record<string, unknown>;
 
+const PUBLIC_AUTH_MUTATIONS = new Set([
+  "POST /api/auth/register",
+  "POST /api/auth/login",
+  "POST /api/auth/google",
+  "POST /api/auth/email/verify",
+  "POST /api/auth/password/forgot",
+  "POST /api/auth/password/reset",
+]);
+
 function firebasePublicConfig(env: SourceBoardEnvironment) {
   const apiKey = env.FIREBASE_API_KEY?.trim();
   const projectId = env.FIREBASE_PROJECT_ID?.trim();
@@ -145,9 +154,10 @@ function requireDatabase(env: SourceBoardEnvironment): D1Database {
   return env.DB;
 }
 
-function requireSameOriginAndCsrf(request: Request): void {
+function requireRequestSecurity(request: Request, url: URL): void {
   assertSameOrigin(request);
-  if (getSessionToken(request)) {
+  const routeKey = `${request.method} ${url.pathname}`;
+  if (!PUBLIC_AUTH_MUTATIONS.has(routeKey) && getSessionToken(request)) {
     assertCsrfToken(request);
   }
 }
@@ -313,7 +323,7 @@ export async function handleAuthRequest(
     }
 
     if (request.method !== "GET") {
-      requireSameOriginAndCsrf(request);
+      requireRequestSecurity(request, url);
     }
 
     const service = createAuthService({ store: createD1AuthStore(requireDatabase(env)), env });
