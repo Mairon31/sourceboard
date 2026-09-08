@@ -208,11 +208,6 @@ export default function PostDetailRoute() {
 
   return (
     <ProductShell>
-      <PageHeader
-        eyebrow="Source request"
-        title={currentPost.title}
-        description="One image, one focused question and an auditable path to the original source."
-      />
       <PostCard post={currentPost} manage onChanged={() => revalidator.revalidate()} />
       <SourceResolution
         accepted={currentPost.acceptedSource}
