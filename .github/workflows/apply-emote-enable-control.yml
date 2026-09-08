@@ -78,7 +78,7 @@ jobs:
           }
           fs.writeFileSync(unitPath, unit);
           NODE
-          npx prettier --write playwright.config.ts tests/e2e/test-helpers.ts tests/e2e/store.spec.ts tests/e2e/admin.spec.ts tests/unit/store-catalog-redesign.test.ts
+          npx prettier --write .github/workflows/apply-emote-enable-control.yml playwright.config.ts tests/e2e/test-helpers.ts tests/e2e/store.spec.ts tests/e2e/admin.spec.ts tests/unit/store-catalog-redesign.test.ts
 
       - name: Verify regression test is RED before production change
         shell: bash
