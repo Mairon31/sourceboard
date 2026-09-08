@@ -14,6 +14,7 @@ import { readServerSession, type ServerLoaderArgs } from "./data/server-request"
 import "./styles/base.css";
 import "./components/ui/ui.css";
 import "./components/layout/layout.css";
+import "./components/layout/notification-popover.css";
 import "./components/product/product.css";
 import "./components/product/post-media.css";
 import "./components/product/post-card-refresh.css";
