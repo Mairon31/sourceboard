@@ -55,6 +55,50 @@ async function ownerForReaction(
   return row?.userId ?? null;
 }
 
+async function friendshipForPair(
+  db: D1Database,
+  firstUserId: string,
+  secondUserId: string,
+): Promise<{ requesterId: string; addresseeId: string } | null> {
+  const pair = relationshipSubject(firstUserId, secondUserId);
+  const row = await db
+    .prepare(
+      `SELECT requester_id AS requesterId, addressee_id AS addresseeId
+       FROM friendships WHERE pair_key = ? LIMIT 1`,
+    )
+    .bind(pair)
+    .first<{ requesterId: string; addresseeId: string }>();
+  return row ?? null;
+}
+
+async function reverseFriendshipRewards(
+  db: D1Database,
+  friendship: { requesterId: string; addresseeId: string },
+  reason: string,
+  includeAccepted: boolean,
+): Promise<void> {
+  const pair = relationshipSubject(friendship.requesterId, friendship.addresseeId);
+  const reversals: Array<Promise<boolean>> = [
+    reverseContribution(db, {
+      userId: friendship.requesterId,
+      rewardType: "FRIEND_REQUEST_SENT",
+      subjectKey: pair,
+      reason,
+    }),
+  ];
+  if (includeAccepted) {
+    reversals.push(
+      reverseContribution(db, {
+        userId: friendship.addresseeId,
+        rewardType: "FRIEND_ACCEPTED",
+        subjectKey: pair,
+        reason,
+      }),
+    );
+  }
+  await Promise.all(reversals);
+}
+
 async function rewardProfileCompletion(db: D1Database, userId: string): Promise<void> {
   const [profile, social] = await Promise.all([
     db
@@ -210,40 +254,71 @@ async function rewardCommentMutation(
   }
 }
 
+async function rewardFriendshipMutation(
+  request: Request,
+  env: SourceBoardEnvironment,
+  userId: string,
+  url: URL,
+): Promise<boolean> {
+  const db = env.DB!;
+  const actionMatch = url.pathname.match(
+    /^\/api\/friends\/([^/]+)\/(request|accept|decline|cancel)$/,
+  );
+  if (request.method === "POST" && actionMatch) {
+    const targetUserId = decodeURIComponent(actionMatch[1] ?? "");
+    if (!targetUserId || targetUserId === userId) return true;
+    const action = actionMatch[2];
+    const pair = relationshipSubject(userId, targetUserId);
+    if (action === "request") {
+      await awardContribution(db, {
+        userId,
+        rewardType: "FRIEND_REQUEST_SENT",
+        subjectKey: pair,
+        metadata: { targetUserId },
+      });
+    } else if (action === "accept") {
+      await awardContribution(db, {
+        userId,
+        rewardType: "FRIEND_ACCEPTED",
+        subjectKey: pair,
+        metadata: { targetUserId },
+      });
+    } else {
+      const friendship = await friendshipForPair(db, userId, targetUserId);
+      if (friendship) {
+        await reverseFriendshipRewards(db, friendship, `friend_${action}`, false);
+      }
+    }
+    return true;
+  }
+
+  const removeMatch = url.pathname.match(/^\/api\/friends\/([^/]+)$/);
+  if (request.method === "DELETE" && removeMatch) {
+    const targetUserId = decodeURIComponent(removeMatch[1] ?? "");
+    const friendship = targetUserId ? await friendshipForPair(db, userId, targetUserId) : null;
+    if (friendship) await reverseFriendshipRewards(db, friendship, "friend_removed", true);
+    return true;
+  }
+
+  const blockMatch = url.pathname.match(/^\/api\/users\/([^/]+)\/block$/);
+  if (request.method === "POST" && blockMatch) {
+    const targetUserId = decodeURIComponent(blockMatch[1] ?? "");
+    const friendship = targetUserId ? await friendshipForPair(db, userId, targetUserId) : null;
+    if (friendship) await reverseFriendshipRewards(db, friendship, "user_blocked", true);
+    return true;
+  }
+  return false;
+}
+
 async function rewardProfileMutation(
   request: Request,
   env: SourceBoardEnvironment,
   userId: string,
   url: URL,
 ): Promise<void> {
-  const db = env.DB!;
+  if (await rewardFriendshipMutation(request, env, userId, url)) return;
   if (request.method === "PATCH" && url.pathname === "/api/profile/me") {
-    await rewardProfileCompletion(db, userId);
-    return;
-  }
-
-  const friendship = url.pathname.match(
-    /^\/api\/friends\/([^/]+)\/(request|accept|decline|cancel)$/,
-  );
-  if (request.method !== "POST" || !friendship) return;
-  const targetUserId = decodeURIComponent(friendship[1] ?? "");
-  if (!targetUserId || targetUserId === userId) return;
-  const action = friendship[2];
-  const pair = relationshipSubject(userId, targetUserId);
-  if (action === "request") {
-    await awardContribution(db, {
-      userId,
-      rewardType: "FRIEND_REQUEST_SENT",
-      subjectKey: pair,
-      metadata: { targetUserId },
-    });
-  } else if (action === "accept") {
-    await awardContribution(db, {
-      userId,
-      rewardType: "FRIEND_ACCEPTED",
-      subjectKey: pair,
-      metadata: { targetUserId },
-    });
+    await rewardProfileCompletion(env.DB!, userId);
   }
 }
 
@@ -259,14 +334,19 @@ export async function applyContributionRewards(
     !url.pathname.startsWith("/api/comments") &&
     !url.pathname.startsWith("/api/reactions") &&
     !url.pathname.startsWith("/api/profile") &&
-    !url.pathname.startsWith("/api/friends")
+    !url.pathname.startsWith("/api/friends") &&
+    !url.pathname.startsWith("/api/users/")
   ) {
     return;
   }
   const userId = await viewerId(request, env);
   if (!userId) return;
   try {
-    if (url.pathname.startsWith("/api/profile") || url.pathname.startsWith("/api/friends")) {
+    if (
+      url.pathname.startsWith("/api/profile") ||
+      url.pathname.startsWith("/api/friends") ||
+      url.pathname.startsWith("/api/users/")
+    ) {
       await rewardProfileMutation(request, env, userId, url);
       return;
     }
