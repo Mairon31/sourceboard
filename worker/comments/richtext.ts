@@ -1,5 +1,6 @@
 import { PostError } from "../posts/errors";
 import {
+  normalizeEmoteShortcode,
   parseMarkdown,
   type RichTextMarks,
   type SafeInlineRichTextNode,
@@ -72,8 +73,9 @@ function normalizeNode(node: unknown): RichTextNode {
     return { type: "text", text: value.text, ...(marks ? { marks } : {}) };
   }
   if (value.type === "emote" && typeof value.shortcode === "string") {
-    if (!/^:[a-z0-9_+-]{1,32}:$/i.test(value.shortcode)) invalid("The emote shortcode is invalid.");
-    return { type: "emote", shortcode: value.shortcode, ...(marks ? { marks } : {}) };
+    const shortcode = normalizeEmoteShortcode(value.shortcode);
+    if (!shortcode) invalid("The emote shortcode is invalid.");
+    return { type: "emote", shortcode, ...(marks ? { marks } : {}) };
   }
   if (
     value.type === "link" &&
