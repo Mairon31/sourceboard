@@ -1,12 +1,13 @@
 import { Link, type MetaFunction } from "react-router";
+import { DocsShell } from "../components/product/DocsShell";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
-import { Card } from "../components/ui";
+import { DOCS_GROUPS, docsByGroup } from "../data/docs-content";
 
 export const meta: MetaFunction = () => [
-  { title: "Guide · SourceBoard" },
+  { title: "Docs and Help · SourceBoard" },
   {
     name: "description",
-    content: "Learn how SourceBoard requests, evidence, discussions and privacy work.",
+    content: "SourceBoard help, source-finding guides, account documentation and product policies.",
   },
   { tagName: "link", rel: "canonical", href: "https://srcboard.me/docs" },
 ];
@@ -14,51 +15,34 @@ export const meta: MetaFunction = () => [
 export default function DocsRoute() {
   return (
     <ProductShell wide>
-      <PageHeader
-        eyebrow="SourceBoard guide"
-        title="How the source trail works"
-        description="A short guide to publishing a request, checking evidence and keeping discussions useful."
-      />
-      <div className="product-docs-grid">
-        <Card>
-          <span className="product-eyebrow">01 · Request</span>
-          <h2>Start with the image</h2>
-          <p>
-            Upload one image, describe what you already know and choose who can see the request.
-          </p>
-        </Card>
-        <Card>
-          <span className="product-eyebrow">02 · Evidence</span>
-          <h2>Prefer a source link</h2>
-          <p>
-            Comments can include context and a canonical URL. The author can accept one source and
-            the community can verify it.
-          </p>
-        </Card>
-        <Card>
-          <span className="product-eyebrow">03 · Discussion</span>
-          <h2>Keep the trail readable</h2>
-          <p>
-            Accepted requests may be closed by their author. Existing comments remain available for
-            review and audit.
-          </p>
-        </Card>
-        <Card>
-          <span className="product-eyebrow">04 · Privacy</span>
-          <h2>Visibility is enforced on the server</h2>
-          <p>
-            Private, friends-only, blocked and sensitive content decisions are checked before data
-            or media is returned.
-          </p>
-        </Card>
-      </div>
-      <Card className="product-docs-note">
-        <h2>Need to change your account?</h2>
-        <p>Manage privacy, sensitive-content and friend-request preferences from Settings.</p>
-        <Link className="product-text-action" to="/settings">
-          Open Settings
-        </Link>
-      </Card>
+      <DocsShell>
+        <div className="product-docs-index">
+          <PageHeader
+            eyebrow="SourceBoard Docs"
+            title="Help, product behavior and policies"
+            description="Understand source requests, Accepted Sources, discussions, social features, points, account security and the rules that govern public content."
+          />
+
+          <div className="product-docs-index__groups">
+            {DOCS_GROUPS.map((group) => (
+              <section className="product-docs-index__group" key={group}>
+                <h2>{group}</h2>
+                <div className="product-docs-index__links">
+                  {docsByGroup(group).map((article) => (
+                    <Link key={article.slug} to={`/docs/${article.slug}`}>
+                      <span>
+                        <strong>{article.title}</strong>
+                        <small>{article.summary}</small>
+                      </span>
+                      <span aria-hidden="true">›</span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </DocsShell>
     </ProductShell>
   );
 }
