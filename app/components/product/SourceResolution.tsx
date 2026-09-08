@@ -35,7 +35,12 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
             nameAs="strong"
           />
         )}
-        <span>{new Date(comment.createdAt).toLocaleDateString()}</span>
+        <span>
+          {new Date(comment.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })}
+        </span>
       </header>
       <div className="product-source-answer__content">
         <RichText nodes={nodes} />
