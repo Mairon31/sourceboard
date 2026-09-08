@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "react-router";
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
@@ -175,9 +175,58 @@ export default function StoreRoute() {
   const [activeFilter, setActiveFilter] = useState<StoreFilter>("ALL");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [catalogItems, setCatalogItems] = useState(items);
+  const [currentPoints, setCurrentPoints] = useState(points);
+
+  useEffect(() => {
+    setCatalogItems(items);
+    setCurrentPoints(points);
+  }, [items, points]);
+
   const visibleItems =
-    activeFilter === "ALL" ? items : items.filter((item) => item.type === activeFilter);
+    activeFilter === "ALL"
+      ? catalogItems
+      : catalogItems.filter((item) => item.type === activeFilter);
   const sections = partitionStoreItems(visibleItems, authenticated);
+
+  function markOwned(item: StoreItemView) {
+    setCatalogItems((current) =>
+      current.map((candidate) =>
+        candidate.id === item.id
+          ? { ...candidate, owned: true, equipped: false, state: "OWNED" }
+          : candidate,
+      ),
+    );
+    if (!adminUnlocked && currentPoints !== null) {
+      setCurrentPoints((balance) =>
+        balance === null ? balance : Math.max(0, balance - Math.max(0, item.price)),
+      );
+    }
+  }
+
+  function markEquipped(item: StoreItemView) {
+    setCatalogItems((current) =>
+      current.map((candidate) => {
+        if (candidate.id === item.id) {
+          return { ...candidate, owned: true, equipped: true, state: "EQUIPPED" };
+        }
+        if (candidate.type === item.type && candidate.equipped) {
+          return { ...candidate, owned: true, equipped: false, state: "OWNED" };
+        }
+        return candidate;
+      }),
+    );
+  }
+
+  function markUnequipped(item: StoreItemView) {
+    setCatalogItems((current) =>
+      current.map((candidate) =>
+        candidate.id === item.id
+          ? { ...candidate, owned: true, equipped: false, state: "OWNED" }
+          : candidate,
+      ),
+    );
+  }
 
   async function purchase(item: StoreItemView) {
     setBusyId(item.id);
@@ -192,6 +241,7 @@ export default function StoreRoute() {
         setFeedback("This item could not be redeemed.");
         return;
       }
+      markOwned(item);
       setFeedback(`${item.name} unlocked.`);
       revalidator.revalidate();
     } catch {
@@ -214,6 +264,7 @@ export default function StoreRoute() {
         setFeedback("This cosmetic could not be equipped.");
         return;
       }
+      markEquipped(item);
       setFeedback(`${item.name} equipped.`);
       revalidator.revalidate();
     } catch {
@@ -235,6 +286,7 @@ export default function StoreRoute() {
         setFeedback("This cosmetic could not be unequipped.");
         return;
       }
+      markUnequipped(item);
       setFeedback(`${item.name} unequipped.`);
       revalidator.revalidate();
     } catch {
@@ -288,7 +340,7 @@ export default function StoreRoute() {
           </div>
           <div className="product-store-wallet">
             <span>{adminUnlocked ? "Admin access" : "Balance"}</span>
-            <strong>{adminUnlocked ? "Admin unlocked" : `${points ?? 0} pts`}</strong>
+            <strong>{adminUnlocked ? "Admin unlocked" : `${currentPoints ?? 0} pts`}</strong>
             <small>{adminUnlocked ? "No points required" : "Earn points by contributing"}</small>
           </div>
         </header>
@@ -307,21 +359,11 @@ export default function StoreRoute() {
           ))}
         </div>
 
-        {unavailable ? (
-          <PresentationNotice>Store data is temporarily unavailable.</PresentationNotice>
-        ) : null}
-        {feedback ? (
-          <div className="product-store-feedback" role="status">
-            {feedback}
-          </div>
-        ) : null}
+        {unavailable ? <PresentationNotice>Store data is temporarily unavailable.</PresentationNotice> : null}
+        {feedback ? <div className="product-store-feedback" role="status">{feedback}</div> : null}
 
         {sections.featured.length ? (
-          <StoreSection
-            eyebrow="Curated"
-            title="Featured"
-            description="Items highlighted by the SourceBoard catalog team."
-          >
+          <StoreSection eyebrow="Curated" title="Featured" description="Items highlighted by the SourceBoard catalog team.">
             {renderItems(sections.featured)}
           </StoreSection>
         ) : null}
