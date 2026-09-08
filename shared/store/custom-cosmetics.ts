@@ -1,3 +1,5 @@
+export const COSMETIC_VISUAL_NAMESPACE = "sourceboard.cosmetic.v1" as const;
+
 export const COSMETIC_VISUAL_KEYS = [
   "foregroundColor",
   "backgroundColor",
@@ -45,13 +47,20 @@ export interface CosmeticIdentityVisuals {
   nameEffect?: CosmeticVisualDefinition;
 }
 
+export interface CosmeticVisualConfig {
+  namespace: typeof COSMETIC_VISUAL_NAMESPACE;
+  visual: CosmeticVisualDefinition;
+}
+
 const HEX_COLOR = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
 const ANIMATIONS = new Set<CosmeticVisualAnimation>(["none", "pulse", "shimmer", "float", "spin"]);
 const TEXT_TRANSFORMS = new Set<CosmeticVisualTextTransform>(["none", "uppercase", "lowercase"]);
 const FONT_STYLES = new Set<CosmeticVisualFontStyle>(["normal", "italic"]);
+const CONFIG_KEYS = new Set(["namespace", "visual", "preset", "family"]);
 
 function finiteNumber(value: unknown, min: number, max: number): number | undefined {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max)
+    return undefined;
   return value;
 }
 
@@ -62,15 +71,16 @@ function safeColor(value: unknown): string | undefined {
 export function normalizeCosmeticVisualDefinition(value: unknown): CosmeticVisualDefinition | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
-  if (Object.keys(input).some((key) => !COSMETIC_VISUAL_KEYS.includes(key as CosmeticVisualKey))) return null;
+  if (Object.keys(input).some((key) => !COSMETIC_VISUAL_KEYS.includes(key as CosmeticVisualKey)))
+    return null;
 
   const visual: CosmeticVisualDefinition = {};
-  const colors: Array<keyof Pick<CosmeticVisualDefinition, "foregroundColor" | "backgroundColor" | "borderColor" | "glowColor">> = [
-    "foregroundColor",
-    "backgroundColor",
-    "borderColor",
-    "glowColor",
-  ];
+  const colors: Array<
+    keyof Pick<
+      CosmeticVisualDefinition,
+      "foregroundColor" | "backgroundColor" | "borderColor" | "glowColor"
+    >
+  > = ["foregroundColor", "backgroundColor", "borderColor", "glowColor"];
   for (const key of colors) {
     if (input[key] === undefined) continue;
     const color = safeColor(input[key]);
@@ -78,11 +88,22 @@ export function normalizeCosmeticVisualDefinition(value: unknown): CosmeticVisua
     visual[key] = color;
   }
 
-  const bounded: Array<[
-    keyof Pick<CosmeticVisualDefinition, "borderWidth" | "borderRadius" | "glowSize" | "opacity" | "fontWeight" | "letterSpacing" | "animationDurationMs">,
-    number,
-    number,
-  ]> = [
+  const bounded: Array<
+    [
+      keyof Pick<
+        CosmeticVisualDefinition,
+        | "borderWidth"
+        | "borderRadius"
+        | "glowSize"
+        | "opacity"
+        | "fontWeight"
+        | "letterSpacing"
+        | "animationDurationMs"
+      >,
+      number,
+      number,
+    ]
+  > = [
     ["borderWidth", 0, 8],
     ["borderRadius", 0, 999],
     ["glowSize", 0, 48],
@@ -99,7 +120,11 @@ export function normalizeCosmeticVisualDefinition(value: unknown): CosmeticVisua
   }
 
   if (input.fontStyle !== undefined) {
-    if (typeof input.fontStyle !== "string" || !FONT_STYLES.has(input.fontStyle as CosmeticVisualFontStyle)) return null;
+    if (
+      typeof input.fontStyle !== "string" ||
+      !FONT_STYLES.has(input.fontStyle as CosmeticVisualFontStyle)
+    )
+      return null;
     visual.fontStyle = input.fontStyle as CosmeticVisualFontStyle;
   }
   if (input.textTransform !== undefined) {
@@ -111,12 +136,29 @@ export function normalizeCosmeticVisualDefinition(value: unknown): CosmeticVisua
     visual.textTransform = input.textTransform as CosmeticVisualTextTransform;
   }
   if (input.animation !== undefined) {
-    if (typeof input.animation !== "string" || !ANIMATIONS.has(input.animation as CosmeticVisualAnimation)) return null;
+    if (
+      typeof input.animation !== "string" ||
+      !ANIMATIONS.has(input.animation as CosmeticVisualAnimation)
+    )
+      return null;
     visual.animation = input.animation as CosmeticVisualAnimation;
   }
 
   if (!Object.keys(visual).length) return null;
   return visual;
+}
+
+export function normalizeCosmeticVisualConfig(value: unknown): CosmeticVisualConfig | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const input = value as Record<string, unknown>;
+  if (Object.keys(input).some((key) => !CONFIG_KEYS.has(key))) return null;
+  if (input.namespace !== COSMETIC_VISUAL_NAMESPACE) return null;
+  const visual = normalizeCosmeticVisualDefinition(input.visual);
+  return visual ? { namespace: COSMETIC_VISUAL_NAMESPACE, visual } : null;
+}
+
+export function extractCosmeticVisualDefinition(value: unknown): CosmeticVisualDefinition | undefined {
+  return normalizeCosmeticVisualConfig(value)?.visual;
 }
 
 export function isCosmeticVisualDefinition(value: unknown): value is CosmeticVisualDefinition {
