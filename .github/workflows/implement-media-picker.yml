@@ -1,0 +1,698 @@
+name: Implement social media picker
+
+on:
+  push:
+    paths:
+      - .github/workflows/implement-media-picker.yml
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --progress=false
+
+      - name: Write focused RED test
+        run: |
+          cat > tests/unit/media-picker.test.ts <<'EOF'
+          import { existsSync, readFileSync } from "node:fs";
+          import { describe, expect, it } from "vitest";
+
+          function read(path: string): string {
+            const url = new URL(path, import.meta.url);
+            return existsSync(url) ? readFileSync(url, "utf8") : "";
+          }
+
+          const picker = read("../../app/components/product/MediaPicker.tsx");
+          const thread = read("../../app/components/product/CommentThread.tsx");
+          const commentsApi = read("../../worker/comments/api.ts");
+          const entitlements = read("../../worker/store/entitlements.ts");
+          const commentStore = read("../../worker/comments/store.ts");
+          const richText = read("../../app/components/product/RichText.tsx");
+          const css = read("../../app/components/product/profile-klipy.css");
+
+          describe("responsive GIF, sticker and emote picker", () => {
+            it("extracts one picker with abortable debounced cached KLIPY search", () => {
+              expect(picker).toContain('export type MediaPickerKind = "GIF" | "STICKER" | "EMOTE"');
+              expect(picker).toContain("AbortController");
+              expect(picker).toContain("250");
+              expect(picker).toContain("mediaCache");
+              expect(picker).toContain('role="tablist"');
+              expect(picker).toContain('aria-label="Emotes"');
+              expect(thread).toContain('from "./MediaPicker"');
+              expect(thread).not.toContain("function MediaPicker(");
+            });
+
+            it("loads only entitled emote packs and keeps server entitlement enforcement", () => {
+              expect(commentsApi).toContain('url.pathname === "/api/comments/emotes"');
+              expect(commentsApi).toContain("listEntitledEmotePacks");
+              expect(entitlements).toContain("user_inventory");
+              expect(entitlements).toContain("moderation_state NOT IN ('HIDDEN', 'REMOVED')");
+              expect(entitlements).toContain("listEntitledEmotePacks");
+              expect(thread).toContain('item.type === "EMOTE"');
+              expect(thread).toContain("item.shortcode");
+            });
+
+            it("resolves published emotes for existing comments without N+1 client requests", () => {
+              expect(commentStore).toContain("getEmoteAssets");
+              expect(commentStore).toContain("shortcode IN");
+              expect(richText).toContain("product-richtext__emote-image");
+              expect(richText).toContain("node.url");
+            });
+
+            it("keeps animated media URLs and applies the requested compact comment sizes", () => {
+              expect(picker).toContain("item.url");
+              expect(css).toContain("width: min(100%, 220px)");
+              expect(css).toContain("width: min(154px, 68vw)");
+              expect(css).toContain("product-comment-media-picker__packbar");
+              expect(css).toContain("product-comment-media-picker__emote-grid");
+            });
+          });
+          EOF
+          if npx vitest run tests/unit/media-picker.test.ts; then
+            echo "RED test unexpectedly passed before implementation" >&2
+            exit 1
+          fi
+
+      - name: Implement picker and entitled emote API
+        run: |
+          cat > app/components/product/MediaPicker.tsx <<'EOF'
+          import { useEffect, useMemo, useRef, useState } from "react";
+
+          export type MediaPickerKind = "GIF" | "STICKER" | "EMOTE";
+
+          export interface KlipyMediaItem {
+            id: string;
+            title: string;
+            label: string;
+            url: string;
+            preview: string;
+            type: "GIF" | "STICKER";
+            provider: "klipy";
+          }
+
+          export interface EmotePickerItem {
+            id: string;
+            label: string;
+            shortcode: string;
+            url: string;
+            type: "EMOTE";
+            packId: string;
+          }
+
+          interface EmotePack {
+            id: string;
+            label: string;
+            emotes: EmotePickerItem[];
+          }
+
+          export type MediaPickerSelection = KlipyMediaItem | EmotePickerItem;
+
+          const mediaCache = new Map<string, KlipyMediaItem[]>();
+          let emotePackCache: EmotePack[] | null = null;
+
+          export function MediaPicker({
+            kind,
+            onKindChange,
+            onSelect,
+            onClose,
+          }: {
+            kind: MediaPickerKind;
+            onKindChange: (kind: MediaPickerKind) => void;
+            onSelect: (item: MediaPickerSelection) => void;
+            onClose: () => void;
+          }) {
+            const [query, setQuery] = useState("");
+            const [items, setItems] = useState<KlipyMediaItem[]>([]);
+            const [packs, setPacks] = useState<EmotePack[]>([]);
+            const [activePackId, setActivePackId] = useState<string>();
+            const [status, setStatus] = useState<string>();
+            const [busy, setBusy] = useState(false);
+            const requestRef = useRef<AbortController | null>(null);
+
+            useEffect(() => {
+              setQuery("");
+              setStatus(undefined);
+            }, [kind]);
+
+            useEffect(() => {
+              requestRef.current?.abort();
+              const controller = new AbortController();
+              requestRef.current = controller;
+
+              if (kind === "EMOTE") {
+                if (emotePackCache) {
+                  setPacks(emotePackCache);
+                  setActivePackId((current) => current ?? emotePackCache?.[0]?.id);
+                  setBusy(false);
+                  return () => controller.abort();
+                }
+                setBusy(true);
+                void fetch("/api/comments/emotes", { signal: controller.signal })
+                  .then(async (response) => {
+                    const payload = (await response.json().catch(() => null)) as {
+                      packs?: EmotePack[];
+                      error?: { message?: string };
+                    } | null;
+                    if (!response.ok) throw new Error(payload?.error?.message ?? "Emotes are unavailable.");
+                    const next = Array.isArray(payload?.packs) ? payload.packs : [];
+                    emotePackCache = next;
+                    setPacks(next);
+                    setActivePackId(next[0]?.id);
+                    if (!next.length) setStatus("You do not have any emote packs yet.");
+                  })
+                  .catch((cause: unknown) => {
+                    if (cause instanceof DOMException && cause.name === "AbortError") return;
+                    setPacks([]);
+                    setStatus(cause instanceof Error ? cause.message : "Emotes are unavailable.");
+                  })
+                  .finally(() => {
+                    if (!controller.signal.aborted) setBusy(false);
+                  });
+                return () => controller.abort();
+              }
+
+              const trimmed = query.trim();
+              const cacheKey = `${kind}:${trimmed.toLocaleLowerCase()}`;
+              const cached = mediaCache.get(cacheKey);
+              if (cached) {
+                setItems(cached);
+                setBusy(false);
+                if (!cached.length) setStatus(trimmed ? "No results found." : "No featured media found.");
+                return () => controller.abort();
+              }
+
+              const timer = window.setTimeout(() => {
+                const params = new URLSearchParams({ type: kind });
+                if (trimmed) params.set("q", trimmed);
+                setBusy(true);
+                setStatus(undefined);
+                void fetch(`/api/comments/media/search?${params.toString()}`, { signal: controller.signal })
+                  .then(async (response) => {
+                    const payload = (await response.json().catch(() => null)) as {
+                      items?: KlipyMediaItem[];
+                      error?: { message?: string };
+                    } | null;
+                    if (!response.ok) throw new Error(payload?.error?.message ?? "Media search is unavailable.");
+                    const next = Array.isArray(payload?.items) ? payload.items : [];
+                    mediaCache.set(cacheKey, next);
+                    setItems(next);
+                    if (!next.length) setStatus(trimmed ? "No results found." : "No featured media found.");
+                  })
+                  .catch((cause: unknown) => {
+                    if (cause instanceof DOMException && cause.name === "AbortError") return;
+                    setItems([]);
+                    setStatus(cause instanceof Error ? cause.message : "Media search is unavailable.");
+                  })
+                  .finally(() => {
+                    if (!controller.signal.aborted) setBusy(false);
+                  });
+              }, 250);
+
+              return () => {
+                window.clearTimeout(timer);
+                controller.abort();
+              };
+            }, [kind, query]);
+
+            const filteredPacks = useMemo(() => {
+              const value = query.trim().toLocaleLowerCase();
+              if (!value) return packs;
+              return packs
+                .map((pack) => ({
+                  ...pack,
+                  emotes: pack.emotes.filter(
+                    (emote) =>
+                      emote.label.toLocaleLowerCase().includes(value) ||
+                      emote.shortcode.toLocaleLowerCase().includes(value),
+                  ),
+                }))
+                .filter((pack) => pack.emotes.length > 0);
+            }, [packs, query]);
+
+            function jumpToPack(packId: string) {
+              setActivePackId(packId);
+              document
+                .getElementById(`comment-emote-pack-${packId}`)
+                ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+
+            return (
+              <div className="product-comment-media-picker" aria-label="Media picker">
+                <div className="product-comment-media-picker__header">
+                  <strong>Add media</strong>
+                  <button className="product-comment-media-picker__close" type="button" onClick={onClose} aria-label="Close media picker">
+                    ×
+                  </button>
+                </div>
+                <div className="product-comment-media-picker__tabs" role="tablist" aria-label="Media type">
+                  {(["GIF", "STICKER", "EMOTE"] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="tab"
+                      aria-label={value === "GIF" ? "GIFs" : value === "STICKER" ? "Stickers" : "Emotes"}
+                      aria-selected={kind === value}
+                      className={kind === value ? "is-active" : undefined}
+                      onClick={() => onKindChange(value)}
+                    >
+                      {value === "GIF" ? "GIFs" : value === "STICKER" ? "Stickers" : "Emotes"}
+                    </button>
+                  ))}
+                </div>
+                <div className="product-comment-media-picker__search">
+                  <input
+                    type="search"
+                    value={query}
+                    aria-label={`Search ${kind.toLowerCase()}s`}
+                    placeholder={kind === "GIF" ? "Search GIFs" : kind === "STICKER" ? "Search stickers" : "Search emotes"}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                </div>
+
+                {kind === "EMOTE" ? (
+                  <>
+                    {packs.length ? (
+                      <nav className="product-comment-media-picker__packbar" aria-label="Emote packs">
+                        {packs.map((pack) => (
+                          <button
+                            key={pack.id}
+                            type="button"
+                            className={activePackId === pack.id ? "is-active" : undefined}
+                            aria-label={pack.label}
+                            title={pack.label}
+                            onClick={() => jumpToPack(pack.id)}
+                          >
+                            <span className="product-comment-media-picker__packicon">
+                              {pack.emotes.slice(0, 4).map((emote) => (
+                                <img key={emote.id} src={emote.url} alt="" loading="lazy" />
+                              ))}
+                            </span>
+                          </button>
+                        ))}
+                      </nav>
+                    ) : null}
+                    <div
+                      className="product-comment-media-picker__emote-scroll"
+                      onScroll={(event) => {
+                        const root = event.currentTarget;
+                        const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-pack-id]"));
+                        const current = sections.reduce<HTMLElement | null>((best, section) => {
+                          if (!best) return section;
+                          return Math.abs(section.offsetTop - root.scrollTop) < Math.abs(best.offsetTop - root.scrollTop) ? section : best;
+                        }, null);
+                        if (current?.dataset.packId) setActivePackId(current.dataset.packId);
+                      }}
+                    >
+                      {filteredPacks.map((pack) => (
+                        <section key={pack.id} id={`comment-emote-pack-${pack.id}`} data-pack-id={pack.id}>
+                          <h3>{pack.label}</h3>
+                          <div className="product-comment-media-picker__emote-grid">
+                            {pack.emotes.map((emote) => (
+                              <button key={emote.id} type="button" title={`${emote.label} ${emote.shortcode}`} aria-label={`Add ${emote.label}`} onClick={() => onSelect(emote)}>
+                                <img src={emote.url} alt={emote.label} loading="lazy" />
+                              </button>
+                            ))}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="product-comment-media-picker__results" aria-label={`${kind} results`}>
+                    {items.map((item) => (
+                      <button key={item.id} type="button" className={item.type === "STICKER" ? "is-sticker" : undefined} aria-label={`Add ${item.title}`} onClick={() => onSelect(item)}>
+                        <img src={item.url || item.preview} alt={item.title} loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {busy ? <small role="status">Loading…</small> : null}
+                {!busy && status ? <small role="status">{status}</small> : null}
+              </div>
+            );
+          }
+          EOF
+
+          cat > worker/store/entitlements.ts <<'EOF'
+          import { PostError } from "../posts/errors";
+          import type { NormalizedCommentBody } from "../comments/richtext";
+          import { isStoreAdmin, isStoreLifecycleSchemaError } from "./service";
+
+          export interface EntitledEmoteView {
+            id: string;
+            label: string;
+            shortcode: string;
+            url: string;
+            type: "EMOTE";
+            packId: string;
+          }
+
+          export interface EntitledEmotePackView {
+            id: string;
+            label: string;
+            emotes: EntitledEmoteView[];
+          }
+
+          interface EntitledEmoteRow {
+            id: string;
+            label: string;
+            shortcode: string;
+            packId: string;
+            packLabel: string;
+          }
+
+          function groupEmotes(rows: EntitledEmoteRow[]): EntitledEmotePackView[] {
+            const packs = new Map<string, EntitledEmotePackView>();
+            for (const row of rows) {
+              const pack = packs.get(row.packId) ?? { id: row.packId, label: row.packLabel, emotes: [] };
+              pack.emotes.push({
+                id: row.id,
+                label: row.label,
+                shortcode: row.shortcode,
+                url: `/api/media/catalog/emote/${encodeURIComponent(row.id)}`,
+                type: "EMOTE",
+                packId: row.packId,
+              });
+              packs.set(row.packId, pack);
+            }
+            return [...packs.values()];
+          }
+
+          export async function listEntitledEmotePacks(db: D1Database, userId: string): Promise<EntitledEmotePackView[]> {
+            const adminUnlocked = await isStoreAdmin(db, userId);
+            try {
+              const rows = await db
+                .prepare(
+                  `SELECT DISTINCT e.id, e.label, e.shortcode, e.pack_id AS packId, p.label AS packLabel
+                   FROM emote_catalog e
+                   JOIN emote_packs p ON p.id = e.pack_id
+                   JOIN store_items s ON s.type = 'EMOTE_PACK'
+                     AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
+                     AND json_extract(s.config_json, '$.packId') = e.pack_id
+                   LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+                   WHERE e.lifecycle_state = 'PUBLISHED' AND e.is_enabled = 1
+                     AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+                     AND p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
+                     AND (? = 1 OR i.user_id IS NOT NULL)
+                   ORDER BY p.label ASC, e.sort_order ASC, e.created_at ASC`,
+                )
+                .bind(userId, adminUnlocked ? 1 : 0)
+                .all<EntitledEmoteRow>();
+              return groupEmotes(rows.results);
+            } catch (error) {
+              if (!isStoreLifecycleSchemaError(error)) throw error;
+              const rows = await db
+                .prepare(
+                  `SELECT DISTINCT e.id, e.label, e.shortcode, e.pack_id AS packId, p.label AS packLabel
+                   FROM emote_catalog e
+                   JOIN emote_packs p ON p.id = e.pack_id
+                   JOIN store_items s ON s.type = 'EMOTE_PACK' AND s.is_active = 1
+                     AND json_extract(s.config_json, '$.packId') = e.pack_id
+                   LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+                   WHERE e.status = 'ACTIVE' AND p.status = 'ACTIVE'
+                     AND (? = 1 OR i.user_id IS NOT NULL)
+                   ORDER BY p.label ASC, e.sort_order ASC, e.created_at ASC`,
+                )
+                .bind(userId, adminUnlocked ? 1 : 0)
+                .all<EntitledEmoteRow>();
+              return groupEmotes(rows.results);
+            }
+          }
+
+          export function createEntitlementChecker(db: D1Database) {
+            return async function assertEntitlements(userId: string, body: NormalizedCommentBody): Promise<void> {
+              const shortcodes = [...new Set(body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode))];
+              let adminUnlocked: boolean | null = null;
+
+              async function hasAdminUnlock(): Promise<boolean> {
+                if (adminUnlocked === null) adminUnlocked = await isStoreAdmin(db, userId);
+                return adminUnlocked;
+              }
+
+              for (const shortcode of shortcodes) {
+                const available = await db
+                  .prepare(
+                    `SELECT 1 FROM emote_catalog e
+                     LEFT JOIN emote_packs p ON p.id = e.pack_id
+                     WHERE e.shortcode = ?
+                       AND e.lifecycle_state = 'PUBLISHED'
+                       AND e.is_enabled = 1
+                       AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+                       AND (e.pack_id IS NULL OR (
+                         p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
+                         AND EXISTS (
+                           SELECT 1 FROM user_inventory i JOIN store_items s ON s.id = i.store_item_id
+                           WHERE i.user_id = ? AND s.type = 'EMOTE_PACK'
+                             AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
+                             AND json_extract(s.config_json, '$.packId') = e.pack_id
+                         )
+                       ))`,
+                  )
+                  .bind(shortcode, userId)
+                  .first();
+                if (available) continue;
+
+                if (await hasAdminUnlock()) {
+                  const exists = await db
+                    .prepare(
+                      `SELECT 1 FROM emote_catalog e
+                       LEFT JOIN emote_packs p ON p.id = e.pack_id
+                       WHERE e.shortcode = ?
+                         AND e.lifecycle_state = 'PUBLISHED'
+                         AND e.is_enabled = 1
+                         AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+                         AND (e.pack_id IS NULL OR (p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1))`,
+                    )
+                    .bind(shortcode)
+                    .first();
+                  if (exists) continue;
+                }
+
+                throw new PostError(403, "EMOTE_NOT_ENTITLED", "This emote pack is not in your inventory.");
+              }
+
+              if (body.attachment?.type !== "STICKER" || body.attachment.provider === "klipy") return;
+              const available = await db
+                .prepare(
+                  `SELECT 1 FROM sticker_catalog s
+                   WHERE (s.id = ? OR s.slug = ?) AND s.status = 'ACTIVE'
+                     AND (s.pack_id IS NULL OR EXISTS (
+                       SELECT 1 FROM user_inventory i JOIN store_items item ON item.id = i.store_item_id
+                       WHERE i.user_id = ? AND item.type = 'STICKER_PACK'
+                         AND item.lifecycle_state = 'PUBLISHED' AND item.is_enabled = 1
+                         AND json_extract(item.config_json, '$.packId') = s.pack_id
+                     ))`,
+                )
+                .bind(body.attachment.id, body.attachment.id, userId)
+                .first();
+              if (available) return;
+
+              if (await hasAdminUnlock()) {
+                const exists = await db
+                  .prepare("SELECT 1 FROM sticker_catalog WHERE (id = ? OR slug = ?) AND status = 'ACTIVE'")
+                  .bind(body.attachment.id, body.attachment.id)
+                  .first();
+                if (exists) return;
+              }
+
+              throw new PostError(403, "STICKER_NOT_ENTITLED", "This sticker pack is not in your inventory.");
+            };
+          }
+          EOF
+
+          cat > app/components/product/RichText.tsx <<'EOF'
+          import type { ReactNode } from "react";
+          import type { SafeInlineRichTextNode, SafeRichTextNode } from "../../../shared/richtext/markdown";
+          import { joinClassNames } from "../../../shared/design/component-variants";
+
+          function marked(content: ReactNode, marks?: SafeInlineRichTextNode["marks"]) {
+            let result = content;
+            if (marks?.code) result = <code>{result}</code>;
+            if (marks?.bold) result = <strong>{result}</strong>;
+            if (marks?.italic) result = <em>{result}</em>;
+            if (marks?.strike) result = <del>{result}</del>;
+            return result;
+          }
+
+          function renderInline(node: SafeInlineRichTextNode, index: number) {
+            const content =
+              node.type === "link" ? (
+                <a href={node.url} target="_blank" rel="noreferrer noopener">{node.label}</a>
+              ) : node.type === "emote" ? (
+                node.url ? (
+                  <img className="product-richtext__emote-image" src={node.url} alt={node.label ?? node.shortcode} title={node.shortcode} loading="lazy" />
+                ) : (
+                  <span className="product-richtext__emote" title={node.shortcode}>{node.shortcode}</span>
+                )
+              ) : (
+                node.text
+              );
+            return <span key={`${node.type}-${index}`}>{marked(content, node.marks)}</span>;
+          }
+
+          function renderBlock(node: SafeRichTextNode, index: number): ReactNode {
+            if (node.type === "paragraph") return <p key={`paragraph-${index}`}>{node.children.map(renderInline)}</p>;
+            if (node.type === "code-block") return <pre key={`code-${index}`}><code>{node.code}</code></pre>;
+            if (node.type === "list") {
+              const List = node.ordered ? "ol" : "ul";
+              return <List key={`list-${index}`}>{node.items.map((item, itemIndex) => <li key={`item-${itemIndex}`}>{item.children.map(renderInline)}</li>)}</List>;
+            }
+            return <blockquote key={`quote-${index}`}>{node.children.map(renderBlock)}</blockquote>;
+          }
+
+          export function RichText({ nodes, className }: { nodes: SafeRichTextNode[]; className?: string }) {
+            return <div className={joinClassNames("product-richtext", className)}>{nodes.map(renderBlock)}</div>;
+          }
+          EOF
+
+          node <<'NODE'
+          const fs = require('fs');
+
+          function patch(path, transform) {
+            const before = fs.readFileSync(path, 'utf8');
+            const after = transform(before);
+            if (after === before) throw new Error(`No changes applied to ${path}`);
+            fs.writeFileSync(path, after);
+          }
+
+          patch('shared/richtext/markdown.ts', (s) => s.replace(
+            '| { type: "emote"; shortcode: string; marks?: RichTextMarks }',
+            '| { type: "emote"; shortcode: string; id?: string; label?: string; url?: string; marks?: RichTextMarks }',
+          ));
+
+          patch('shared/ui/contracts.ts', (s) => {
+            s = s.replace(
+              '| { type: "emote"; shortcode: string; marks?: RichTextMarks }',
+              '| { type: "emote"; shortcode: string; id?: string; label?: string; url?: string; marks?: RichTextMarks }',
+            );
+            const marker = 'export interface CommentView {';
+            const insert = `export interface CommentEmoteView {\n  id: string;\n  label: string;\n  shortcode: string;\n  url: string;\n  type: "EMOTE";\n  packId: string;\n}\n\nexport interface CommentEmotePackView {\n  id: string;\n  label: string;\n  emotes: CommentEmoteView[];\n}\n\n`;
+            if (!s.includes(marker)) throw new Error('CommentView marker missing');
+            return s.replace(marker, insert + marker);
+          });
+
+          patch('worker/comments/api.ts', (s) => {
+            s = s.replace('import { createEntitlementChecker } from "../store/entitlements";', 'import { createEntitlementChecker, listEntitledEmotePacks } from "../store/entitlements";');
+            s = s.replace('pathname === "/api/comments/media/search" ||', 'pathname === "/api/comments/media/search" ||\n    pathname === "/api/comments/emotes" ||');
+            const marker = '    if (url.pathname === "/api/comments/media/search" && request.method === "GET") {\n      return await searchKlipy(request, requestId, env);\n    }';
+            const replacement = `${marker}\n    if (url.pathname === "/api/comments/emotes" && request.method === "GET") {\n      const userId = await requiredViewer(request, env);\n      return json({ packs: await listEntitledEmotePacks(database(env), userId) }, requestId);\n    }`;
+            if (!s.includes(marker)) throw new Error('comments media handler marker missing');
+            return s.replace(marker, replacement);
+          });
+
+          patch('worker/comments/store.ts', (s) => {
+            s = `import { isStoreLifecycleSchemaError } from "../store/service";\n${s}`;
+            s = s.replace(
+              'export interface CommentStore {',
+              'export interface CommentEmoteAsset {\n  id: string;\n  shortcode: string;\n  label: string;\n  url: string;\n}\n\nexport interface CommentStore {',
+            );
+            s = s.replace(
+              '  getLikedCommentIds?(userId: string, commentIds: string[]): Promise<Set<string>>;\n}',
+              '  getLikedCommentIds?(userId: string, commentIds: string[]): Promise<Set<string>>;\n  getEmoteAssets?(shortcodes: string[]): Promise<Map<string, CommentEmoteAsset>>;\n}',
+            );
+            const marker = '    async hasLike(userId, targetType, targetId) {';
+            const method = `    async getEmoteAssets(shortcodes) {\n      const unique = [...new Set(shortcodes)];\n      if (!unique.length) return new Map();\n      const placeholders = unique.map(() => "?").join(", ");\n      let rows;\n      try {\n        rows = await db\n          .prepare(\`SELECT e.id, e.shortcode, e.label FROM emote_catalog e LEFT JOIN emote_packs p ON p.id = e.pack_id WHERE e.shortcode IN (\${placeholders}) AND e.lifecycle_state = 'PUBLISHED' AND e.is_enabled = 1 AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED') AND (e.pack_id IS NULL OR (p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1))\`)\n          .bind(...unique)\n          .all<{ id: string; shortcode: string; label: string }>();\n      } catch (error) {\n        if (!isStoreLifecycleSchemaError(error)) throw error;\n        rows = await db\n          .prepare(\`SELECT e.id, e.shortcode, e.label FROM emote_catalog e LEFT JOIN emote_packs p ON p.id = e.pack_id WHERE e.shortcode IN (\${placeholders}) AND e.status = 'ACTIVE' AND (e.pack_id IS NULL OR p.status = 'ACTIVE')\`)\n          .bind(...unique)\n          .all<{ id: string; shortcode: string; label: string }>();\n      }\n      return new Map(rows.results.map((row) => [row.shortcode, { ...row, url: \`/api/media/catalog/emote/\${encodeURIComponent(row.id)}\` }]));\n    },\n\n`;
+            if (!s.includes(marker)) throw new Error('comment store hasLike marker missing');
+            return s.replace(marker, method + marker);
+          });
+
+          patch('worker/comments/service.ts', (s) => {
+            s = s.replace('import type { CommentStore } from "./store";', 'import type { CommentEmoteAsset, CommentStore } from "./store";');
+            s = s.replace(
+              '  viewerReacted = false,\n): Promise<CommentView> {',
+              '  viewerReacted = false,\n  emoteAssets: Map<string, CommentEmoteAsset> = new Map(),\n): Promise<CommentView> {',
+            );
+            s = s.replace(
+              '    richtext: record.comment.state === "DELETED" ? undefined : record.comment.richtext,',
+              '    richtext:\n      record.comment.state === "DELETED"\n        ? undefined\n        : record.comment.richtext.map((node) => {\n            if (node.type !== "emote") return node;\n            const asset = emoteAssets.get(node.shortcode);\n            return asset ? { ...node, id: asset.id, label: asset.label, url: asset.url } : node;\n          }),',
+            );
+            const listMarker = '      const views = await Promise.all(\n        page.comments.map((comment) =>';
+            const listReplacement = `      const emoteShortcodes = [...new Set(page.comments.flatMap((record) => record.comment.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode)))];\n      const emoteAssets = dependencies.store.getEmoteAssets\n        ? await dependencies.store.getEmoteAssets(emoteShortcodes)\n        : new Map<string, CommentEmoteAsset>();\n      const views = await Promise.all(\n        page.comments.map((comment) =>`;
+            if (!s.includes(listMarker)) throw new Error('comment list view marker missing');
+            s = s.replace(listMarker, listReplacement);
+            s = s.replace(
+              '            likedIds.has(comment.comment.id),\n          ),',
+              '            likedIds.has(comment.comment.id),\n            emoteAssets,\n          ),',
+            );
+            const createMarker = '      await dependencies.store.createComment({\n        comment: record,\n        richtextJson: JSON.stringify(body.richtext),\n        attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,\n      });\n      return toView(';
+            const createReplacement = `      await dependencies.store.createComment({\n        comment: record,\n        richtextJson: JSON.stringify(body.richtext),\n        attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,\n      });\n      const createdEmoteAssets = dependencies.store.getEmoteAssets\n        ? await dependencies.store.getEmoteAssets(body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode))\n        : new Map<string, CommentEmoteAsset>();\n      return toView(`;
+            if (!s.includes(createMarker)) throw new Error('comment create marker missing');
+            s = s.replace(createMarker, createReplacement);
+            const createTail = '        dependencies.profileStore,\n        now,\n      );\n    },\n\n    async update';
+            const createTailReplacement = '        dependencies.profileStore,\n        now,\n        false,\n        createdEmoteAssets,\n      );\n    },\n\n    async update';
+            if (!s.includes(createTail)) throw new Error('comment create tail missing');
+            s = s.replace(createTail, createTailReplacement);
+            const updateReturn = '      return toView({ ...current, comment: updated }, authorId, dependencies.profileStore, now);';
+            const updateReplacement = `      const updatedEmoteAssets = dependencies.store.getEmoteAssets\n        ? await dependencies.store.getEmoteAssets(body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode))\n        : new Map<string, CommentEmoteAsset>();\n      return toView(\n        { ...current, comment: updated },\n        authorId,\n        dependencies.profileStore,\n        now,\n        false,\n        updatedEmoteAssets,\n      );`;
+            if (!s.includes(updateReturn)) throw new Error('comment update return marker missing');
+            return s.replace(updateReturn, updateReplacement);
+          });
+
+          patch('app/components/product/CommentThread.tsx', (s) => {
+            s = s.replace('import { useCallback, useEffect, useRef, useState } from "react";', 'import { useEffect, useRef, useState } from "react";');
+            s = s.replace('import { ShareAction } from "./ShareAction";', 'import { ShareAction } from "./ShareAction";\nimport { MediaPicker, type MediaPickerKind } from "./MediaPicker";');
+            s = s.replace(/\ninterface KlipyMediaItem \{[\s\S]*?\n\}\n\nfunction CommentAttachment/, '\nfunction CommentAttachment');
+            s = s.replace(/\nfunction MediaPicker\(\{[\s\S]*?\n\}\n\nfunction replaceComment/, '\nfunction replaceComment');
+            s = s.replace('const [mediaKind, setMediaKind] = useState<"GIF" | "STICKER" | null>(null);', 'const [mediaKind, setMediaKind] = useState<MediaPickerKind | null>(null);');
+            const stickerButton = `                <button\n                  type="button"\n                  aria-expanded={mediaKind === "STICKER"}\n                  onClick={() => setMediaKind(mediaKind === "STICKER" ? null : "STICKER")}\n                >\n                  Sticker\n                </button>`;
+            const emoteButton = `${stickerButton}\n                <button\n                  type="button"\n                  aria-expanded={mediaKind === "EMOTE"}\n                  onClick={() => setMediaKind(mediaKind === "EMOTE" ? null : "EMOTE")}\n                >\n                  Emote\n                </button>`;
+            if (!s.includes(stickerButton)) throw new Error('sticker toolbar marker missing');
+            s = s.replace(stickerButton, emoteButton);
+            const selectStart = `                onSelect={(item) => {\n                  setAttachment({\n                    type: item.type,\n                    id: item.id,\n                    label: item.label,\n                    provider: item.provider,\n                    url: item.url,\n                    preview: item.preview,\n                  });\n                  setMediaKind(null);\n                }}`;
+            const selectNew = `                onSelect={(item) => {\n                  if (item.type === "EMOTE") {\n                    setBody((current) => \`\${current}\${current && !/\\s$/.test(current) ? " " : ""}\${item.shortcode}\`);\n                  } else {\n                    setAttachment({\n                      type: item.type,\n                      id: item.id,\n                      label: item.label,\n                      provider: item.provider,\n                      url: item.url,\n                      preview: item.preview,\n                    });\n                  }\n                  setMediaKind(null);\n                }}`;
+            if (!s.includes(selectStart)) throw new Error('media selection marker missing');
+            s = s.replace(selectStart, selectNew);
+            if (s.includes('function MediaPicker(') || s.includes('interface KlipyMediaItem')) throw new Error('embedded picker removal incomplete');
+            return s;
+          });
+
+          patch('app/components/product/profile-klipy.css', (s) => {
+            s = s.replace('grid-template-columns: repeat(2, minmax(0, 1fr));', 'grid-template-columns: repeat(3, minmax(0, 1fr));');
+            s = s.replace('width: min(100%, 440px);', 'width: min(100%, 260px);');
+            s = s.replace('width: min(100%, 440px);', 'width: min(100%, 220px);');
+            s = s.replace('width: min(220px, 68vw);', 'width: min(154px, 68vw);');
+            s = s.replace('max-height: 260px;', 'max-height: 182px;');
+            const marker = '.product-comment-media-picker > small[role="status"] {';
+            const extra = `.product-comment-media-picker__packbar {\n  display: flex;\n  gap: 6px;\n  overflow-x: auto;\n  padding-bottom: 4px;\n  scrollbar-width: thin;\n}\n\n.product-comment-media-picker__packbar > button {\n  width: 44px;\n  height: 44px;\n  flex: 0 0 44px;\n  padding: 3px;\n  border: 1px solid transparent;\n  border-radius: 12px;\n  background: var(--bg-app-secondary);\n  cursor: pointer;\n}\n\n.product-comment-media-picker__packbar > button.is-active {\n  border-color: var(--accent);\n  background: var(--accent-soft);\n}\n\n.product-comment-media-picker__packicon {\n  display: grid;\n  width: 100%;\n  height: 100%;\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n  grid-template-rows: repeat(2, minmax(0, 1fr));\n  gap: 1px;\n}\n\n.product-comment-media-picker__packicon img {\n  width: 100%;\n  height: 100%;\n  min-width: 0;\n  object-fit: contain;\n}\n\n.product-comment-media-picker__emote-scroll {\n  display: grid;\n  max-height: min(52vh, 500px);\n  gap: var(--space-3);\n  overflow-y: auto;\n  overscroll-behavior: contain;\n  scrollbar-width: thin;\n}\n\n.product-comment-media-picker__emote-scroll section {\n  display: grid;\n  gap: var(--space-2);\n  scroll-margin-top: var(--space-2);\n}\n\n.product-comment-media-picker__emote-scroll h3 {\n  margin: 0;\n  font-size: var(--text-sm);\n}\n\n.product-comment-media-picker__emote-grid {\n  display: grid;\n  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));\n  gap: 4px;\n}\n\n.product-comment-media-picker__emote-grid button {\n  display: grid;\n  min-width: 0;\n  aspect-ratio: 1 / 1;\n  place-items: center;\n  padding: 5px;\n  border: 0;\n  border-radius: 9px;\n  background: transparent;\n  cursor: pointer;\n}\n\n.product-comment-media-picker__emote-grid button:hover,\n.product-comment-media-picker__emote-grid button:focus-visible {\n  background: var(--accent-soft);\n}\n\n.product-comment-media-picker__emote-grid img {\n  width: 100%;\n  height: 100%;\n  object-fit: contain;\n}\n\n.product-richtext__emote-image {\n  display: inline-block;\n  width: 1.55em;\n  height: 1.55em;\n  margin: 0 0.08em;\n  object-fit: contain;\n  vertical-align: -0.35em;\n}\n\n`;
+            if (!s.includes(marker)) throw new Error('picker status CSS marker missing');
+            return s.replace(marker, extra + marker);
+          });
+
+          patch('tests/unit/profile-account-klipy-picker.test.ts', (s) => {
+            s = s.replace('const commentThread = read("../../app/components/product/CommentThread.tsx");', 'const commentThread = read("../../app/components/product/CommentThread.tsx");\nconst mediaPicker = read("../../app/components/product/MediaPicker.tsx");');
+            s = s.replace('expect(commentThread).toContain("loadMedia");', 'expect(mediaPicker).toContain("mediaCache");');
+            s = s.replace('expect(commentThread).toContain("useEffect(() =>");', 'expect(mediaPicker).toContain("useEffect(() =>");');
+            s = s.replace('expect(commentThread).toContain(\'role="tablist"\');', 'expect(mediaPicker).toContain(\'role="tablist"\');');
+            s = s.replace('expect(commentThread).toContain(\'role="tab"\');', 'expect(mediaPicker).toContain(\'role="tab"\');');
+            s = s.replace('expect(commentThread).toContain("onKindChange");', 'expect(mediaPicker).toContain("onKindChange");');
+            s = s.replace('expect(commentThread).toContain("product-comment-media-picker__results");', 'expect(mediaPicker).toContain("product-comment-media-picker__results");');
+            s = s.replace('expect(commentThread).toContain("item.url || item.preview");', 'expect(mediaPicker).toContain("item.url || item.preview");');
+            return s;
+          });
+          NODE
+
+      - name: Format and run focused GREEN gates
+        run: |
+          npx prettier --write app/components/product/MediaPicker.tsx app/components/product/CommentThread.tsx app/components/product/RichText.tsx app/components/product/profile-klipy.css shared/richtext/markdown.ts shared/ui/contracts.ts worker/comments/api.ts worker/comments/store.ts worker/comments/service.ts worker/store/entitlements.ts tests/unit/media-picker.test.ts tests/unit/profile-account-klipy-picker.test.ts
+          npx vitest run tests/unit/media-picker.test.ts tests/unit/profile-account-klipy-picker.test.ts tests/unit/comment-richtext.test.ts tests/unit/store-entitlements.test.ts tests/unit/comments-social-actions.test.ts
+          npm run typecheck
+
+      - name: Commit implementation and remove helper
+        run: |
+          rm .github/workflows/implement-media-picker.yml
+          git config user.name "sourceboard-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/components/product/MediaPicker.tsx app/components/product/CommentThread.tsx app/components/product/RichText.tsx app/components/product/profile-klipy.css shared/richtext/markdown.ts shared/ui/contracts.ts worker/comments/api.ts worker/comments/store.ts worker/comments/service.ts worker/store/entitlements.ts tests/unit/media-picker.test.ts tests/unit/profile-account-klipy-picker.test.ts .github/workflows/implement-media-picker.yml
+          git commit -m "feat: add responsive klipy and emote picker"
+          git push origin master
