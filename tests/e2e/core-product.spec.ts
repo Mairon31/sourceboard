@@ -82,9 +82,7 @@ test("create-post surface requests authentication before showing the composer", 
   await expect(page.getByText(/\b(?:D1|R2|Worker|binding|bindings)\b/)).toHaveCount(0);
 });
 
-test("signed-in source request composer previews, replaces and removes a validated image", async ({
-  page,
-}) => {
+test("signed-in source request composer previews, replaces and removes a validated image", async ({ page }) => {
   await installAdminStoreFixture(page);
   await page.goto("/post/new");
   await waitForUiReady(page);
