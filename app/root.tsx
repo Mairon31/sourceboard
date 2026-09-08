@@ -30,6 +30,7 @@ import "./components/product/store.css";
 import "./components/product/store-page.css";
 import "./components/product/store-responsive.css";
 import "./components/product/store-effects.css";
+import "./components/product/name-effect-extras.css";
 import "./components/product/custom-cosmetics.css";
 import "./components/product/cosmetic-identity.css";
 import "./components/product/profile-klipy.css";
