@@ -53,7 +53,10 @@ function requireDatabase(env: SourceBoardEnvironment): D1Database {
   return env.DB;
 }
 
-async function requireViewerId(request: Request, env: SourceBoardEnvironment): Promise<string> {
+async function requireViewerId(
+  request: Request,
+  env: SourceBoardEnvironment,
+): Promise<string> {
   if (!getSessionToken(request)) {
     throw new ProfileError(401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
   }
