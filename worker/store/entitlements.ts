@@ -103,30 +103,53 @@ export function createEntitlementChecker(db: D1Database) {
       return adminUnlocked;
     }
 
-    for (const shortcode of shortcodes) {
-      const available = await db
-        .prepare(
-          `SELECT 1 FROM emote_catalog e
-           LEFT JOIN emote_packs p ON p.id = e.pack_id
-           WHERE e.shortcode = ?
-             AND e.lifecycle_state = 'PUBLISHED'
-             AND e.is_enabled = 1
-             AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
-             AND (e.pack_id IS NULL OR (
-               p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
-               AND EXISTS (
-                 SELECT 1 FROM user_inventory i JOIN store_items s ON s.id = i.store_item_id
-                 WHERE i.user_id = ? AND s.type = 'EMOTE_PACK'
-                   AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
-                   AND json_extract(s.config_json, '$.packId') = e.pack_id
-               )
-             ))`,
-        )
-        .bind(shortcode, userId)
-        .first();
-      if (available) continue;
+    async function hasEmoteEntitlement(shortcode: string): Promise<boolean> {
+      try {
+        const available = await db
+          .prepare(
+            `SELECT 1 FROM emote_catalog e
+             LEFT JOIN emote_packs p ON p.id = e.pack_id
+             WHERE e.shortcode = ?
+               AND e.lifecycle_state = 'PUBLISHED'
+               AND e.is_enabled = 1
+               AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+               AND (e.pack_id IS NULL OR (
+                 p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
+                 AND EXISTS (
+                   SELECT 1 FROM user_inventory i JOIN store_items s ON s.id = i.store_item_id
+                   WHERE i.user_id = ? AND s.type = 'EMOTE_PACK'
+                     AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
+                     AND json_extract(s.config_json, '$.packId') = e.pack_id
+                 )
+               ))`,
+          )
+          .bind(shortcode, userId)
+          .first();
+        return Boolean(available);
+      } catch (error) {
+        if (!isStoreLifecycleSchemaError(error)) throw error;
+        const available = await db
+          .prepare(
+            `SELECT 1 FROM emote_catalog e
+             LEFT JOIN emote_packs p ON p.id = e.pack_id
+             WHERE e.shortcode = ? AND e.status = 'ACTIVE'
+               AND (e.pack_id IS NULL OR (
+                 p.status = 'ACTIVE'
+                 AND EXISTS (
+                   SELECT 1 FROM user_inventory i JOIN store_items s ON s.id = i.store_item_id
+                   WHERE i.user_id = ? AND s.type = 'EMOTE_PACK' AND s.is_active = 1
+                     AND json_extract(s.config_json, '$.packId') = e.pack_id
+                 )
+               ))`,
+          )
+          .bind(shortcode, userId)
+          .first();
+        return Boolean(available);
+      }
+    }
 
-      if (await hasAdminUnlock()) {
+    async function hasAdminEmoteAccess(shortcode: string): Promise<boolean> {
+      try {
         const exists = await db
           .prepare(
             `SELECT 1 FROM emote_catalog e
@@ -139,26 +162,59 @@ export function createEntitlementChecker(db: D1Database) {
           )
           .bind(shortcode)
           .first();
-        if (exists) continue;
+        return Boolean(exists);
+      } catch (error) {
+        if (!isStoreLifecycleSchemaError(error)) throw error;
+        const exists = await db
+          .prepare(
+            `SELECT 1 FROM emote_catalog e
+             LEFT JOIN emote_packs p ON p.id = e.pack_id
+             WHERE e.shortcode = ? AND e.status = 'ACTIVE'
+               AND (e.pack_id IS NULL OR p.status = 'ACTIVE')`,
+          )
+          .bind(shortcode)
+          .first();
+        return Boolean(exists);
       }
+    }
 
+    for (const shortcode of shortcodes) {
+      if (await hasEmoteEntitlement(shortcode)) continue;
+      if ((await hasAdminUnlock()) && (await hasAdminEmoteAccess(shortcode))) continue;
       throw new PostError(403, "EMOTE_NOT_ENTITLED", "This emote pack is not in your inventory.");
     }
 
     if (body.attachment?.type !== "STICKER" || body.attachment.provider === "klipy") return;
-    const available = await db
-      .prepare(
-        `SELECT 1 FROM sticker_catalog s
-         WHERE (s.id = ? OR s.slug = ?) AND s.status = 'ACTIVE'
-           AND (s.pack_id IS NULL OR EXISTS (
-             SELECT 1 FROM user_inventory i JOIN store_items item ON item.id = i.store_item_id
-             WHERE i.user_id = ? AND item.type = 'STICKER_PACK'
-               AND item.lifecycle_state = 'PUBLISHED' AND item.is_enabled = 1
-               AND json_extract(item.config_json, '$.packId') = s.pack_id
-           ))`,
-      )
-      .bind(body.attachment.id, body.attachment.id, userId)
-      .first();
+    let available: unknown;
+    try {
+      available = await db
+        .prepare(
+          `SELECT 1 FROM sticker_catalog s
+           WHERE (s.id = ? OR s.slug = ?) AND s.status = 'ACTIVE'
+             AND (s.pack_id IS NULL OR EXISTS (
+               SELECT 1 FROM user_inventory i JOIN store_items item ON item.id = i.store_item_id
+               WHERE i.user_id = ? AND item.type = 'STICKER_PACK'
+                 AND item.lifecycle_state = 'PUBLISHED' AND item.is_enabled = 1
+                 AND json_extract(item.config_json, '$.packId') = s.pack_id
+             ))`,
+        )
+        .bind(body.attachment.id, body.attachment.id, userId)
+        .first();
+    } catch (error) {
+      if (!isStoreLifecycleSchemaError(error)) throw error;
+      available = await db
+        .prepare(
+          `SELECT 1 FROM sticker_catalog s
+           WHERE (s.id = ? OR s.slug = ?) AND s.status = 'ACTIVE'
+             AND (s.pack_id IS NULL OR EXISTS (
+               SELECT 1 FROM user_inventory i JOIN store_items item ON item.id = i.store_item_id
+               WHERE i.user_id = ? AND item.type = 'STICKER_PACK' AND item.is_active = 1
+                 AND json_extract(item.config_json, '$.packId') = s.pack_id
+             ))`,
+        )
+        .bind(body.attachment.id, body.attachment.id, userId)
+        .first();
+    }
     if (available) return;
 
     if (await hasAdminUnlock()) {
