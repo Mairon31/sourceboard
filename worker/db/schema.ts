@@ -605,7 +605,7 @@ export const storeItems = sqliteTable(
     ),
     check(
       "store_items_type_check",
-      sql`${table.type} IN ('AVATAR_FRAME', 'PROFILE_BANNER', 'PROFILE_EFFECT', 'NAME_FONT', 'EMOTE_PACK', 'STICKER_PACK')`,
+      sql`${table.type} IN ('AVATAR_FRAME', 'PROFILE_BANNER', 'PROFILE_EFFECT', 'NAME_FONT', 'NAME_EFFECT', 'EMOTE_PACK', 'STICKER_PACK')`,
     ),
     check("store_items_price_check", sql`${table.pricePoints} >= 0`),
     check(
@@ -677,7 +677,7 @@ export const userCosmetics = sqliteTable(
     uniqueIndex("user_cosmetics_item_unique").on(table.userId, table.storeItemId),
     check(
       "user_cosmetics_slot_check",
-      sql`${table.slot} IN ('AVATAR_FRAME', 'PROFILE_BANNER', 'PROFILE_EFFECT', 'NAME_FONT')`,
+      sql`${table.slot} IN ('AVATAR_FRAME', 'PROFILE_BANNER', 'PROFILE_EFFECT', 'NAME_FONT', 'NAME_EFFECT')`,
     ),
   ],
 );

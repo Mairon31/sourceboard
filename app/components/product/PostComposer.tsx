@@ -10,7 +10,10 @@ import "./post-composer.css";
 export interface PostComposerIdentity {
   displayName: string;
   avatarUrl?: string;
-  cosmetics: Pick<CosmeticIdentityProps, "avatarFrame" | "profileEffect" | "nameFont">;
+  cosmetics: Pick<
+    CosmeticIdentityProps,
+    "avatarFrame" | "profileEffect" | "nameFont" | "nameEffect"
+  >;
 }
 
 type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
@@ -169,6 +172,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
                 avatarFrame={identity.cosmetics.avatarFrame}
                 profileEffect={identity.cosmetics.profileEffect}
                 nameFont={identity.cosmetics.nameFont}
+                nameEffect={identity.cosmetics.nameEffect}
                 mode="preview"
                 nameAs="strong"
               />

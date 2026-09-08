@@ -347,9 +347,117 @@
   }
 }
 
+.product-store-preview--name-effect {
+  display: grid;
+  min-height: 132px;
+  place-content: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.product-store-preview--name-effect strong {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  line-height: 1.1;
+}
+
+.product-store-preview--name-effect span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: capitalize;
+}
+
+.sb-name-effect--red {
+  color: #ef5b63;
+  text-shadow: 0 0 0.45em #ef5b6355;
+}
+
+.sb-name-effect--blue {
+  color: #5f9cff;
+  text-shadow: 0 0 0.45em #5f9cff55;
+}
+
+.sb-name-effect--green {
+  color: #48c878;
+  text-shadow: 0 0 0.45em #48c87855;
+}
+
+.sb-name-effect--purple {
+  color: #a978ff;
+  text-shadow: 0 0 0.45em #a978ff55;
+}
+
+.sb-name-effect--gold {
+  color: #e6bd55;
+  text-shadow: 0 0 0.45em #e6bd5555;
+}
+
+@keyframes sb-name-effect-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes sb-name-effect-pulse {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    filter: saturate(1.25) brightness(1.12);
+  }
+}
+
+.sb-name-effect--rainbow,
+.sb-name-effect--aurora,
+.sb-name-effect--inferno,
+.sb-name-effect--ice {
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-size: 220% 220%;
+  animation: sb-name-effect-shift 5s ease-in-out infinite;
+}
+
+.sb-name-effect--rainbow {
+  background-image: linear-gradient(90deg, #ff677d, #ffcf5a, #63d58b, #58a8ff, #b275ff, #ff677d);
+}
+
+.sb-name-effect--aurora {
+  background-image: linear-gradient(90deg, #57e5c5, #6a9cff, #bb77ff, #57e5c5);
+  text-shadow: 0 0 0.55em #6a9cff44;
+}
+
+.sb-name-effect--inferno {
+  background-image: linear-gradient(90deg, #ffda68, #ff794e, #e94a4f, #ffda68);
+  text-shadow: 0 0 0.5em #ff674755;
+}
+
+.sb-name-effect--ice {
+  background-image: linear-gradient(90deg, #eaffff, #7fdcff, #8da7ff, #eaffff);
+  text-shadow: 0 0 0.5em #82d9ff55;
+}
+
+.sb-name-effect--cyber {
+  color: #67f4ff;
+  text-shadow:
+    0.055em 0 #ff4ccf,
+    -0.055em 0 #586cff,
+    0 0 0.5em #67f4ff66;
+  animation: sb-name-effect-pulse 2.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .product-store-preview--effect::before,
   .product-store-preview--effect::after,
+  .sb-name-effect--rainbow,
+  .sb-name-effect--aurora,
+  .sb-name-effect--inferno,
+  .sb-name-effect--ice,
+  .sb-name-effect--cyber,
   .product-profile-content--star-dust,
   .product-profile-content--blue-energy,
   .product-profile-content--fire-pulse,

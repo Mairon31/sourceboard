@@ -36,6 +36,21 @@ export const PROFILE_EFFECT_PRESETS = [
 
 export type ProfileEffectPreset = (typeof PROFILE_EFFECT_PRESETS)[number];
 
+export const NAME_EFFECT_PRESETS = [
+  "red",
+  "blue",
+  "green",
+  "purple",
+  "gold",
+  "rainbow",
+  "cyber",
+  "inferno",
+  "ice",
+  "aurora",
+] as const;
+
+export type NameEffectPreset = (typeof NAME_EFFECT_PRESETS)[number];
+
 export const NAME_FONT_FAMILIES = [
   "InterVariable",
   "AtkinsonHyperlegible",
@@ -57,6 +72,10 @@ export function isAvatarFramePreset(value: unknown): value is AvatarFramePreset 
 
 export function isProfileEffectPreset(value: unknown): value is ProfileEffectPreset {
   return PROFILE_EFFECT_PRESETS.includes(value as ProfileEffectPreset);
+}
+
+export function isNameEffectPreset(value: unknown): value is NameEffectPreset {
+  return NAME_EFFECT_PRESETS.includes(value as NameEffectPreset);
 }
 
 export function isNameFontFamily(value: unknown): value is NameFontFamily {

@@ -1,5 +1,6 @@
 import type {
   AvatarFramePreset,
+  NameEffectPreset,
   NameFontFamily,
   ProfileEffectPreset,
 } from "../../../shared/store/cosmetics";
@@ -11,6 +12,7 @@ export interface CosmeticIdentityProps {
   avatarFrame?: AvatarFramePreset;
   profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
+  nameEffect?: NameEffectPreset;
   mode: "profile" | "compact" | "preview";
   avatarSize?: "sm" | "md" | "lg" | "xl";
   nameAs?: "span" | "strong" | "h1";
@@ -22,6 +24,7 @@ export function CosmeticIdentity({
   avatarFrame,
   profileEffect,
   nameFont,
+  nameEffect,
   mode,
   avatarSize = mode === "profile" ? "xl" : mode === "preview" ? "lg" : "sm",
   nameAs = "span",
@@ -41,7 +44,7 @@ export function CosmeticIdentity({
         />
       </span>
       <NameTag
-        className="cosmetic-identity__name"
+        className={`cosmetic-identity__name${nameEffect ? ` sb-name-effect--${nameEffect}` : ""}`}
         style={nameFont ? { fontFamily: nameFont } : undefined}
       >
         {displayName}

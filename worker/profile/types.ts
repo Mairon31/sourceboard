@@ -1,5 +1,6 @@
 import type {
   AvatarFramePreset,
+  NameEffectPreset,
   NameFontFamily,
   ProfileEffectPreset,
 } from "../../shared/store/cosmetics";
@@ -86,6 +87,7 @@ export interface PublicProfileDto {
     profileBanner?: "nebula";
     profileEffect?: ProfileEffectPreset;
     nameFont?: NameFontFamily;
+    nameEffect?: NameEffectPreset;
   };
   profileVisibility: ProfileVisibility;
   socialLinks: Array<{ platform: string; url: string }>;

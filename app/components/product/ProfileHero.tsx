@@ -74,6 +74,7 @@ export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
                 avatarFrame={profile.cosmetics?.avatarFrame}
                 profileEffect={profile.cosmetics?.profileEffect}
                 nameFont={profile.cosmetics?.nameFont}
+                nameEffect={profile.cosmetics?.nameEffect}
                 mode="profile"
                 nameAs="h1"
               />

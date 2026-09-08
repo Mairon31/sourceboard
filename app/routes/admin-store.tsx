@@ -249,6 +249,7 @@ export default function AdminStoreRoute() {
                     <option value="AVATAR_FRAME">Avatar frame</option>
                     <option value="PROFILE_EFFECT">Profile effect</option>
                     <option value="PROFILE_BANNER">Profile banner</option>
+                    <option value="NAME_EFFECT">Name effect</option>
                     <option value="NAME_FONT">Name font</option>
                   </select>
                 </label>

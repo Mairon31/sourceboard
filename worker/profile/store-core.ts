@@ -1,8 +1,10 @@
 import {
   isAvatarFramePreset,
+  isNameEffectPreset,
   isNameFontFamily,
   isProfileEffectPreset,
   type AvatarFramePreset,
+  type NameEffectPreset,
   type NameFontFamily,
   type ProfileEffectPreset,
 } from "../../shared/store/cosmetics";
@@ -47,6 +49,7 @@ export interface EquippedCosmetics {
   profileBanner?: "nebula";
   profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
+  nameEffect?: NameEffectPreset;
 }
 
 export interface MediaAssetRecord {
@@ -371,6 +374,9 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       }
       if (row.type === "PROFILE_EFFECT" && isProfileEffectPreset(value.preset)) {
         cosmetics.profileEffect = value.preset;
+      }
+      if (row.type === "NAME_EFFECT" && isNameEffectPreset(value.preset)) {
+        cosmetics.nameEffect = value.preset;
       }
       if (row.type === "NAME_FONT" && isNameFontFamily(value.family)) {
         cosmetics.nameFont = value.family;

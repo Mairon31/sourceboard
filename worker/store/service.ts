@@ -3,6 +3,7 @@ import { PublicHttpError } from "../http/error";
 import { ensureBuiltInStoreCatalog } from "./builtin-catalog";
 import {
   isAvatarFramePreset,
+  isNameEffectPreset,
   isNameFontFamily,
   isProfileEffectPreset,
 } from "../../shared/store/cosmetics";
@@ -19,11 +20,13 @@ export const STORE_TYPES = [
   "PROFILE_BANNER",
   "PROFILE_EFFECT",
   "NAME_FONT",
+  "NAME_EFFECT",
   "EMOTE_PACK",
   "STICKER_PACK",
 ] as const;
 export type StoreType = (typeof STORE_TYPES)[number];
-export type CosmeticSlot = "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_FONT";
+export type CosmeticSlot =
+  "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_FONT" | "NAME_EFFECT";
 
 interface StorePreviewAsset {
   id: string;
@@ -374,6 +377,8 @@ export function validateStoreConfig(type: StoreType, config: unknown): string {
   const value = config as Record<string, unknown>;
   if (type === "NAME_FONT" && !isNameFontFamily(value.family))
     throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "NAME_FONT family is not allowlisted.");
+  if (type === "NAME_EFFECT" && !isNameEffectPreset(value.preset))
+    throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "NAME_EFFECT preset is not allowlisted.");
   if (type === "AVATAR_FRAME" && !isAvatarFramePreset(value.preset))
     throw new StoreError(
       400,

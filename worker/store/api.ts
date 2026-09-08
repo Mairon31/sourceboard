@@ -18,7 +18,13 @@ import {
   validateStoreConfig,
 } from "./service";
 
-const SLOTS = ["AVATAR_FRAME", "PROFILE_BANNER", "PROFILE_EFFECT", "NAME_FONT"] as const;
+const SLOTS = [
+  "AVATAR_FRAME",
+  "PROFILE_BANNER",
+  "PROFILE_EFFECT",
+  "NAME_FONT",
+  "NAME_EFFECT",
+] as const;
 const STORE_ADMIN_ACTIONS = [
   "PUBLISH",
   "UNPUBLISH",

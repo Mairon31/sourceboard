@@ -1,4 +1,9 @@
-import type { AvatarFramePreset, NameFontFamily, ProfileEffectPreset } from "../store/cosmetics";
+import type {
+  AvatarFramePreset,
+  NameEffectPreset,
+  NameFontFamily,
+  ProfileEffectPreset,
+} from "../store/cosmetics";
 import type { RichTextMarks } from "../richtext/markdown";
 
 export type AuthorMode = "IDENTIFIED" | "ANONYMOUS";
@@ -10,6 +15,7 @@ export type StoreItemType =
   | "PROFILE_BANNER"
   | "PROFILE_EFFECT"
   | "NAME_FONT"
+  | "NAME_EFFECT"
   | "EMOTE_PACK"
   | "STICKER_PACK";
 export type StoreItemState =
@@ -33,6 +39,7 @@ export interface PublicPostAuthor {
   avatarFrame?: AvatarFramePreset;
   profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
+  nameEffect?: NameEffectPreset;
 }
 
 export interface ReactionSummary {
@@ -213,7 +220,7 @@ export interface StoreItemView {
   adminUnlocked?: boolean;
   preview: {
     config: {
-      preset?: AvatarFramePreset | ProfileEffectPreset;
+      preset?: AvatarFramePreset | ProfileEffectPreset | NameEffectPreset;
       family?: NameFontFamily;
     };
     media: Array<{ id: string; label: string; url: string }>;

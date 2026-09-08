@@ -12,7 +12,8 @@ import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server
 const STORE_FILTERS = [
   { key: "ALL", label: "All" },
   { key: "AVATAR_FRAME", label: "Frame" },
-  { key: "PROFILE_EFFECT", label: "Effects" },
+  { key: "PROFILE_EFFECT", label: "Profile effects" },
+  { key: "NAME_EFFECT", label: "Name effects" },
   { key: "NAME_FONT", label: "Font" },
   { key: "EMOTE_PACK", label: "Emotes" },
 ] as const;
@@ -23,6 +24,7 @@ const COSMETIC_TYPES = new Set<StoreItemType>([
   "PROFILE_BANNER",
   "PROFILE_EFFECT",
   "NAME_FONT",
+  "NAME_EFFECT",
 ]);
 
 function parseConfig(value: unknown): StoreItemView["preview"]["config"] {

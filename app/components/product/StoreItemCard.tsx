@@ -3,7 +3,8 @@ import { Avatar, Card } from "../ui";
 
 function categoryLabel(type: StoreItemType): string {
   if (type === "AVATAR_FRAME") return "Frame";
-  if (type === "PROFILE_EFFECT") return "Effect";
+  if (type === "PROFILE_EFFECT") return "Profile effect";
+  if (type === "NAME_EFFECT") return "Name effect";
   if (type === "NAME_FONT") return "Font";
   if (type === "EMOTE_PACK") return "Emote pack";
   if (type === "PROFILE_BANNER") return "Banner";
@@ -51,6 +52,14 @@ export function StorePreview({
           <Avatar name={name} src={avatarUrl} size="xl" />
           <strong>{name}</strong>
         </div>
+      </div>
+    );
+  }
+  if (item.type === "NAME_EFFECT") {
+    return (
+      <div className="product-store-preview product-store-preview--name-effect">
+        <strong className={`sb-name-effect--${config.preset ?? "red"}`}>{name}</strong>
+        <span>{config.preset ?? "red"}</span>
       </div>
     );
   }

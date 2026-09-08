@@ -178,6 +178,7 @@ function authorForPost(
     avatarFrame: cosmetics?.avatarFrame,
     profileEffect: cosmetics?.profileEffect,
     nameFont: cosmetics?.nameFont,
+    nameEffect: cosmetics?.nameEffect,
   };
 }
 

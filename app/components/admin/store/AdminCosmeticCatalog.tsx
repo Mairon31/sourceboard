@@ -59,6 +59,15 @@ function CosmeticPreview({ item }: { item: AdminStoreItem }) {
       </div>
     );
   }
+  if (item.type === "NAME_EFFECT") {
+    const preset = typeof config.preset === "string" ? config.preset : "red";
+    return (
+      <div className="admin-store-cosmetic-preview admin-store-cosmetic-preview--font">
+        <strong className={`sb-name-effect--${preset}`}>SourceBoard</strong>
+        <span>{preset}</span>
+      </div>
+    );
+  }
   if (item.type === "NAME_FONT") {
     const family = typeof config.family === "string" ? config.family : undefined;
     return (
@@ -154,7 +163,7 @@ export function AdminCosmeticCatalog({
         <div>
           <span className="product-eyebrow">Public Store catalog</span>
           <h2>Cosmetics</h2>
-          <p>Manage every frame, profile effect, banner and name font in one place.</p>
+          <p>Manage every frame, profile effect, banner, name effect and name font in one place.</p>
         </div>
         <span className="product-search-count">{cosmetics.length} items</span>
       </div>
