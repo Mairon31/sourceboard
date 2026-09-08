@@ -5,10 +5,10 @@
   right: 0;
   width: min(420px, calc(100vw - 20px));
   overflow: hidden;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 88%, var(--text-muted) 12%);
   border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-solid) 97%, var(--bg-app));
-  box-shadow: 0 20px 60px color-mix(in srgb, var(--shadow-color) 34%, transparent);
+  background: color-mix(in srgb, var(--surface-solid) 99%, var(--bg-app));
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--shadow-color) 42%, transparent);
 }
 
 .sb-topbar-notification-menu__header {
@@ -21,18 +21,47 @@
   background: var(--surface-solid);
 }
 
-.sb-topbar-notification-menu__header > div {
+.sb-topbar-notification-menu__header > div:first-child {
   display: grid;
   gap: 2px;
 }
 
-.sb-topbar-notification-menu__header > div > strong {
+.sb-topbar-notification-menu__header > div:first-child > strong {
   font-size: var(--text-sm);
 }
 
-.sb-topbar-notification-menu__header > div > span {
+.sb-topbar-notification-menu__header > div:first-child > span {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+.sb-topbar-notification-menu__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sb-topbar-notification-menu__header-actions button,
+.sb-topbar-notification-menu__all {
+  min-height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  padding: 0 9px;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 720;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sb-topbar-notification-menu__header-actions button:hover,
+.sb-topbar-notification-menu__all:hover,
+.sb-topbar-notification-menu__header-actions button:focus-visible,
+.sb-topbar-notification-menu__all:focus-visible {
+  background: var(--surface-raised);
+  color: var(--text-primary);
 }
 
 .sb-topbar-notification-menu__list {
@@ -68,11 +97,12 @@
 }
 
 .sb-topbar-notification-menu__item.is-unread {
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface-solid));
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-solid));
 }
 
 .sb-topbar-notification-menu__item.is-unread::after {
   background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .sb-topbar-notification-menu__item:hover {
@@ -173,6 +203,16 @@
     left: 8px;
     width: auto;
     max-height: calc(100vh - 80px);
+    border-radius: 16px;
+  }
+
+  .sb-topbar-notification-menu__header {
+    align-items: flex-start;
+  }
+
+  .sb-topbar-notification-menu__header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .sb-topbar-notification-menu__list {
