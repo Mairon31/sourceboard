@@ -2,6 +2,7 @@ import { z } from "zod";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import type { SourceBoardEnvironment } from "../environment";
+import { requireTurnstile } from "./bindings";
 import { AuthError, isAuthError } from "./errors";
 import {
   authCookiesToHeaders,
@@ -29,6 +30,7 @@ const loginSchema = z.object({
 
 const firebaseTokenSchema = z.object({
   idToken: z.string().min(1).max(8192),
+  turnstileToken: z.string().optional(),
 });
 
 const forgotPasswordSchema = z.object({
@@ -168,6 +170,32 @@ function isAuthRoute(pathname: string): boolean {
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/api/admin/users/")
   );
+}
+
+function createRequestTurnstileVerifier(env: SourceBoardEnvironment) {
+  let verifiedToken: string | null = null;
+  return async (token: string | undefined): Promise<void> => {
+    if (token && token === verifiedToken) return;
+    await requireTurnstile(env, token);
+    verifiedToken = token ?? null;
+  };
+}
+
+async function preflightPublicTurnstile(
+  request: Request,
+  url: URL,
+  verifyTurnstile: (token: string | undefined) => Promise<void>,
+): Promise<void> {
+  const routeKey = `${request.method} ${url.pathname}`;
+  if (routeKey === "POST /api/auth/login") {
+    const input = parseSchema(loginSchema, await parseInput(request.clone()));
+    await verifyTurnstile(input.turnstileToken);
+    return;
+  }
+  if (routeKey === "POST /api/auth/google") {
+    const input = parseSchema(firebaseTokenSchema, await parseInput(request.clone()));
+    await verifyTurnstile(input.turnstileToken);
+  }
 }
 
 interface AuthRouteContext {
@@ -326,7 +354,13 @@ export async function handleAuthRequest(
       requireRequestSecurity(request, url);
     }
 
-    const service = createAuthService({ store: createD1AuthStore(requireDatabase(env)), env });
+    const verifyTurnstile = createRequestTurnstileVerifier(env);
+    await preflightPublicTurnstile(request, url, verifyTurnstile);
+    const service = createAuthService({
+      store: createD1AuthStore(requireDatabase(env)),
+      env,
+      verifyTurnstile,
+    });
     const context = createAuthContext(request, requestId);
 
     const route: AuthRouteContext = { request, requestId, service, context };
