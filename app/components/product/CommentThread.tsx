@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
 import type { SafeRichTextNode } from "../../../shared/richtext/markdown";
 import { readCsrfToken } from "../../data/csrf";
@@ -488,6 +488,7 @@ export function CommentThread({
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
 }) {
+  const submitInFlightRef = useRef(false);
   const [items, setItems] = useState(comments);
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<string>();
@@ -498,7 +499,8 @@ export function CommentThread({
   useEffect(() => setItems(comments), [comments]);
 
   async function submit() {
-    if (submitting || (!body.trim() && !attachment)) return;
+    if (submitInFlightRef.current || (!body.trim() && !attachment)) return;
+    submitInFlightRef.current = true;
     setSubmitting(true);
     setStatus(undefined);
     try {
@@ -519,6 +521,7 @@ export function CommentThread({
     } catch (cause) {
       setStatus(cause instanceof Error ? cause.message : "Comment unavailable.");
     } finally {
+      submitInFlightRef.current = false;
       setSubmitting(false);
     }
   }
@@ -574,7 +577,7 @@ export function CommentThread({
               <Button
                 size="sm"
                 loading={submitting}
-                disabled={!body.trim() && !attachment}
+                disabled={submitting || (!body.trim() && !attachment)}
                 onClick={() => void submit()}
               >
                 {replyTo ? "Reply" : "Comment"}
