@@ -35,13 +35,22 @@ async function requireViewerId(
 ): Promise<string | Response> {
   const db = database(env);
   if (!db) {
-    return failure(requestId, 503, "NOTIFICATIONS_UNAVAILABLE", "Notifications are temporarily unavailable.");
+    return failure(
+      requestId,
+      503,
+      "NOTIFICATIONS_UNAVAILABLE",
+      "Notifications are temporarily unavailable.",
+    );
   }
   if (!getSessionToken(request)) {
     return failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
   }
-  const session = await createAuthService({ store: createD1AuthStore(db), env }).getSession(request);
-  return session?.user.id ?? failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
+  const session = await createAuthService({ store: createD1AuthStore(db), env }).getSession(
+    request,
+  );
+  return (
+    session?.user.id ?? failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.")
+  );
 }
 
 function mutationSecurity(request: Request): void {

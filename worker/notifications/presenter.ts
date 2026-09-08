@@ -66,9 +66,14 @@ function actorName(actor: NotificationActorView | undefined): string {
 }
 
 function moderationCopy(payload: Record<string, unknown>): string {
-  const action = typeof payload.action === "string" ? payload.action.replaceAll("_", " ").toLowerCase() : "updated";
+  const action =
+    typeof payload.action === "string"
+      ? payload.action.replaceAll("_", " ").toLowerCase()
+      : "updated";
   const reason = typeof payload.reason === "string" ? excerpt(payload.reason, 100) : "";
-  return reason ? `A moderation action (${action}) was applied: ${reason}` : `A moderation action (${action}) was applied.`;
+  return reason
+    ? `A moderation action (${action}) was applied: ${reason}`
+    : `A moderation action (${action}) was applied.`;
 }
 
 export function presentNotification(
@@ -84,7 +89,10 @@ export function presentNotification(
         ? payload.postId
         : null;
   const post = postId ? context.posts.get(postId) : undefined;
-  const comment = record.entityType === "COMMENT" && record.entityId ? context.comments.get(record.entityId) : undefined;
+  const comment =
+    record.entityType === "COMMENT" && record.entityId
+      ? context.comments.get(record.entityId)
+      : undefined;
   const commentPost = comment ? context.posts.get(comment.postId) : post;
   const fallback = {
     ...record,
@@ -99,7 +107,11 @@ export function presentNotification(
       return {
         ...record,
         title: `${actorName(actor)} commented on your post`,
-        body: comment?.body ? excerpt(comment.body) : post?.title ? `New comment on “${post.title}”.` : "Someone left a new comment.",
+        body: comment?.body
+          ? excerpt(comment.body)
+          : post?.title
+            ? `New comment on “${post.title}”.`
+            : "Someone left a new comment.",
         href: `${postHref(commentPost, comment?.postId ?? postId)}${record.entityId ? `#comment-${encodeURIComponent(record.entityId)}` : ""}`,
         ctaLabel: "View comment",
         ...(actor ? { actor } : {}),
@@ -117,7 +129,9 @@ export function presentNotification(
       return {
         ...record,
         title: "Your source was accepted",
-        body: post?.title ? `Your source was accepted in “${post.title}”.` : "A source you contributed was accepted.",
+        body: post?.title
+          ? `Your source was accepted in “${post.title}”.`
+          : "A source you contributed was accepted.",
         href: postHref(post, postId),
         ctaLabel: "View post",
         ...(actor ? { actor } : {}),
@@ -126,7 +140,9 @@ export function presentNotification(
       return {
         ...record,
         title: "A source was verified",
-        body: post?.title ? `The accepted source in “${post.title}” was verified.` : "A source connected to your post was verified.",
+        body: post?.title
+          ? `The accepted source in “${post.title}” was verified.`
+          : "A source connected to your post was verified.",
         href: postHref(post, postId),
         ctaLabel: "View post",
         ...(actor ? { actor } : {}),
@@ -164,18 +180,25 @@ export function presentNotification(
       };
     }
     case "achievement.earned": {
-      const achievementName = record.entityId ? context.achievements.get(record.entityId) : undefined;
+      const achievementName = record.entityId
+        ? context.achievements.get(record.entityId)
+        : undefined;
       return {
         ...record,
         title: "Achievement earned",
-        body: achievementName ? `You earned “${achievementName}”.` : "You earned a new SourceBoard achievement.",
+        body: achievementName
+          ? `You earned “${achievementName}”.`
+          : "You earned a new SourceBoard achievement.",
         href: "/profile",
         ctaLabel: "View profile",
         ...(actor ? { actor } : {}),
       };
     }
     case "moderation.action": {
-      const targetUser = record.entityType === "USER" && record.entityId ? context.users.get(record.entityId) : undefined;
+      const targetUser =
+        record.entityType === "USER" && record.entityId
+          ? context.users.get(record.entityId)
+          : undefined;
       const href =
         record.entityType === "POST"
           ? postHref(post, record.entityId)
@@ -216,29 +239,61 @@ export async function presentNotifications(
     ...records.map((record) => record.actorUserId),
     ...records.map((record) => (record.entityType === "USER" ? record.entityId : null)),
   ]);
-  const commentIds = unique(records.map((record) => (record.entityType === "COMMENT" ? record.entityId : null)));
+  const commentIds = unique(
+    records.map((record) => (record.entityType === "COMMENT" ? record.entityId : null)),
+  );
   const postIds = unique([
     ...records.map((record) => (record.entityType === "POST" ? record.entityId : null)),
     ...payloads.map((payload) => (typeof payload.postId === "string" ? payload.postId : null)),
   ]);
-  const storeItemIds = unique(records.map((record) => (record.entityType === "STORE_ITEM" ? record.entityId : null)));
-  const achievementIds = unique(records.map((record) => (record.entityType === "ACHIEVEMENT" ? record.entityId : null)));
+  const storeItemIds = unique(
+    records.map((record) => (record.entityType === "STORE_ITEM" ? record.entityId : null)),
+  );
+  const achievementIds = unique(
+    records.map((record) => (record.entityType === "ACHIEVEMENT" ? record.entityId : null)),
+  );
 
   const [userRows, postRows, commentRows, storeRows, achievementRows] = await Promise.all([
     userIds.length
-      ? db.prepare(`SELECT u.id, u.username, COALESCE(p.display_name, u.username) AS displayName, p.avatar_asset_id AS avatarAssetId FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id IN (${placeholders(userIds)})`).bind(...userIds).all<{ id: string; username: string; displayName: string; avatarAssetId: string | null }>()
+      ? db
+          .prepare(
+            `SELECT u.id, u.username, COALESCE(p.display_name, u.username) AS displayName, p.avatar_asset_id AS avatarAssetId FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id WHERE u.id IN (${placeholders(userIds)})`,
+          )
+          .bind(...userIds)
+          .all<{
+            id: string;
+            username: string;
+            displayName: string;
+            avatarAssetId: string | null;
+          }>()
       : Promise.resolve({ results: [] }),
     postIds.length
-      ? db.prepare(`SELECT id, title, slug FROM posts WHERE id IN (${placeholders(postIds)})`).bind(...postIds).all<PostContext>()
+      ? db
+          .prepare(`SELECT id, title, slug FROM posts WHERE id IN (${placeholders(postIds)})`)
+          .bind(...postIds)
+          .all<PostContext>()
       : Promise.resolve({ results: [] }),
     commentIds.length
-      ? db.prepare(`SELECT c.id, c.body_plaintext AS body, c.post_id AS postId, p.title AS postTitle, p.slug AS postSlug FROM comments c JOIN posts p ON p.id = c.post_id WHERE c.id IN (${placeholders(commentIds)})`).bind(...commentIds).all<CommentContext>()
+      ? db
+          .prepare(
+            `SELECT c.id, c.body_plaintext AS body, c.post_id AS postId, p.title AS postTitle, p.slug AS postSlug FROM comments c JOIN posts p ON p.id = c.post_id WHERE c.id IN (${placeholders(commentIds)})`,
+          )
+          .bind(...commentIds)
+          .all<CommentContext>()
       : Promise.resolve({ results: [] }),
     storeItemIds.length
-      ? db.prepare(`SELECT id, name FROM store_items WHERE id IN (${placeholders(storeItemIds)})`).bind(...storeItemIds).all<{ id: string; name: string }>()
+      ? db
+          .prepare(`SELECT id, name FROM store_items WHERE id IN (${placeholders(storeItemIds)})`)
+          .bind(...storeItemIds)
+          .all<{ id: string; name: string }>()
       : Promise.resolve({ results: [] }),
     achievementIds.length
-      ? db.prepare(`SELECT id, name FROM achievement_catalog WHERE id IN (${placeholders(achievementIds)})`).bind(...achievementIds).all<{ id: string; name: string }>()
+      ? db
+          .prepare(
+            `SELECT id, name FROM achievement_catalog WHERE id IN (${placeholders(achievementIds)})`,
+          )
+          .bind(...achievementIds)
+          .all<{ id: string; name: string }>()
       : Promise.resolve({ results: [] }),
   ]);
 
