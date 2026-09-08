@@ -144,6 +144,22 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
+function partitionStoreItems(items: StoreItemView[], authenticated: boolean) {
+  const featured = items.filter((item) => item.featured);
+  const used = new Set(featured.map((item) => item.id));
+  const owned = authenticated
+    ? items.filter((item) => (item.owned || item.equipped) && !used.has(item.id))
+    : [];
+  owned.forEach((item) => used.add(item.id));
+  const newest = [...items]
+    .filter((item) => !used.has(item.id))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, 8);
+  newest.forEach((item) => used.add(item.id));
+  const browse = items.filter((item) => !used.has(item.id));
+  return { featured, owned, newest, browse };
+}
+
 export default function StoreRoute() {
   const {
     items,
@@ -161,13 +177,7 @@ export default function StoreRoute() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const visibleItems =
     activeFilter === "ALL" ? items : items.filter((item) => item.type === activeFilter);
-  const featuredItems = visibleItems.filter((item) => item.featured);
-  const newItems = [...visibleItems]
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-    .slice(0, 8);
-  const ownedItems = authenticated
-    ? visibleItems.filter((item) => item.owned || item.equipped)
-    : [];
+  const sections = partitionStoreItems(visibleItems, authenticated);
 
   async function purchase(item: StoreItemView) {
     setBusyId(item.id);
@@ -306,31 +316,33 @@ export default function StoreRoute() {
           </div>
         ) : null}
 
-        {featuredItems.length ? (
+        {sections.featured.length ? (
           <StoreSection
             eyebrow="Curated"
             title="Featured"
             description="Items highlighted by the SourceBoard catalog team."
           >
-            {renderItems(featuredItems)}
+            {renderItems(sections.featured)}
           </StoreSection>
         ) : null}
 
-        {newItems.length ? (
-          <StoreSection title="New" description="The newest additions to the public catalog.">
-            {renderItems(newItems)}
-          </StoreSection>
-        ) : null}
-
-        {ownedItems.length ? (
+        {sections.owned.length ? (
           <StoreSection title="Owned" description="Your unlocked and currently equipped items.">
-            {renderItems(ownedItems)}
+            {renderItems(sections.owned)}
           </StoreSection>
         ) : null}
 
-        <StoreSection title="All items" description="Browse every item in the selected category.">
-          {renderItems(visibleItems)}
-        </StoreSection>
+        {sections.newest.length ? (
+          <StoreSection title="New" description="Recent additions you have not seen above.">
+            {renderItems(sections.newest)}
+          </StoreSection>
+        ) : null}
+
+        {sections.browse.length ? (
+          <StoreSection title="Browse" description="More items in the selected category.">
+            {renderItems(sections.browse)}
+          </StoreSection>
+        ) : null}
       </div>
     </ProductShell>
   );
