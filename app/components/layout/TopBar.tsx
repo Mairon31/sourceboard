@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { BellIcon, SearchIcon } from "../ui";
-import { CosmeticIdentity } from "../product/CosmeticIdentity";
+import { NotificationActorStack } from "../product/NotificationActorStack";
 import {
   notificationWebSocketUrl,
   readNotificationSnapshot,
@@ -277,19 +277,13 @@ export function TopBar() {
                       >
                         <div
                           className="sb-topbar-notification-menu__identity"
-                          aria-hidden={!notification.actor}
+                          aria-hidden={!notification.actor && !notification.groupActors?.length}
                         >
-                          {notification.actor ? (
-                            <CosmeticIdentity
-                              displayName={notification.actor.displayName}
-                              avatarUrl={notification.actor.avatarUrl}
-                              avatarFrame={notification.actor.cosmetics?.avatarFrame}
-                              profileEffect={notification.actor.cosmetics?.profileEffect}
-                              nameFont={notification.actor.cosmetics?.nameFont}
-                              nameEffect={notification.actor.cosmetics?.nameEffect}
-                              visuals={notification.actor.cosmetics?.visuals}
-                              mode="compact"
-                              nameAs="strong"
+                          {notification.actor || notification.groupActors?.length ? (
+                            <NotificationActorStack
+                              actor={notification.actor}
+                              actors={notification.groupActors}
+                              total={notification.groupCount}
                             />
                           ) : (
                             <span className="sb-topbar-notification-menu__system-mark">S</span>
