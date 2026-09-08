@@ -36,7 +36,9 @@ test("home presents the connected production feed", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Presentation build" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Find the original source" })).toBeVisible();
-  await expect(page.locator(".product-feed-cta").getByRole("link", { name: "Create post" })).toBeVisible();
+  await expect(
+    page.locator(".product-feed-cta").getByRole("link", { name: "Create post" }),
+  ).toBeVisible();
 });
 
 test("signed-out home does not render a fixture account", async ({ page }) => {

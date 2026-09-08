@@ -107,6 +107,7 @@ test("authorized Admin Store uploads an emote into a draft pack without media ne
   const packButton = page
     .locator(".admin-store-pack-list__item")
     .filter({ hasText: "E2E Draft Pack" });
+  await expect(packButton).toBeVisible();
   await packButton.click();
 
   const workspace = page.locator(".admin-store-pack-workspace");
