@@ -10,6 +10,7 @@ import {
 } from "react-router";
 import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import { readSourceBoardRequestContext } from "../shared/router-context";
+import { createD1ProfileStore } from "../worker/profile/store";
 import { readServerSession, type ServerLoaderArgs } from "./data/server-request";
 import "./styles/base.css";
 import "./styles/motion-preferences.css";
@@ -49,15 +50,41 @@ import "./components/product/friends-page-polish.css";
 // fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
 export async function loader({ request, context }: ServerLoaderArgs) {
   const requestContext = readSourceBoardRequestContext(context);
-  const session = await readServerSession(request, context)
-    .then((current) => (current ? { user: current.user } : null))
-    .catch(() => null);
+  const currentSession = await readServerSession(request, context).catch(() => null);
+  const session = currentSession ? { user: currentSession.user } : null;
+  let navigationIdentity: {
+    displayName: string;
+    avatarUrl?: string;
+    cosmetics: Awaited<ReturnType<ReturnType<typeof createD1ProfileStore>["getEquippedCosmetics"]>>;
+  } | null = null;
+
+  if (currentSession && requestContext?.env.DB) {
+    try {
+      const profileStore = createD1ProfileStore(requestContext.env.DB);
+      const [profile, cosmetics] = await Promise.all([
+        profileStore.getProfileByUserId(currentSession.user.id, Date.now()),
+        profileStore.getEquippedCosmetics(currentSession.user.id),
+      ]);
+      if (profile) {
+        navigationIdentity = {
+          displayName: profile.displayName,
+          avatarUrl: profile.avatarAssetId
+            ? `/api/media/profile/${encodeURIComponent(profile.avatarAssetId)}`
+            : undefined,
+          cosmetics,
+        };
+      }
+    } catch {
+      navigationIdentity = null;
+    }
+  }
 
   return {
     cspNonce: requestContext?.cspNonce ?? null,
     origin: "https://srcboard.me",
-    // fallow-ignore-next-line unused-load-data-key -- ProductNav reads this root loader through useRouteLoaderData.
+    // fallow-ignore-next-line unused-load-data-key -- global navigation reads this root loader.
     session,
+    navigationIdentity,
   };
 }
 
