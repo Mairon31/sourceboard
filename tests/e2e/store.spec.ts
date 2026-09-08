@@ -5,14 +5,7 @@ test("store presents the refreshed catalog and category filters", async ({ page 
   await page.goto("/store");
 
   await expect(page.getByRole("heading", { name: "Make SourceBoard yours" })).toBeVisible();
-  for (const label of [
-    "All",
-    "Frame",
-    "Profile effects",
-    "Name effects",
-    "Font",
-    "Emotes",
-  ]) {
+  for (const label of ["All", "Frame", "Profile effects", "Name effects", "Font", "Emotes"]) {
     await expect(page.getByRole("button", { name: label, exact: true })).toBeVisible();
   }
   await expect(page.getByRole("heading", { name: "Stellar Magic" }).first()).toBeVisible();
