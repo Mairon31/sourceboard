@@ -21,7 +21,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Add versioned reputation reward rules schema and migration
+      - name: Add versioned reputation reward rules schema and fix accumulated type regressions
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -111,10 +111,39 @@ jobs:
           INSERT OR IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
           VALUES ('owner', 'points.manage'), ('admin', 'points.manage');
           ''')
+
+          settings_path = Path("app/routes/settings.tsx")
+          settings = settings_path.read_text()
+          old = "      apply: setValues,\n"
+          new = "      apply: (value) => setValues(value),\n"
+          if settings.count(old) != 1:
+              raise SystemExit(f"Expected one settings apply match, found {settings.count(old)}")
+          settings_path.write_text(settings.replace(old, new, 1))
+
+          search_test_path = Path("tests/unit/search-service.test.ts")
+          search_test = search_test_path.read_text()
+          old_first = '      profileStore: { getPreferences: vi.fn(async () => preferences()) },\n'
+          new_first = '''      profileStore: {
+            getPreferences: vi.fn(async () => preferences()),
+            getEquippedCosmetics: vi.fn(async () => ({})),
+          },
+          '''
+          if search_test.count(old_first) != 1:
+              raise SystemExit(f"Expected one first search profileStore mock, found {search_test.count(old_first)}")
+          search_test = search_test.replace(old_first, new_first, 1)
+          old_second = '      profileStore: { getPreferences },\n'
+          new_second = '''      profileStore: {
+            getPreferences,
+            getEquippedCosmetics: vi.fn(async () => ({})),
+          },
+          '''
+          if search_test.count(old_second) != 1:
+              raise SystemExit(f"Expected one second search profileStore mock, found {search_test.count(old_second)}")
+          search_test_path.write_text(search_test.replace(old_second, new_second, 1))
           PY
-      - run: npx prettier --write worker/db/schema.ts tests/unit/reputation-admin-wiring.test.ts
-      - run: npx prettier --check worker/db/schema.ts tests/unit/reputation-admin-wiring.test.ts
-      - run: npm test -- --run tests/unit/reputation-admin-wiring.test.ts
+      - run: npx prettier --write worker/db/schema.ts app/routes/settings.tsx tests/unit/search-service.test.ts tests/unit/reputation-admin-wiring.test.ts
+      - run: npx prettier --check worker/db/schema.ts app/routes/settings.tsx tests/unit/search-service.test.ts tests/unit/reputation-admin-wiring.test.ts
+      - run: npm test -- --run tests/unit/reputation-admin-wiring.test.ts tests/unit/settings-redesign.test.ts tests/unit/search-service.test.ts
       - run: npm run typecheck
       - name: Apply migrations to a fresh local D1 database
         run: |
@@ -125,6 +154,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add worker/db/schema.ts migrations/0021_reputation_reward_rules.sql tests/unit/reputation-admin-wiring.test.ts
+          git add worker/db/schema.ts migrations/0021_reputation_reward_rules.sql tests/unit/reputation-admin-wiring.test.ts app/routes/settings.tsx tests/unit/search-service.test.ts
           git commit -m "feat: wire versioned reputation reward rules"
           git push origin HEAD:feature/sourceboard-product-overhaul
