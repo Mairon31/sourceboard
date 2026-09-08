@@ -7,6 +7,7 @@ export default [
   route("forgot-password", "routes/forgot-password.tsx"),
   route("verify-email", "routes/verify-email.tsx"),
   route("search", "routes/search.tsx"),
+  route("resources/feed/:kind", "routes/feed-resource.tsx"),
   route("post/new", "routes/post-new.tsx"),
   route("posts/:postId", "routes/post-detail.tsx"),
   route("posts/:postId/:slug", "routes/post-detail.tsx", { id: "post-detail-slug" }),
