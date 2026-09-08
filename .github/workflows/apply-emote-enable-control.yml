@@ -37,9 +37,15 @@ jobs:
 
           const helperPath = 'tests/e2e/test-helpers.ts';
           let helper = fs.readFileSync(helperPath, 'utf8');
+          const readyNeedle = `export async function waitForUiReady(page: Page) {\n  await expect(page.locator('[data-ui-ready="true"]')).toBeVisible();\n}`;
+          const readyReplacement = `export async function waitForUiReady(page: Page) {\n  await expect(page.locator('[data-ui-ready="true"]')).toBeVisible({ timeout: 15_000 });\n}`;
+          if (!helper.includes('timeout: 15_000')) {
+            if (!helper.includes(readyNeedle)) throw new Error('UI readiness marker missing');
+            helper = helper.replace(readyNeedle, readyReplacement);
+          }
           const cookieUrlMatches = helper.match(/http:\/\/127\.0\.0\.1:5173/g) ?? [];
           if (cookieUrlMatches.length !== 2) throw new Error(`expected 2 admin cookie URLs, found ${cookieUrlMatches.length}`);
-          helper = helper.replaceAll('http://127.0.0.1:5173', 'http://localhost:5173');
+          helper = helper.replaceAll('http://127.0.0.1:5173', 'https://localhost:5173');
           const secureMatches = helper.match(/secure: true/g) ?? [];
           if (secureMatches.length !== 2) throw new Error(`expected 2 __Host Secure cookies, found ${secureMatches.length}`);
           fs.writeFileSync(helperPath, helper);
