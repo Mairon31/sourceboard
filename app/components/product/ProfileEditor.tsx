@@ -3,8 +3,10 @@ import { useRevalidator } from "react-router";
 import type { PublicProfileDto } from "../../../worker/profile/types";
 import {
   canonicalSocialPlatform,
+  normalizeSocialUrl,
   SOCIAL_PLATFORMS,
   SOCIAL_PLATFORM_CATALOG,
+  socialHandleFromUrl,
   type SocialPlatform,
 } from "../../../shared/profile/social-links";
 import { Button, Card, Checkbox, Input, Textarea } from "../ui";
@@ -63,6 +65,11 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
   }
 }
 
+function editorSocialValue(platform: SocialPlatform, url: string): string {
+  if (platform === "website" || platform === "discord") return url;
+  return socialHandleFromUrl(platform, url);
+}
+
 function createDraft(data: MyProfileResponse): ProfileDraft {
   return {
     displayName: data.profile.displayName,
@@ -78,7 +85,7 @@ function createDraft(data: MyProfileResponse): ProfileDraft {
               {
                 key: link.id,
                 platform,
-                url: link.url,
+                url: editorSocialValue(platform, link.url),
                 isVisible: link.isVisible,
               },
             ]
@@ -90,10 +97,14 @@ function createDraft(data: MyProfileResponse): ProfileDraft {
 function normalizeSocialLinks(links: SocialLinkDraft[]) {
   const seen = new Set<SocialPlatform>();
   return links.flatMap((link, index) => {
-    const url = link.url.trim();
-    if (!url) return [];
+    const value = link.url.trim();
+    if (!value) return [];
     if (seen.has(link.platform)) {
       throw new Error(`Only one ${SOCIAL_PLATFORM_CATALOG[link.platform].label} link is allowed.`);
+    }
+    const url = normalizeSocialUrl(link.platform, value);
+    if (!url) {
+      throw new Error(`Enter a valid ${SOCIAL_PLATFORM_CATALOG[link.platform].label} profile.`);
     }
     seen.add(link.platform);
     return [
