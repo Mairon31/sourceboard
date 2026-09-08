@@ -1,0 +1,21 @@
+name: Temporary Reputation Admin RED
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+
+permissions:
+  contents: read
+
+jobs:
+  reputation-admin-red:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --run tests/unit/reputation-admin-wiring.test.ts
