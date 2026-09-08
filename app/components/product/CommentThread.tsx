@@ -356,15 +356,10 @@ function CommentItem({
               <span>Accept source</span>
             </button>
           ) : null}
-          {typeof window !== "undefined" ? (
-            <ShareAction
-              url={new URL(
-                comment.commentHref ?? `#comment-${comment.id}`,
-                window.location.href,
-              ).toString()}
-              title="SourceBoard comment"
-            />
-          ) : null}
+          <ShareAction
+            url={comment.commentHref ?? `#comment-${comment.id}`}
+            title="SourceBoard comment"
+          />
           {comment.editedAt ? <span className="product-comment__action-meta">Edited</span> : null}
           {hidden ? (
             <span className="product-comment__action-meta">
