@@ -22,7 +22,9 @@ function ProfileBanner({ profile }: { profile: PublicProfileDto }) {
     <div
       className={`product-profile-banner${profile.cosmetics?.profileBanner ? " product-profile-banner--nebula" : ""}`}
       aria-label={`${profile.displayName} profile banner`}
-      style={profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined}
+      style={
+        profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined
+      }
     />
   );
 }
@@ -65,7 +67,9 @@ export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
         <div className="product-profile-identity">
           <div className="product-list-row__identity">
             <div className="product-profile-name">
-              <span className="product-eyebrow">{isOwnProfile ? "Your profile" : "Public profile"}</span>
+              <span className="product-eyebrow">
+                {isOwnProfile ? "Your profile" : "Public profile"}
+              </span>
               <CosmeticIdentity
                 displayName={profile.displayName}
                 avatarUrl={profile.avatarUrl}
