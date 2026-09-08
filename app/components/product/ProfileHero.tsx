@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { PublicProfileDto, Relationship } from "../../../worker/profile/types";
 import {
   canonicalSocialPlatform,
@@ -25,6 +25,7 @@ const relationshipLabel = {
 interface ProfileHeroProps {
   profile: PublicProfileDto;
   isOwnProfile: boolean;
+  editControl?: ReactNode;
 }
 
 function ProfileBanner({ profile }: { profile: PublicProfileDto }) {
@@ -181,7 +182,7 @@ function BlockAction({
   );
 }
 
-export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
+export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroProps) {
   const [relationship, setRelationship] = useState<Relationship>(profile.relationship);
   useEffect(() => {
     setRelationship(profile.relationship);
@@ -227,6 +228,7 @@ export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
               relationship={relationship}
               onRelationshipChange={setRelationship}
             />
+            {editControl}
             <ShareAction
               url={`/u/${encodeURIComponent(profile.username)}`}
               title={`${profile.displayName} on SourceBoard`}
