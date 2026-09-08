@@ -128,6 +128,7 @@ export interface PostSummary {
   description?: string;
   author: PublicPostAuthor;
   createdAt: string;
+  updatedAt: string;
   status: PostStatus;
   visibility: PostVisibility;
   isNsfw: boolean;
