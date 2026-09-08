@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { readCsrfToken } from "../data/csrf";
 import {
   isRouteErrorResponse,
@@ -9,6 +9,7 @@ import {
   useRouteError,
   type MetaFunction,
 } from "react-router";
+import type { CommentView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
@@ -18,7 +19,7 @@ import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server
 import { PostCard } from "../components/product/PostCard";
 import { CommentThread } from "../components/product/CommentThread";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
-import { Badge, Button, Card, Input, Textarea } from "../components/ui";
+import { Card } from "../components/ui";
 import { SourceResolution } from "../components/product/SourceResolution";
 
 interface LoaderArgs extends ServerLoaderArgs {
@@ -132,118 +133,14 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   ];
 };
 
-function PostOwnerControls({ post }: { post: NonNullable<LoaderData["post"]> }) {
-  const revalidator = useRevalidator();
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(post.title);
-  const [description, setDescription] = useState(post.description ?? "");
-  const [status, setStatus] = useState<string | null>(null);
-
-  async function update(input: RequestInit, success: string) {
-    setStatus(null);
-    try {
-      const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}`, {
-        ...input,
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": readCsrfToken(),
-          ...(input.headers ?? {}),
-        },
-      });
-      setStatus(response.ok ? success : "Could not save this post.");
-      if (response.ok) {
-        setEditing(false);
-        revalidator.revalidate();
-      }
-    } catch {
-      setStatus("Could not save this post.");
-    }
+function findComment(comments: CommentView[], id?: string): CommentView | undefined {
+  if (!id) return undefined;
+  for (const comment of comments) {
+    if (comment.id === id) return comment;
+    const reply = findComment(comment.replies, id);
+    if (reply) return reply;
   }
-
-  return (
-    <Card className="product-form-card">
-      <div className="product-section-heading">
-        <div>
-          <span className="product-eyebrow">Your post</span>
-          <h2>Manage request</h2>
-        </div>
-        <Badge>{post.permissions.canEdit ? "Editable" : "Edit window closed"}</Badge>
-      </div>
-      {editing && post.permissions.canEdit ? (
-        <form
-          className="product-form-grid"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void update(
-              {
-                method: "PATCH",
-                body: JSON.stringify({
-                  title,
-                  description,
-                  visibility: post.visibility,
-                  authorMode: post.author.mode,
-                  isNsfw: post.isNsfw,
-                }),
-              },
-              "Post updated.",
-            );
-          }}
-        >
-          <Input
-            label="Title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            required
-          />
-          <Textarea
-            label="Description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-          <div className="product-chip-row">
-            <Button type="submit" size="sm">
-              Save changes
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <div className="product-chip-row">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!post.permissions.canEdit}
-            onClick={() => setEditing(true)}
-          >
-            Edit details
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!post.permissions.canArchive}
-            onClick={() =>
-              void fetch(`/api/posts/${encodeURIComponent(post.id)}/archive`, {
-                method: "POST",
-                headers: { "x-csrf-token": readCsrfToken() },
-              }).then((response) => {
-                setStatus(response.ok ? "Post archived." : "Could not archive this post.");
-                if (response.ok) revalidator.revalidate();
-              })
-            }
-          >
-            Archive
-          </Button>
-        </div>
-      )}
-      {status ? (
-        <p className="product-store-preview-status" role="status">
-          {status}
-        </p>
-      ) : null}
-    </Card>
-  );
+  return undefined;
 }
 
 function UnavailablePost({ unavailable }: { unavailable: boolean }) {
@@ -268,27 +165,39 @@ function UnavailablePost({ unavailable }: { unavailable: boolean }) {
 export default function PostDetailRoute() {
   const { post, unavailable, authenticated } = useLoaderData<LoaderData>();
   const location = useLocation();
+  const revalidator = useRevalidator();
 
   useEffect(() => {
-    if (location.hash !== "#comments") return;
-    document.getElementById("comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (!authenticated) return;
-    window.requestAnimationFrame(() => {
-      const composer = document.getElementById("comment-composer");
-      if (composer instanceof HTMLElement) composer.focus({ preventScroll: true });
-    });
+    if (!location.hash) return;
+    if (location.hash === "#comments") {
+      document.getElementById("comments")?.scrollIntoView({ behavior: "auto", block: "start" });
+      if (!authenticated) return;
+      window.requestAnimationFrame(() => {
+        const composer = document.getElementById("comment-composer");
+        if (composer instanceof HTMLElement) composer.focus({ preventScroll: true });
+      });
+      return;
+    }
+    if (!location.hash.startsWith("#comment-")) return;
+    const id = decodeURIComponent(location.hash.slice(1));
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "auto", block: "center" });
+    target.classList.add("product-comment--deeplink-target");
+    const timer = window.setTimeout(() => target.classList.remove("product-comment--deeplink-target"), 1800);
+    return () => window.clearTimeout(timer);
   }, [authenticated, location.hash]);
 
   if (!post) return <UnavailablePost unavailable={unavailable} />;
-  const currentPost = post;
+  const acceptedComment = findComment(post.comments, post.acceptedSource?.commentId);
 
   async function acceptSource(commentId: string) {
-    const response = await fetch(`/api/posts/${encodeURIComponent(currentPost.id)}/source/accept`, {
+    const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}/source/accept`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
       body: JSON.stringify({ commentId }),
     });
-    if (response.ok) window.location.reload();
+    if (response.ok) revalidator.revalidate();
   }
 
   return (
@@ -298,11 +207,12 @@ export default function PostDetailRoute() {
         title={post.title}
         description="One image, one focused question and an auditable path to the original source."
       />
-      <PostCard post={post} />
-      <SourceResolution accepted={post.acceptedSource} verified={post.verifiedSource} />
-      {post.permissions.canEdit || post.permissions.canArchive ? (
-        <PostOwnerControls post={post} />
-      ) : null}
+      <PostCard post={post} manage onChanged={() => revalidator.revalidate()} />
+      <SourceResolution
+        accepted={post.acceptedSource}
+        acceptedComment={acceptedComment}
+        verified={post.verifiedSource}
+      />
       <CommentThread
         postId={post.id}
         comments={post.comments}
