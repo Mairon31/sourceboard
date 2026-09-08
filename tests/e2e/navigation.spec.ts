@@ -40,6 +40,36 @@ test("home exposes the SourceBoard product navigation", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("home feed tabs activate with arrow-key navigation", async ({ page }) => {
+  await page.goto("/");
+  await waitForUiReady(page);
+
+  const recent = page.getByRole("tab", { name: "Recent" });
+  const friends = page.getByRole("tab", { name: "Friends" });
+  await recent.focus();
+  await expect(recent).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowRight");
+  await expect(friends).toBeFocused();
+  await expect(friends).toHaveAttribute("aria-selected", "true");
+});
+
+test("primary navigation exposes a visible keyboard focus ring", async ({ page }) => {
+  await page.goto("/");
+  await waitForUiReady(page);
+
+  const home = page
+    .getByRole("navigation", { name: "Primary navigation" })
+    .getByRole("link", { name: "Home", exact: true });
+  await home.focus();
+  await expect(home).toBeFocused();
+  const focusStyle = await home.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { outlineStyle: style.outlineStyle, outlineWidth: parseFloat(style.outlineWidth) };
+  });
+  expect(focusStyle.outlineStyle).not.toBe("none");
+  expect(focusStyle.outlineWidth).toBeGreaterThanOrEqual(2);
+});
+
 test("deterministic post detail route responds directly", async ({ page }) => {
   const response = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
   expect(response?.status()).toBe(200);
