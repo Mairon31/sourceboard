@@ -1,0 +1,130 @@
+name: Temporary Reputation Admin GREEN
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+
+permissions:
+  contents: write
+
+jobs:
+  reputation-admin-green:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/sourceboard-product-overhaul
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Add versioned reputation reward rules schema and migration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          schema_path = Path("worker/db/schema.ts")
+          schema = schema_path.read_text()
+          if '"reputation_reward_rules"' not in schema:
+              anchor = 'export const achievementCatalog = sqliteTable(\n'
+              if anchor not in schema:
+                  raise SystemExit("achievementCatalog anchor not found")
+              block = '''export const reputationRewardRules = sqliteTable(
+            "reputation_reward_rules",
+            {
+              id: text("id").primaryKey(),
+              rewardType: text("reward_type").notNull(),
+              version: integer("version", { mode: "number" }).notNull(),
+              amount: integer("amount", { mode: "number" }).notNull(),
+              provisional: integer("provisional", { mode: "boolean" }).notNull().default(false),
+              status: text("status").notNull().default("ACTIVE"),
+              createdByUserId: text("created_by_user_id").references(() => users.id, {
+                onDelete: "set null",
+              }),
+              createdAt: integer("created_at", { mode: "number" }).notNull(),
+            },
+            (table) => [
+              uniqueIndex("reputation_reward_rules_type_version_unique").on(
+                table.rewardType,
+                table.version,
+              ),
+              uniqueIndex("reputation_reward_rules_active_type_unique")
+                .on(table.rewardType)
+                .where(sql`${table.status} = 'ACTIVE'`),
+              index("reputation_reward_rules_status_type_index").on(table.status, table.rewardType),
+              check(
+                "reputation_reward_rules_type_check",
+                sql`${table.rewardType} IN ('ACCEPTED_SOURCE', 'VERIFIED_SOURCE')`,
+              ),
+              check("reputation_reward_rules_version_check", sql`${table.version} > 0`),
+              check("reputation_reward_rules_amount_check", sql`${table.amount} > 0`),
+              check("reputation_reward_rules_provisional_check", sql`${table.provisional} IN (0, 1)`),
+              check(
+                "reputation_reward_rules_status_check",
+                sql`${table.status} IN ('ACTIVE', 'DISABLED')`,
+              ),
+            ],
+          );
+
+          '''
+              schema = schema.replace(anchor, block + anchor, 1)
+              schema_path.write_text(schema)
+
+          migration = Path("migrations/0021_reputation_reward_rules.sql")
+          if migration.exists():
+              raise SystemExit("0021 migration already exists unexpectedly")
+          migration.write_text('''CREATE TABLE `reputation_reward_rules` (
+          \t`id` text PRIMARY KEY NOT NULL,
+          \t`reward_type` text NOT NULL,
+          \t`version` integer NOT NULL,
+          \t`amount` integer NOT NULL,
+          \t`provisional` integer DEFAULT 0 NOT NULL,
+          \t`status` text DEFAULT 'ACTIVE' NOT NULL,
+          \t`created_by_user_id` text,
+          \t`created_at` integer NOT NULL,
+          \tFOREIGN KEY (`created_by_user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,
+          \tCONSTRAINT "reputation_reward_rules_type_check" CHECK(`reward_type` IN ('ACCEPTED_SOURCE', 'VERIFIED_SOURCE')),
+          \tCONSTRAINT "reputation_reward_rules_version_check" CHECK(`version` > 0),
+          \tCONSTRAINT "reputation_reward_rules_amount_check" CHECK(`amount` > 0),
+          \tCONSTRAINT "reputation_reward_rules_provisional_check" CHECK(`provisional` IN (0, 1)),
+          \tCONSTRAINT "reputation_reward_rules_status_check" CHECK(`status` IN ('ACTIVE', 'DISABLED'))
+          );
+          --> statement-breakpoint
+          CREATE UNIQUE INDEX `reputation_reward_rules_type_version_unique` ON `reputation_reward_rules` (`reward_type`,`version`);
+          --> statement-breakpoint
+          CREATE UNIQUE INDEX `reputation_reward_rules_active_type_unique` ON `reputation_reward_rules` (`reward_type`) WHERE `status` = 'ACTIVE';
+          --> statement-breakpoint
+          CREATE INDEX `reputation_reward_rules_status_type_index` ON `reputation_reward_rules` (`status`,`reward_type`);
+          --> statement-breakpoint
+          INSERT OR IGNORE INTO `reputation_reward_rules`
+            (`id`, `reward_type`, `version`, `amount`, `provisional`, `status`, `created_by_user_id`, `created_at`)
+          VALUES
+            ('reward-accepted-source-v1', 'ACCEPTED_SOURCE', 1, 10, 1, 'ACTIVE', NULL, unixepoch('now') * 1000),
+            ('reward-verified-source-v1', 'VERIFIED_SOURCE', 1, 100, 0, 'ACTIVE', NULL, unixepoch('now') * 1000);
+          --> statement-breakpoint
+          INSERT OR IGNORE INTO `permissions` (`id`, `slug`, `description`)
+          VALUES ('points.manage', 'points.manage', 'Manage versioned point reward rules');
+          --> statement-breakpoint
+          INSERT OR IGNORE INTO `role_permissions` (`role_id`, `permission_id`)
+          VALUES ('owner', 'points.manage'), ('admin', 'points.manage');
+          ''')
+          PY
+      - run: npx prettier --write worker/db/schema.ts tests/unit/reputation-admin-wiring.test.ts
+      - run: npx prettier --check worker/db/schema.ts tests/unit/reputation-admin-wiring.test.ts
+      - run: npm test -- --run tests/unit/reputation-admin-wiring.test.ts
+      - run: npm run typecheck
+      - name: Apply migrations to a fresh local D1 database
+        run: |
+          rm -rf .wrangler/state
+          npm run db:migrations:apply
+          npm run db:migrations:list
+      - name: Commit reputation schema wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker/db/schema.ts migrations/0021_reputation_reward_rules.sql tests/unit/reputation-admin-wiring.test.ts
+          git commit -m "feat: wire versioned reputation reward rules"
+          git push origin HEAD:feature/sourceboard-product-overhaul
