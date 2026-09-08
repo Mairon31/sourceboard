@@ -1051,6 +1051,26 @@
   color: var(--text-primary);
 }
 
+.sb-confirm-dialog {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sb-confirm-dialog .sb-overlay-actions {
+  justify-content: end;
+}
+
+.product-share-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.product-share-action > span[role="alert"] {
+  color: var(--danger);
+  font-size: var(--text-xs);
+}
+
 .product-auth-links {
   display: flex;
   flex-wrap: wrap;

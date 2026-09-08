@@ -16,6 +16,19 @@ export interface ModalProps {
   onOpenChange?: (open: boolean) => void;
 }
 
+export interface ConfirmDialogProps {
+  title: string;
+  description?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  destructive?: boolean;
+  open: boolean;
+  busy?: boolean;
+  error?: string;
+  onConfirm: () => void;
+  onOpenChange: (open: boolean) => void;
+}
+
 export function Modal({
   triggerLabel,
   title,
@@ -59,6 +72,39 @@ export function Modal({
         </Dialog.Viewport>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+export function ConfirmDialog({
+  title,
+  description,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  destructive = false,
+  open,
+  busy = false,
+  error,
+  onConfirm,
+  onOpenChange,
+}: ConfirmDialogProps) {
+  return (
+    <Modal title={title} description={description} open={open} onOpenChange={onOpenChange}>
+      <div className="sb-confirm-dialog">
+        {error ? (
+          <p className="sb-field__error" role="alert" aria-live="polite">
+            {error}
+          </p>
+        ) : null}
+        <OverlayActionRow>
+          <Button variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
+            {cancelLabel}
+          </Button>
+          <Button variant={destructive ? "danger" : "primary"} loading={busy} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </OverlayActionRow>
+      </div>
+    </Modal>
   );
 }
 
