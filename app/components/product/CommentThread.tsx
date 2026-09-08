@@ -1,14 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
-import type { SafeRichTextNode } from "../../../shared/richtext/markdown";
+import {
+  formatEmoteMarkdown,
+  type SafeRichTextNode,
+} from "../../../shared/richtext/markdown";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
-import { ConfirmAction } from "./ConfirmAction";
 import { RichText } from "./RichText";
 import { ShareAction } from "./ShareAction";
 import { MediaPicker, type MediaPickerKind } from "./MediaPicker";
-import { Avatar, Badge, Button, Dropdown, Textarea } from "../ui";
+import {
+  Avatar,
+  Badge,
+  Button,
+  CheckIcon,
+  ConfirmDialog,
+  Dropdown,
+  EditIcon,
+  FlagIcon,
+  HeartIcon,
+  MessageIcon,
+  MoreIcon,
+  Textarea,
+  TrashIcon,
+} from "../ui";
 
 function CommentAttachment({ attachment }: { attachment: CommentAttachmentView }) {
   const imageUrl = attachment.url ?? attachment.preview;
@@ -126,8 +142,10 @@ function CommentItem({
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
   const [reporting, setReporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [status, setStatus] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const hidden = comment.state !== "VISIBLE";
 
   useEffect(() => {
@@ -176,6 +194,26 @@ function CommentItem({
     }
   }
 
+  async function deleteComment() {
+    setDeleteBusy(true);
+    setStatus(undefined);
+    try {
+      const response = await fetch(`/api/comments/${encodeURIComponent(comment.id)}`, {
+        method: "DELETE",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      if (!response.ok) throw new Error("Could not delete this comment.");
+      setDeleting(false);
+      onDeleted(comment.id);
+    } catch (cause) {
+      setStatus(cause instanceof Error ? cause.message : "Could not delete this comment.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  const hasMenuActions = Boolean(comment.canEdit || comment.canDelete || comment.canReport);
+
   return (
     <article
       id={`comment-${comment.id}`}
@@ -212,16 +250,45 @@ function CommentItem({
               day: "numeric",
             })}
           </a>
-          <Dropdown
-            label="More"
-            items={[
-              ...(comment.canEdit ? [{ label: "Edit", onSelect: () => setEditing(true) }] : []),
-              ...(comment.canReport
-                ? [{ label: "Report", onSelect: () => setReporting(true) }]
-                : []),
-            ]}
-            className="product-comment__menu"
-          />
+          {hasMenuActions ? (
+            <Dropdown
+              label="More"
+              ariaLabel="More actions"
+              triggerIcon={<MoreIcon width="18" height="18" />}
+              iconOnly
+              items={[
+                ...(comment.canEdit
+                  ? [
+                      {
+                        label: "Edit",
+                        icon: <EditIcon width="16" height="16" />,
+                        onSelect: () => setEditing(true),
+                      },
+                    ]
+                  : []),
+                ...(comment.canDelete
+                  ? [
+                      {
+                        label: "Delete",
+                        icon: <TrashIcon width="16" height="16" />,
+                        destructive: true,
+                        onSelect: () => setDeleting(true),
+                      },
+                    ]
+                  : []),
+                ...(comment.canReport
+                  ? [
+                      {
+                        label: "Report",
+                        icon: <FlagIcon width="16" height="16" />,
+                        onSelect: () => setReporting(true),
+                      },
+                    ]
+                  : []),
+              ]}
+              className="product-comment__menu"
+            />
+          ) : null}
         </div>
         <div
           className={
@@ -264,19 +331,34 @@ function CommentItem({
           <ReportForm commentId={comment.id} onClose={() => setReporting(false)} />
         ) : null}
         <div className="product-comment__actions">
-          <button type="button" aria-pressed={liked} onClick={() => void toggleLike()}>
-            {liked ? "Liked" : "Like"} · {likes}
+          <button
+            className={`product-comment__action${liked ? " is-active" : ""}`}
+            type="button"
+            aria-pressed={liked}
+            onClick={() => void toggleLike()}
+          >
+            <HeartIcon width="15" height="15" fill={liked ? "currentColor" : "none"} />
+            <span>{liked ? "Liked" : "Like"}</span>
+            {likes ? <span className="product-comment__action-count">{likes}</span> : null}
           </button>
-          <button type="button" onClick={() => onReply(comment.id)}>
-            Reply
+          <button
+            className="product-comment__action"
+            type="button"
+            onClick={() => onReply(comment.id)}
+          >
+            <MessageIcon width="15" height="15" />
+            <span>Reply</span>
           </button>
           {canAcceptSource && comment.state === "VISIBLE" ? (
-            <button type="button" onClick={() => onAcceptSource?.(comment.id)}>
-              Accept source
+            <button
+              className="product-comment__action product-comment__action--accept"
+              type="button"
+              onClick={() => onAcceptSource?.(comment.id)}
+            >
+              <CheckIcon width="15" height="15" />
+              <span>Accept source</span>
             </button>
           ) : null}
-          {comment.editedAt ? <span>Edited</span> : null}
-          {hidden ? <span>{comment.state === "HIDDEN" ? "Moderated" : "Deleted"}</span> : null}
           {typeof window !== "undefined" ? (
             <ShareAction
               url={new URL(
@@ -286,24 +368,23 @@ function CommentItem({
               title="SourceBoard comment"
             />
           ) : null}
-          {comment.canDelete ? (
-            <ConfirmAction
-              triggerLabel="Delete"
-              title="Delete this comment?"
-              description="This removes the comment from the discussion."
-              confirmLabel="Delete comment"
-              destructive
-              onConfirm={async () => {
-                const response = await fetch(`/api/comments/${encodeURIComponent(comment.id)}`, {
-                  method: "DELETE",
-                  headers: { "x-csrf-token": readCsrfToken() },
-                });
-                if (!response.ok) throw new Error("Could not delete this comment.");
-                onDeleted(comment.id);
-              }}
-            />
+          {comment.editedAt ? <span className="product-comment__action-meta">Edited</span> : null}
+          {hidden ? (
+            <span className="product-comment__action-meta">
+              {comment.state === "HIDDEN" ? "Moderated" : "Deleted"}
+            </span>
           ) : null}
         </div>
+        <ConfirmDialog
+          title="Delete this comment?"
+          description="This removes the comment from the discussion."
+          confirmLabel="Delete comment"
+          destructive
+          open={deleting}
+          busy={deleteBusy}
+          onConfirm={() => void deleteComment()}
+          onOpenChange={setDeleting}
+        />
         {status ? <small role="status">{status}</small> : null}
         {comment.replies.length ? (
           <>
@@ -489,7 +570,7 @@ export function CommentThread({
                   if (item.type === "EMOTE") {
                     setBody(
                       (current) =>
-                        `${current}${current && !/\s$/.test(current) ? " " : ""}${item.shortcode}`,
+                        `${current}${current && !/\s$/.test(current) ? " " : ""}${formatEmoteMarkdown(item.shortcode)}`,
                     );
                   } else {
                     setAttachment({
