@@ -192,10 +192,11 @@ export default function PostDetailRoute() {
   }, [authenticated, location.hash]);
 
   if (!post) return <UnavailablePost unavailable={unavailable} />;
-  const acceptedComment = findComment(post.comments, post.acceptedSource?.commentId);
+  const currentPost = post;
+  const acceptedComment = findComment(currentPost.comments, currentPost.acceptedSource?.commentId);
 
   async function acceptSource(commentId: string) {
-    const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}/source/accept`, {
+    const response = await fetch(`/api/posts/${encodeURIComponent(currentPost.id)}/source/accept`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
       body: JSON.stringify({ commentId }),
@@ -207,20 +208,20 @@ export default function PostDetailRoute() {
     <ProductShell>
       <PageHeader
         eyebrow="Source request"
-        title={post.title}
+        title={currentPost.title}
         description="One image, one focused question and an auditable path to the original source."
       />
-      <PostCard post={post} manage onChanged={() => revalidator.revalidate()} />
+      <PostCard post={currentPost} manage onChanged={() => revalidator.revalidate()} />
       <SourceResolution
-        accepted={post.acceptedSource}
+        accepted={currentPost.acceptedSource}
         acceptedComment={acceptedComment}
-        verified={post.verifiedSource}
+        verified={currentPost.verifiedSource}
       />
       <CommentThread
-        postId={post.id}
-        comments={post.comments}
+        postId={currentPost.id}
+        comments={currentPost.comments}
         authenticated={authenticated}
-        canAcceptSource={post.permissions.canAcceptSource}
+        canAcceptSource={currentPost.permissions.canAcceptSource}
         onAcceptSource={(commentId) => void acceptSource(commentId)}
       />
     </ProductShell>
