@@ -11,8 +11,20 @@ describe("notification realtime client contract", () => {
       readNotificationSnapshot({
         unreadCount: 3.8,
         notifications: [
-          { id: "notification-new", type: "source.verified" },
-          { id: "notification-old", type: "comment.created" },
+          {
+            id: "notification-new",
+            type: "source.verified",
+            title: "A source was verified",
+            body: "The accepted source was verified.",
+            href: "/posts/post-1",
+          },
+          {
+            id: "notification-old",
+            type: "comment.created",
+            title: "Someone commented on your post",
+            body: "New comment.",
+            href: "/posts/post-1#comment-comment-1",
+          },
         ],
       }),
     ).toEqual({
@@ -25,6 +37,9 @@ describe("notification realtime client contract", () => {
           entityType: null,
           entityId: null,
           payloadJson: null,
+          title: "A source was verified",
+          body: "The accepted source was verified.",
+          href: "/posts/post-1",
           readAt: null,
         },
         {
@@ -33,6 +48,9 @@ describe("notification realtime client contract", () => {
           entityType: null,
           entityId: null,
           payloadJson: null,
+          title: "Someone commented on your post",
+          body: "New comment.",
+          href: "/posts/post-1#comment-comment-1",
           readAt: null,
         },
       ],
