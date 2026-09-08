@@ -57,7 +57,16 @@ describe("responsive GIF, sticker and emote picker", () => {
   });
 
   it("renders compact icon actions and an icon-only ellipsis menu", () => {
-    for (const icon of ["HeartIcon", "MessageIcon", "CheckIcon", "ShareIcon", "MoreIcon", "EditIcon", "TrashIcon", "FlagIcon"]) {
+    for (const icon of [
+      "HeartIcon",
+      "MessageIcon",
+      "CheckIcon",
+      "ShareIcon",
+      "MoreIcon",
+      "EditIcon",
+      "TrashIcon",
+      "FlagIcon",
+    ]) {
       expect(icons).toContain(`function ${icon}`);
     }
     expect(overlays).toContain("triggerIcon");

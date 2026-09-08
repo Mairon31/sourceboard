@@ -39,7 +39,8 @@ function invalid(message: string): never {
 export function normalizeEmoteShortcode(value: string): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
-  const unwrapped = trimmed.startsWith(":") && trimmed.endsWith(":") ? trimmed.slice(1, -1) : trimmed;
+  const unwrapped =
+    trimmed.startsWith(":") && trimmed.endsWith(":") ? trimmed.slice(1, -1) : trimmed;
   return EMOTE_SHORTCODE_PATTERN.test(unwrapped) ? unwrapped : null;
 }
 

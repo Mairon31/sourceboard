@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
-import {
-  formatEmoteMarkdown,
-  type SafeRichTextNode,
-} from "../../../shared/richtext/markdown";
+import { formatEmoteMarkdown, type SafeRichTextNode } from "../../../shared/richtext/markdown";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
