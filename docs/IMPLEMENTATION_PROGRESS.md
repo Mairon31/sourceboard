@@ -740,10 +740,12 @@ prerequisites.
 - [x] Local D1 migration verification is idempotent: both consecutive runs
       against the persisted verification database reported no migrations to
       apply; production D1 is applied through `0018`.
-- [x] The complete local E2E suite reached 143/144 before correcting a stale
-      role assertion for the redesigned Friends tabs; the corrected Friends
-      mobile test passes, and the final standard CI run remains the complete
-      browser gate.
-- [ ] Workers Build and standard CI for the final pushed `master` commit,
-      plus interactive Google popup and Firebase action-link verification,
-      remain external release checks.
+- [x] The final standard CI run `#545` (`34213818457`) passed on the final
+      `master` commit: 214 unit tests across 52 files, 144 E2E tests, lint /
+      Prettier, typecheck, build, Wrangler dry-run and local migrations.
+- [x] Workers Build `a1d37c17-e1ca-4cd6-82bd-13721205fada` completed
+      successfully for `afe19d1` and deployed `sourceboard`; the resulting
+      Worker version is `174cdacd-2d4e-42a1-aef6-3910ef058db4`.
+- [ ] Interactive Google popup and Firebase action-link verification, WAF,
+      backups/restore, alerting and external security review remain operational
+      follow-ups outside this automated release gate.

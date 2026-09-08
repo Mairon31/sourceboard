@@ -228,5 +228,7 @@ Production D1 had `0014` through `0018` pending. They are now applied. The
 catalog rebuild in `0016` was corrected to preserve the dependent inventory,
 purchase and equipped-cosmetic rows while satisfying D1 foreign keys. Local
 lint/Prettier, typecheck, 214 unit tests, build, Worker dry-run and migration
-idempotency now pass. The final Worker build and standard CI gate are performed
-after the coherent `master` push.
+idempotency now pass. The final Worker build and standard CI gate completed after
+the coherent `master` push: Workers Build
+`a1d37c17-e1ca-4cd6-82bd-13721205fada` succeeded, and CI `#545` passed
+214 unit tests and 144 E2E tests.

@@ -64,8 +64,9 @@ una herramienta no aplicable.
 ## Pendientes que no se declaran falsamente resueltos
 
 - El árbol local ya pasa lint/Prettier, typecheck, 214 unit tests, build,
-  dry-run y la migración idempotente. Falta completar el build de Workers y
-  el CI estándar sobre el commit final que se va a subir a `master`.
+  dry-run y la migración idempotente. El Workers Build
+  `a1d37c17-e1ca-4cd6-82bd-13721205fada` y el CI estándar `#545`
+  terminaron correctamente sobre `master`.
 - Google popup y el enlace real de verificación de Firebase aún requieren una
   comprobación interactiva completa en el entorno final; el intercambio
   server-side ya está implementado.
