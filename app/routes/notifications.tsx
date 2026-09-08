@@ -9,7 +9,7 @@ import { withServerSession, type ServerLoaderArgs } from "../data/server-request
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { ConfirmAction } from "../components/product/ConfirmAction";
-import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
+import { NotificationActorStack } from "../components/product/NotificationActorStack";
 import { Badge, Button, Card } from "../components/ui";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
@@ -162,17 +162,11 @@ export default function NotificationsRoute() {
               className={`product-list-row product-notification-row${notification.readAt && !notification.unreadCount ? "" : " product-notification--unread"}`}
             >
               <div className="product-notification-row__identity">
-                {notification.actor ? (
-                  <CosmeticIdentity
-                    displayName={notification.actor.displayName}
-                    avatarUrl={notification.actor.avatarUrl}
-                    avatarFrame={notification.actor.cosmetics?.avatarFrame}
-                    profileEffect={notification.actor.cosmetics?.profileEffect}
-                    nameFont={notification.actor.cosmetics?.nameFont}
-                    nameEffect={notification.actor.cosmetics?.nameEffect}
-                    visuals={notification.actor.cosmetics?.visuals}
-                    mode="compact"
-                    nameAs="strong"
+                {notification.actor || notification.groupActors?.length ? (
+                  <NotificationActorStack
+                    actor={notification.actor}
+                    actors={notification.groupActors}
+                    total={notification.groupCount}
                   />
                 ) : (
                   <div className="product-notification-row__mark" aria-hidden="true" />
