@@ -645,12 +645,21 @@ prerequisites.
       files, production build, Workers deploy dry-run, migrations and 144 E2E.
 - [x] GitHub Actions CI run `#536` (`34197934973`) passed the same complete
       standard gate set on `bbcc5f9` after the CSP hydration fix.
-- [x] Cloudflare Workers Build `b30bd93b-1176-4c4e-b6cd-895dd996c325` completed
-      successfully for `96ca52b` with `npx wrangler deploy`; the production
+- [x] Production browser validation found the remaining hydration mismatch at its
+      causes: public dates crossed the UTC/local-day boundary and Store prices
+      used the browser locale. Public date rendering now fixes UTC, while prices
+      and administrative dates use explicit `en-US` formatting.
+- [x] Cloudflare Workers Build `b0ec37c6-c000-409d-9f2a-6f85f076b4ba` completed
+      successfully for `96d0615` with `npx wrangler deploy`; the production
       Worker `sourceboard` serves the updated assets and keeps its existing
       resource bindings.
-- [x] A production browser reload confirmed no presentation-build notice or
-      fixture account remains and produced no new client console error.
+- [x] Production browser reloads after that build confirmed the connected Home,
+      post detail and Store surfaces, real cosmetic/emote previews, no
+      presentation-build notice or fixture account, stable UTC dates and no new
+      client console errors.
+- [x] GitHub Actions CI run `#541` (`34199989562`) passed the complete standard
+      gate set on `96d0615`: lint/Prettier, typecheck, 207 unit tests across 50
+      files, production build, Workers deploy dry-run, migrations and 144 E2E.
 
 ## Known limitations
 
