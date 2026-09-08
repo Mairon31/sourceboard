@@ -157,8 +157,11 @@ export default function ProfileRoute() {
   if (!profile) return <UnavailableProfile unavailable={unavailable} />;
   return (
     <ProductShell wide>
-      <ProfileHero profile={profile} isOwnProfile={isOwnProfile} />
-      {isOwnProfile ? <ProfileEditor /> : null}
+      {isOwnProfile ? (
+        <ProfileEditor profile={profile} />
+      ) : (
+        <ProfileHero profile={profile} isOwnProfile={false} />
+      )}
       <ContributionHistory profile={profile} />
       {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
     </ProductShell>
