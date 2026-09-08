@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLoaderData } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
@@ -6,9 +7,17 @@ import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server
 import { readViewerLikedPostIds } from "../data/viewer-post-likes";
 import { PostCard } from "../components/product/PostCard";
 import { ProductShell } from "../components/product/ProductShell";
-import { Card, GlassPanel, Tabs } from "../components/ui";
+import { Card } from "../components/ui";
 
 type LoaderArgs = ServerLoaderArgs;
+type FeedMode = "recent" | "friends" | "answered" | "verified";
+
+const feedOptions: Array<{ value: FeedMode; label: string; description: string }> = [
+  { value: "recent", label: "Recent", description: "Latest public source requests" },
+  { value: "friends", label: "Friends", description: "Requests from your network" },
+  { value: "answered", label: "Answered", description: "Requests with accepted sources" },
+  { value: "verified", label: "Verified", description: "Sources verified by SourceBoard" },
+];
 
 export async function loader({ request, context }: LoaderArgs) {
   return withOptionalServerSession(
@@ -73,8 +82,8 @@ function FeedCollection({
   if (!posts.length) {
     return (
       <Card className="product-empty-state">
-        <strong>No source requests yet</strong>
-        <p>Be the first to publish one image and ask the community for its origin.</p>
+        <strong>No source requests here yet</strong>
+        <p>Try another feed or publish an image for the community to investigate.</p>
       </Card>
     );
   }
@@ -89,42 +98,47 @@ function FeedCollection({
 
 export default function HomeRoute() {
   const { feeds, unavailable } = useLoaderData<LoaderData>();
-  const recent = <FeedCollection posts={feeds.recent} unavailable={unavailable} />;
-  const friends = <FeedCollection posts={feeds.friends} unavailable={unavailable} />;
-  const answered = <FeedCollection posts={feeds.answered} unavailable={unavailable} />;
-  const verified = <FeedCollection posts={feeds.verified} unavailable={unavailable} />;
+  const [feed, setFeed] = useState<FeedMode>("recent");
+  const active = feedOptions.find((option) => option.value === feed) ?? feedOptions[0];
+  const posts = feeds[feed];
 
   return (
     <ProductShell wide>
-      <div className="product-home-lead">
-        <section className="product-feed-intro">
+      <section className="product-home-compact-lead">
+        <div className="product-home-compact-lead__copy">
           <span className="product-eyebrow">Image-source community</span>
           <h1>Find the original source</h1>
-          <p>
-            Post one image, add what you already know, and let the community trace the original
-            post, creator, publication or account with evidence.
-          </p>
-        </section>
+          <p>Publish one image and let the community trace its creator, post or publication with evidence.</p>
+        </div>
+        <Link className="product-nav__create product-home-create" to="/post/new" prefetch="intent">
+          Create post
+        </Link>
+      </section>
 
-        <GlassPanel className="product-feed-cta">
-          <div className="product-feed-cta__copy">
-            <strong>Have an image with no source?</strong>
-            <span>Create a focused request instead of starting with guesswork.</span>
+      <section className="product-feed-workspace" aria-labelledby="feed-heading">
+        <div className="product-feed-workspace__toolbar">
+          <div>
+            <span className="product-eyebrow">Feed</span>
+            <h2 id="feed-heading">{active.label}</h2>
+            <p>{active.description}</p>
           </div>
-          <Link className="product-nav__create" to="/post/new" prefetch="intent">
-            Create post
-          </Link>
-        </GlassPanel>
-      </div>
-
-      <Tabs
-        items={[
-          { value: "recent", label: "Recent", content: recent },
-          { value: "friends", label: "Friends", content: friends },
-          { value: "answered", label: "Answered", content: answered },
-          { value: "verified", label: "Verified", content: verified },
-        ]}
-      />
+          <nav className="product-store-filter-tabs product-feed-filter-tabs" aria-label="Feed filters">
+            {feedOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={feed === option.value ? "is-active" : undefined}
+                aria-pressed={feed === option.value}
+                onClick={() => setFeed(option.value)}
+              >
+                {option.label}
+                <span>{feeds[option.value].length}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+        <FeedCollection posts={posts} unavailable={unavailable} />
+      </section>
     </ProductShell>
   );
 }
