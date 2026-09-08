@@ -28,6 +28,21 @@
   y Tasks 6–13. No declarar la fase completa hasta ejecutar todos los gates del
   final de este plan.
 
+## Execution checkpoint — 2026-09-08 resumed
+
+- [x] The previously listed Tasks 5–11 are present in the current `master`
+  history and their standard CI evidence is recorded below in
+  `docs/IMPLEMENTATION_PROGRESS.md`; this checkpoint does not re-implement
+  those completed slices.
+- [x] Task 5's private emote cache is scoped to the active MediaPicker instance
+  while retaining the existing KLIPY debounce, abort and entitlement checks.
+- [x] Task 12 now records browser-local route-family timings for navigation
+  entry points and documents the measured warm-path evidence in
+  `docs/PERFORMANCE_PHASE_13.md`.
+- [ ] The full final suite, production Firebase auth flows and any remaining
+  Cloudflare release verification are still required before declaring the
+  entire plan complete.
+
 ## Global Constraints
 
 - Trabajar directamente sobre `master`; preservar cambios existentes; no `git reset --hard`, borrados masivos ni force push.

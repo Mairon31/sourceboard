@@ -675,8 +675,24 @@ prerequisites.
       was temporarily added to the Cloudflare hostname allowlist. No local
       bypass, secret, `.dev.vars` file or production binding was added.
 - [ ] A real registration and Google sign-in/profile-creation flow still needs
-      verification with the configured Firebase account; the next standard CI
-      run must validate this commit.
+      verification with the configured Firebase account. Standard CI run
+      `#543` (`34201972799`) passed the auth-request commit's complete gate.
+
+### 2026-09-08 accumulated navigation and media checkpoint
+
+- [x] Added browser-local navigation marks for primary navigation, Store,
+  post detail/media/author links, search and notification deep links. Marks are
+  classified to route families, cleared after measurement and contain no
+  user/content identifiers.
+- [x] Kept the existing warm-navigation fixes and documented their causes and
+  evidence in [`docs/PERFORMANCE_PHASE_13.md`](PERFORMANCE_PHASE_13.md).
+- [x] Scoped the MediaPicker emote-pack cache to the active picker instance so
+  entitled emotes cannot leak between users sharing a long-lived browser
+  process.
+- [x] Focal verification for the accumulated code passed: 8 tests across
+  navigation metrics, MediaPicker and auth-request boundaries, plus
+  TypeScript and formatting checks. The final standard CI remains the release
+  gate after the accumulated change is pushed.
 
 ## Known limitations
 

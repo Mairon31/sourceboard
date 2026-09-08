@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useLocation } from "react-router";
 import { AppShell } from "../layout/AppShell";
 import { MobileProductNav, ProductContextRail, ProductNav } from "./ProductNav";
+import { markNavigationReady } from "../../data/performance-metrics";
 
 export interface ProductShellProps {
   children: ReactNode;
@@ -9,6 +11,12 @@ export interface ProductShellProps {
 }
 
 export function ProductShell({ children, rightRail, wide = false }: ProductShellProps) {
+  const location = useLocation();
+
+  useEffect(() => {
+    markNavigationReady(location.pathname);
+  }, [location.pathname]);
+
   return (
     <>
       <AppShell

@@ -7,6 +7,7 @@ import {
   reconnectDelay,
   type NotificationPreview,
 } from "../../data/notifications-realtime";
+import { markNavigationStart } from "../../data/performance-metrics";
 import { ThemeControl } from "./ThemeControl";
 
 export function TopBar() {
@@ -20,6 +21,7 @@ export function TopBar() {
     event.preventDefault();
     const submittedValue = new FormData(event.currentTarget).get("q");
     const query = typeof submittedValue === "string" ? submittedValue.trim() : "";
+    markNavigationStart("/search");
     navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
   }
 
@@ -102,7 +104,12 @@ export function TopBar() {
 
   return (
     <header className="sb-topbar glass-panel glass-panel--strong">
-      <Link className="sb-brand focus-ring" to="/" aria-label="SourceBoard">
+      <Link
+        className="sb-brand focus-ring"
+        to="/"
+        aria-label="SourceBoard"
+        onClick={() => markNavigationStart("/")}
+      >
         <img
           className="sb-brand__mark"
           src="/sourceboard-logo.svg"
@@ -163,7 +170,11 @@ export function TopBar() {
             >
               <div className="sb-topbar-notification-menu__header">
                 <strong>Notifications</strong>
-                <Link className="sb-topbar-notification-menu__all focus-ring" to="/notifications">
+                <Link
+                  className="sb-topbar-notification-menu__all focus-ring"
+                  to="/notifications"
+                  onClick={() => markNavigationStart("/notifications")}
+                >
                   View all
                 </Link>
               </div>
@@ -174,7 +185,10 @@ export function TopBar() {
                       key={notification.id}
                       className={`sb-topbar-notification-menu__item focus-ring${notification.readAt ? "" : " is-unread"}`}
                       to={notification.href}
-                      onClick={() => setNotificationsOpen(false)}
+                      onClick={() => {
+                        markNavigationStart(notification.href);
+                        setNotificationsOpen(false);
+                      }}
                     >
                       <strong>{notification.title}</strong>
                       <span>{notification.body}</span>

@@ -2,6 +2,7 @@ import { NavLink, useRouteLoaderData } from "react-router";
 import { ThemeControl } from "../layout/ThemeControl";
 import { FriendsIcon, HomeIcon, PlusIcon, StoreIcon, UserIcon } from "../ui";
 import type { RootLoaderData } from "../../root";
+import { markNavigationStart } from "../../data/performance-metrics";
 
 const primaryLinks = [
   { href: "/", label: "Home", short: "Home" },
@@ -28,6 +29,7 @@ export function ProductNav() {
             className={navClass}
             end={item.href === "/"}
             prefetch="intent"
+            onClick={() => markNavigationStart(item.href)}
           >
             <span className="product-nav__dot" aria-hidden="true" />
             <span>{item.label}</span>
@@ -35,7 +37,12 @@ export function ProductNav() {
         ))}
       </div>
 
-      <NavLink className="product-nav__create" to="/post/new" prefetch="intent">
+      <NavLink
+        className="product-nav__create"
+        to="/post/new"
+        prefetch="intent"
+        onClick={() => markNavigationStart("/post/new")}
+      >
         Create post
       </NavLink>
 
@@ -45,6 +52,7 @@ export function ProductNav() {
             className={navClass}
             to={`/u/${encodeURIComponent(user.username)}`}
             prefetch="intent"
+            onClick={() => markNavigationStart("/u/:username")}
           >
             <span className="product-nav__avatar" aria-hidden="true">
               {user.username.slice(0, 2).toUpperCase()}
@@ -52,12 +60,22 @@ export function ProductNav() {
             <span>{user.username}</span>
           </NavLink>
         ) : (
-          <NavLink className={navClass} to="/login" prefetch="intent">
+          <NavLink
+            className={navClass}
+            to="/login"
+            prefetch="intent"
+            onClick={() => markNavigationStart("/login")}
+          >
             <span className="product-nav__dot" aria-hidden="true" />
             <span>Sign in</span>
           </NavLink>
         )}
-        <NavLink className={navClass} to="/settings" prefetch="intent">
+        <NavLink
+          className={navClass}
+          to="/settings"
+          prefetch="intent"
+          onClick={() => markNavigationStart("/settings")}
+        >
           <span className="product-nav__dot" aria-hidden="true" />
           <span>Settings</span>
         </NavLink>
@@ -76,7 +94,15 @@ export function MobileProductNav() {
       className="product-mobile-nav glass-panel glass-panel--strong"
       aria-label="Mobile navigation"
     >
-      <NavLink to="/" className={navClass} end aria-label="Home" title="Home" prefetch="viewport">
+      <NavLink
+        to="/"
+        className={navClass}
+        end
+        aria-label="Home"
+        title="Home"
+        prefetch="viewport"
+        onClick={() => markNavigationStart("/")}
+      >
         <HomeIcon />
       </NavLink>
       <NavLink
@@ -85,6 +111,7 @@ export function MobileProductNav() {
         aria-label="Friends"
         title="Friends"
         prefetch="viewport"
+        onClick={() => markNavigationStart("/friends")}
       >
         <FriendsIcon />
       </NavLink>
@@ -94,6 +121,7 @@ export function MobileProductNav() {
         aria-label="Create post"
         title="Create post"
         prefetch="viewport"
+        onClick={() => markNavigationStart("/post/new")}
       >
         <PlusIcon />
       </NavLink>
@@ -103,6 +131,7 @@ export function MobileProductNav() {
         aria-label="Profile"
         title="Profile"
         prefetch="viewport"
+        onClick={() => markNavigationStart(profileHref)}
       >
         <UserIcon />
       </NavLink>
@@ -112,6 +141,7 @@ export function MobileProductNav() {
         aria-label="Store"
         title="Store"
         prefetch="viewport"
+        onClick={() => markNavigationStart("/store")}
       >
         <StoreIcon />
       </NavLink>

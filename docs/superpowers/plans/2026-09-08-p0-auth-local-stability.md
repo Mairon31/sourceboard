@@ -31,7 +31,7 @@
 - [x] Run the focused test and confirm it failed because the client helper did not exist.
 - [x] Implement the helper and route AuthScreen's register/login/verify/reset/Google requests through it.
 - [x] Run the focused test and the existing auth unit tests (29 tests across 8 files).
-- [ ] Commit `fix(auth): send csrf token with browser auth requests`.
+- [x] Commit `fix(auth): send csrf token with browser auth requests`.
 
 ### Task 2: Verify local Turnstile configuration
 
@@ -54,3 +54,11 @@
 - [x] Verify the auth screens at desktop and narrow mobile widths with no new SourceBoard console errors; Turnstile succeeds locally.
 - [ ] Verify a stale CSRF/session request reports the actual auth response instead of an unexplained browser failure.
 - [ ] Run only the focused unit test, auth E2E/API test and typecheck before deciding whether a broader gate is warranted.
+
+## Execution checkpoint — 2026-09-08
+
+The auth request fix is committed on `master`. Local `/register` was checked
+with the real Turnstile widget after the user temporarily authorized
+`localhost` in Cloudflare. A real Firebase registration and Google account
+flow still requires a configured account and remains an explicit external
+verification item; no local bypass or secret was added.

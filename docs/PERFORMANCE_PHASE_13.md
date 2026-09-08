@@ -47,3 +47,22 @@ keyset pagination, bounded response or cache policy that preserves privacy.
 Do not move source-of-truth state into KV, add an external search service or
 cache friends-only/private results without a phase-level design and security
 review.
+
+## Navigation checkpoint — 2026-09-08
+
+The observed multi-second delay was not a touch delay or an intentional sleep.
+The contributing causes were duplicate session resolution, frequent
+`last_used_at` writes, repeated admin authorization reads, and serialized
+Store/post-detail loader work. The existing code now memoizes the session per
+request, throttles session touches, reuses the resolved user id, and runs
+independent Store/post-detail reads concurrently. Desktop links prefetch on
+intent and mobile links prefetch in the viewport; no retry or artificial delay
+was added. The first local Vite compilation can still be multi-second, while a
+warm Store-to-post-creation navigation was observed at approximately 220 ms.
+
+Navigation instrumentation is browser-local: `performance.mark/measure`
+records only an allowlisted route family (`store`, `post`, `profile`, etc.)
+and clears the marks after measuring. It does not send URLs, usernames,
+notification IDs or content to a remote service. Worker request logs already
+record the route family, method, status, duration and request ID for server-side
+correlation without logging request content.

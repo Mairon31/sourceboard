@@ -2,6 +2,7 @@ import { useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import type { PostDetail, PostSummary } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
+import { markNavigationStart } from "../../data/performance-metrics";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ShareAction } from "./ShareAction";
 import {
@@ -71,7 +72,10 @@ export function PostCard({
   const permissions = "permissions" in post ? post.permissions : undefined;
 
   function openPostDetail() {
-    if (!editing) navigate(detailHref);
+    if (!editing) {
+      markNavigationStart(detailHref);
+      navigate(detailHref);
+    }
   }
 
   function handleCardClick(event: ReactMouseEvent<HTMLDivElement>) {
@@ -206,7 +210,10 @@ export function PostCard({
         {post.author.mode === "ANONYMOUS" ? (
           <Avatar name="Anonymous Author" />
         ) : (
-          <Link to={post.author.profileUrl ?? `/u/${post.author.username ?? "aurora"}`}>
+          <Link
+            to={post.author.profileUrl ?? `/u/${post.author.username ?? "aurora"}`}
+            onClick={() => markNavigationStart("/u/:username")}
+          >
             <CosmeticIdentity
               displayName={post.author.displayName}
               avatarUrl={post.author.avatarUrl}
@@ -278,7 +285,11 @@ export function PostCard({
           </div>
         ) : (
           <>
-            <Link to={detailHref} className="product-post__title">
+            <Link
+              to={detailHref}
+              className="product-post__title"
+              onClick={() => markNavigationStart(detailHref)}
+            >
               {displayTitle}
             </Link>
             {displayDescription ? <p>{displayDescription}</p> : null}
@@ -308,7 +319,12 @@ export function PostCard({
           ) : null}
         </div>
       ) : (
-        <Link to={detailHref} className={mediaClass} aria-label={`Open post: ${displayTitle}`}>
+        <Link
+          to={detailHref}
+          className={mediaClass}
+          aria-label={`Open post: ${displayTitle}`}
+          onClick={() => markNavigationStart(detailHref)}
+        >
           {post.imageUrl ? (
             <img
               src={post.imageUrl}
@@ -352,7 +368,11 @@ export function PostCard({
             <HeartIcon />
             <span>{liked ? "Liked" : "Like"}</span>
           </button>
-          <Link className="product-post__action" to={`${detailHref}#comments`}>
+          <Link
+            className="product-post__action"
+            to={`${detailHref}#comments`}
+            onClick={() => markNavigationStart(detailHref)}
+          >
             <MessageIcon />
             <span>Comment</span>
           </Link>

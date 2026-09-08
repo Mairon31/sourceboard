@@ -30,7 +30,6 @@ interface EmotePack {
 export type MediaPickerSelection = KlipyMediaItem | EmotePickerItem;
 
 const mediaCache = new Map<string, KlipyMediaItem[]>();
-let emotePackCache: EmotePack[] | null = null;
 
 export function MediaPicker({
   kind,
@@ -50,6 +49,7 @@ export function MediaPicker({
   const [status, setStatus] = useState<string>();
   const [busy, setBusy] = useState(false);
   const requestRef = useRef<AbortController | null>(null);
+  const emotePackCacheRef = useRef<EmotePack[] | null>(null);
 
   useEffect(() => {
     setQuery("");
@@ -62,9 +62,9 @@ export function MediaPicker({
     requestRef.current = controller;
 
     if (kind === "EMOTE") {
-      if (emotePackCache) {
-        setPacks(emotePackCache);
-        setActivePackId((current) => current ?? emotePackCache?.[0]?.id);
+      if (emotePackCacheRef.current) {
+        setPacks(emotePackCacheRef.current);
+        setActivePackId((current) => current ?? emotePackCacheRef.current?.[0]?.id);
         setBusy(false);
         return () => controller.abort();
       }
@@ -77,7 +77,7 @@ export function MediaPicker({
           } | null;
           if (!response.ok) throw new Error(payload?.error?.message ?? "Emotes are unavailable.");
           const next = Array.isArray(payload?.packs) ? payload.packs : [];
-          emotePackCache = next;
+          emotePackCacheRef.current = next;
           setPacks(next);
           setActivePackId(next[0]?.id);
           if (!next.length) setStatus("You do not have any emote packs yet.");
