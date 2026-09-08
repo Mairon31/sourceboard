@@ -79,3 +79,58 @@ test("authorized Admin Store opens draft packs and administers individual emotes
   await expect(emote.getByText("Lifecycle", { exact: true })).toBeVisible();
   await expect(emote.getByRole("button", { name: "Save emote" })).toBeVisible();
 });
+
+test("authorized Admin Store uploads an emote into a draft pack without media network failures", async ({
+  page,
+}) => {
+  await installAdminStoreFixture(page);
+  const failedMediaRequests: string[] = [];
+  const pageErrors: string[] = [];
+  page.on("requestfailed", (request) => {
+    if (request.url().includes("/api/admin/catalog/emotes/") || request.url().includes("/api/media/")) {
+      failedMediaRequests.push(`${request.method()} ${request.url()} ${request.failure()?.errorText ?? ""}`);
+    }
+  });
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+
+  await page.goto("/admin/store");
+  await waitForUiReady(page);
+  await page.getByRole("tab", { name: "Emote packs" }).click();
+  const packButton = page
+    .locator(".admin-store-pack-list__item")
+    .filter({ hasText: "E2E Draft Pack" });
+  await packButton.click();
+
+  const workspace = page.locator(".admin-store-pack-workspace");
+  await expect(workspace.getByRole("heading", { name: "Add emote" })).toBeVisible();
+  await workspace.locator('input[name="shortcode"]').fill("e2e_uploaded");
+  await workspace.locator('input[name="label"]').fill("E2E Uploaded");
+  await workspace.locator('input[name="file"]').setInputFiles({
+    name: "e2e-upload.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+
+  const createResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/admin/catalog/emotes") &&
+      response.request().method() === "POST",
+  );
+  await workspace.getByRole("button", { name: "Add emote" }).click();
+  const createResponse = await createResponsePromise;
+  expect(createResponse.status()).toBe(201);
+
+  const uploaded = page.locator(".admin-store-emote-card").filter({ hasText: "E2E Uploaded" });
+  await expect(uploaded.getByText(":e2e_uploaded:", { exact: true })).toBeVisible();
+  const image = uploaded.getByRole("img", { name: "E2E Uploaded" });
+  await expect(image).toHaveAttribute("src", /\/api\/admin\/catalog\/emotes\/.+\/media$/);
+  const src = await image.getAttribute("src");
+  expect(src).toBeTruthy();
+  const mediaResponse = await page.request.get(src!);
+  expect(mediaResponse.status()).toBe(200);
+  expect(failedMediaRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
+});
