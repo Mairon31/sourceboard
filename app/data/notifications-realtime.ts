@@ -30,6 +30,7 @@ export interface NotificationPreview {
   href: string;
   ctaLabel?: string;
   actor?: NotificationPreviewActor;
+  groupActors?: NotificationPreviewActor[];
   readAt: number | null;
   createdAt: number;
   groupedIds?: string[];
@@ -64,6 +65,15 @@ function readActor(value: unknown): NotificationPreviewActor | undefined {
   };
 }
 
+function readActors(value: unknown): NotificationPreviewActor[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const actors = value.flatMap((item) => {
+    const actor = readActor(item);
+    return actor ? [actor] : [];
+  });
+  return actors.length ? actors.slice(0, 3) : undefined;
+}
+
 export function readNotificationSnapshot(payload: unknown): NotificationSnapshot | null {
   if (!payload || typeof payload !== "object") return null;
   const value = payload as { unreadCount?: unknown; notifications?: unknown };
@@ -82,6 +92,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
       href?: unknown;
       ctaLabel?: unknown;
       actor?: unknown;
+      groupActors?: unknown;
       readAt?: unknown;
       createdAt?: unknown;
       groupedIds?: unknown;
@@ -99,6 +110,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
       return [];
     }
     const actor = readActor(item.actor);
+    const groupActors = readActors(item.groupActors);
     return [
       {
         id: item.id,
@@ -111,6 +123,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
         href: item.href,
         ...(typeof item.ctaLabel === "string" ? { ctaLabel: item.ctaLabel } : {}),
         ...(actor ? { actor } : {}),
+        ...(groupActors ? { groupActors } : {}),
         readAt: typeof item.readAt === "number" ? item.readAt : null,
         createdAt: item.createdAt,
         ...(Array.isArray(item.groupedIds)
