@@ -36,7 +36,7 @@ describe("home post card experience", () => {
     expect(postCardSource).toContain("to={`${detailHref}#comments`}");
     expect(commentThreadSource).toContain('id="comments"');
     expect(commentThreadSource).toContain('id="comment-composer"');
-    expect(postDetailSource).toContain('location.hash !== "#comments"');
+    expect(postDetailSource).toContain('location.hash === "#comments"');
     expect(postDetailSource).toContain('document.getElementById("comments")');
     expect(postDetailSource).toContain('document.getElementById("comment-composer")');
     expect(postDetailSource).toContain("focus({ preventScroll: true })");
