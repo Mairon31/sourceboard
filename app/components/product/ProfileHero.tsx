@@ -51,7 +51,7 @@ function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
     })
     .filter((link): link is NonNullable<typeof link> => Boolean(link));
   if (!links.length) {
-    return <p className="product-store-preview-status">No public social links.</p>;
+    return <small className="product-profile-social-empty">No public social profiles added.</small>;
   }
   return (
     <div className="product-social-links" aria-label="Social links">
@@ -192,24 +192,20 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
       <ProfileBanner profile={profile} />
       <div className="product-profile-content">
         <div className="product-profile-identity">
-          <div className="product-list-row__identity">
-            <div className="product-profile-name">
-              <span className="product-eyebrow">
-                {isOwnProfile ? "Your profile" : "Public profile"}
-              </span>
-              <CosmeticIdentity
-                displayName={profile.displayName}
-                avatarUrl={profile.avatarUrl}
-                avatarFrame={profile.cosmetics?.avatarFrame}
-                profileEffect={profile.cosmetics?.profileEffect}
-                nameFont={profile.cosmetics?.nameFont}
-                nameEffect={profile.cosmetics?.nameEffect}
-                visuals={profile.cosmetics?.visuals}
-                mode="profile"
-                nameAs="h1"
-              />
-              <p>@{profile.username}</p>
-            </div>
+          <div className="product-profile-name">
+            <span className="product-eyebrow">{isOwnProfile ? "Your profile" : "Public profile"}</span>
+            <CosmeticIdentity
+              displayName={profile.displayName}
+              avatarUrl={profile.avatarUrl}
+              avatarFrame={profile.cosmetics?.avatarFrame}
+              profileEffect={profile.cosmetics?.profileEffect}
+              nameFont={profile.cosmetics?.nameFont}
+              nameEffect={profile.cosmetics?.nameEffect}
+              visuals={profile.cosmetics?.visuals}
+              mode="profile"
+              nameAs="h1"
+            />
+            <p>@{profile.username}</p>
           </div>
           <div className="product-chip-row product-profile-actions">
             {!isOwnProfile ? (
@@ -223,11 +219,7 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
               relationship={relationship}
               onRelationshipChange={setRelationship}
             />
-            <BlockAction
-              profile={profile}
-              relationship={relationship}
-              onRelationshipChange={setRelationship}
-            />
+            <BlockAction profile={profile} relationship={relationship} onRelationshipChange={setRelationship} />
             {editControl}
             <ShareAction
               url={`/u/${encodeURIComponent(profile.username)}`}
@@ -236,13 +228,13 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
           </div>
         </div>
 
-        <p>{profile.bio || "This contributor has not added a bio yet."}</p>
+        {profile.bio ? <p className="product-profile-bio">{profile.bio}</p> : null}
 
         <div className="product-profile-summary" aria-label="Profile summary">
           <span>
             <strong>{profile.friendCount}</strong> {profile.friendCount === 1 ? "friend" : "friends"}
           </span>
-          <span>{profile.profileVisibility === "PUBLIC" ? "Public profile" : "Friends-only profile"}</span>
+          <span>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends only"}</span>
         </div>
 
         <ProfileSocialLinks profile={profile} />
