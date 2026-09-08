@@ -21,10 +21,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Propagate post updatedAt into SSR metadata
+      - name: Propagate post updatedAt into every PostSummary producer and SSR metadata
         run: |
           python - <<'PY'
           from pathlib import Path
+
           service_path = Path("worker/posts/service.ts")
           service = service_path.read_text()
           old = '    createdAt: new Date(post.post.createdAt).toISOString(),\n    status: post.post.status,\n'
@@ -44,16 +45,57 @@ jobs:
           elif 'dateModified: post.updatedAt' not in route:
               raise SystemExit("post JSON-LD anchor missing")
           route_path.write_text(route)
+
+          search_path = Path("worker/search/service.ts")
+          search = search_path.read_text()
+          row_old = '  created_at: number;\n  media_id: string;\n'
+          row_new = '  created_at: number;\n  updated_at: number;\n  media_id: string;\n'
+          if row_old in search:
+              search = search.replace(row_old, row_new, 1)
+          elif '  updated_at: number;\n' not in search:
+              raise SystemExit("search row updated_at anchor missing")
+          summary_old = '    createdAt: new Date(row.created_at).toISOString(),\n    status: postStatus(row.status),\n'
+          summary_new = '    createdAt: new Date(row.created_at).toISOString(),\n    updatedAt: new Date(row.updated_at).toISOString(),\n    status: postStatus(row.status),\n'
+          if summary_old in search:
+              search = search.replace(summary_old, summary_new, 1)
+          elif 'updatedAt: new Date(row.updated_at).toISOString()' not in search:
+              raise SystemExit("search summary updatedAt anchor missing")
+          select_old = '      p.created_at,\n      m.id AS media_id,\n'
+          select_new = '      p.created_at,\n      p.updated_at,\n      m.id AS media_id,\n'
+          if select_old in search:
+              search = search.replace(select_old, select_new, 1)
+          elif '      p.updated_at,\n' not in search:
+              raise SystemExit("search SELECT updated_at anchor missing")
+          search_path.write_text(search)
+
+          fixtures_path = Path("app/dev-fixtures/data.ts")
+          fixtures = fixtures_path.read_text()
+          timestamps = [
+              "2026-09-06T01:05:00Z",
+              "2026-09-05T23:40:00Z",
+              "2026-09-05T18:12:00Z",
+              "2026-09-05T15:30:00Z",
+              "2026-09-04T12:00:00Z",
+              "2026-09-03T12:00:00Z",
+          ]
+          for value in timestamps:
+              old = f'    createdAt: "{value}",\n'
+              new = f'    createdAt: "{value}",\n    updatedAt: "{value}",\n'
+              if old in fixtures:
+                  fixtures = fixtures.replace(old, new, 1)
+              elif new not in fixtures:
+                  raise SystemExit(f"fixture timestamp anchor missing: {value}")
+          fixtures_path.write_text(fixtures)
           PY
-      - run: npx prettier --write shared/ui/contracts.ts worker/posts/service.ts app/routes/post-detail.tsx tests/unit/public-seo-resources.test.ts
-      - run: npx prettier --check shared/ui/contracts.ts worker/posts/service.ts app/routes/post-detail.tsx tests/unit/public-seo-resources.test.ts
-      - run: npm test -- --run tests/unit/public-seo-resources.test.ts
+      - run: npx prettier --write shared/ui/contracts.ts worker/posts/service.ts worker/search/service.ts app/routes/post-detail.tsx app/dev-fixtures/data.ts tests/unit/public-seo-resources.test.ts
+      - run: npx prettier --check shared/ui/contracts.ts worker/posts/service.ts worker/search/service.ts app/routes/post-detail.tsx app/dev-fixtures/data.ts tests/unit/public-seo-resources.test.ts
+      - run: npm test -- --run tests/unit/public-seo-resources.test.ts tests/unit/search-service.test.ts
       - run: npm run typecheck
       - run: npm run build
       - name: Commit dateModified implementation
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add shared/ui/contracts.ts worker/posts/service.ts app/routes/post-detail.tsx tests/unit/public-seo-resources.test.ts
+          git add shared/ui/contracts.ts worker/posts/service.ts worker/search/service.ts app/routes/post-detail.tsx app/dev-fixtures/data.ts tests/unit/public-seo-resources.test.ts
           git commit -m "feat: publish post modification metadata"
           git push origin HEAD:feature/sourceboard-product-overhaul
