@@ -87,8 +87,13 @@ test("authorized Admin Store uploads an emote into a draft pack without media ne
   const failedMediaRequests: string[] = [];
   const pageErrors: string[] = [];
   page.on("requestfailed", (request) => {
-    if (request.url().includes("/api/admin/catalog/emotes/") || request.url().includes("/api/media/")) {
-      failedMediaRequests.push(`${request.method()} ${request.url()} ${request.failure()?.errorText ?? ""}`);
+    if (
+      request.url().includes("/api/admin/catalog/emotes/") ||
+      request.url().includes("/api/media/")
+    ) {
+      failedMediaRequests.push(
+        `${request.method()} ${request.url()} ${request.failure()?.errorText ?? ""}`,
+      );
     }
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));

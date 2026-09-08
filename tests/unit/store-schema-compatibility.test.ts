@@ -57,10 +57,13 @@ describe("Store schema rollout compatibility", () => {
       "INSERT INTO emote_catalog (id, shortcode, label, asset_key, pack_id, status, sort_order, created_at)",
     );
     expect(catalogApi).toContain("isCatalogLifecycleSchemaError(error)");
+    expect(catalogApi).toContain("has no column named");
   });
 
   it("uses an HTML pattern compatible with Unicode Sets validation in modern browsers", () => {
     expect(adminEmotePacks).not.toContain('pattern="[a-z0-9][a-z0-9_-]{1,63}"');
     expect(adminEmotePacks).toContain('pattern="[a-z0-9](?:[a-z0-9_]|-){1,63}"');
+    expect(adminEmotePacks).not.toContain('pattern="[a-z0-9][a-z0-9-]{1,63}"');
+    expect(adminEmotePacks).toContain('pattern="[a-z0-9](?:[a-z0-9]|-){1,63}"');
   });
 });

@@ -209,7 +209,7 @@ function EmoteEditor({
               <input
                 value={shortcode}
                 maxLength={64}
-                pattern="[a-z0-9][a-z0-9_-]{1,63}"
+                pattern="[a-z0-9](?:[a-z0-9_]|-){1,63}"
                 onChange={(event) => setShortcode(event.target.value.toLowerCase())}
               />
             </label>
@@ -588,7 +588,7 @@ export function AdminEmotePackManager({
           <h3>Create first pack</h3>
           <form className="product-form-grid" onSubmit={(event) => void createPack(event)}>
             <Input name="label" label="Pack name" required maxLength={120} />
-            <Input name="slug" label="Slug" required pattern="[a-z0-9][a-z0-9-]{1,63}" />
+            <Input name="slug" label="Slug" required pattern="[a-z0-9](?:[a-z0-9]|-){1,63}" />
             <Input name="pricePoints" label="Price in points" type="number" min={1} required />
             <Textarea name="description" label="Description" maxLength={500} />
             <Button type="submit" loading={busy}>
@@ -622,7 +622,7 @@ export function AdminEmotePackManager({
                   name="slug"
                   label="Slug"
                   required
-                  pattern="[a-z0-9][a-z0-9-]{1,63}"
+                  pattern="[a-z0-9](?:[a-z0-9]|-){1,63}"
                   placeholder="reaction-pack"
                 />
                 <Input name="pricePoints" label="Price in points" type="number" min={1} required />
@@ -855,7 +855,7 @@ export function AdminEmotePackManager({
                     name="shortcode"
                     label="Shortcode"
                     required
-                    pattern="[a-z0-9][a-z0-9_-]{1,63}"
+                    pattern="[a-z0-9](?:[a-z0-9_]|-){1,63}"
                     placeholder="party_blob"
                   />
                   <Input name="label" label="Label" required maxLength={120} />

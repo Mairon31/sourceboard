@@ -133,8 +133,10 @@ async function audit(
 function isCatalogLifecycleSchemaError(error: unknown): boolean {
   const message =
     error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  const missingColumn =
+    message.includes("no such column") || message.includes("has no column named");
   return (
-    message.includes("no such column") &&
+    missingColumn &&
     ["lifecycle_state", "is_enabled", "is_featured", "moderation_state", "updated_at"].some(
       (column) => message.includes(column),
     )
@@ -159,6 +161,26 @@ async function legacyListEmotes(db: D1Database) {
             sort_order AS sortOrder, created_at AS createdAt FROM emote_catalog ORDER BY sort_order ASC, created_at DESC LIMIT 500`,
     )
     .all();
+}
+
+async function legacyCreateEmote(
+  db: D1Database,
+  input: {
+    id: string;
+    shortcode: string;
+    label: string;
+    assetKey: string;
+    packId: string | null;
+    now: number;
+  },
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO emote_catalog (id, shortcode, label, asset_key, pack_id, status, sort_order, created_at)
+       VALUES (?, ?, ?, ?, ?, 'ACTIVE', 0, ?)`,
+    )
+    .bind(input.id, input.shortcode, input.label, input.assetKey, input.packId, input.now)
+    .run();
 }
 
 async function legacyListEmotePacks(
@@ -286,14 +308,26 @@ async function handleCreate(
   await env.MEDIA.put(assetKey, bytes, { httpMetadata: { contentType: metadata.contentType } });
   try {
     if (kind === "emote") {
-      await env.DB.prepare(
-        `INSERT INTO emote_catalog
-         (id, shortcode, label, asset_key, pack_id, status, sort_order, lifecycle_state,
-          is_enabled, moderation_state, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'ACTIVE', 0, 'PUBLISHED', 1, 'CLEAR', ?, ?)`,
-      )
-        .bind(id, key, label, assetKey, packId, now, now)
-        .run();
+      try {
+        await env.DB.prepare(
+          `INSERT INTO emote_catalog
+           (id, shortcode, label, asset_key, pack_id, status, sort_order, lifecycle_state,
+            is_enabled, moderation_state, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, 'ACTIVE', 0, 'PUBLISHED', 1, 'CLEAR', ?, ?)`,
+        )
+          .bind(id, key, label, assetKey, packId, now, now)
+          .run();
+      } catch (error) {
+        if (!isCatalogLifecycleSchemaError(error)) throw error;
+        await legacyCreateEmote(env.DB, {
+          id,
+          shortcode: key,
+          label,
+          assetKey,
+          packId,
+          now,
+        });
+      }
     } else {
       await env.DB.prepare(
         `INSERT INTO sticker_catalog (id, slug, label, asset_key, pack_id, status, sort_order, created_at)
