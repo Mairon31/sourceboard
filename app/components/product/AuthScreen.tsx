@@ -87,9 +87,7 @@ function useTurnstileScript(siteKey: string | null): boolean {
   const [scriptReady, setScriptReady] = useState(false);
 
   useEffect(() => {
-    if (!siteKey) {
-      return;
-    }
+    if (!siteKey) return;
 
     const scriptId = "sourceboard-turnstile-script";
     const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
@@ -122,12 +120,11 @@ function useTurnstileWidget(
   scriptReady: boolean,
   containerRef: RefObject<HTMLDivElement | null>,
   onToken: (token: string | undefined) => void,
+  resetKey: number,
 ): void {
   useEffect(() => {
     const container = containerRef.current;
-    if (!canRenderTurnstile(siteKey, scriptReady, container)) {
-      return;
-    }
+    if (!canRenderTurnstile(siteKey, scriptReady, container)) return;
 
     const widgetId = window.turnstile!.render(container!, {
       sitekey: siteKey!,
@@ -140,7 +137,7 @@ function useTurnstileWidget(
       window.turnstile?.remove(widgetId);
       onToken(undefined);
     };
-  }, [siteKey, onToken, scriptReady, containerRef]);
+  }, [siteKey, onToken, scriptReady, containerRef, resetKey]);
 }
 
 function getTurnstileSiteKey(config: AuthConfig | null): string | null {
@@ -166,14 +163,16 @@ function TurnstileContent({
 function TurnstileField({
   config,
   onToken,
+  resetKey,
 }: {
   config: AuthConfig | null;
   onToken: (token: string | undefined) => void;
+  resetKey: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const siteKey = getTurnstileSiteKey(config);
   const scriptReady = useTurnstileScript(siteKey);
-  useTurnstileWidget(siteKey, scriptReady, containerRef, onToken);
+  useTurnstileWidget(siteKey, scriptReady, containerRef, onToken, resetKey);
   return (
     <div className="product-auth-security">
       <TurnstileContent enabled={Boolean(siteKey)} containerRef={containerRef} />
@@ -191,6 +190,9 @@ function getErrorMessage(value: unknown): string {
   }
   if (error?.code === "CSRF_TOKEN_INVALID") {
     return "Your previous session security state expired. Retry this request; you do not need to refresh the page.";
+  }
+  if (error?.code === "TURNSTILE_REQUIRED" || error?.code === "TURNSTILE_FAILED") {
+    return "The Cloudflare security check expired or was rejected. Complete the refreshed check and try again.";
   }
   const message = error?.message;
   return typeof message === "string" ? message : "The request could not be completed. Try again.";
@@ -213,12 +215,8 @@ function buildAuthValues(
   turnstileToken: string | undefined,
 ): Record<string, FormDataEntryValue> {
   const values = Object.fromEntries(new FormData(form).entries());
-  if (turnstileToken) {
-    values.turnstileToken = turnstileToken;
-  }
-  if (isReset && resetToken) {
-    values.token = resetToken;
-  }
+  if (turnstileToken) values.turnstileToken = turnstileToken;
+  if (isReset && resetToken) values.token = resetToken;
   return values;
 }
 
@@ -344,13 +342,17 @@ function AuthSecurityFields({
   mode,
   config,
   onToken,
+  resetKey,
 }: {
   mode: AuthMode;
   config: AuthConfig | null;
   onToken: (token: string | undefined) => void;
+  resetKey: number;
 }) {
   const turnstileRequired = mode === "login" || mode === "register" || mode === "forgot";
-  return turnstileRequired ? <TurnstileField config={config} onToken={onToken} /> : null;
+  return turnstileRequired ? (
+    <TurnstileField config={config} onToken={onToken} resetKey={resetKey} />
+  ) : null;
 }
 
 function getSubmitLabel(mode: Exclude<AuthMode, "verify">, isReset: boolean): string {
@@ -425,6 +427,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const resetToken =
     mode === "forgot" ? (searchParams.get("oobCode") ?? searchParams.get("token")) : null;
   const [turnstileToken, setTurnstileToken] = useState<string>();
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
   const isReset = mode === "forgot" && Boolean(resetToken);
@@ -441,6 +444,11 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
     }
   }, [mode, searchParams]);
 
+  function refreshTurnstile() {
+    setTurnstileToken(undefined);
+    setTurnstileResetKey((value) => value + 1);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (mode === "verify") return;
@@ -451,12 +459,14 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
       const result = await submitAuthForm(form, mode, isReset, resetToken, turnstileToken);
       if (!result.ok) {
         setFeedback({ tone: "error", message: getErrorMessage(result.body) });
+        refreshTurnstile();
         return;
       }
 
       handleSuccessfulSubmit(mode, isReset, result.body, navigate, setFeedback);
     } catch {
       setFeedback({ tone: "error", message: "The request could not be completed. Try again." });
+      refreshTurnstile();
     } finally {
       setBusy(false);
     }
@@ -467,9 +477,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
     setBusy(true);
     setFeedback(null);
     try {
-      if (!authConfig?.firebase) {
-        throw new Error("FIREBASE_NOT_CONFIGURED");
-      }
+      if (!authConfig?.firebase) throw new Error("FIREBASE_NOT_CONFIGURED");
       const { idToken } = await signInWithGoogle(authConfig.firebase);
       await completeGoogleSession(idToken, navigate, (nextFeedback) => setFeedback(nextFeedback));
     } catch (error) {
@@ -505,7 +513,12 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           <form className="product-form-grid" onSubmit={handleSubmit}>
             <AuthIdentityFields mode={mode} isReset={isReset} />
             <AuthPasswordField mode={mode} isReset={isReset} />
-            <AuthSecurityFields mode={mode} config={authConfig} onToken={setTurnstileToken} />
+            <AuthSecurityFields
+              mode={mode}
+              config={authConfig}
+              onToken={setTurnstileToken}
+              resetKey={turnstileResetKey}
+            />
             <Button type="submit" loading={busy} disabled={turnstileRequired && !turnstileToken}>
               {getSubmitLabel(mode, isReset)}
             </Button>
