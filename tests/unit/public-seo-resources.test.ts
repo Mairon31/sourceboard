@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { handlePublicSeoRequest } from "../../worker/seo/public";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
@@ -18,7 +19,45 @@ describe("public SEO resources", () => {
     expect(seo).toContain("/sitemaps/posts-");
     expect(seo).toContain("/sitemaps/profiles-");
     expect(seo).toContain("Sitemap: https://srcboard.me/sitemap.xml");
-    expect(seo).toContain('"cache-control": "public, max-age=300, s-maxage=300"');
+  });
+
+  it("serves privacy-aware robots and cached static sitemap responses", async () => {
+    const robotsResponse = await handlePublicSeoRequest(
+      new Request("https://srcboard.me/robots.txt"),
+      {},
+    );
+    expect(robotsResponse?.status).toBe(200);
+    expect(robotsResponse?.headers.get("cache-control")).toBe(
+      "public, max-age=300, s-maxage=300",
+    );
+    const robots = await robotsResponse?.text();
+    expect(robots).toContain("Disallow: /admin/");
+    expect(robots).toContain("Disallow: /settings");
+    expect(robots).toContain("Sitemap: https://srcboard.me/sitemap.xml");
+
+    const staticResponse = await handlePublicSeoRequest(
+      new Request("https://srcboard.me/sitemaps/static.xml"),
+      {},
+    );
+    expect(staticResponse?.status).toBe(200);
+    expect(staticResponse?.headers.get("content-type")).toContain("application/xml");
+    const staticXml = await staticResponse?.text();
+    expect(staticXml).toContain("https://srcboard.me/docs");
+    expect(staticXml).toContain("https://srcboard.me/legal");
+    expect(staticXml).not.toContain("/admin");
+    expect(staticXml).not.toContain("/settings");
+  });
+
+  it("returns null for non-SEO paths and 503 when a dynamic sitemap lacks D1", async () => {
+    expect(
+      await handlePublicSeoRequest(new Request("https://srcboard.me/store"), {}),
+    ).toBeNull();
+    const dynamic = await handlePublicSeoRequest(
+      new Request("https://srcboard.me/sitemap.xml"),
+      {},
+    );
+    expect(dynamic?.status).toBe(503);
+    expect(dynamic?.headers.get("cache-control")).toBe("no-store");
   });
 
   it("excludes every non-public or sensitive post state from sitemap SQL", () => {
