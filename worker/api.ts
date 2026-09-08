@@ -10,6 +10,7 @@ import { handleSourceRequest } from "./source/api";
 import { handleReputationRequest } from "./reputation/api";
 import { handleStoreRequest } from "./store/api";
 import { handleCommunityCosmeticRequest } from "./store/community-api";
+import { enforceCommunityCosmeticPublicationGate } from "./store/publication-gate";
 import { handleModerationRequest } from "./moderation/api";
 import { handleSearchRequest } from "./search/api";
 
@@ -78,6 +79,15 @@ export async function handleApiRequest(
   const cosmeticResponse = await handleCommunityCosmeticRequest(request, requestId, env ?? {});
   if (cosmeticResponse) {
     return cosmeticResponse;
+  }
+
+  const publicationGate = await enforceCommunityCosmeticPublicationGate(
+    request,
+    requestId,
+    env ?? {},
+  );
+  if (publicationGate) {
+    return publicationGate;
   }
 
   const storeResponse = await handleStoreRequest(request, requestId, env ?? {});
