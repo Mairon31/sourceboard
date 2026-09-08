@@ -2,7 +2,7 @@ import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { normalizeUsername } from "../auth/crypto";
 import { isAuthError } from "../auth/errors";
-import { assertCsrfToken, assertSameOrigin } from "../auth/security";
+import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/security";
 import { createAuthService } from "../auth/service";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
@@ -77,7 +77,7 @@ export async function handlePublicReputationRequest(
 
   try {
     assertSameOrigin(request);
-    assertCsrfToken(request);
+    if (getSessionToken(request)) assertCsrfToken(request);
     const auth = createAuthService({ store: createD1AuthStore(env.DB), env });
     const session = await auth.getSession(request);
     if (!session) return failure("AUTHENTICATION_REQUIRED", "Sign in to continue.", requestId, 401);
