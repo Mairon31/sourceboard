@@ -62,3 +62,8 @@ export async function persistNotification(
     .run();
   return id;
 }
+
+export async function clearNotifications(db: D1Database, userId: string): Promise<number> {
+  const result = await db.prepare("DELETE FROM notifications WHERE user_id = ?").bind(userId).run();
+  return result.meta.changes;
+}
