@@ -77,4 +77,13 @@ describe("public SEO resources", () => {
     const route = read("app/routes/post-detail.tsx");
     expect(route).toContain("post.isNsfw ||");
   });
+
+  it("exposes post modification time to SSR and JSON-LD", () => {
+    const contracts = read("shared/ui/contracts.ts");
+    const service = read("worker/posts/service.ts");
+    const route = read("app/routes/post-detail.tsx");
+    expect(contracts).toContain("updatedAt: string;");
+    expect(service).toContain("updatedAt: new Date(post.post.updatedAt).toISOString()");
+    expect(route).toContain("dateModified: post.updatedAt");
+  });
 });
