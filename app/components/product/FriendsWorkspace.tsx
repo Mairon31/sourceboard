@@ -142,16 +142,27 @@ function FriendActions({
   return null;
 }
 
+function FriendIdentity({ friend }: { friend: Friend }) {
+  return (
+    <CosmeticIdentity
+      displayName={friend.displayName}
+      avatarUrl={friend.avatarUrl}
+      avatarFrame={friend.cosmetics?.avatarFrame}
+      profileEffect={friend.cosmetics?.profileEffect}
+      nameFont={friend.cosmetics?.nameFont}
+      nameEffect={friend.cosmetics?.nameEffect}
+      visuals={friend.cosmetics?.visuals}
+      mode="compact"
+      nameAs="strong"
+    />
+  );
+}
+
 function FriendRow({ friend, onChanged }: { friend: Friend; onChanged: (friend: Friend) => void }) {
   return (
     <article className="product-list-row">
       <Link className="product-list-row__identity" to={`/u/${encodeURIComponent(friend.username)}`}>
-        <CosmeticIdentity
-          displayName={friend.displayName}
-          avatarUrl={friend.avatarUrl}
-          mode="compact"
-          nameAs="strong"
-        />
+        <FriendIdentity friend={friend} />
         <span className="product-list-row__copy">
           <span>@{friend.username}</span>
           <span>{relationshipLabel[friend.relationship]}</span>
@@ -384,12 +395,7 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
                   className="product-list-row__identity"
                   to={`/u/${encodeURIComponent(friend.username)}`}
                 >
-                  <CosmeticIdentity
-                    displayName={friend.displayName}
-                    avatarUrl={friend.avatarUrl}
-                    mode="compact"
-                    nameAs="strong"
-                  />
+                  <FriendIdentity friend={friend} />
                   <span className="product-list-row__copy">@{friend.username}</span>
                 </Link>
                 <ConfirmAction
