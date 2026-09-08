@@ -426,7 +426,12 @@ export async function handleCommentApiRequest(
               .bind(userId, targetType, targetId)
               .first<{ id: string }>()
           : null;
-      const liked = await commentService.setLike(targetType, targetId, userId, request.method === "POST");
+      const liked = await commentService.setLike(
+        targetType,
+        targetId,
+        userId,
+        request.method === "POST",
+      );
       if (request.method === "POST" && liked && !existing) {
         await emitLikeNotification(env, targetType, targetId, userId);
       }

@@ -31,7 +31,11 @@ export async function loader({ request, context }: ServerLoaderArgs) {
     (unavailable) => ({
       access: { authorized: false, unavailable },
       canAssignRoles: false,
-      controls: { suspend: false, ban: false, delete: false } satisfies AdminUserControlCapabilities,
+      controls: {
+        suspend: false,
+        ban: false,
+        delete: false,
+      } satisfies AdminUserControlCapabilities,
       query,
       users: [] as AdminUserRow[],
       roles: [] as AdminRoleRow[],
@@ -42,7 +46,11 @@ export async function loader({ request, context }: ServerLoaderArgs) {
         return {
           access,
           canAssignRoles: false,
-          controls: { suspend: false, ban: false, delete: false } satisfies AdminUserControlCapabilities,
+          controls: {
+            suspend: false,
+            ban: false,
+            delete: false,
+          } satisfies AdminUserControlCapabilities,
           query,
           users: [] as AdminUserRow[],
           roles: [] as AdminRoleRow[],
@@ -195,7 +203,10 @@ export default function AdminUsersRoute() {
         <div className="admin-user-policy-strip">
           <div>
             <strong>Account enforcement</strong>
-            <span>Restrictions, suspensions and bans are enforced server-side and written to the audit trail.</span>
+            <span>
+              Restrictions, suspensions and bans are enforced server-side and written to the audit
+              trail.
+            </span>
           </div>
           <div className="product-chip-row">
             {controls.suspend ? <Badge>Moderation</Badge> : null}
@@ -244,7 +255,9 @@ export default function AdminUsersRoute() {
                     <span>Joined {formatDate(user.createdAt)}</span>
                   </div>
                   <RoleBadges roles={user.roles} />
-                  <span className={`admin-status-badge admin-status-badge--${user.status.toLowerCase()}`}>
+                  <span
+                    className={`admin-status-badge admin-status-badge--${user.status.toLowerCase()}`}
+                  >
                     {user.status}
                   </span>
                   <span>{formatDate(user.lastSeenAt)}</span>
@@ -261,7 +274,9 @@ export default function AdminUsersRoute() {
                       <strong>{user.displayName}</strong>
                       <span>@{user.username}</span>
                     </div>
-                    <span className={`admin-status-badge admin-status-badge--${user.status.toLowerCase()}`}>
+                    <span
+                      className={`admin-status-badge admin-status-badge--${user.status.toLowerCase()}`}
+                    >
                       {user.status}
                     </span>
                   </div>

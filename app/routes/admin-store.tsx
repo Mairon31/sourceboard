@@ -218,7 +218,9 @@ export default function AdminStoreRoute() {
         <Card className="admin-store-summary-card">
           <span>Sticker packs</span>
           <strong>{stickerPacks.length}</strong>
-          <small>{stickerPacks.filter((item) => item.lifecycleState === "PUBLISHED").length} published</small>
+          <small>
+            {stickerPacks.filter((item) => item.lifecycleState === "PUBLISHED").length} published
+          </small>
         </Card>
       </div>
 
@@ -304,7 +306,9 @@ export default function AdminStoreRoute() {
                 <Textarea
                   name="config"
                   label="Config JSON"
-                  placeholder={'{"preset":"stellar"} or {"visual":{"namespace":"sourceboard.cosmetic.v1"}}'}
+                  placeholder={
+                    '{"preset":"stellar"} or {"visual":{"namespace":"sourceboard.cosmetic.v1"}}'
+                  }
                 />
                 <Button type="submit" loading={creatingCosmetic}>
                   Create draft cosmetic
@@ -317,10 +321,7 @@ export default function AdminStoreRoute() {
       ) : null}
 
       {!loading && mode === "COMMUNITY" && access.storeManage ? (
-        <AdminCommunityCosmeticReviews
-          onStatus={setStatus}
-          onCatalogRefresh={loadStoreCatalog}
-        />
+        <AdminCommunityCosmeticReviews onStatus={setStatus} onCatalogRefresh={loadStoreCatalog} />
       ) : null}
 
       {!loading && mode === "STICKER_PACKS" && access.storeManage ? (

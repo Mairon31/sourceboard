@@ -109,7 +109,11 @@ export function AdminUserControlDialog({
         action,
         reason: normalizedReason,
       };
-      if (action === "SUSPEND" || action === "POSTING_RESTRICTION" || action === "COMMENT_RESTRICTION") {
+      if (
+        action === "SUSPEND" ||
+        action === "POSTING_RESTRICTION" ||
+        action === "COMMENT_RESTRICTION"
+      ) {
         body.durationMs = duration === "permanent" ? null : Number(duration);
       }
       if (action === "REVOKE_SESSIONS") {
@@ -132,7 +136,8 @@ export function AdminUserControlDialog({
         setError(errorMessage(payload, "The moderation action could not be completed."));
         return;
       }
-      const actionLabel = options.find((item) => item.value === action)?.label ?? "Moderation action";
+      const actionLabel =
+        options.find((item) => item.value === action)?.label ?? "Moderation action";
       onChanged(`${actionLabel} completed for @${user.username}.`);
       setReason("");
       await loadSanctions();
@@ -175,7 +180,9 @@ export function AdminUserControlDialog({
   }
 
   const activeSanctions = sanctions.filter(
-    (sanction) => sanction.revokedAt === null && (sanction.expiresAt === null || sanction.expiresAt > Date.now()),
+    (sanction) =>
+      sanction.revokedAt === null &&
+      (sanction.expiresAt === null || sanction.expiresAt > Date.now()),
   );
   const destructive = action === "BAN" || action === "ANONYMIZE";
 
@@ -212,10 +219,16 @@ export function AdminUserControlDialog({
           </select>
         </label>
 
-        {action === "SUSPEND" || action === "POSTING_RESTRICTION" || action === "COMMENT_RESTRICTION" ? (
+        {action === "SUSPEND" ||
+        action === "POSTING_RESTRICTION" ||
+        action === "COMMENT_RESTRICTION" ? (
           <label className="sb-field">
             <span className="sb-field__label">Duration</span>
-            <select className="sb-input" value={duration} onChange={(event) => setDuration(event.target.value)}>
+            <select
+              className="sb-input"
+              value={duration}
+              onChange={(event) => setDuration(event.target.value)}
+            >
               <option value="3600000">1 hour</option>
               <option value="86400000">24 hours</option>
               <option value="604800000">7 days</option>
@@ -237,7 +250,9 @@ export function AdminUserControlDialog({
 
         {action === "ANONYMIZE" ? (
           <div className="admin-danger-notice" role="alert">
-            This removes profile identity, social links, credentials, roles and active sessions while preserving public content records under a deleted identity. This action is intentionally owner-only.
+            This removes profile identity, social links, credentials, roles and active sessions
+            while preserving public content records under a deleted identity. This action is
+            intentionally owner-only.
           </div>
         ) : null}
 
@@ -245,7 +260,11 @@ export function AdminUserControlDialog({
           <Button variant="ghost" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
-          <Button variant={destructive ? "danger" : "primary"} loading={busy} onClick={() => void submitControl()}>
+          <Button
+            variant={destructive ? "danger" : "primary"}
+            loading={busy}
+            onClick={() => void submitControl()}
+          >
             {options.find((item) => item.value === action)?.label ?? "Apply action"}
           </Button>
         </OverlayActionRow>
@@ -256,20 +275,30 @@ export function AdminUserControlDialog({
               <strong>Sanctions</strong>
               <span>{activeSanctions.length} active</span>
             </div>
-            <Button type="button" size="sm" variant="ghost" loading={loadingSanctions} onClick={() => void loadSanctions()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              loading={loadingSanctions}
+              onClick={() => void loadSanctions()}
+            >
               Refresh
             </Button>
           </div>
           {sanctions.length ? (
             <div className="admin-user-control__sanction-list">
               {sanctions.map((sanction) => {
-                const active = sanction.revokedAt === null && (sanction.expiresAt === null || sanction.expiresAt > Date.now());
+                const active =
+                  sanction.revokedAt === null &&
+                  (sanction.expiresAt === null || sanction.expiresAt > Date.now());
                 return (
                   <div className="admin-user-control__sanction" key={sanction.id}>
                     <div>
                       <div className="product-chip-row">
                         <Badge>{sanction.kind}</Badge>
-                        <Badge>{active ? "Active" : sanction.revokedAt ? "Revoked" : "Expired"}</Badge>
+                        <Badge>
+                          {active ? "Active" : sanction.revokedAt ? "Revoked" : "Expired"}
+                        </Badge>
                       </div>
                       <p>{sanction.reason}</p>
                       <small>
@@ -278,7 +307,13 @@ export function AdminUserControlDialog({
                       </small>
                     </div>
                     {active && (sanction.kind !== "BAN" || capabilities.ban) ? (
-                      <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => void revokeSanction(sanction)}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => void revokeSanction(sanction)}
+                      >
                         Revoke
                       </Button>
                     ) : null}

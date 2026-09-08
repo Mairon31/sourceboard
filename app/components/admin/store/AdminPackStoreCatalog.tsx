@@ -5,14 +5,7 @@ import { AdminStoreEditor } from "./AdminStoreEditor";
 import type { AdminStoreItem } from "./types";
 
 type StoreAction =
-  | "PUBLISH"
-  | "UNPUBLISH"
-  | "ENABLE"
-  | "DISABLE"
-  | "FEATURE"
-  | "UNFEATURE"
-  | "ARCHIVE"
-  | "DELETE";
+  "PUBLISH" | "UNPUBLISH" | "ENABLE" | "DISABLE" | "FEATURE" | "UNFEATURE" | "ARCHIVE" | "DELETE";
 
 type StateFilter = "ALL" | "DRAFT" | "PUBLISHED" | "ARCHIVED" | "DISABLED" | "FEATURED";
 
@@ -54,11 +47,15 @@ export function AdminPackStoreCatalog({
   const [filter, setFilter] = useState<StateFilter>("ALL");
   const [editing, setEditing] = useState<AdminStoreItem | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [danger, setDanger] = useState<{ item: AdminStoreItem; action: "ARCHIVE" | "DELETE" } | null>(
-    null,
-  );
+  const [danger, setDanger] = useState<{
+    item: AdminStoreItem;
+    action: "ARCHIVE" | "DELETE";
+  } | null>(null);
   const [reason, setReason] = useState("");
-  const visible = useMemo(() => packs.filter((item) => matchesState(item, filter)), [filter, packs]);
+  const visible = useMemo(
+    () => packs.filter((item) => matchesState(item, filter)),
+    [filter, packs],
+  );
 
   async function perform(item: AdminStoreItem, action: StoreAction, actionReason?: string) {
     setBusyId(item.id);
@@ -109,7 +106,10 @@ export function AdminPackStoreCatalog({
         <span className="product-search-count">{packs.length} total</span>
       </div>
 
-      <nav className="admin-store-type-filters admin-store-state-filters" aria-label={`${title} state`}>
+      <nav
+        className="admin-store-type-filters admin-store-state-filters"
+        aria-label={`${title} state`}
+      >
         {(["ALL", "DRAFT", "PUBLISHED", "ARCHIVED", "DISABLED", "FEATURED"] as const).map(
           (value) => (
             <button
@@ -220,10 +220,16 @@ export function AdminPackStoreCatalog({
                     <details className="admin-store-action-menu">
                       <summary>More actions</summary>
                       <div className="admin-store-action-menu__panel">
-                        <button type="button" onClick={() => void perform(item, enabled ? "DISABLE" : "ENABLE")}>
+                        <button
+                          type="button"
+                          onClick={() => void perform(item, enabled ? "DISABLE" : "ENABLE")}
+                        >
                           {enabled ? "Disable" : "Enable"}
                         </button>
-                        <button type="button" onClick={() => void perform(item, featured ? "UNFEATURE" : "FEATURE")}>
+                        <button
+                          type="button"
+                          onClick={() => void perform(item, featured ? "UNFEATURE" : "FEATURE")}
+                        >
                           {featured ? "Unfeature" : "Feature"}
                         </button>
                         {!archived ? (

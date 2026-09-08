@@ -10,9 +10,7 @@ export function mergeCosmeticVisuals(
   return { ...first, ...second };
 }
 
-export function cosmeticVisualStyle(
-  visual?: CosmeticVisualDefinition,
-): CSSProperties | undefined {
+export function cosmeticVisualStyle(visual?: CosmeticVisualDefinition): CSSProperties | undefined {
   if (!visual) return undefined;
   return {
     "--sb-cosmetic-fg": visual.foregroundColor,
@@ -23,8 +21,7 @@ export function cosmeticVisualStyle(
       visual.borderWidth === undefined ? undefined : `${visual.borderWidth}px`,
     "--sb-cosmetic-radius":
       visual.borderRadius === undefined ? undefined : `${visual.borderRadius}px`,
-    "--sb-cosmetic-glow-size":
-      visual.glowSize === undefined ? undefined : `${visual.glowSize}px`,
+    "--sb-cosmetic-glow-size": visual.glowSize === undefined ? undefined : `${visual.glowSize}px`,
     "--sb-cosmetic-opacity": visual.opacity,
     "--sb-cosmetic-font-weight": visual.fontWeight,
     "--sb-cosmetic-letter-spacing":

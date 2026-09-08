@@ -37,7 +37,9 @@ async function toCosmeticFriendsList(
 ): Promise<FriendsListDto> {
   const base = toFriendsListDto(users);
   const cosmetics = await Promise.all(
-    base.friends.map((friend) => dependencies.store.getEquippedCosmetics(friend.id).catch(() => ({}))),
+    base.friends.map((friend) =>
+      dependencies.store.getEquippedCosmetics(friend.id).catch(() => ({})),
+    ),
   );
   return {
     friends: base.friends.map((friend, index) => ({
@@ -52,7 +54,10 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
   return {
     ...core,
     async listFriends(viewerId: string) {
-      return toCosmeticFriendsList(await dependencies.store.listSocialUsers(viewerId), dependencies);
+      return toCosmeticFriendsList(
+        await dependencies.store.listSocialUsers(viewerId),
+        dependencies,
+      );
     },
     async searchFriendSuggestions(viewerId: string, query: string) {
       const normalizedQuery = normalizeFriendSearch(query);

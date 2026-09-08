@@ -1,9 +1,6 @@
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
-import {
-  canonicalSocialPlatform,
-  normalizeSocialUrl,
-} from "../../shared/profile/social-links";
+import { canonicalSocialPlatform, normalizeSocialUrl } from "../../shared/profile/social-links";
 import { isAuthError } from "../auth/errors";
 import { getSessionToken } from "../auth/security";
 import { createAuthService } from "../auth/service";

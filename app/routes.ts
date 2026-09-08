@@ -20,8 +20,12 @@ export default [
   route("legal", "routes/legal.tsx"),
   route("admin", "routes/admin.tsx"),
   route("admin/moderation", "routes/admin-moderation.tsx"),
-  route("admin/source-integrity", "routes/admin-verifications.tsx", { id: "admin-source-integrity" }),
-  route("admin/verifications", "routes/admin-verifications.tsx", { id: "admin-verifications-legacy" }),
+  route("admin/source-integrity", "routes/admin-verifications.tsx", {
+    id: "admin-source-integrity",
+  }),
+  route("admin/verifications", "routes/admin-verifications.tsx", {
+    id: "admin-verifications-legacy",
+  }),
   route("admin/users", "routes/admin-users.tsx"),
   route("admin/roles", "routes/admin-roles.tsx"),
   route("admin/store", "routes/admin-store.tsx"),

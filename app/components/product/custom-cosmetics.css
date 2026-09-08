@@ -169,7 +169,10 @@
     linear-gradient(#ffffff10 1px, transparent 1px),
     linear-gradient(90deg, #ffffff10 1px, transparent 1px),
     linear-gradient(125deg, #352d74, #226e8d 48%, #af4a89);
-  background-size: 24px 24px, 24px 24px, auto;
+  background-size:
+    24px 24px,
+    24px 24px,
+    auto;
 }
 
 .product-profile-banner--forest-ink {

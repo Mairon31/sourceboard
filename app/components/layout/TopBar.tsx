@@ -226,7 +226,10 @@ export function TopBar() {
                         setNotificationsOpen(false);
                       }}
                     >
-                      <div className="sb-topbar-notification-menu__identity" aria-hidden={!notification.actor}>
+                      <div
+                        className="sb-topbar-notification-menu__identity"
+                        aria-hidden={!notification.actor}
+                      >
                         {notification.actor ? (
                           <CosmeticIdentity
                             displayName={notification.actor.displayName}

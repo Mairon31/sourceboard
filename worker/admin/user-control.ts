@@ -114,7 +114,9 @@ export function createAdminUserControlService(db: D1Database) {
     const reason = assertReason(input.reason);
     const now = input.now ?? Date.now();
     const sanction = await db
-      .prepare("SELECT kind FROM user_sanctions WHERE id = ? AND user_id = ? AND revoked_at IS NULL")
+      .prepare(
+        "SELECT kind FROM user_sanctions WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
+      )
       .bind(input.sanctionId, input.userId)
       .first<{ kind: UserSanctionKind }>();
     if (!sanction) {
@@ -122,7 +124,9 @@ export function createAdminUserControlService(db: D1Database) {
     }
     const results = await db.batch([
       db
-        .prepare("UPDATE user_sanctions SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL")
+        .prepare(
+          "UPDATE user_sanctions SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
+        )
         .bind(now, input.sanctionId, input.userId),
       db
         .prepare(
@@ -142,7 +146,11 @@ export function createAdminUserControlService(db: D1Database) {
         ),
     ]);
     if (!Number(results[0]?.meta.changes ?? 0)) {
-      throw new ModerationError(409, "SANCTION_ALREADY_REVOKED", "The sanction is no longer active.");
+      throw new ModerationError(
+        409,
+        "SANCTION_ALREADY_REVOKED",
+        "The sanction is no longer active.",
+      );
     }
     if (sanction.kind === "SUSPENSION" || sanction.kind === "BAN") {
       const remaining = await db
@@ -201,7 +209,8 @@ export function createAdminUserControlService(db: D1Database) {
     if (user.status === "DELETED") {
       throw new ModerationError(409, "USER_ALREADY_DELETED", "The account is already deleted.");
     }
-    const suffix = input.userId.replace(/[^A-Za-z0-9_]/g, "").slice(0, 24) || createIdentifier().slice(0, 24);
+    const suffix =
+      input.userId.replace(/[^A-Za-z0-9_]/g, "").slice(0, 24) || createIdentifier().slice(0, 24);
     const deletedUsername = `deleted_${suffix}`.slice(0, 32);
     await db.batch([
       db
@@ -239,10 +248,16 @@ export function createAdminUserControlService(db: D1Database) {
           "UPDATE media_assets SET status = 'DELETED', deleted_at = ? WHERE owner_user_id = ? AND purpose IN ('AVATAR', 'BANNER') AND status <> 'DELETED'",
         )
         .bind(now, input.userId),
-      db.prepare("DELETE FROM friendships WHERE requester_id = ? OR addressee_id = ?").bind(input.userId, input.userId),
-      db.prepare("DELETE FROM user_blocks WHERE blocker_id = ? OR blocked_id = ?").bind(input.userId, input.userId),
       db
-        .prepare("UPDATE user_sanctions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL")
+        .prepare("DELETE FROM friendships WHERE requester_id = ? OR addressee_id = ?")
+        .bind(input.userId, input.userId),
+      db
+        .prepare("DELETE FROM user_blocks WHERE blocker_id = ? OR blocked_id = ?")
+        .bind(input.userId, input.userId),
+      db
+        .prepare(
+          "UPDATE user_sanctions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
+        )
         .bind(now, input.userId),
       db
         .prepare(

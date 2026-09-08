@@ -14,7 +14,8 @@ export const meta: MetaFunction = () => [
   { title: "Search · SourceBoard" },
   {
     name: "description",
-    content: "Search public source requests, accepted sources and public contributors on SourceBoard.",
+    content:
+      "Search public source requests, accepted sources and public contributors on SourceBoard.",
   },
   { name: "robots", content: "noindex, follow" },
 ];
@@ -160,7 +161,10 @@ function ProfileResults({ result }: { result: SearchResult }) {
       </div>
       <div className="product-search-profile-list">
         {result.profiles.map((profile) => (
-          <Card className="product-search-profile product-search-profile--identity" key={profile.id}>
+          <Card
+            className="product-search-profile product-search-profile--identity"
+            key={profile.id}
+          >
             <Link
               className="product-search-profile__identity-link"
               to={`/u/${encodeURIComponent(profile.username)}`}
@@ -245,7 +249,11 @@ export default function SearchRoute() {
         title={query ? `Results for “${query}”` : "Search SourceBoard"}
         description="Find public source requests, contributors and accepted-source provenance. Private and friends-only content is excluded server-side."
       />
-      <Form className="product-search-form product-search-form--advanced" method="get" role="search">
+      <Form
+        className="product-search-form product-search-form--advanced"
+        method="get"
+        role="search"
+      >
         <label htmlFor="search-query">Search SourceBoard</label>
         <div className="product-search-form__row">
           <div className="product-search-input-shell">

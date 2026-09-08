@@ -421,9 +421,9 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   const [searchParams] = useSearchParams();
   const authConfig = useAuthConfig();
   const verificationToken =
-    mode === "verify" ? searchParams.get("oobCode") ?? searchParams.get("token") : null;
+    mode === "verify" ? (searchParams.get("oobCode") ?? searchParams.get("token")) : null;
   const resetToken =
-    mode === "forgot" ? searchParams.get("oobCode") ?? searchParams.get("token") : null;
+    mode === "forgot" ? (searchParams.get("oobCode") ?? searchParams.get("token")) : null;
   const [turnstileToken, setTurnstileToken] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<AuthFeedback | null>(null);

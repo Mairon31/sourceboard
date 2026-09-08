@@ -109,10 +109,7 @@ async function parseBody(request: Request): Promise<Record<string, unknown>> {
 }
 
 function cosmeticType(value: unknown): CommunityCosmeticType {
-  if (
-    typeof value === "string" &&
-    (COMMUNITY_COSMETIC_TYPES as readonly string[]).includes(value)
-  )
+  if (typeof value === "string" && (COMMUNITY_COSMETIC_TYPES as readonly string[]).includes(value))
     return value as CommunityCosmeticType;
   throw new CosmeticSubmissionError(
     400,

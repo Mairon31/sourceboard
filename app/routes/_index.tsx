@@ -108,7 +108,10 @@ export default function HomeRoute() {
         <div className="product-home-compact-lead__copy">
           <span className="product-eyebrow">Image-source community</span>
           <h1>Find the original source</h1>
-          <p>Publish one image and let the community trace its creator, post or publication with evidence.</p>
+          <p>
+            Publish one image and let the community trace its creator, post or publication with
+            evidence.
+          </p>
         </div>
         <Link className="product-nav__create product-home-create" to="/post/new" prefetch="intent">
           Create post
@@ -122,7 +125,10 @@ export default function HomeRoute() {
             <h2 id="feed-heading">{active.label}</h2>
             <p>{active.description}</p>
           </div>
-          <nav className="product-store-filter-tabs product-feed-filter-tabs" aria-label="Feed filters">
+          <nav
+            className="product-store-filter-tabs product-feed-filter-tabs"
+            aria-label="Feed filters"
+          >
             {feedOptions.map((option) => (
               <button
                 key={option.value}

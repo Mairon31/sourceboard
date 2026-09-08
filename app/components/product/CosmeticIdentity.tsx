@@ -7,11 +7,7 @@ import type {
 } from "../../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { Avatar } from "../ui";
-import {
-  cosmeticVisualClass,
-  cosmeticVisualStyle,
-  mergeCosmeticVisuals,
-} from "./cosmetic-visual";
+import { cosmeticVisualClass, cosmeticVisualStyle, mergeCosmeticVisuals } from "./cosmetic-visual";
 
 export interface CosmeticIdentityProps {
   displayName: string;

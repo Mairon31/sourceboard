@@ -264,17 +264,32 @@ function groupTarget(notification: PresentedNotification): string | null {
   return null;
 }
 
-function groupedCopy(notification: PresentedNotification, count: number): { title: string; body: string } {
+function groupedCopy(
+  notification: PresentedNotification,
+  count: number,
+): { title: string; body: string } {
   if (notification.type === "comment.created") {
-    return { title: `${count} new comments on your post`, body: "Open the discussion to review the latest activity." };
+    return {
+      title: `${count} new comments on your post`,
+      body: "Open the discussion to review the latest activity.",
+    };
   }
   if (notification.type === "comment.reply") {
-    return { title: `${count} new replies to your comment`, body: "Open the discussion to review the latest replies." };
+    return {
+      title: `${count} new replies to your comment`,
+      body: "Open the discussion to review the latest replies.",
+    };
   }
   if (notification.type === "post.liked") {
-    return { title: `${count} people liked your post`, body: "Your post is getting new reactions." };
+    return {
+      title: `${count} people liked your post`,
+      body: "Your post is getting new reactions.",
+    };
   }
-  return { title: `${count} people liked your comment`, body: "Your comment is getting new reactions." };
+  return {
+    title: `${count} people liked your comment`,
+    body: "Your comment is getting new reactions.",
+  };
 }
 
 export function groupPresentedNotifications(
@@ -295,7 +310,9 @@ export function groupPresentedNotifications(
     }
     const key = `${notification.type}:${target}`;
     const previous = groups.get(key);
-    const groupingWindowMs = notification.type.endsWith(".liked") ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000;
+    const groupingWindowMs = notification.type.endsWith(".liked")
+      ? 24 * 60 * 60 * 1000
+      : 15 * 60 * 1000;
     if (!previous || previous.createdAt - notification.createdAt > groupingWindowMs) {
       const next = {
         ...notification,
@@ -317,7 +334,9 @@ export function groupPresentedNotifications(
     previous.readAt = previous.readAt && notification.readAt ? previous.readAt : null;
     previous.title = copy.title;
     previous.body = copy.body;
-    previous.ctaLabel = notification.type.endsWith(".liked") ? notification.ctaLabel : "View discussion";
+    previous.ctaLabel = notification.type.endsWith(".liked")
+      ? notification.ctaLabel
+      : "View discussion";
   }
   return grouped;
 }
@@ -393,10 +412,10 @@ export async function presentNotifications(
   const profileStore = createD1ProfileStore(db);
   const cosmeticsByUser = new Map(
     await Promise.all(
-      userRows.results.map(async (row) => [
-        row.id,
-        await profileStore.getEquippedCosmetics(row.id).catch(() => ({})),
-      ] as const),
+      userRows.results.map(
+        async (row) =>
+          [row.id, await profileStore.getEquippedCosmetics(row.id).catch(() => ({}))] as const,
+      ),
     ),
   );
   const users = new Map(

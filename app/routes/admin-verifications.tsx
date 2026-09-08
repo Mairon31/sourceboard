@@ -239,7 +239,11 @@ function IntegrityTabs({ view }: { view: IntegrityView }) {
         <Link
           key={tab.value}
           to={`/admin/source-integrity?view=${tab.value}`}
-          className={view === tab.value ? "admin-integrity-tab admin-integrity-tab--active" : "admin-integrity-tab"}
+          className={
+            view === tab.value
+              ? "admin-integrity-tab admin-integrity-tab--active"
+              : "admin-integrity-tab"
+          }
           aria-current={view === tab.value ? "page" : undefined}
         >
           {tab.label}
@@ -250,7 +254,8 @@ function IntegrityTabs({ view }: { view: IntegrityView }) {
 }
 
 export default function AdminVerificationsRoute() {
-  const { access, canRevoke, view, candidates, verified, disputes, history } = useLoaderData<typeof loader>();
+  const { access, canRevoke, view, candidates, verified, disputes, history } =
+    useLoaderData<typeof loader>();
   if (!access.authorized) {
     return (
       <AdminShell>
@@ -281,7 +286,9 @@ export default function AdminVerificationsRoute() {
               <VerificationCandidate key={candidate.commentId} candidate={candidate} />
             ))
           ) : (
-            <Card className="product-empty-state admin-surface">No accepted sources are waiting for review.</Card>
+            <Card className="product-empty-state admin-surface">
+              No accepted sources are waiting for review.
+            </Card>
           )
         ) : null}
 
@@ -289,7 +296,11 @@ export default function AdminVerificationsRoute() {
           verified.length ? (
             <div className="admin-integrity-list">
               {verified.map((source) => (
-                <VerifiedSourceCard key={source.resolutionId} source={source} canRevoke={canRevoke} />
+                <VerifiedSourceCard
+                  key={source.resolutionId}
+                  source={source}
+                  canRevoke={canRevoke}
+                />
               ))}
             </div>
           ) : (
@@ -313,7 +324,10 @@ export default function AdminVerificationsRoute() {
                   </div>
                   <div className="admin-card-actions">
                     {dispute.postId ? (
-                      <Link className="product-text-action" to={postHref(dispute.postId, dispute.postSlug)}>
+                      <Link
+                        className="product-text-action"
+                        to={postHref(dispute.postId, dispute.postSlug)}
+                      >
                         Open post
                       </Link>
                     ) : null}
@@ -341,7 +355,8 @@ export default function AdminVerificationsRoute() {
                   <div>
                     <strong>{entry.postTitle}</strong>
                     <span>
-                      {entry.actorLabel ? `@${entry.actorLabel}` : "System"} · {formatDate(entry.createdAt)}
+                      {entry.actorLabel ? `@${entry.actorLabel}` : "System"} ·{" "}
+                      {formatDate(entry.createdAt)}
                     </span>
                     {entry.revokedAt ? (
                       <small>
@@ -423,7 +438,12 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
           <p>{candidate.commentBody}</p>
           <small>Accepted {formatDate(candidate.acceptedAt)}</small>
         </div>
-        <Link className="product-text-action" to={postHref(candidate.postId, candidate.postSlug)} target="_blank" rel="noreferrer">
+        <Link
+          className="product-text-action"
+          to={postHref(candidate.postId, candidate.postSlug)}
+          target="_blank"
+          rel="noreferrer"
+        >
           Open post
         </Link>
       </div>
@@ -473,7 +493,9 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
           reason: reason.trim(),
         }),
       });
-      const payload = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
       if (!response.ok) {
         setStatus(payload?.error?.message ?? "The verification could not be revoked.");
         return;
@@ -498,11 +520,18 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
         </div>
         <span className="product-search-count">{formatDate(source.verifiedAt)}</span>
       </div>
-      <a href={source.canonicalSourceUrl} target="_blank" rel="noopener noreferrer" className="admin-integrity-source-url">
+      <a
+        href={source.canonicalSourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="admin-integrity-source-url"
+      >
         {source.canonicalSourceUrl}
       </a>
       {source.evidenceNote ? <p>{source.evidenceNote}</p> : null}
-      <small>{source.verifierLabel ? `Verified by @${source.verifierLabel}` : "Verifier unavailable"}</small>
+      <small>
+        {source.verifierLabel ? `Verified by @${source.verifierLabel}` : "Verifier unavailable"}
+      </small>
       <div className="admin-card-actions">
         <Link className="product-text-action" to={postHref(source.postId, source.postSlug)}>
           Open post
@@ -517,7 +546,12 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
             rows={2}
             maxLength={500}
           />
-          <Button variant="danger" disabled={reason.trim().length < 3} loading={busy} onClick={() => void revoke()}>
+          <Button
+            variant="danger"
+            disabled={reason.trim().length < 3}
+            loading={busy}
+            onClick={() => void revoke()}
+          >
             Revoke verification
           </Button>
           {status ? <small role="status">{status}</small> : null}

@@ -5,10 +5,7 @@ import type {
   ProfileBannerPreset,
   ProfileEffectPreset,
 } from "../store/cosmetics";
-import type {
-  CosmeticIdentityVisuals,
-  CosmeticVisualDefinition,
-} from "../store/custom-cosmetics";
+import type { CosmeticIdentityVisuals, CosmeticVisualDefinition } from "../store/custom-cosmetics";
 import type { RichTextMarks } from "../richtext/markdown";
 
 export type AuthorMode = "IDENTIFIED" | "ANONYMOUS";
@@ -24,11 +21,7 @@ export type StoreItemType =
   | "EMOTE_PACK"
   | "STICKER_PACK";
 export type StoreItemState =
-  | "AVAILABLE"
-  | "OWNED"
-  | "EQUIPPED"
-  | "DISABLED"
-  | "INSUFFICIENT_POINTS";
+  "AVAILABLE" | "OWNED" | "EQUIPPED" | "DISABLED" | "INSUFFICIENT_POINTS";
 
 export interface UserSummary {
   id: string;
@@ -208,13 +201,7 @@ export interface FriendView {
 
 export interface NotificationView {
   id: string;
-  type:
-    | "COMMENT"
-    | "REPLY"
-    | "SOURCE_ACCEPTED"
-    | "SOURCE_VERIFIED"
-    | "FRIEND_REQUEST"
-    | "SYSTEM";
+  type: "COMMENT" | "REPLY" | "SOURCE_ACCEPTED" | "SOURCE_VERIFIED" | "FRIEND_REQUEST" | "SYSTEM";
   actor?: UserSummary;
   title: string;
   body: string;

@@ -157,7 +157,9 @@ export function normalizeCosmeticVisualConfig(value: unknown): CosmeticVisualCon
   return visual ? { namespace: COSMETIC_VISUAL_NAMESPACE, visual } : null;
 }
 
-export function extractCosmeticVisualDefinition(value: unknown): CosmeticVisualDefinition | undefined {
+export function extractCosmeticVisualDefinition(
+  value: unknown,
+): CosmeticVisualDefinition | undefined {
   return normalizeCosmeticVisualConfig(value)?.visual;
 }
 

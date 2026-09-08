@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type CSSProperties,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { useRevalidator } from "react-router";
 import type { PublicProfileDto } from "../../../worker/profile/types";
 import {
@@ -175,7 +169,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
   const bannerPreview = useObjectUrl(bannerFile);
   const dirty = Boolean(
     draft &&
-      (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
+    (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
   );
 
   useEffect(() => {
@@ -518,7 +512,12 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
                       updateLink(link.key, { isVisible: checked === true })
                     }
                   />
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removeLink(link.key)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeLink(link.key)}
+                  >
                     Remove
                   </Button>
                 </div>

@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { persistPreferenceChange } from "../../app/data/settings-preferences";
 
-const settingsSource = readFileSync(new URL("../../app/routes/settings.tsx", import.meta.url), "utf8");
+const settingsSource = readFileSync(
+  new URL("../../app/routes/settings.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("settings redesign", () => {
   it("rolls back an optimistic preference when persistence fails", async () => {

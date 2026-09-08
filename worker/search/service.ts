@@ -370,10 +370,10 @@ async function cosmeticsForUsers(
   const uniqueIds = [...new Set(userIds)];
   return new Map(
     await Promise.all(
-      uniqueIds.map(async (userId) => [
-        userId,
-        await store.getEquippedCosmetics(userId).catch(() => ({})),
-      ] as const),
+      uniqueIds.map(
+        async (userId) =>
+          [userId, await store.getEquippedCosmetics(userId).catch(() => ({}))] as const,
+      ),
     ),
   );
 }

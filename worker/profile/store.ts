@@ -29,10 +29,7 @@ export interface EquippedCosmetics extends CoreEquippedCosmetics {
 const MAX_SOCIAL_USERS = 100;
 const MAX_FRIEND_SUGGESTIONS = 20;
 
-export type ProfileStore = Omit<
-  CoreProfileStore,
-  "listSocialUsers" | "getEquippedCosmetics"
-> & {
+export type ProfileStore = Omit<CoreProfileStore, "listSocialUsers" | "getEquippedCosmetics"> & {
   getEquippedCosmetics(userId: string): Promise<EquippedCosmetics>;
   listSocialUsers(viewerId: string, limit?: number): Promise<SocialUserRecord[]>;
   searchFriendSuggestions(

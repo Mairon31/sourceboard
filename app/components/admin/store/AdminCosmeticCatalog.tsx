@@ -18,11 +18,7 @@ type StoreAction =
   | "DELETE";
 
 type CosmeticType =
-  | "AVATAR_FRAME"
-  | "PROFILE_BANNER"
-  | "PROFILE_EFFECT"
-  | "NAME_EFFECT"
-  | "NAME_FONT";
+  "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_EFFECT" | "NAME_FONT";
 type StateFilter = "ALL" | "DRAFT" | "PUBLISHED" | "ARCHIVED" | "DISABLED" | "FEATURED";
 
 const cosmeticFilters: Array<{ value: CosmeticType; label: string }> = [
@@ -110,7 +106,10 @@ function CosmeticPreview({ item }: { item: AdminStoreItem }) {
       <div className="admin-store-cosmetic-preview admin-store-cosmetic-preview--font">
         <strong
           className={cosmeticVisualClass(visual).trim() || undefined}
-          style={{ ...(family ? { fontFamily: family } : {}), ...(cosmeticVisualStyle(visual) ?? {}) }}
+          style={{
+            ...(family ? { fontFamily: family } : {}),
+            ...(cosmeticVisualStyle(visual) ?? {}),
+          }}
         >
           SourceBoard
         </strong>
@@ -160,10 +159,7 @@ export function AdminCosmeticCatalog({
   const [typeFilter, setTypeFilter] = useState<CosmeticType>("AVATAR_FRAME");
   const [stateFilter, setStateFilter] = useState<StateFilter>("ALL");
   const visibleCosmetics = useMemo(
-    () =>
-      cosmetics.filter(
-        (item) => item.type === typeFilter && matchesState(item, stateFilter),
-      ),
+    () => cosmetics.filter((item) => item.type === typeFilter && matchesState(item, stateFilter)),
     [cosmetics, stateFilter, typeFilter],
   );
   const [editing, setEditing] = useState<AdminStoreItem | null>(null);
@@ -231,7 +227,8 @@ export function AdminCosmeticCatalog({
           </p>
         </div>
         <span className="product-search-count">
-          {visibleCosmetics.length} shown · {cosmetics.filter((item) => item.type === typeFilter).length} in category
+          {visibleCosmetics.length} shown ·{" "}
+          {cosmetics.filter((item) => item.type === typeFilter).length} in category
         </span>
       </div>
 
@@ -252,7 +249,10 @@ export function AdminCosmeticCatalog({
         })}
       </nav>
 
-      <nav className="admin-store-type-filters admin-store-state-filters" aria-label="Catalog state">
+      <nav
+        className="admin-store-type-filters admin-store-state-filters"
+        aria-label="Catalog state"
+      >
         {stateFilters.map((filter) => (
           <button
             key={filter.value}
@@ -428,8 +428,8 @@ export function AdminCosmeticCatalog({
         </div>
       ) : (
         <Card className="product-empty-state">
-          No {cosmeticFilters.find((filter) => filter.value === typeFilter)?.label.toLowerCase()} match
-          this catalog state.
+          No {cosmeticFilters.find((filter) => filter.value === typeFilter)?.label.toLowerCase()}{" "}
+          match this catalog state.
         </Card>
       )}
     </section>
