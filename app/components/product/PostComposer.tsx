@@ -13,6 +13,8 @@ export interface PostComposerIdentity {
   cosmetics: Pick<CosmeticIdentityProps, "avatarFrame" | "profileEffect" | "nameFont">;
 }
 
+type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
+
 interface PostComposerProps {
   identity: PostComposerIdentity | null;
   unavailable?: boolean;
@@ -21,6 +23,7 @@ interface PostComposerProps {
 export function PostComposer({ identity, unavailable = false }: PostComposerProps) {
   const navigate = useNavigate();
   const [authorMode, setAuthorMode] = useState<"IDENTIFIED" | "ANONYMOUS">("IDENTIFIED");
+  const [visibility, setVisibility] = useState<PostVisibility>("PUBLIC");
   const [isNsfw, setIsNsfw] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -38,6 +41,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
     const form = new FormData(event.currentTarget);
     form.set("file", imageFile, imageFile.name);
     form.set("authorMode", authorMode);
+    form.set("visibility", visibility);
     form.set("isNsfw", String(isNsfw));
 
     try {
@@ -55,7 +59,10 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
         return;
       }
 
-      const destination = `/posts/${encodeURIComponent(body.post.id)}/${encodeURIComponent(body.post.slug ?? "")}`;
+      const postPath = `/posts/${encodeURIComponent(body.post.id)}`;
+      const destination = body.post.slug
+        ? `${postPath}/${encodeURIComponent(body.post.slug)}`
+        : postPath;
       navigate(destination, { replace: true });
     } catch {
       setStatus("The source request could not be published. Check your connection and try again.");
@@ -64,9 +71,17 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
     }
   }
 
+  function setAnonymous(checked: boolean) {
+    if (checked && visibility === "FRIENDS_ONLY") setVisibility("PUBLIC");
+    setAuthorMode(checked ? "ANONYMOUS" : "IDENTIFIED");
+  }
+
   return (
     <Card className="product-form-card product-post-composer">
-      <form className="product-form-grid product-post-composer__form" onSubmit={(event) => void submit(event)}>
+      <form
+        className="product-form-grid product-post-composer__form"
+        onSubmit={(event) => void submit(event)}
+      >
         <section className="product-post-composer__section" aria-labelledby="post-image-heading">
           <div className="product-post-composer__section-heading">
             <div>
@@ -121,7 +136,8 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
             <span>Visibility</span>
             <select
               name="visibility"
-              defaultValue="PUBLIC"
+              value={visibility}
+              onChange={(event) => setVisibility(event.currentTarget.value as PostVisibility)}
               aria-label="Visibility"
               disabled={unavailable || busy}
             >
@@ -139,7 +155,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
             description="People see Anonymous Author instead of your profile."
             checked={authorMode === "ANONYMOUS"}
             disabled={unavailable || busy}
-            onCheckedChange={(checked) => setAuthorMode(checked ? "ANONYMOUS" : "IDENTIFIED")}
+            onCheckedChange={setAnonymous}
           />
 
           <div className="product-presentation-notice" role="note" aria-label="Author preview">
