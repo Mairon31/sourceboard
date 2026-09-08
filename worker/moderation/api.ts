@@ -274,6 +274,32 @@ export async function handleModerationRequest(
         requestId,
       );
     }
+
+    const reportStatusMatch = url.pathname.match(/^\/api\/admin\/moderation\/reports\/([^/]+)\/status$/);
+    if (request.method === "POST" && reportStatusMatch) {
+      assertSameOrigin(request);
+      assertCsrfToken(request);
+      const authorized = await requireCapability(request, requestId, env, "report.review");
+      const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+      const status = String(body.status ?? "");
+      if (status !== "IN_REVIEW" && status !== "DISMISSED") {
+        throw new ModerationError(
+          400,
+          "INVALID_REPORT_STATUS",
+          "Report status must be IN_REVIEW or DISMISSED.",
+        );
+      }
+      const result = await service.reviewReport({
+        reportId: decodeURIComponent(reportStatusMatch[1] ?? ""),
+        actorUserId: authorized.userId,
+        status,
+        reason: assertReason(String(body.reason ?? "")),
+        requestId,
+        ipPrefixHash: authorized.security.ipPrefixHash,
+      });
+      return json({ report: result }, requestId);
+    }
+
     if (request.method === "POST" && url.pathname === "/api/admin/moderation/action") {
       assertSameOrigin(request);
       assertCsrfToken(request);
