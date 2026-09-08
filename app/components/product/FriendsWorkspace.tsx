@@ -135,19 +135,10 @@ function FriendActions({
   return null;
 }
 
-function FriendRow({
-  friend,
-  onChanged,
-}: {
-  friend: Friend;
-  onChanged: (friend: Friend) => void;
-}) {
+function FriendRow({ friend, onChanged }: { friend: Friend; onChanged: (friend: Friend) => void }) {
   return (
     <article className="product-list-row">
-      <Link
-        className="product-list-row__identity"
-        to={`/u/${encodeURIComponent(friend.username)}`}
-      >
+      <Link className="product-list-row__identity" to={`/u/${encodeURIComponent(friend.username)}`}>
         <CosmeticIdentity
           displayName={friend.displayName}
           avatarUrl={friend.avatarUrl}
@@ -275,10 +266,7 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
         >
           <span>Requests</span>
         </Button>
-        <Button
-          variant={mode === "add" ? "secondary" : "ghost"}
-          onClick={() => selectMode("add")}
-        >
+        <Button variant={mode === "add" ? "secondary" : "ghost"} onClick={() => selectMode("add")}>
           <span>Add</span>
         </Button>
         <Button
@@ -369,9 +357,7 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
           </div>
           {!searching && !searchError && suggestions.length === 0 ? (
             <Card className="product-empty-state">
-              <h2>
-                {mode === "discover" ? "No suggestions available" : "Search for someone"}
-              </h2>
+              <h2>{mode === "discover" ? "No suggestions available" : "Search for someone"}</h2>
               <p>
                 {mode === "discover"
                   ? "Only public accounts accepting friend requests can be suggested."
