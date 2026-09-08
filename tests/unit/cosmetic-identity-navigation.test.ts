@@ -17,6 +17,7 @@ const profileRoute = readOptionalSource("../../app/routes/profile.tsx");
 const postCard = readOptionalSource("../../app/components/product/PostCard.tsx");
 const commentThread = readOptionalSource("../../app/components/product/CommentThread.tsx");
 const postNew = readOptionalSource("../../app/routes/post-new.tsx");
+const postComposer = readOptionalSource("../../app/components/product/PostComposer.tsx");
 
 describe("public cosmetic identity contracts", () => {
   it("exposes profile effects", () => {
@@ -55,8 +56,9 @@ describe("public cosmetic identity contracts", () => {
 
   it("previews equipped identity while creating posts", () => {
     expect(postNew).toContain("getEquippedCosmetics");
-    expect(postNew).toContain('mode="preview"');
-    expect(postNew).toContain('authorMode === "ANONYMOUS"');
-    expect(postNew).toContain("Anonymous Author");
+    expect(postNew).toContain("<PostComposer");
+    expect(postComposer).toContain('mode="preview"');
+    expect(postComposer).toContain('authorMode === "ANONYMOUS"');
+    expect(postComposer).toContain("Anonymous Author");
   });
 });
