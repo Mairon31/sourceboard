@@ -12,6 +12,7 @@ import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import { readSourceBoardRequestContext } from "../shared/router-context";
 import { readServerSession, type ServerLoaderArgs } from "./data/server-request";
 import "./styles/base.css";
+import "./styles/motion-preferences.css";
 import "./components/ui/ui.css";
 import "./components/layout/layout.css";
 import "./components/layout/notification-popover.css";
