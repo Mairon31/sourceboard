@@ -181,6 +181,69 @@ export function createModerationService(db: D1Database, options: { events?: Queu
     return result.results;
   }
 
+  async function reviewReport(input: {
+    reportId: string;
+    actorUserId: string;
+    status: "IN_REVIEW" | "DISMISSED";
+    reason: string;
+    requestId: string;
+    ipPrefixHash?: string | null;
+    now?: number;
+  }) {
+    const now = input.now ?? Date.now();
+    const reason = assertReason(input.reason);
+    const report = await db
+      .prepare(
+        `SELECT id, target_type AS targetType, target_id AS targetId, status
+         FROM moderation_reports WHERE id = ?`,
+      )
+      .bind(input.reportId)
+      .first<{ id: string; targetType: ReportTarget; targetId: string; status: ReportStatus }>();
+    if (!report)
+      throw new ModerationError(404, "REPORT_NOT_FOUND", "The moderation report was not found.");
+    if (report.status !== "OPEN" && report.status !== "IN_REVIEW")
+      throw new ModerationError(
+        409,
+        "REPORT_ALREADY_RESOLVED",
+        "This moderation report is already resolved.",
+      );
+    if (report.status === input.status)
+      return { id: report.id, status: input.status, unchanged: true };
+
+    await db.batch([
+      db
+        .prepare(
+          `UPDATE moderation_reports
+           SET status = ?, assignee_user_id = ?, updated_at = ?
+           WHERE id = ? AND status IN ('OPEN', 'IN_REVIEW')`,
+        )
+        .bind(input.status, input.actorUserId, now, input.reportId),
+      db
+        .prepare(
+          `INSERT INTO audit_logs
+           (id, actor_user_id, action, target_type, target_id, reason, metadata_json, request_id, ip_prefix_hash, created_at)
+           VALUES (?, ?, ?, 'REPORT', ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          createIdentifier(),
+          input.actorUserId,
+          input.status === "IN_REVIEW" ? "moderation.report.review_started" : "moderation.report.dismissed",
+          input.reportId,
+          reason,
+          JSON.stringify({
+            targetType: report.targetType,
+            targetId: report.targetId,
+            previousStatus: report.status,
+            nextStatus: input.status,
+          }),
+          input.requestId,
+          input.ipPrefixHash ?? null,
+          now,
+        ),
+    ]);
+    return { id: report.id, status: input.status, unchanged: false };
+  }
+
   async function apply(input: {
     actorUserId: string;
     targetType: "POST" | "COMMENT" | "USER";
@@ -385,5 +448,5 @@ export function createModerationService(db: D1Database, options: { events?: Queu
     return { id, status: "OPEN" as const };
   }
 
-  return { hasActiveSanction, report, listQueue, apply, submitAppeal };
+  return { hasActiveSanction, report, listQueue, reviewReport, apply, submitAppeal };
 }
