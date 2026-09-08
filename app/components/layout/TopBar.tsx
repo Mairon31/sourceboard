@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { BellIcon, SearchIcon } from "../ui";
+import { CosmeticIdentity } from "../product/CosmeticIdentity";
 import {
   notificationWebSocketUrl,
   readNotificationSnapshot,
@@ -10,6 +11,16 @@ import {
 import { markNavigationStart } from "../../data/performance-metrics";
 import { readCsrfToken } from "../../data/csrf";
 import { ThemeControl } from "./ThemeControl";
+
+function notificationTime(timestamp: number): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return days < 7 ? `${days}d` : new Date(timestamp).toLocaleDateString();
+}
 
 export function TopBar() {
   const navigate = useNavigate();
@@ -39,7 +50,7 @@ export function TopBar() {
         const session = (await sessionResponse.json()) as { authenticated?: unknown };
         if (session.authenticated !== true) return { authenticated: false, lastSeen: null };
 
-        const response = await fetch("/api/notifications");
+        const response = await fetch("/api/notifications", { cache: "no-store" });
         if (response.status === 401 || response.status === 403)
           return { authenticated: false, lastSeen: null };
         if (!response.ok) return { authenticated: false, lastSeen: null };
@@ -104,14 +115,12 @@ export function TopBar() {
   }, [notificationsOpen]);
 
   function markNotificationGroupLocally(notification: NotificationPreview): void {
-    const ids = new Set(notification.groupedIds ?? [notification.id]);
+    const unreadInGroup = notification.unreadCount ?? (notification.readAt ? 0 : 1);
     const now = Date.now();
-    const unreadIds = new Set(
-      recentNotifications.filter((item) => ids.has(item.id) && !item.readAt).map((item) => item.id),
-    );
-    const unreadInGroup = notification.unreadCount ?? unreadIds.size;
     setRecentNotifications((items) =>
-      items.map((item) => (ids.has(item.id) ? { ...item, readAt: item.readAt ?? now } : item)),
+      items.map((item) =>
+        item.id === notification.id ? { ...item, readAt: now, unreadCount: 0 } : item,
+      ),
     );
     setUnreadCount((count) => Math.max(0, count - unreadInGroup));
   }
@@ -178,26 +187,32 @@ export function TopBar() {
           {notificationsOpen ? (
             <div
               id="sourceboard-notification-menu"
-              className="sb-topbar-notification-menu glass-panel glass-panel--strong"
+              className="sb-topbar-notification-menu"
               role="dialog"
               aria-label="Recent notifications"
             >
               <div className="sb-topbar-notification-menu__header">
-                <strong>Notifications</strong>
+                <div>
+                  <strong>Notifications</strong>
+                  <span>{unreadCount ? `${unreadCount} unread` : "You're caught up"}</span>
+                </div>
                 <Link
                   className="sb-topbar-notification-menu__all focus-ring"
                   to="/notifications"
-                  onClick={() => markNavigationStart("/notifications")}
+                  onClick={() => {
+                    markNavigationStart("/notifications");
+                    setNotificationsOpen(false);
+                  }}
                 >
                   View all
                 </Link>
               </div>
               {recentNotifications.length ? (
                 <div className="sb-topbar-notification-menu__list">
-                  {recentNotifications.slice(0, 5).map((notification) => (
+                  {recentNotifications.slice(0, 7).map((notification) => (
                     <Link
                       key={notification.id}
-                      className={`sb-topbar-notification-menu__item focus-ring${notification.readAt ? "" : " is-unread"}`}
+                      className={`sb-topbar-notification-menu__item focus-ring${notification.readAt && !notification.unreadCount ? "" : " is-unread"}`}
                       to={notification.href}
                       onClick={() => {
                         markNavigationStart(notification.href);
@@ -211,18 +226,43 @@ export function TopBar() {
                         setNotificationsOpen(false);
                       }}
                     >
-                      <strong>{notification.title}</strong>
-                      <span>
-                        {notification.body}
-                        {notification.groupCount && notification.groupCount > 1
-                          ? ` (${notification.groupCount})`
-                          : ""}
-                      </span>
+                      <div className="sb-topbar-notification-menu__identity" aria-hidden={!notification.actor}>
+                        {notification.actor ? (
+                          <CosmeticIdentity
+                            displayName={notification.actor.displayName}
+                            avatarUrl={notification.actor.avatarUrl}
+                            avatarFrame={notification.actor.cosmetics?.avatarFrame}
+                            profileEffect={notification.actor.cosmetics?.profileEffect}
+                            nameFont={notification.actor.cosmetics?.nameFont}
+                            nameEffect={notification.actor.cosmetics?.nameEffect}
+                            visuals={notification.actor.cosmetics?.visuals}
+                            mode="compact"
+                            nameAs="strong"
+                          />
+                        ) : (
+                          <span className="sb-topbar-notification-menu__system-mark">S</span>
+                        )}
+                      </div>
+                      <div className="sb-topbar-notification-menu__copy">
+                        <div className="sb-topbar-notification-menu__title-row">
+                          <strong>{notification.title}</strong>
+                          <time dateTime={new Date(notification.createdAt).toISOString()}>
+                            {notificationTime(notification.createdAt)}
+                          </time>
+                        </div>
+                        <span>{notification.body}</span>
+                        {notification.groupCount && notification.groupCount > 1 ? (
+                          <small>{notification.groupCount} related events</small>
+                        ) : null}
+                      </div>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <p className="sb-topbar-notification-menu__empty">No notifications yet.</p>
+                <div className="sb-topbar-notification-menu__empty">
+                  <strong>No notifications yet</strong>
+                  <span>New activity will appear here.</span>
+                </div>
               )}
             </div>
           ) : null}
