@@ -1,5 +1,9 @@
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import {
+  canonicalSocialPlatform,
+  normalizeSocialUrl,
+} from "../../shared/profile/social-links";
 import { isAuthError } from "../auth/errors";
 import { getSessionToken } from "../auth/security";
 import { createAuthService } from "../auth/service";
@@ -81,6 +85,73 @@ async function handleFriendDiscovery(
   return jsonResponse(await service.searchFriendSuggestions(viewerId, query), requestId);
 }
 
+async function normalizeProfileMutation(request: Request, url: URL): Promise<Request> {
+  if (request.method !== "PATCH" || url.pathname !== "/api/profile") return request;
+  let body: unknown;
+  try {
+    body = await request.clone().json();
+  } catch {
+    return request;
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return request;
+  const input = body as Record<string, unknown>;
+  if (input.socialLinks === undefined) return request;
+  if (!Array.isArray(input.socialLinks) || input.socialLinks.length > 10) {
+    throw new ProfileError(
+      400,
+      "INVALID_SOCIAL_LINKS",
+      "Add no more than ten supported social links.",
+    );
+  }
+  const usedPlatforms = new Set<string>();
+  const socialLinks = input.socialLinks.map((raw, index) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new ProfileError(400, "INVALID_SOCIAL_LINKS", "A social link is invalid.");
+    }
+    const link = raw as Record<string, unknown>;
+    const platform = canonicalSocialPlatform(link.platform);
+    if (!platform) {
+      throw new ProfileError(
+        400,
+        "UNSUPPORTED_SOCIAL_PLATFORM",
+        "Choose a supported social platform.",
+      );
+    }
+    if (usedPlatforms.has(platform)) {
+      throw new ProfileError(
+        400,
+        "DUPLICATE_SOCIAL_PLATFORM",
+        "Each social platform can appear only once.",
+      );
+    }
+    const normalizedUrl =
+      typeof link.url === "string" ? normalizeSocialUrl(platform, link.url) : null;
+    if (!normalizedUrl) {
+      throw new ProfileError(
+        400,
+        "INVALID_SOCIAL_URL",
+        `The ${platform} profile or URL is invalid.`,
+      );
+    }
+    usedPlatforms.add(platform);
+    return {
+      platform,
+      url: normalizedUrl,
+      sortOrder:
+        typeof link.sortOrder === "number" && Number.isInteger(link.sortOrder)
+          ? Math.max(0, link.sortOrder)
+          : index,
+      isVisible: link.isVisible !== false,
+    };
+  });
+  const headers = new Headers(request.headers);
+  headers.set("content-type", "application/json");
+  return new Request(request, {
+    headers,
+    body: JSON.stringify({ ...input, socialLinks }),
+  });
+}
+
 export async function handleProfileApiRequest(
   request: Request,
   requestId: string,
@@ -90,8 +161,9 @@ export async function handleProfileApiRequest(
   try {
     const discoveryResponse = await handleFriendDiscovery(request, url, requestId, env);
     if (discoveryResponse) return discoveryResponse;
+    const normalizedRequest = await normalizeProfileMutation(request, url);
+    return handleCoreProfileApiRequest(normalizedRequest, requestId, env);
   } catch (error) {
     return errorResponse(error, requestId);
   }
-  return handleCoreProfileApiRequest(request, requestId, env);
 }
