@@ -8,7 +8,7 @@ import { CosmeticIdentity } from "./CosmeticIdentity";
 import { SocialActionButton } from "./SocialActionButton";
 
 type Friend = FriendsListDto["friends"][number];
-type WorkspaceMode = "friends" | "requests" | "add" | "discover";
+type WorkspaceMode = "friends" | "incoming" | "outgoing" | "add" | "discover" | "blocked";
 type ConfirmedAction = "accept" | "decline" | "remove";
 
 const relationshipLabel: Record<Relationship, string> = {
@@ -21,9 +21,11 @@ const relationshipLabel: Record<Relationship, string> = {
 
 const workspaceLabels: Record<WorkspaceMode, string> = {
   friends: "Your friends",
-  requests: "Pending requests",
+  incoming: "Incoming requests",
+  outgoing: "Sent requests",
   add: "Find someone",
   discover: "Suggested accounts",
+  blocked: "Blocked accounts",
 };
 
 function actionEndpoint(
@@ -174,7 +176,9 @@ function FriendRow({ friend, onChanged }: { friend: Friend; onChanged: (friend: 
 function EmptyFriends({ title, description }: { title: string; description: string }) {
   return (
     <div className="product-empty-state product-empty-state--compact product-friends-empty">
-      <div className="product-friends-empty__mark" aria-hidden="true">◎</div>
+      <div className="product-friends-empty__mark" aria-hidden="true">
+        ◎
+      </div>
       <div>
         <h2>{title}</h2>
         <p>{description}</p>
@@ -206,6 +210,39 @@ function FriendList({
   );
 }
 
+function WorkspaceTab({
+  mode,
+  activeMode,
+  count,
+  onSelect,
+}: {
+  mode: WorkspaceMode;
+  activeMode: WorkspaceMode;
+  count?: number;
+  onSelect: (mode: WorkspaceMode) => void;
+}) {
+  const label = {
+    friends: "Friends",
+    incoming: "Incoming",
+    outgoing: "Outgoing",
+    add: "Add",
+    discover: "Discover",
+    blocked: "Blocked",
+  }[mode];
+  return (
+    <Button
+      variant={activeMode === mode ? "secondary" : "ghost"}
+      role="tab"
+      aria-selected={activeMode === mode}
+      aria-controls={`${mode}-panel`}
+      onClick={() => onSelect(mode)}
+    >
+      {label}
+      {count !== undefined ? <span className="product-friends-tab-count">{count}</span> : null}
+    </Button>
+  );
+}
+
 export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] }) {
   const [mode, setMode] = useState<WorkspaceMode>("friends");
   const [connections, setConnections] = useState(initialFriends);
@@ -218,17 +255,19 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
     () => connections.filter((friend) => friend.relationship === "FRIEND"),
     [connections],
   );
-  const requests = useMemo(
-    () =>
-      connections.filter(
-        (friend) => friend.relationship === "INCOMING" || friend.relationship === "OUTGOING",
-      ),
+  const incoming = useMemo(
+    () => connections.filter((friend) => friend.relationship === "INCOMING"),
+    [connections],
+  );
+  const outgoing = useMemo(
+    () => connections.filter((friend) => friend.relationship === "OUTGOING"),
     [connections],
   );
   const blocked = useMemo(
     () => connections.filter((friend) => friend.relationship === "BLOCKED"),
     [connections],
   );
+  const pendingCount = incoming.length + outgoing.length;
 
   function updateFriend(next: Friend) {
     setConnections((current) => {
@@ -283,49 +322,86 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
             <h2>{workspaceLabels[mode]}</h2>
           </div>
           <div className="product-friends-summary__metrics" aria-label="Connection counts">
-            <span><strong>{friends.length}</strong> friends</span>
-            <span><strong>{requests.length}</strong> pending</span>
-            <span><strong>{blocked.length}</strong> blocked</span>
+            <span>
+              <strong>{friends.length}</strong> friends
+            </span>
+            <span>
+              <strong>{pendingCount}</strong> pending
+            </span>
+            <span>
+              <strong>{blocked.length}</strong> blocked
+            </span>
           </div>
         </div>
 
         <div className="product-friends-tabs" role="tablist" aria-label="Friend views">
-          <Button variant={mode === "friends" ? "secondary" : "ghost"} role="tab" aria-selected={mode === "friends"} aria-controls="friends-panel" onClick={() => selectMode("friends")}>
-            Friends <span className="product-friends-tab-count">{friends.length}</span>
-          </Button>
-          <Button variant={mode === "requests" ? "secondary" : "ghost"} role="tab" aria-selected={mode === "requests"} aria-controls="requests-panel" onClick={() => selectMode("requests")}>
-            Requests <span className="product-friends-tab-count">{requests.length}</span>
-          </Button>
-          <Button variant={mode === "add" ? "secondary" : "ghost"} role="tab" aria-selected={mode === "add"} aria-controls="add-panel" onClick={() => selectMode("add")}>
-            Add
-          </Button>
-          <Button variant={mode === "discover" ? "secondary" : "ghost"} role="tab" aria-selected={mode === "discover"} aria-controls="discover-panel" onClick={() => selectMode("discover")}>
-            Discover
-          </Button>
+          <WorkspaceTab mode="friends" activeMode={mode} count={friends.length} onSelect={selectMode} />
+          <WorkspaceTab mode="incoming" activeMode={mode} count={incoming.length} onSelect={selectMode} />
+          <WorkspaceTab mode="outgoing" activeMode={mode} count={outgoing.length} onSelect={selectMode} />
+          <WorkspaceTab mode="add" activeMode={mode} onSelect={selectMode} />
+          <WorkspaceTab mode="discover" activeMode={mode} onSelect={selectMode} />
+          <WorkspaceTab mode="blocked" activeMode={mode} count={blocked.length} onSelect={selectMode} />
         </div>
       </div>
 
       {mode === "friends" ? (
         <div id="friends-panel" role="tabpanel" aria-label="Your friends" className="product-friends-panel">
-          <FriendList items={friends} emptyTitle="No friends yet" emptyDescription="Accepted friends will appear here." onChanged={updateFriend} />
-          {blocked.length ? (
-            <div className="product-stack product-friends-blocked">
-              <h2>Blocked users</h2>
-              <FriendList items={blocked} emptyTitle="No blocked users" emptyDescription="Blocked accounts stay separate from friendship actions." onChanged={updateFriend} />
-            </div>
-          ) : null}
+          <FriendList
+            items={friends}
+            emptyTitle="No friends yet"
+            emptyDescription="Accepted friends will appear here."
+            onChanged={updateFriend}
+          />
         </div>
       ) : null}
 
-      {mode === "requests" ? (
-        <div id="requests-panel" role="tabpanel" aria-label="Pending requests" className="product-friends-panel">
-          <FriendList items={requests} emptyTitle="No pending requests" emptyDescription="Incoming and outgoing friend requests will appear here." onChanged={updateFriend} />
+      {mode === "incoming" ? (
+        <div id="incoming-panel" role="tabpanel" aria-label="Incoming friend requests" className="product-friends-panel">
+          <FriendList
+            items={incoming}
+            emptyTitle="No incoming requests"
+            emptyDescription="New friend requests will appear here."
+            onChanged={updateFriend}
+          />
+        </div>
+      ) : null}
+
+      {mode === "outgoing" ? (
+        <div id="outgoing-panel" role="tabpanel" aria-label="Outgoing friend requests" className="product-friends-panel">
+          <FriendList
+            items={outgoing}
+            emptyTitle="No sent requests"
+            emptyDescription="Requests you send will stay here until they are accepted or cancelled."
+            onChanged={updateFriend}
+          />
+        </div>
+      ) : null}
+
+      {mode === "blocked" ? (
+        <div id="blocked-panel" role="tabpanel" aria-label="Blocked accounts" className="product-friends-panel">
+          <FriendList
+            items={blocked}
+            emptyTitle="No blocked accounts"
+            emptyDescription="Accounts you block will appear here without being mixed into your friends list."
+            onChanged={updateFriend}
+          />
         </div>
       ) : null}
 
       {mode === "add" || mode === "discover" ? (
-        <div id={`${mode}-panel`} role="tabpanel" aria-label={workspaceLabels[mode]} className="product-stack product-friends-panel">
-          <form className="product-friends-search" onSubmit={(event) => { event.preventDefault(); void searchFriendSuggestions(); }}>
+        <div
+          id={`${mode}-panel`}
+          role="tabpanel"
+          aria-label={workspaceLabels[mode]}
+          className="product-stack product-friends-panel"
+        >
+          <form
+            className="product-friends-search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void searchFriendSuggestions();
+            }}
+          >
             <Input
               label={mode === "add" ? "Find a user" : "Search suggestions"}
               type="search"
@@ -334,7 +410,9 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
               placeholder="Username or display name"
               autoComplete="off"
             />
-            <Button type="submit" variant="secondary" loading={searching}>Search</Button>
+            <Button type="submit" variant="secondary" loading={searching}>
+              Search
+            </Button>
           </form>
           {searchError ? <p role="alert">{searchError}</p> : null}
           <div className="product-list product-friends-list">
@@ -344,14 +422,24 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
                   <FriendIdentity friend={friend} />
                   <span className="product-list-row__copy">@{friend.username}</span>
                 </Link>
-                <ConfirmAction title="Send friend request?" description={`Send a friend request to ${friend.displayName}.`} triggerLabel="Add friend" confirmLabel="Send request" onConfirm={() => requestFriend(friend)} />
+                <ConfirmAction
+                  title="Send friend request?"
+                  description={`Send a friend request to ${friend.displayName}.`}
+                  triggerLabel="Add friend"
+                  confirmLabel="Send request"
+                  onConfirm={() => requestFriend(friend)}
+                />
               </article>
             ))}
           </div>
           {!searching && !searchError && suggestions.length === 0 ? (
             <EmptyFriends
               title={mode === "discover" ? "No suggestions available" : "Search for someone"}
-              description={mode === "discover" ? "Only public accounts accepting friend requests can be suggested." : "Search by username or display name to send a friend request."}
+              description={
+                mode === "discover"
+                  ? "Only public accounts accepting friend requests can be suggested."
+                  : "Search by username or display name to send a friend request."
+              }
             />
           ) : null}
         </div>
