@@ -661,6 +661,23 @@ prerequisites.
       gate set on `96d0615`: lint/Prettier, typecheck, 207 unit tests across 50
       files, production build, Workers deploy dry-run, migrations and 144 E2E.
 
+### 2026-09-08 auth request and local Turnstile checkpoint
+
+- [x] AuthScreen now sends the readable `__Host-sourceboard_csrf` cookie as
+      `x-csrf-token` on login, registration, password reset, email verification
+      and Google session exchange requests. The Worker keeps same-origin and
+      double-submit CSRF enforcement unchanged.
+- [x] The focused auth boundary and existing auth tests pass: 29 tests across
+      8 files. The initial missing-helper test was confirmed red before the
+      implementation.
+- [x] Local browser verification at `http://localhost:5174/register` confirms
+      the real Turnstile widget reaches `¡Operación exitosa!` after `localhost`
+      was temporarily added to the Cloudflare hostname allowlist. No local
+      bypass, secret, `.dev.vars` file or production binding was added.
+- [ ] A real registration and Google sign-in/profile-creation flow still needs
+      verification with the configured Firebase account; the next standard CI
+      run must validate this commit.
+
 ## Known limitations
 
 - Phase 0A's visual laboratory remains available as historical design-system coverage; the Phase 0B

@@ -6,6 +6,7 @@ import {
   signOutFirebase,
   type FirebasePublicConfig,
 } from "../../data/firebase-client";
+import { postAuthJson } from "../../data/auth-client";
 import { Button, GlassPanel, Input } from "../ui";
 
 export type AuthMode = "login" | "register" | "forgot" | "verify";
@@ -219,20 +220,15 @@ async function submitAuthForm(
   resetToken: string | null,
   turnstileToken: string | undefined,
 ): Promise<{ ok: boolean; body: unknown }> {
-  const response = await fetch(getAuthEndpoint(mode, isReset), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(buildAuthValues(form, mode, resetToken, turnstileToken)),
-  });
+  const response = await postAuthJson(
+    getAuthEndpoint(mode, isReset),
+    buildAuthValues(form, mode, resetToken, turnstileToken),
+  );
   return { ok: response.ok, body: await response.json() };
 }
 
 async function submitVerificationToken(token: string): Promise<{ ok: boolean; body: unknown }> {
-  const response = await fetch("/api/auth/email/verify", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ token }),
-  });
+  const response = await postAuthJson("/api/auth/email/verify", { token });
   return { ok: response.ok, body: await response.json() };
 }
 
@@ -241,11 +237,7 @@ async function completeGoogleSession(
   navigate: (to: string) => void,
   setFeedback: (feedback: AuthFeedback) => void,
 ): Promise<void> {
-  const response = await fetch("/api/auth/google", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ idToken }),
-  });
+  const response = await postAuthJson("/api/auth/google", { idToken });
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     await signOutFirebase().catch(() => undefined);

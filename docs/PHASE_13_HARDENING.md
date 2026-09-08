@@ -202,7 +202,7 @@ password-reset flow still require explicit verification.
 
 Registration retries repair an orphaned Firebase account only after the
 submitted password proves ownership; pre-existing accounts are never deleted
-during recovery. Google login/register uses Firebase redirect authentication and
+during recovery. Google login/register uses Firebase popup authentication and
 exchanges the returned browser ID token for a SourceBoard D1 profile and session
 through `POST /api/auth/google`.
 Signed-out product routes now use a shared accessible sign-in/register screen.
