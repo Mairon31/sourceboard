@@ -1,3 +1,5 @@
+import type { PublicCosmeticsDto } from "../../worker/profile/types";
+
 export interface NotificationRealtimeLocation {
   protocol: string;
   host: string;
@@ -7,6 +9,14 @@ export interface NotificationSnapshot {
   unreadCount: number;
   lastSeen: string | null;
   notifications: NotificationPreview[];
+}
+
+export interface NotificationPreviewActor {
+  id: string;
+  displayName: string;
+  username: string;
+  avatarUrl?: string;
+  cosmetics?: PublicCosmeticsDto;
 }
 
 export interface NotificationPreview {
@@ -19,10 +29,38 @@ export interface NotificationPreview {
   body: string;
   href: string;
   ctaLabel?: string;
+  actor?: NotificationPreviewActor;
   readAt: number | null;
   groupedIds?: string[];
   groupCount?: number;
   unreadCount?: number;
+}
+
+function readActor(value: unknown): NotificationPreviewActor | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const actor = value as {
+    id?: unknown;
+    displayName?: unknown;
+    username?: unknown;
+    avatarUrl?: unknown;
+    cosmetics?: unknown;
+  };
+  if (
+    typeof actor.id !== "string" ||
+    typeof actor.displayName !== "string" ||
+    typeof actor.username !== "string"
+  ) {
+    return undefined;
+  }
+  return {
+    id: actor.id,
+    displayName: actor.displayName,
+    username: actor.username,
+    ...(typeof actor.avatarUrl === "string" ? { avatarUrl: actor.avatarUrl } : {}),
+    ...(actor.cosmetics && typeof actor.cosmetics === "object" && !Array.isArray(actor.cosmetics)
+      ? { cosmetics: actor.cosmetics as PublicCosmeticsDto }
+      : {}),
+  };
 }
 
 export function readNotificationSnapshot(payload: unknown): NotificationSnapshot | null {
@@ -42,6 +80,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
       body?: unknown;
       href?: unknown;
       ctaLabel?: unknown;
+      actor?: unknown;
       readAt?: unknown;
       groupedIds?: unknown;
       groupCount?: unknown;
@@ -56,6 +95,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
     ) {
       return [];
     }
+    const actor = readActor(item.actor);
     return [
       {
         id: item.id,
@@ -67,6 +107,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
         body: item.body,
         href: item.href,
         ...(typeof item.ctaLabel === "string" ? { ctaLabel: item.ctaLabel } : {}),
+        ...(actor ? { actor } : {}),
         readAt: typeof item.readAt === "number" ? item.readAt : null,
         ...(Array.isArray(item.groupedIds)
           ? { groupedIds: item.groupedIds.filter((id): id is string => typeof id === "string") }
