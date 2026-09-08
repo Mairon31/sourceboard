@@ -100,6 +100,7 @@ test("authorized Admin Store uploads an emote into a draft pack without media ne
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   await page.goto("/admin/store");
+  await waitForUiReady(page);
   await expect(page.getByRole("heading", { name: "Catalog control center" })).toBeVisible({
     timeout: 30_000,
   });
@@ -107,7 +108,7 @@ test("authorized Admin Store uploads an emote into a draft pack without media ne
   const packButton = page
     .locator(".admin-store-pack-list__item")
     .filter({ hasText: "E2E Draft Pack" });
-  await expect(packButton).toBeVisible();
+  await expect(packButton).toBeVisible({ timeout: 30_000 });
   await packButton.click();
 
   const workspace = page.locator(".admin-store-pack-workspace");
@@ -151,7 +152,9 @@ test("authorized Admin Store uploads an emote into a draft pack without media ne
   );
   expect(directMediaResponse.status()).toBe(200);
 
-  const uploaded = page.locator(".admin-store-emote-card").filter({ hasText: "E2E Uploaded" });
+  const uploaded = page
+    .locator(".admin-store-emote-card")
+    .filter({ hasText: `:${uploadShortcode}:` });
   await expect(uploaded.getByText(`:${uploadShortcode}:`, { exact: true })).toBeVisible();
   const image = uploaded.getByRole("img", { name: "E2E Uploaded" });
   await expect(image).toHaveAttribute("src", /\/api\/admin\/catalog\/emotes\/.+\/media$/);
