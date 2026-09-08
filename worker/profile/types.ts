@@ -5,6 +5,7 @@ import type {
   ProfileBannerPreset,
   ProfileEffectPreset,
 } from "../../shared/store/cosmetics";
+import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
 
 export type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY";
 
@@ -89,6 +90,7 @@ export interface PublicProfileDto {
     profileEffect?: ProfileEffectPreset;
     nameFont?: NameFontFamily;
     nameEffect?: NameEffectPreset;
+    visuals?: CosmeticIdentityVisuals;
   };
   profileVisibility: ProfileVisibility;
   socialLinks: Array<{ platform: string; url: string }>;
