@@ -173,7 +173,13 @@ function socialPreview(link: SocialLinkDraft): string {
   return normalized ? socialHandleFromUrl(link.platform, normalized) : value;
 }
 
-export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
+export function ProfileEditor({
+  profile,
+  onEditingChange,
+}: {
+  profile: PublicProfileDto;
+  onEditingChange?: (editing: boolean) => void;
+}) {
   const revalidator = useRevalidator();
   const [editing, setEditing] = useState(false);
   const [source, setSource] = useState<MyProfileResponse | null>(null);
@@ -219,8 +225,14 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
     return SOCIAL_PLATFORMS.filter((platform) => !selected.has(platform));
   }, [draft?.socialLinks]);
 
+  function beginEditing() {
+    setEditing(true);
+    onEditingChange?.(true);
+  }
+
   function cancelEditing() {
     setEditing(false);
+    onEditingChange?.(false);
     setSource(null);
     setDraft(null);
     setInitialFingerprint("");
@@ -295,6 +307,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
       });
       if (!response.ok) throw new Error(await readErrorMessage(response, "Could not save your profile."));
       setEditing(false);
+      onEditingChange?.(false);
       setSource(null);
       setDraft(null);
       setInitialFingerprint("");
@@ -316,7 +329,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
           profile={profile}
           isOwnProfile
           editControl={
-            <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+            <Button variant="secondary" size="sm" onClick={beginEditing}>
               Edit profile
             </Button>
           }
@@ -499,7 +512,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
             })}
             {!draft.socialLinks.length ? (
               <div className="product-empty-state product-empty-state--compact">
-                <p>No social profiles added yet. Add one to show a verified-looking handle row on your public profile.</p>
+                <p>No social profiles added yet. Add one to show a recognizable handle on your public profile.</p>
               </div>
             ) : null}
           </div>
