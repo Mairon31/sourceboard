@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { installAdminStoreFixture, waitForUiReady } from "./test-helpers";
 
 test("auth surfaces expose their intended forms", async ({ page }) => {
   await page.goto("/login");
@@ -70,7 +71,7 @@ test("SSR inline scripts use the response CSP nonce", async ({ page }) => {
   expect(policy).not.toContain("script-src 'self' 'unsafe-inline'");
 });
 
-test("create-post surface exposes anonymous and NSFW controls", async ({ page }) => {
+test("create-post surface requests authentication before showing the composer", async ({ page }) => {
   await page.goto("/post/new");
 
   await expect(page.getByRole("heading", { name: "Create a source request" })).toBeVisible();
@@ -78,6 +79,43 @@ test("create-post surface exposes anonymous and NSFW controls", async ({ page })
     page.getByRole("heading", { name: "Sign in to publish a source request" }),
   ).toBeVisible();
   await expect(page.getByRole("region").getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByText(/\b(?:D1|R2|Worker|binding|bindings)\b/)).toHaveCount(0);
+});
+
+test("signed-in source request composer previews, replaces and removes a validated image", async ({
+  page,
+}) => {
+  await installAdminStoreFixture(page);
+  await page.goto("/post/new");
+  await waitForUiReady(page);
+
+  await expect(page.getByRole("heading", { name: "Add the image" })).toBeVisible();
+  const imageInput = page.getByLabel("Main image", { exact: true });
+  const publish = page.getByRole("button", { name: "Publish request" });
+  await expect(publish).toBeDisabled();
+
+  await imageInput.setInputFiles({
+    name: "animated.gif",
+    mimeType: "image/gif",
+    buffer: Buffer.from("GIF89a"),
+  });
+  await expect(page.getByRole("alert")).toContainText("GIF isn't supported");
+  await expect(publish).toBeDisabled();
+
+  await imageInput.setInputFiles({
+    name: "source.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl9sAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await expect(page.getByRole("button", { name: "Replace" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove" })).toBeVisible();
+  await expect(publish).toBeEnabled();
+
+  await page.getByRole("button", { name: "Remove" }).click();
+  await expect(publish).toBeDisabled();
 });
 
 test("post detail protects missing persisted data", async ({ page }) => {
