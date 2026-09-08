@@ -21,9 +21,11 @@ function createDb(options: MockDbOptions = {}) {
   const db = {
     prepare: vi.fn((query: string) => {
       statements.push(query);
+      let values: unknown[] = [];
       const statement = {
-        bind: vi.fn((...values: unknown[]) => {
-          bindings.push({ query, values });
+        bind: vi.fn((...nextValues: unknown[]) => {
+          values = nextValues;
+          bindings.push({ query, values: nextValues });
           return statement;
         }),
         first: vi.fn(async <T>() => {
@@ -31,22 +33,28 @@ function createDb(options: MockDbOptions = {}) {
             return { post_author_id: "post-author", comment_author_id: "contributor" } as T;
           }
           if (query.includes("FROM reputation_reward_rules")) {
+            const rewardType = values[0] === "VERIFIED_SOURCE" ? "VERIFIED_SOURCE" : "ACCEPTED_SOURCE";
             return {
-              id: "accepted-v3",
-              reward_type: "ACCEPTED_SOURCE",
+              id: `${rewardType.toLowerCase()}-v3`,
+              reward_type: rewardType,
               version: 3,
               amount: options.ruleAmount ?? 37,
-              provisional: 1,
+              provisional: rewardType === "ACCEPTED_SOURCE" ? 1 : 0,
             } as T;
           }
-          if (query.includes("FROM point_ledger WHERE reward_type")) {
+          if (
+            query.includes("FROM point_ledger") &&
+            query.includes("WHERE reward_type") &&
+            query.includes("entry_type = 'AWARD'")
+          ) {
             return {
+              id: "original-ledger",
               user_id: "contributor",
               amount: options.originalAmount ?? 91,
               metadata_json: "{}",
             } as T;
           }
-          if (query.includes("SUM(CASE WHEN reward_type = 'VERIFIED_SOURCE'")) {
+          if (query.includes("AS count") && query.includes("FROM point_ledger WHERE user_id")) {
             return { count: 1 } as T;
           }
           if (query.includes("COUNT(*) AS count")) return { count: 0 } as T;
