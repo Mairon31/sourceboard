@@ -645,6 +645,12 @@ prerequisites.
       files, production build, Workers deploy dry-run, migrations and 144 E2E.
 - [x] GitHub Actions CI run `#536` (`34197934973`) passed the same complete
       standard gate set on `bbcc5f9` after the CSP hydration fix.
+- [x] Cloudflare Workers Build `b30bd93b-1176-4c4e-b6cd-895dd996c325` completed
+      successfully for `96ca52b` with `npx wrangler deploy`; the production
+      Worker `sourceboard` serves the updated assets and keeps its existing
+      resource bindings.
+- [x] A production browser reload confirmed no presentation-build notice or
+      fixture account remains and produced no new client console error.
 
 ## Known limitations
 
