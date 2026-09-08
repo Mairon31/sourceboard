@@ -166,6 +166,13 @@ function draftFingerprint(draft: ProfileDraft | null): string {
   return draft ? JSON.stringify(draft) : "";
 }
 
+function socialPreview(link: SocialLinkDraft): string {
+  const value = link.url.trim();
+  if (!value) return SOCIAL_PLATFORM_CATALOG[link.platform].placeholder;
+  const normalized = normalizeSocialUrl(link.platform, value);
+  return normalized ? socialHandleFromUrl(link.platform, normalized) : value;
+}
+
 export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
   const revalidator = useRevalidator();
   const [editing, setEditing] = useState(false);
@@ -180,7 +187,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
   const bannerPreview = useObjectUrl(bannerFile);
   const dirty = Boolean(
     draft &&
-    (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
+      (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
   );
 
   useEffect(() => {
@@ -189,9 +196,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
     setStatus(null);
     void fetch("/api/profile/me", { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(await readErrorMessage(response, "Could not load your profile."));
-        }
+        if (!response.ok) throw new Error(await readErrorMessage(response, "Could not load your profile."));
         return (await response.json()) as MyProfileResponse;
       })
       .then((data) => {
@@ -202,9 +207,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
         setInitialFingerprint(draftFingerprint(nextDraft));
       })
       .catch((error: unknown) => {
-        if (!cancelled) {
-          setStatus(error instanceof Error ? error.message : "Could not load your profile.");
-        }
+        if (!cancelled) setStatus(error instanceof Error ? error.message : "Could not load your profile.");
       });
     return () => {
       cancelled = true;
@@ -249,12 +252,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
         ...current,
         socialLinks: [
           ...current.socialLinks,
-          {
-            key: `new-${crypto.randomUUID()}`,
-            platform,
-            url: "",
-            isVisible: true,
-          },
+          { key: `new-${crypto.randomUUID()}`, platform, url: "", isVisible: true },
         ],
       };
     });
@@ -285,10 +283,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
       if (bannerFile) bannerAssetId = await uploadProfileMedia("BANNER", bannerFile, csrfToken);
       const response = await fetch("/api/profile/me", {
         method: "PATCH",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": csrfToken,
-        },
+        headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
         body: JSON.stringify({
           displayName,
           bio: draft.bio,
@@ -298,9 +293,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
           socialLinks: normalizeSocialLinks(draft.socialLinks),
         }),
       });
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Could not save your profile."));
-      }
+      if (!response.ok) throw new Error(await readErrorMessage(response, "Could not save your profile."));
       setEditing(false);
       setSource(null);
       setDraft(null);
@@ -328,11 +321,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
             </Button>
           }
         />
-        {status ? (
-          <div className="product-profile-edit-status" role="status">
-            {status}
-          </div>
-        ) : null}
+        {status ? <div className="product-profile-edit-status" role="status">{status}</div> : null}
       </>
     );
   }
@@ -344,9 +333,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
           <span className="product-eyebrow">Edit profile</span>
           <strong>Loading your profile…</strong>
           {status ? <span role="alert">{status}</span> : null}
-          <Button variant="ghost" size="sm" onClick={cancelEditing}>
-            Cancel
-          </Button>
+          <Button variant="ghost" size="sm" onClick={cancelEditing}>Cancel</Button>
         </div>
       </Card>
     );
@@ -369,7 +356,7 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
         style={bannerStyle}
         aria-label="Profile banner preview"
       >
-        <label className="product-profile-media-edit">
+        <label className="product-profile-media-edit" title="Change banner">
           <span>Change banner</span>
           <input
             type="file"
@@ -379,27 +366,9 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
         </label>
       </div>
 
-      <form
-        className="product-profile-content product-profile-editor-inline__form"
-        onSubmit={(event) => void saveProfile(event)}
-      >
-        <div className="product-profile-editor-inline__toolbar">
-          <div>
-            <span className="product-eyebrow">Edit profile</span>
-            <strong>{dirty ? "Unsaved changes" : "Profile preview"}</strong>
-          </div>
-          <div className="product-chip-row">
-            <Button type="submit" size="sm" loading={busy} disabled={!dirty}>
-              Save
-            </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={cancelEditing}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-
+      <form className="product-profile-content product-profile-editor-inline__form" onSubmit={(event) => void saveProfile(event)}>
         <div className="product-profile-editor-inline__identity">
-          <label className="product-profile-avatar-edit">
+          <label className="product-profile-avatar-edit" title="Change avatar">
             <CosmeticIdentity
               displayName={draft.displayName.trim() || profile.username}
               avatarUrl={avatarPreview ?? profile.avatarUrl}
@@ -411,14 +380,29 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
               mode="profile"
               nameAs="h1"
             />
-            <span>Change avatar</span>
+            <span>Change</span>
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
               onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
             />
           </label>
-          <span className="product-profile-editor-inline__username">@{profile.username}</span>
+          <div className="product-profile-editor-inline__identity-copy">
+            <strong>{draft.displayName.trim() || profile.username}</strong>
+            <span>@{profile.username}</span>
+            <small>Tap the avatar or banner to replace the image.</small>
+          </div>
+        </div>
+
+        <div className="product-profile-editor-inline__toolbar">
+          <div>
+            <span className="product-eyebrow">Edit profile</span>
+            <strong>{dirty ? "Unsaved changes" : "Profile preview"}</strong>
+          </div>
+          <div className="product-chip-row">
+            <Button type="submit" size="sm" loading={busy} disabled={!dirty}>Save</Button>
+            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={cancelEditing}>Cancel</Button>
+          </div>
         </div>
 
         <div className="product-profile-editor-inline__fields">
@@ -426,35 +410,20 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
             label="Display name"
             value={draft.displayName}
             maxLength={80}
-            onChange={(event) =>
-              setDraft((current) =>
-                current ? { ...current, displayName: event.target.value } : current,
-              )
-            }
+            onChange={(event) => setDraft((current) => current ? { ...current, displayName: event.target.value } : current)}
           />
           <Textarea
             label="Bio"
             value={draft.bio}
             maxLength={5000}
             rows={4}
-            onChange={(event) =>
-              setDraft((current) => (current ? { ...current, bio: event.target.value } : current))
-            }
+            onChange={(event) => setDraft((current) => current ? { ...current, bio: event.target.value } : current)}
           />
           <label className="product-field-native">
             <span>Profile visibility</span>
             <select
               value={draft.profileVisibility}
-              onChange={(event) =>
-                setDraft((current) =>
-                  current
-                    ? {
-                        ...current,
-                        profileVisibility: event.target.value as ProfileVisibility,
-                      }
-                    : current,
-                )
-              }
+              onChange={(event) => setDraft((current) => current ? { ...current, profileVisibility: event.target.value as ProfileVisibility } : current)}
             >
               <option value="PUBLIC">Public</option>
               <option value="FRIENDS_ONLY">Friends only</option>
@@ -463,10 +432,11 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
         </div>
 
         <section className="product-profile-editor-socials">
-          <div className="product-section-heading">
+          <div className="product-section-heading product-profile-editor-socials__heading">
             <div>
               <span className="product-eyebrow">Social links</span>
-              <h2>Profiles people can recognize</h2>
+              <h2>Connected profiles</h2>
+              <p>Add recognizable handles. SourceBoard builds and validates the profile URL.</p>
             </div>
             <Button
               type="button"
@@ -489,23 +459,23 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
               );
               return (
                 <div className="product-profile-editor-social" key={link.key}>
-                  <span className="product-profile-editor-social__icon">
-                    <SocialIcon platform={link.platform} />
-                  </span>
-                  <label className="product-field-native">
+                  <div className="product-profile-editor-social__identity">
+                    <span className="product-profile-editor-social__icon">
+                      <SocialIcon platform={link.platform} />
+                    </span>
+                    <span>
+                      <strong>{definition.label}</strong>
+                      <small>{socialPreview(link)}</small>
+                    </span>
+                  </div>
+                  <label className="product-field-native product-profile-editor-social__platform">
                     <span>Platform</span>
                     <select
                       value={link.platform}
-                      onChange={(event) =>
-                        updateLink(link.key, { platform: event.target.value as SocialPlatform })
-                      }
+                      onChange={(event) => updateLink(link.key, { platform: event.target.value as SocialPlatform })}
                     >
-                      {SOCIAL_PLATFORMS.filter(
-                        (platform) => platform === link.platform || !otherSelected.has(platform),
-                      ).map((platform) => (
-                        <option key={platform} value={platform}>
-                          {SOCIAL_PLATFORM_CATALOG[platform].label}
-                        </option>
+                      {SOCIAL_PLATFORMS.filter((platform) => platform === link.platform || !otherSelected.has(platform)).map((platform) => (
+                        <option key={platform} value={platform}>{SOCIAL_PLATFORM_CATALOG[platform].label}</option>
                       ))}
                     </select>
                   </label>
@@ -516,32 +486,26 @@ export function ProfileEditor({ profile }: { profile: PublicProfileDto }) {
                     placeholder={definition.placeholder}
                     onChange={(event) => updateLink(link.key, { url: event.target.value })}
                   />
-                  <Checkbox
-                    label="Visible"
-                    checked={link.isVisible}
-                    onCheckedChange={(checked) =>
-                      updateLink(link.key, { isVisible: checked === true })
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeLink(link.key)}
-                  >
-                    Remove
-                  </Button>
+                  <div className="product-profile-editor-social__actions">
+                    <Checkbox
+                      label="Visible"
+                      checked={link.isVisible}
+                      onCheckedChange={(checked) => updateLink(link.key, { isVisible: checked === true })}
+                    />
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeLink(link.key)}>Remove</Button>
+                  </div>
                 </div>
               );
             })}
+            {!draft.socialLinks.length ? (
+              <div className="product-empty-state product-empty-state--compact">
+                <p>No social profiles added yet. Add one to show a verified-looking handle row on your public profile.</p>
+              </div>
+            ) : null}
           </div>
         </section>
 
-        {status ? (
-          <div className="product-profile-edit-status" role="alert">
-            {status}
-          </div>
-        ) : null}
+        {status ? <div className="product-profile-edit-status" role="alert">{status}</div> : null}
       </form>
     </Card>
   );
