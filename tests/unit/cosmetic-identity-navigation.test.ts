@@ -8,12 +8,14 @@ function readOptionalSource(path: string): string {
 
 const contracts = readOptionalSource("../../shared/ui/contracts.ts");
 const store = readOptionalSource("../../worker/profile/store.ts");
+const storeCore = readOptionalSource("../../worker/profile/store-core.ts");
 const posts = readOptionalSource("../../worker/posts/service.ts");
 const comments = readOptionalSource("../../worker/comments/service.ts");
 const identity = readOptionalSource("../../app/components/product/CosmeticIdentity.tsx");
 const identityCss = readOptionalSource("../../app/components/product/cosmetic-identity.css");
 const root = readOptionalSource("../../app/root.tsx");
 const profileRoute = readOptionalSource("../../app/routes/profile.tsx");
+const profileHero = readOptionalSource("../../app/components/product/ProfileHero.tsx");
 const postCard = readOptionalSource("../../app/components/product/PostCard.tsx");
 const commentThread = readOptionalSource("../../app/components/product/CommentThread.tsx");
 const postNew = readOptionalSource("../../app/routes/post-new.tsx");
@@ -25,9 +27,10 @@ describe("public cosmetic identity contracts", () => {
   });
 
   it("uses shared preset types", () => {
-    expect(store).toContain("AvatarFramePreset");
-    expect(store).toContain("ProfileEffectPreset");
-    expect(store).toContain("NameFontFamily");
+    const profileStore = [store, storeCore].join("\n");
+    expect(profileStore).toContain("AvatarFramePreset");
+    expect(profileStore).toContain("ProfileEffectPreset");
+    expect(profileStore).toContain("NameFontFamily");
   });
 
   it("serializes equipped effects", () => {
@@ -49,7 +52,8 @@ describe("public cosmetic identity contracts", () => {
   });
 
   it("uses the shared identity in profile, posts and comments", () => {
-    expect(profileRoute).toContain('mode="profile"');
+    expect(profileRoute).toContain("<ProfileHero");
+    expect(profileHero).toContain('mode="profile"');
     expect(postCard).toContain('mode="compact"');
     expect(commentThread).toContain('mode="compact"');
   });
