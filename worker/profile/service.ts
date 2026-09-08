@@ -16,12 +16,16 @@ export type ProfileService = CoreProfileService & {
   searchFriendSuggestions(viewerId: string, query: string): Promise<FriendsListDto>;
 };
 
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 31 || code === 127;
+  });
+}
+
 function normalizeFriendSearch(query: string): string {
   const normalized = query.trim().toLowerCase();
-  if (
-    normalized.length > MAX_FRIEND_SEARCH_LENGTH ||
-    /[\u0000-\u001f\u007f]/.test(normalized)
-  ) {
+  if (normalized.length > MAX_FRIEND_SEARCH_LENGTH || hasControlCharacter(normalized)) {
     throw new ProfileError(400, "INVALID_FRIEND_SEARCH", "Friend search is invalid.");
   }
   return normalized;
