@@ -27,6 +27,7 @@ import "./components/product/product-interactions.css";
 import "./components/product/comment-actions.css";
 import "./components/product/source-resolution.css";
 import "./components/product/notifications.css";
+import "./components/product/notification-actor-stack.css";
 import "./components/product/store.css";
 import "./components/product/store-page.css";
 import "./components/product/store-responsive.css";
