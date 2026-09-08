@@ -247,6 +247,7 @@ function CommentItem({
                 profileEffect={comment.author.profileEffect}
                 nameFont={comment.author.nameFont}
                 nameEffect={comment.author.nameEffect}
+                visuals={comment.author.visuals}
                 mode="compact"
                 avatarSize="sm"
                 nameAs="strong"

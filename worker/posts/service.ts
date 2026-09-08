@@ -180,6 +180,7 @@ function authorForPost(
     profileEffect: cosmetics?.profileEffect,
     nameFont: cosmetics?.nameFont,
     nameEffect: cosmetics?.nameEffect,
+    visuals: cosmetics?.visuals,
   };
 }
 

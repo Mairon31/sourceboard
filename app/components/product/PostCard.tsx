@@ -261,6 +261,7 @@ export function PostCard({
               profileEffect={post.author.profileEffect}
               nameFont={post.author.nameFont}
               nameEffect={post.author.nameEffect}
+              visuals={post.author.visuals}
               mode="compact"
               nameAs="strong"
             />
