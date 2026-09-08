@@ -5,11 +5,10 @@ import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
 import { loadAdminAccess } from "../data/admin-access";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
-import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
 import { ProfileEditor } from "../components/product/ProfileEditor";
+import { ProfileHero } from "../components/product/ProfileHero";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
-import { SocialActionButton } from "../components/product/SocialActionButton";
 import { Badge, Card } from "../components/ui";
 
 interface LoaderArgs extends ServerLoaderArgs {
@@ -38,14 +37,6 @@ export async function loader({ params, request, context }: LoaderArgs) {
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 type PublicProfile = NonNullable<LoaderData["profile"]>;
 
-const relationshipLabel = {
-  NONE: "Not connected",
-  FRIEND: "Friends",
-  INCOMING: "Incoming request",
-  OUTGOING: "Request sent",
-  BLOCKED: "Blocked",
-} as const;
-
 function UnavailableProfile({ unavailable }: { unavailable: boolean }) {
   return (
     <ProductShell wide>
@@ -62,121 +53,6 @@ function UnavailableProfile({ unavailable }: { unavailable: boolean }) {
         <p>Public profile data is shown only after server-side privacy checks succeed.</p>
       </Card>
     </ProductShell>
-  );
-}
-
-function ProfileSocialLinks({ profile }: { profile: PublicProfile }) {
-  if (!profile.socialLinks.length) {
-    return <p className="product-store-preview-status">No public social links.</p>;
-  }
-  return (
-    <div className="product-social-links">
-      {profile.socialLinks.map((link) => (
-        <a key={`${link.platform}-${link.url}`} href={link.url} target="_blank" rel="noreferrer">
-          {link.platform}
-        </a>
-      ))}
-    </div>
-  );
-}
-
-function ProfileBanner({ profile }: { profile: PublicProfile }) {
-  return (
-    <div
-      className={`product-profile-banner${profile.cosmetics?.profileBanner ? " product-profile-banner--nebula" : ""}`}
-      aria-label={`${profile.displayName} profile banner`}
-      style={profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined}
-    />
-  );
-}
-
-function ProfileRelationshipBadge({ profile }: { profile: PublicProfile }) {
-  return (
-    <Badge tone={profile.relationship === "BLOCKED" ? "warning" : "neutral"}>
-      {relationshipLabel[profile.relationship]}
-    </Badge>
-  );
-}
-
-function ProfileRelationshipAction({ profile }: { profile: PublicProfile }) {
-  if (!profile.canRequestFriend) return null;
-  return (
-    <SocialActionButton
-      endpoint={`/api/friends/${encodeURIComponent(profile.id)}/request`}
-      method="POST"
-      variant="secondary"
-      onSuccess={() => undefined}
-      successLabel="Request sent"
-    >
-      Send friend request
-    </SocialActionButton>
-  );
-}
-
-function ProfileIdentity({ profile }: { profile: PublicProfile }) {
-  return (
-    <div className="product-profile-identity">
-      <div className="product-list-row__identity">
-        <div className="product-profile-name">
-          <span className="product-eyebrow">Public profile</span>
-          <CosmeticIdentity
-            displayName={profile.displayName}
-            avatarUrl={profile.avatarUrl}
-            avatarFrame={profile.cosmetics?.avatarFrame}
-            profileEffect={profile.cosmetics?.profileEffect}
-            nameFont={profile.cosmetics?.nameFont}
-            mode="profile"
-            nameAs="h1"
-          />
-          <p>@{profile.username}</p>
-        </div>
-      </div>
-      <div className="product-chip-row">
-        <ProfileRelationshipBadge profile={profile} />
-        <ProfileRelationshipAction profile={profile} />
-      </div>
-    </div>
-  );
-}
-
-function ProfileStats({ profile }: { profile: PublicProfile }) {
-  return (
-    <div className="product-profile-stats">
-      <div className="product-stat">
-        <strong>{profile.friendCount}</strong>
-        <span>Friends</span>
-      </div>
-      {profile.points !== undefined && (
-        <div className="product-stat">
-          <strong>{profile.points}</strong>
-          <span>Points</span>
-        </div>
-      )}
-      {profile.verifiedSources !== undefined && (
-        <div className="product-stat">
-          <strong>{profile.verifiedSources}</strong>
-          <span>Verified sources</span>
-        </div>
-      )}
-      <div className="product-stat">
-        <strong>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends"}</strong>
-        <span>Visibility</span>
-      </div>
-    </div>
-  );
-}
-
-function ProfileHero({ profile }: { profile: PublicProfile }) {
-  return (
-    <Card className="product-profile-hero">
-      <ProfileBanner profile={profile} />
-      <div className="product-profile-content">
-        <ProfileIdentity profile={profile} />
-        <p>{profile.bio || "This contributor has not added a bio yet."}</p>
-        <ProfileStats profile={profile} />
-        <ProfileSocialLinks profile={profile} />
-      </div>
-    </Card>
   );
 }
 
@@ -216,7 +92,7 @@ export default function ProfileRoute() {
   if (!profile) return <UnavailableProfile unavailable={unavailable} />;
   return (
     <ProductShell wide>
-      <ProfileHero profile={profile} />
+      <ProfileHero profile={profile} isOwnProfile={isOwnProfile} />
       {isOwnProfile ? <ProfileEditor /> : null}
       <ContributionHistory profile={profile} />
       {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
