@@ -60,6 +60,12 @@ export const NAME_EFFECT_PRESETS = [
   "inferno",
   "ice",
   "aurora",
+  "hologram",
+  "void",
+  "solar",
+  "candy",
+  "terminal",
+  "chrome",
 ] as const;
 
 export type NameEffectPreset = (typeof NAME_EFFECT_PRESETS)[number];
