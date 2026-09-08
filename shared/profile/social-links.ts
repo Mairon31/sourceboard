@@ -26,70 +26,70 @@ export const SOCIAL_PLATFORM_CATALOG: Record<SocialPlatform, SocialPlatformDefin
     id: "instagram",
     label: "Instagram",
     icon: "instagram",
-    inputLabel: "Username or profile URL",
+    inputLabel: "Username",
     placeholder: "@username",
   },
   tiktok: {
     id: "tiktok",
     label: "TikTok",
     icon: "tiktok",
-    inputLabel: "Username or profile URL",
+    inputLabel: "Username",
     placeholder: "@username",
   },
   x: {
     id: "x",
     label: "X / Twitter",
     icon: "x",
-    inputLabel: "Username or profile URL",
+    inputLabel: "Username",
     placeholder: "@username",
   },
   youtube: {
     id: "youtube",
     label: "YouTube",
     icon: "youtube",
-    inputLabel: "Handle or channel URL",
+    inputLabel: "Channel handle",
     placeholder: "@channel",
   },
   twitch: {
     id: "twitch",
     label: "Twitch",
     icon: "twitch",
-    inputLabel: "Username or channel URL",
+    inputLabel: "Username",
     placeholder: "username",
   },
   discord: {
     id: "discord",
     label: "Discord",
     icon: "discord",
-    inputLabel: "User ID, profile URL or invite URL",
+    inputLabel: "User ID or invite URL",
     placeholder: "123456789012345678",
   },
   github: {
     id: "github",
     label: "GitHub",
     icon: "github",
-    inputLabel: "Username or profile URL",
+    inputLabel: "Username",
     placeholder: "username",
   },
   bluesky: {
     id: "bluesky",
     label: "Bluesky",
     icon: "bluesky",
-    inputLabel: "Handle or profile URL",
+    inputLabel: "Handle",
     placeholder: "name.bsky.social",
   },
   reddit: {
     id: "reddit",
     label: "Reddit",
     icon: "reddit",
-    inputLabel: "Username or profile URL",
+    inputLabel: "Username",
     placeholder: "username",
   },
   website: {
     id: "website",
     label: "Website",
     icon: "website",
-    inputLabel: "HTTPS URL",
+    inputLabel: "Website URL",
     placeholder: "https://example.com",
   },
 };
@@ -157,8 +157,7 @@ export function normalizeSocialUrl(platform: SocialPlatform, rawValue: string): 
     if (platform === "github") return `https://github.com/${encodeURIComponent(handle)}`;
     if (platform === "bluesky") return `https://bsky.app/profile/${encodeURIComponent(handle)}`;
     if (platform === "reddit") return `https://www.reddit.com/user/${encodeURIComponent(handle)}`;
-    if (platform === "discord" && /^\d{5,32}$/.test(handle))
-      return `https://discord.com/users/${handle}`;
+    if (platform === "discord" && /^\d{5,32}$/.test(handle)) return `https://discord.com/users/${handle}`;
     return null;
   }
 
@@ -188,17 +187,12 @@ export function normalizeSocialUrl(platform: SocialPlatform, rawValue: string): 
   if (platform === "bluesky" && hostIs(url, "bsky.app")) {
     const parts = url.pathname.split("/").filter(Boolean);
     const handle = parts[0] === "profile" ? parts[1] : null;
-    return handle
-      ? `https://bsky.app/profile/${encodeURIComponent(decodeURIComponent(handle))}`
-      : null;
+    return handle ? `https://bsky.app/profile/${encodeURIComponent(decodeURIComponent(handle))}` : null;
   }
   if (platform === "reddit" && hostIs(url, "reddit.com")) {
     const parts = url.pathname.split("/").filter(Boolean);
-    const handle =
-      parts[0]?.toLowerCase() === "user" || parts[0]?.toLowerCase() === "u" ? parts[1] : null;
-    return handle
-      ? `https://www.reddit.com/user/${encodeURIComponent(decodeURIComponent(handle))}`
-      : null;
+    const handle = parts[0]?.toLowerCase() === "user" || parts[0]?.toLowerCase() === "u" ? parts[1] : null;
+    return handle ? `https://www.reddit.com/user/${encodeURIComponent(decodeURIComponent(handle))}` : null;
   }
   if (platform === "discord" && hostIs(url, "discord.com", "discord.gg")) return url.toString();
   return null;
