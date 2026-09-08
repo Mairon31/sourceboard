@@ -1,10 +1,13 @@
+import type { PublicCosmeticsDto } from "../profile/types";
 import type { NotificationRecord } from "../profile/types";
+import { createD1ProfileStore } from "../profile/store";
 
 export interface NotificationActorView {
   id: string;
   displayName: string;
   username: string;
   avatarUrl?: string;
+  cosmetics?: PublicCosmeticsDto;
 }
 
 export interface PresentedNotification extends NotificationRecord {
@@ -128,6 +131,24 @@ export function presentNotification(
         ctaLabel: "View reply",
         ...(actor ? { actor } : {}),
       };
+    case "post.liked":
+      return {
+        ...record,
+        title: `${actorName(actor)} liked your post`,
+        body: post?.title ? `New like on “${post.title}”.` : "Someone liked your post.",
+        href: postHref(post, postId),
+        ctaLabel: "View post",
+        ...(actor ? { actor } : {}),
+      };
+    case "comment.liked":
+      return {
+        ...record,
+        title: `${actorName(actor)} liked your comment`,
+        body: comment?.body ? excerpt(comment.body) : "Someone liked your comment.",
+        href: `${postHref(commentPost, comment?.postId ?? postId)}${record.entityId ? `#comment-${encodeURIComponent(record.entityId)}` : ""}`,
+        ctaLabel: "View comment",
+        ...(actor ? { actor } : {}),
+      };
     case "source.accepted":
       return {
         ...record,
@@ -232,21 +253,50 @@ function unique(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
+function groupTarget(notification: PresentedNotification): string | null {
+  const payload = parsePayload(notification.payloadJson);
+  if (notification.type === "comment.created" || notification.type === "comment.reply") {
+    return typeof payload.postId === "string" ? payload.postId : null;
+  }
+  if (notification.type === "post.liked" || notification.type === "comment.liked") {
+    return notification.entityId;
+  }
+  return null;
+}
+
+function groupedCopy(notification: PresentedNotification, count: number): { title: string; body: string } {
+  if (notification.type === "comment.created") {
+    return { title: `${count} new comments on your post`, body: "Open the discussion to review the latest activity." };
+  }
+  if (notification.type === "comment.reply") {
+    return { title: `${count} new replies to your comment`, body: "Open the discussion to review the latest replies." };
+  }
+  if (notification.type === "post.liked") {
+    return { title: `${count} people liked your post`, body: "Your post is getting new reactions." };
+  }
+  return { title: `${count} people liked your comment`, body: "Your comment is getting new reactions." };
+}
+
 export function groupPresentedNotifications(
   notifications: PresentedNotification[],
 ): PresentedNotification[] {
   const grouped: PresentedNotification[] = [];
   const groups = new Map<string, PresentedNotification>();
+  const groupable = new Set(["comment.created", "comment.reply", "post.liked", "comment.liked"]);
   for (const notification of notifications) {
-    if (notification.type !== "comment.created" && notification.type !== "comment.reply") {
+    if (!groupable.has(notification.type)) {
       grouped.push(notification);
       continue;
     }
-    const payload = parsePayload(notification.payloadJson);
-    const postId = typeof payload.postId === "string" ? payload.postId : notification.entityId;
-    const key = `${notification.type}:${postId ?? "unknown"}`;
+    const target = groupTarget(notification);
+    if (!target) {
+      grouped.push(notification);
+      continue;
+    }
+    const key = `${notification.type}:${target}`;
     const previous = groups.get(key);
-    if (!previous || previous.createdAt - notification.createdAt > 15 * 60 * 1000) {
+    const groupingWindowMs = notification.type.endsWith(".liked") ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000;
+    if (!previous || previous.createdAt - notification.createdAt > groupingWindowMs) {
       const next = {
         ...notification,
         groupedIds: [notification.id],
@@ -259,17 +309,15 @@ export function groupPresentedNotifications(
     }
     const ids = [...(previous.groupedIds ?? [previous.id]), notification.id];
     const count = ids.length;
+    const copy = groupedCopy(notification, count);
     previous.groupedIds = ids;
     previous.groupCount = count;
     previous.unreadCount =
       (previous.unreadCount ?? (previous.readAt ? 0 : 1)) + (notification.readAt ? 0 : 1);
     previous.readAt = previous.readAt && notification.readAt ? previous.readAt : null;
-    previous.title =
-      notification.type === "comment.created"
-        ? `${count} new comments on your post`
-        : `${count} new replies to your comment`;
-    previous.body = "Open the discussion to review the latest activity.";
-    previous.ctaLabel = "View discussion";
+    previous.title = copy.title;
+    previous.body = copy.body;
+    previous.ctaLabel = notification.type.endsWith(".liked") ? notification.ctaLabel : "View discussion";
   }
   return grouped;
 }
@@ -342,6 +390,15 @@ export async function presentNotifications(
       : Promise.resolve({ results: [] }),
   ]);
 
+  const profileStore = createD1ProfileStore(db);
+  const cosmeticsByUser = new Map(
+    await Promise.all(
+      userRows.results.map(async (row) => [
+        row.id,
+        await profileStore.getEquippedCosmetics(row.id).catch(() => ({})),
+      ] as const),
+    ),
+  );
   const users = new Map(
     userRows.results.map((row) => [
       row.id,
@@ -351,6 +408,9 @@ export async function presentNotifications(
         displayName: row.displayName,
         ...(row.avatarAssetId
           ? { avatarUrl: `/api/media/profile/${encodeURIComponent(row.avatarAssetId)}` }
+          : {}),
+        ...(Object.keys(cosmeticsByUser.get(row.id) ?? {}).length
+          ? { cosmetics: cosmeticsByUser.get(row.id) }
           : {}),
       },
     ]),
