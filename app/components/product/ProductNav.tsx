@@ -100,7 +100,7 @@ export function MobileProductNav() {
         end
         aria-label="Home"
         title="Home"
-        prefetch="viewport"
+        prefetch="intent"
         onClick={() => markNavigationStart("/")}
       >
         <HomeIcon />
@@ -110,7 +110,7 @@ export function MobileProductNav() {
         className={navClass}
         aria-label="Friends"
         title="Friends"
-        prefetch="viewport"
+        prefetch="intent"
         onClick={() => markNavigationStart("/friends")}
       >
         <FriendsIcon />
@@ -120,7 +120,7 @@ export function MobileProductNav() {
         to="/post/new"
         aria-label="Create post"
         title="Create post"
-        prefetch="viewport"
+        prefetch="intent"
         onClick={() => markNavigationStart("/post/new")}
       >
         <PlusIcon />
@@ -130,7 +130,7 @@ export function MobileProductNav() {
         className={navClass}
         aria-label="Profile"
         title="Profile"
-        prefetch="viewport"
+        prefetch="intent"
         onClick={() => markNavigationStart(profileHref)}
       >
         <UserIcon />
@@ -140,7 +140,7 @@ export function MobileProductNav() {
         className={navClass}
         aria-label="Store"
         title="Store"
-        prefetch="viewport"
+        prefetch="intent"
         onClick={() => markNavigationStart("/store")}
       >
         <StoreIcon />
