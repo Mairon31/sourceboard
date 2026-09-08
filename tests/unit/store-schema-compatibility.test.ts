@@ -50,4 +50,17 @@ describe("Store schema rollout compatibility", () => {
     expect(catalogApi).toContain("UPDATE store_items SET is_active = ?");
     expect(catalogApi).toContain("WHERE pack_id = ? AND status = 'ACTIVE'");
   });
+
+  it("keeps emote uploads working before migration 0015 instead of throwing a 500", () => {
+    expect(catalogApi).toContain("legacyCreateEmote");
+    expect(catalogApi).toContain(
+      "INSERT INTO emote_catalog (id, shortcode, label, asset_key, pack_id, status, sort_order, created_at)",
+    );
+    expect(catalogApi).toContain("isCatalogLifecycleSchemaError(error)");
+  });
+
+  it("uses an HTML pattern compatible with Unicode Sets validation in modern browsers", () => {
+    expect(adminEmotePacks).not.toContain('pattern="[a-z0-9][a-z0-9_-]{1,63}"');
+    expect(adminEmotePacks).toContain('pattern="[a-z0-9](?:[a-z0-9_]|-){1,63}"');
+  });
 });
