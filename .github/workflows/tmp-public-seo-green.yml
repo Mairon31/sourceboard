@@ -25,7 +25,6 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           app_path = Path("worker/app.ts")
           app = app_path.read_text()
           import_anchor = 'import { observeBackgroundFailure, observeRequest } from "./observability";\n'
@@ -35,29 +34,16 @@ jobs:
                   raise SystemExit("worker/app.ts import anchor missing")
               app = app.replace(import_anchor, import_anchor + import_line, 1)
           call_anchor = '    const apiResponse = await handleApiRequest(request, requestId, env);\n\n'
-          call_block = '''    const seoResponse = await handlePublicSeoRequest(request, env);
-    if (seoResponse) return finish(seoResponse);
-
-    const apiResponse = await handleApiRequest(request, requestId, env);
-
-'''
+          call_block = '    const seoResponse = await handlePublicSeoRequest(request, env);\n    if (seoResponse) return finish(seoResponse);\n\n    const apiResponse = await handleApiRequest(request, requestId, env);\n\n'
           if 'await handlePublicSeoRequest(request, env)' not in app:
               if call_anchor not in app:
                   raise SystemExit("worker/app.ts API anchor missing")
               app = app.replace(call_anchor, call_block, 1)
           app_path.write_text(app)
-
           route_path = Path("app/routes/post-detail.tsx")
           route = route_path.read_text()
-          old = '''    loaderData.unavailable ||
-    post.visibility !== "PUBLIC" ||
-    post.nsfwPresentation === "HIDDEN"
-'''
-          new = '''    loaderData.unavailable ||
-    post.isNsfw ||
-    post.visibility !== "PUBLIC" ||
-    post.nsfwPresentation === "HIDDEN"
-'''
+          old = '    loaderData.unavailable ||\n    post.visibility !== "PUBLIC" ||\n    post.nsfwPresentation === "HIDDEN"\n'
+          new = '    loaderData.unavailable ||\n    post.isNsfw ||\n    post.visibility !== "PUBLIC" ||\n    post.nsfwPresentation === "HIDDEN"\n'
           if old in route:
               route = route.replace(old, new, 1)
           elif '    post.isNsfw ||\n' not in route:
