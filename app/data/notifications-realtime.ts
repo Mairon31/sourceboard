@@ -15,6 +15,10 @@ export interface NotificationPreview {
   entityType: string | null;
   entityId: string | null;
   payloadJson: string | null;
+  title: string;
+  body: string;
+  href: string;
+  ctaLabel?: string;
   readAt: number | null;
 }
 
@@ -25,23 +29,39 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
   const notifications = Array.isArray(value.notifications) ? value.notifications : [];
   const previews = notifications.flatMap((notification): NotificationPreview[] => {
     if (!notification || typeof notification !== "object") return [];
-    const value = notification as {
+    const item = notification as {
       id?: unknown;
       type?: unknown;
       entityType?: unknown;
       entityId?: unknown;
       payloadJson?: unknown;
+      title?: unknown;
+      body?: unknown;
+      href?: unknown;
+      ctaLabel?: unknown;
       readAt?: unknown;
     };
-    if (typeof value.id !== "string" || typeof value.type !== "string") return [];
+    if (
+      typeof item.id !== "string" ||
+      typeof item.type !== "string" ||
+      typeof item.title !== "string" ||
+      typeof item.body !== "string" ||
+      typeof item.href !== "string"
+    ) {
+      return [];
+    }
     return [
       {
-        id: value.id,
-        type: value.type,
-        entityType: typeof value.entityType === "string" ? value.entityType : null,
-        entityId: typeof value.entityId === "string" ? value.entityId : null,
-        payloadJson: typeof value.payloadJson === "string" ? value.payloadJson : null,
-        readAt: typeof value.readAt === "number" ? value.readAt : null,
+        id: item.id,
+        type: item.type,
+        entityType: typeof item.entityType === "string" ? item.entityType : null,
+        entityId: typeof item.entityId === "string" ? item.entityId : null,
+        payloadJson: typeof item.payloadJson === "string" ? item.payloadJson : null,
+        title: item.title,
+        body: item.body,
+        href: item.href,
+        ...(typeof item.ctaLabel === "string" ? { ctaLabel: item.ctaLabel } : {}),
+        readAt: typeof item.readAt === "number" ? item.readAt : null,
       },
     ];
   });
