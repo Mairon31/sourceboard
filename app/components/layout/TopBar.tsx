@@ -9,26 +9,6 @@ import {
 } from "../../data/notifications-realtime";
 import { ThemeControl } from "./ThemeControl";
 
-function notificationLabel(type: string): string {
-  return type.replaceAll(".", " ").replaceAll("_", " ");
-}
-
-function notificationHref(notification: NotificationPreview): string {
-  if (notification.entityType === "POST" && notification.entityId)
-    return `/posts/${encodeURIComponent(notification.entityId)}`;
-  if (notification.entityType === "COMMENT" && notification.payloadJson) {
-    try {
-      const payload = JSON.parse(notification.payloadJson) as { postId?: unknown };
-      if (typeof payload.postId === "string") return `/posts/${encodeURIComponent(payload.postId)}`;
-    } catch {
-      // Fall back to the complete notification page for malformed payloads.
-    }
-  }
-  if (notification.entityType === "FRIENDSHIP") return "/friends";
-  if (notification.entityType === "ACHIEVEMENT") return "/notifications";
-  return "/notifications";
-}
-
 export function TopBar() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -38,12 +18,11 @@ export function TopBar() {
 
   function submitSearch(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    // Keep this form natively owned. If a user types before hydration finishes,
-    // the browser's submitted control value is authoritative.
     const submittedValue = new FormData(event.currentTarget).get("q");
     const query = typeof submittedValue === "string" ? submittedValue.trim() : "";
     navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
   }
+
   useEffect(() => {
     let disposed = false;
     let socket: WebSocket | null = null;
@@ -194,15 +173,11 @@ export function TopBar() {
                     <Link
                       key={notification.id}
                       className={`sb-topbar-notification-menu__item focus-ring${notification.readAt ? "" : " is-unread"}`}
-                      to={notificationHref(notification)}
+                      to={notification.href}
                       onClick={() => setNotificationsOpen(false)}
                     >
-                      <strong>{notificationLabel(notification.type)}</strong>
-                      <span>
-                        {notification.entityType
-                          ? `${notification.entityType} ${notification.entityId ?? ""}`
-                          : "SourceBoard activity"}
-                      </span>
+                      <strong>{notification.title}</strong>
+                      <span>{notification.body}</span>
                     </Link>
                   ))}
                 </div>
