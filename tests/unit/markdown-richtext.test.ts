@@ -4,13 +4,15 @@ import { normalizeCommentBody } from "../../worker/comments/richtext";
 
 describe("safe Markdown rich text", () => {
   it("parses inline marks and allowlisted links into serializable nodes", () => {
-    const nodes = parseMarkdown("**bold** *italic* ~~strike~~ `code` [source](https://example.com)");
+    const nodes = parseMarkdown(
+      "**bold** *italic* ~~strike~~ `code` [source](https://example.com)",
+    );
     expect(nodes[0]).toMatchObject({ type: "paragraph" });
     expect(JSON.stringify(nodes)).toContain('"bold":true');
     expect(JSON.stringify(nodes)).toContain('"italic":true');
     expect(JSON.stringify(nodes)).toContain('"strike":true');
     expect(JSON.stringify(nodes)).toContain('"code":true');
-    expect(JSON.stringify(nodes)).toContain('https://example.com/');
+    expect(JSON.stringify(nodes)).toContain("https://example.com/");
   });
 
   it("supports quote, list and fenced code blocks", () => {

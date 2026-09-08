@@ -146,6 +146,25 @@ export function createModerationService(db: D1Database, options: { events?: Queu
         "REPORT_ALREADY_EXISTS",
         "You already reported this item with that category.",
       );
+    await db
+      .prepare(
+        `INSERT INTO audit_logs
+         (id, actor_user_id, action, target_type, target_id, reason, metadata_json, request_id, ip_prefix_hash, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        createIdentifier(),
+        input.reporterUserId,
+        "moderation.report.created",
+        input.targetType,
+        input.targetId,
+        input.category,
+        JSON.stringify({ detail: input.detail ?? null }),
+        null,
+        null,
+        now,
+      )
+      .run();
     return { id, status: "OPEN" as const };
   }
 

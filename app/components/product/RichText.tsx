@@ -52,5 +52,7 @@ function renderBlock(node: SafeRichTextNode, index: number): ReactNode {
 }
 
 export function RichText({ nodes, className }: { nodes: SafeRichTextNode[]; className?: string }) {
-  return <div className={joinClassNames("product-richtext", className)}>{nodes.map(renderBlock)}</div>;
+  return (
+    <div className={joinClassNames("product-richtext", className)}>{nodes.map(renderBlock)}</div>
+  );
 }

@@ -47,7 +47,9 @@ function addMarks(node: SafeInlineRichTextNode, marks: RichTextMarks): SafeInlin
 
 function plainLabel(nodes: SafeInlineRichTextNode[]): string {
   return nodes
-    .map((node) => (node.type === "link" ? node.label : node.type === "emote" ? node.shortcode : node.text))
+    .map((node) =>
+      node.type === "link" ? node.label : node.type === "emote" ? node.shortcode : node.text,
+    )
     .join("");
 }
 

@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
+import type { SafeRichTextNode } from "../../../shared/richtext/markdown";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
-import { Avatar, Badge, Button, Textarea } from "../ui";
+import { ConfirmAction } from "./ConfirmAction";
+import { RichText } from "./RichText";
+import { ShareAction } from "./ShareAction";
+import { Avatar, Badge, Button, Dropdown, Textarea } from "../ui";
 
 interface KlipyMediaItem {
   id: string;
@@ -18,7 +22,6 @@ interface KlipyMediaItem {
 function CommentAttachment({ attachment }: { attachment: CommentAttachmentView }) {
   const imageUrl = attachment.url ?? attachment.preview;
   if (!imageUrl) return null;
-
   return (
     <div
       className={`product-comment-attachment product-comment-attachment--${attachment.type.toLowerCase()}`}
@@ -28,37 +31,165 @@ function CommentAttachment({ attachment }: { attachment: CommentAttachmentView }
   );
 }
 
+function commentNodes(comment: CommentView): SafeRichTextNode[] {
+  return [
+    { type: "paragraph", children: comment.richtext ?? [{ type: "text", text: comment.body }] },
+  ];
+}
+
+const REPORT_CATEGORIES = [
+  ["SPAM", "Spam"],
+  ["HARASSMENT", "Harassment"],
+  ["MISLEADING_SOURCE", "Misleading source"],
+  ["NSFW", "Sensitive content"],
+  ["PRIVACY", "Privacy"],
+  ["COPYRIGHT", "Copyright"],
+  ["OTHER", "Other"],
+] as const;
+
+function ReportForm({ commentId, onClose }: { commentId: string; onClose: () => void }) {
+  const [category, setCategory] = useState<(typeof REPORT_CATEGORIES)[number][0]>("SPAM");
+  const [detail, setDetail] = useState("");
+  const [status, setStatus] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setStatus(undefined);
+    try {
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({ targetType: "COMMENT", targetId: commentId, category, detail }),
+      });
+      if (!response.ok) {
+        setStatus(
+          response.status === 409 ? "You already reported this comment." : "Report unavailable.",
+        );
+        return;
+      }
+      setStatus("Report sent. Thanks for helping keep SourceBoard useful.");
+      setDetail("");
+    } catch {
+      setStatus("Report unavailable.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="product-comment-report" onSubmit={(event) => void submit(event)}>
+      <label className="product-field-native">
+        <span>Report reason</span>
+        <select
+          value={category}
+          onChange={(event) => setCategory(event.target.value as typeof category)}
+        >
+          {REPORT_CATEGORIES.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Textarea
+        label="Note (optional)"
+        value={detail}
+        maxLength={2000}
+        onChange={(event) => setDetail(event.target.value)}
+      />
+      <div className="product-chip-row">
+        <Button type="submit" size="sm" loading={busy}>
+          Send report
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+      {status ? <small role="status">{status}</small> : null}
+    </form>
+  );
+}
+
 function CommentItem({
   comment,
   depth = 0,
   onReply,
   canAcceptSource,
   onAcceptSource,
+  onUpdated,
+  onDeleted,
 }: {
   comment: CommentView;
   depth?: number;
   onReply: (commentId: string) => void;
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
+  onUpdated: (comment: CommentView) => void;
+  onDeleted: (commentId: string) => void;
 }) {
   const [showReplies, setShowReplies] = useState(depth === 0);
   const [liked, setLiked] = useState(comment.reaction.viewerReacted);
   const [likes, setLikes] = useState(comment.reaction.count);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(comment.body);
+  const [reporting, setReporting] = useState(false);
+  const [status, setStatus] = useState<string>();
+  const [busy, setBusy] = useState(false);
   const hidden = comment.state !== "VISIBLE";
 
+  useEffect(() => {
+    setLiked(comment.reaction.viewerReacted);
+    setLikes(comment.reaction.count);
+    if (!editing) setEditBody(comment.body);
+  }, [comment.body, comment.reaction.count, comment.reaction.viewerReacted, editing]);
+
   async function toggleLike() {
-    const response = await fetch(`/api/reactions/COMMENT/${encodeURIComponent(comment.id)}`, {
-      method: liked ? "DELETE" : "POST",
-      headers: { "x-csrf-token": readCsrfToken() },
-    });
-    if (!response.ok) return;
-    const result = (await response.json()) as { liked: boolean };
-    setLiked(result.liked);
-    setLikes((value) => value + (result.liked ? 1 : -1));
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setLikes((value) => Math.max(0, value + (nextLiked ? 1 : -1)));
+    try {
+      const response = await fetch(`/api/reactions/COMMENT/${encodeURIComponent(comment.id)}`, {
+        method: nextLiked ? "POST" : "DELETE",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      if (!response.ok) throw new Error();
+      const result = (await response.json()) as { liked: boolean };
+      setLiked(result.liked);
+    } catch {
+      setLiked(!nextLiked);
+      setLikes((value) => Math.max(0, value + (nextLiked ? -1 : 1)));
+      setStatus("Like unavailable.");
+    }
+  }
+
+  async function saveEdit() {
+    if (!editBody.trim()) return;
+    setBusy(true);
+    setStatus(undefined);
+    try {
+      const response = await fetch(`/api/comments/${encodeURIComponent(comment.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({ markdown: editBody }),
+      });
+      if (!response.ok) throw new Error("Could not save this comment.");
+      const payload = (await response.json()) as { comment: CommentView };
+      onUpdated(payload.comment);
+      setEditing(false);
+    } catch (cause) {
+      setStatus(cause instanceof Error ? cause.message : "Could not save this comment.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <article className={`product-comment${depth ? " product-comment--reply" : ""}`}>
+    <article
+      id={`comment-${comment.id}`}
+      className={`product-comment${depth ? " product-comment--reply" : ""}`}
+    >
       <div className="product-comment__body">
         <div className="product-comment__heading">
           <div className="product-comment__identity">
@@ -81,12 +212,25 @@ function CommentItem({
               />
             )}
           </div>
-          <span className="product-comment__date">
+          <a
+            className="product-comment__date"
+            href={comment.commentHref ?? `#comment-${comment.id}`}
+          >
             {new Date(comment.createdAt).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
             })}
-          </span>
+          </a>
+          <Dropdown
+            label="More"
+            items={[
+              ...(comment.canEdit ? [{ label: "Edit", onSelect: () => setEditing(true) }] : []),
+              ...(comment.canReport
+                ? [{ label: "Report", onSelect: () => setReporting(true) }]
+                : []),
+            ]}
+            className="product-comment__menu"
+          />
         </div>
         <div
           className={
@@ -95,27 +239,39 @@ function CommentItem({
               : "product-comment__bubble"
           }
         >
-          <p>
-            {comment.richtext?.map((node, index) =>
-              node.type === "link" ? (
-                <a
-                  key={`${comment.id}-${index}`}
-                  href={node.url}
-                  rel="ugc nofollow noopener noreferrer"
+          {editing ? (
+            <>
+              <Textarea
+                label="Edit comment"
+                value={editBody}
+                onChange={(event) => setEditBody(event.target.value)}
+              />
+              <div className="product-chip-row">
+                <Button size="sm" loading={busy} onClick={() => void saveEdit()}>
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditBody(comment.body);
+                    setEditing(false);
+                  }}
                 >
-                  {node.label}
-                </a>
-              ) : node.type === "emote" ? (
-                <span key={`${comment.id}-${index}`} aria-label={node.shortcode}>
-                  {node.shortcode}
-                </span>
-              ) : (
-                <span key={`${comment.id}-${index}`}>{node.text}</span>
-              ),
-            ) ?? comment.body}
-          </p>
+                  Cancel
+                </Button>
+              </div>
+            </>
+          ) : hidden ? (
+            <p>{comment.body}</p>
+          ) : (
+            <RichText nodes={commentNodes(comment)} />
+          )}
           {comment.attachment ? <CommentAttachment attachment={comment.attachment} /> : null}
         </div>
+        {reporting ? (
+          <ReportForm commentId={comment.id} onClose={() => setReporting(false)} />
+        ) : null}
         <div className="product-comment__actions">
           <button type="button" aria-pressed={liked} onClick={() => void toggleLike()}>
             {liked ? "Liked" : "Like"} · {likes}
@@ -130,7 +286,34 @@ function CommentItem({
           ) : null}
           {comment.editedAt ? <span>Edited</span> : null}
           {hidden ? <span>{comment.state === "HIDDEN" ? "Moderated" : "Deleted"}</span> : null}
+          {typeof window !== "undefined" ? (
+            <ShareAction
+              url={new URL(
+                comment.commentHref ?? `#comment-${comment.id}`,
+                window.location.href,
+              ).toString()}
+              title="SourceBoard comment"
+            />
+          ) : null}
+          {comment.canDelete ? (
+            <ConfirmAction
+              triggerLabel="Delete"
+              title="Delete this comment?"
+              description="This removes the comment from the discussion."
+              confirmLabel="Delete comment"
+              destructive
+              onConfirm={async () => {
+                const response = await fetch(`/api/comments/${encodeURIComponent(comment.id)}`, {
+                  method: "DELETE",
+                  headers: { "x-csrf-token": readCsrfToken() },
+                });
+                if (!response.ok) throw new Error("Could not delete this comment.");
+                onDeleted(comment.id);
+              }}
+            />
+          ) : null}
         </div>
+        {status ? <small role="status">{status}</small> : null}
         {comment.replies.length ? (
           <>
             <button
@@ -151,6 +334,8 @@ function CommentItem({
                     onReply={onReply}
                     canAcceptSource={canAcceptSource}
                     onAcceptSource={onAcceptSource}
+                    onUpdated={onUpdated}
+                    onDeleted={onDeleted}
                   />
                 ))}
               </div>
@@ -175,77 +360,62 @@ function MediaPicker({
 }) {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<KlipyMediaItem[]>([]);
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>();
   const [busy, setBusy] = useState(false);
-
   const loadMedia = useCallback(
     async (searchQuery: string) => {
-      const value = searchQuery.trim();
+      const params = new URLSearchParams({ type: kind });
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
       setBusy(true);
-      setStatus(null);
+      setStatus(undefined);
       try {
-        const params = new URLSearchParams({ type: kind });
-        if (value) params.set("q", value);
         const response = await fetch(`/api/comments/media/search?${params.toString()}`);
         const payload = (await response.json().catch(() => null)) as {
           items?: KlipyMediaItem[];
           error?: { message?: string };
         } | null;
-        if (!response.ok) {
-          setStatus(payload?.error?.message ?? "Media search is unavailable.");
-          setItems([]);
-          return;
-        }
+        if (!response.ok)
+          throw new Error(payload?.error?.message ?? "Media search is unavailable.");
         const nextItems = Array.isArray(payload?.items) ? payload.items : [];
         setItems(nextItems);
-        if (!nextItems.length) setStatus(value ? "No results found." : "No featured media found.");
-      } catch {
-        setStatus("Media search is unavailable.");
+        if (!nextItems.length)
+          setStatus(searchQuery.trim() ? "No results found." : "No featured media found.");
+      } catch (cause) {
         setItems([]);
+        setStatus(cause instanceof Error ? cause.message : "Media search is unavailable.");
       } finally {
         setBusy(false);
       }
     },
     [kind],
   );
-
   useEffect(() => {
     setQuery("");
     setItems([]);
     void loadMedia("");
   }, [loadMedia]);
-
   return (
     <div className="product-comment-media-picker" aria-label="Media picker">
       <div className="product-comment-media-picker__header">
         <strong>Add media</strong>
-        <button type="button" className="product-comment-media-picker__close" onClick={onClose}>
-          <span aria-hidden="true">×</span>
-          <span className="sr-only">Close media picker</span>
+        <button type="button" onClick={onClose} aria-label="Close media picker">
+          ×
         </button>
       </div>
-
       <div className="product-comment-media-picker__tabs" role="tablist" aria-label="Media type">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={kind === "GIF"}
-          className={kind === "GIF" ? "is-active" : undefined}
-          onClick={() => onKindChange("GIF")}
-        >
-          GIFs
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={kind === "STICKER"}
-          className={kind === "STICKER" ? "is-active" : undefined}
-          onClick={() => onKindChange("STICKER")}
-        >
-          Stickers
-        </button>
+        {(["GIF", "STICKER"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={kind === value}
+            className={kind === value ? "is-active" : undefined}
+            onClick={() => onKindChange(value)}
+          >
+            {value === "GIF" ? "GIFs" : "Stickers"}
+          </button>
+        ))}
       </div>
-
       <form
         className="product-comment-media-picker__search"
         onSubmit={(event) => {
@@ -264,13 +434,11 @@ function MediaPicker({
           {busy ? "…" : "Search"}
         </button>
       </form>
-
       <div className="product-comment-media-picker__results" aria-label={`${kind} results`}>
         {items.map((item) => (
           <button
             key={item.id}
             type="button"
-            className={`product-comment-media-picker__item product-comment-media-picker__item--${item.type.toLowerCase()}`}
             aria-label={`Add ${item.title}`}
             onClick={() => onSelect(item)}
           >
@@ -281,6 +449,29 @@ function MediaPicker({
       {busy && !items.length ? <small role="status">Loading {kind.toLowerCase()}s…</small> : null}
       {!busy && status ? <small role="status">{status}</small> : null}
     </div>
+  );
+}
+
+function replaceComment(comments: CommentView[], next: CommentView): CommentView[] {
+  return comments.map((comment) =>
+    comment.id === next.id
+      ? { ...next, replies: comment.replies }
+      : { ...comment, replies: replaceComment(comment.replies, next) },
+  );
+}
+
+function removeComment(comments: CommentView[], id: string): CommentView[] {
+  return comments
+    .filter((comment) => comment.id !== id)
+    .map((comment) => ({ ...comment, replies: removeComment(comment.replies, id) }));
+}
+
+function appendComment(comments: CommentView[], next: CommentView): CommentView[] {
+  if (!next.parentCommentId) return [...comments, next];
+  return comments.map((comment) =>
+    comment.id === next.parentCommentId
+      ? { ...comment, replies: [...comment.replies, next] }
+      : { ...comment, replies: appendComment(comment.replies, next) },
   );
 }
 
@@ -297,66 +488,39 @@ export function CommentThread({
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
 }) {
-  const submitInFlightRef = useRef(false);
+  const [items, setItems] = useState(comments);
   const [body, setBody] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>();
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [mediaKind, setMediaKind] = useState<"GIF" | "STICKER" | null>(null);
   const [attachment, setAttachment] = useState<CommentAttachmentView | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  useEffect(() => setItems(comments), [comments]);
 
   async function submit() {
-    if (submitInFlightRef.current || (!body.trim() && !attachment)) return;
-    submitInFlightRef.current = true;
+    if (submitting || (!body.trim() && !attachment)) return;
     setSubmitting(true);
-    setStatus(null);
+    setStatus(undefined);
     try {
       const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/comments`, {
         method: "POST",
         headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({
-          plaintext: body,
-          parentCommentId: replyTo,
-          attachment: attachment
-            ? {
-                type: attachment.type,
-                id: attachment.id,
-                label: attachment.label,
-                provider: attachment.provider,
-                url: attachment.url,
-                preview: attachment.preview,
-              }
-            : undefined,
-        }),
+        body: JSON.stringify({ markdown: body, parentCommentId: replyTo, attachment }),
       });
-      if (!response.ok) {
-        setStatus(response.status === 401 ? "Sign in to comment." : "Comment unavailable.");
-        return;
-      }
+      const payload = (await response.json().catch(() => null)) as { comment?: CommentView } | null;
+      if (!response.ok || !payload?.comment)
+        throw new Error(response.status === 401 ? "Sign in to comment." : "Comment unavailable.");
+      setItems((current) => appendComment(current, payload.comment!));
       setBody("");
       setAttachment(null);
       setMediaKind(null);
       setReplyTo(null);
       setStatus("Comment posted.");
-      window.location.reload();
-    } catch {
-      setStatus("Comment unavailable.");
+    } catch (cause) {
+      setStatus(cause instanceof Error ? cause.message : "Comment unavailable.");
     } finally {
-      submitInFlightRef.current = false;
       setSubmitting(false);
     }
-  }
-
-  function selectMedia(item: KlipyMediaItem) {
-    setAttachment({
-      type: item.type,
-      id: item.id,
-      label: item.label,
-      provider: item.provider,
-      url: item.url,
-      preview: item.preview,
-    });
-    setMediaKind(null);
   }
 
   return (
@@ -366,9 +530,8 @@ export function CommentThread({
           <span className="product-eyebrow">Discussion</span>
           <h2 id="comments-heading">Comments</h2>
         </div>
-        <span>{comments.length} top-level</span>
+        <span>{items.length} top-level</span>
       </header>
-
       {!authenticated ? (
         <AuthRequiredCard
           title="Sign in to join the discussion"
@@ -410,10 +573,11 @@ export function CommentThread({
               </div>
               <Button
                 size="sm"
-                disabled={submitting || (!body.trim() && !attachment)}
+                loading={submitting}
+                disabled={!body.trim() && !attachment}
                 onClick={() => void submit()}
               >
-                {submitting ? "Posting…" : replyTo ? "Reply" : "Comment"}
+                {replyTo ? "Reply" : "Comment"}
               </Button>
               {replyTo ? (
                 <button type="button" onClick={() => setReplyTo(null)}>
@@ -424,8 +588,18 @@ export function CommentThread({
             {mediaKind ? (
               <MediaPicker
                 kind={mediaKind}
-                onKindChange={(nextKind) => setMediaKind(nextKind)}
-                onSelect={selectMedia}
+                onKindChange={setMediaKind}
+                onSelect={(item) => {
+                  setAttachment({
+                    type: item.type,
+                    id: item.id,
+                    label: item.label,
+                    provider: item.provider,
+                    url: item.url,
+                    preview: item.preview,
+                  });
+                  setMediaKind(null);
+                }}
                 onClose={() => setMediaKind(null)}
               />
             ) : null}
@@ -433,15 +607,16 @@ export function CommentThread({
           </div>
         </div>
       )}
-
       <div className="product-comments__list">
-        {comments.map((comment) => (
+        {items.map((comment) => (
           <CommentItem
             key={comment.id}
             comment={comment}
             onReply={setReplyTo}
             canAcceptSource={canAcceptSource}
             onAcceptSource={onAcceptSource}
+            onUpdated={(next) => setItems((current) => replaceComment(current, next))}
+            onDeleted={(id) => setItems((current) => removeComment(current, id))}
           />
         ))}
       </div>

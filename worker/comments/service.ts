@@ -89,6 +89,7 @@ async function toView(
   viewerId: string | null,
   profileStore: ProfileStore,
   now: () => number,
+  viewerReacted = false,
 ): Promise<CommentView> {
   const profileVisible =
     record.post.authorMode !== "ANONYMOUS" || record.comment.authorId !== record.post.authorId
@@ -109,7 +110,20 @@ async function toView(
         ? new Date(record.comment.updatedAt).toISOString()
         : undefined,
     state: record.comment.state,
-    reaction: { type: "LIKE", count: record.comment.likeCount, viewerReacted: false },
+    reaction: { type: "LIKE", count: record.comment.likeCount, viewerReacted },
+    canEdit:
+      record.comment.authorId === viewerId &&
+      record.comment.state === "VISIBLE" &&
+      record.comment.editDeadlineAt >= now(),
+    canDelete:
+      record.comment.authorId === viewerId &&
+      record.comment.state === "VISIBLE" &&
+      record.comment.editDeadlineAt >= now(),
+    canReport:
+      Boolean(viewerId) &&
+      record.comment.authorId !== viewerId &&
+      record.comment.state === "VISIBLE",
+    commentHref: `#comment-${encodeURIComponent(record.comment.id)}`,
     attachment: record.comment.attachment
       ? {
           type: record.comment.attachment.type,
@@ -161,8 +175,32 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         cursor: decodePostCursor(cursor) as CommentCursor | null,
         limit: Math.min(Math.max(1, Math.floor(limit)), MAX_LIMIT),
       });
+      const likedIds = viewerId
+        ? dependencies.store.getLikedCommentIds
+          ? await dependencies.store.getLikedCommentIds(
+              viewerId,
+              page.comments.map((comment) => comment.comment.id),
+            )
+          : new Set(
+              await Promise.all(
+                page.comments.map(async (comment) =>
+                  (await dependencies.store.hasLike(viewerId, "COMMENT", comment.comment.id))
+                    ? comment.comment.id
+                    : null,
+                ),
+              ).then((ids) => ids.filter((id): id is string => Boolean(id))),
+            )
+        : new Set<string>();
       const views = await Promise.all(
-        page.comments.map((comment) => toView(comment, viewerId, dependencies.profileStore, now)),
+        page.comments.map((comment) =>
+          toView(
+            comment,
+            viewerId,
+            dependencies.profileStore,
+            now,
+            likedIds.has(comment.comment.id),
+          ),
+        ),
       );
       return { comments: tree(views), nextCursor: page.nextCursor };
     },

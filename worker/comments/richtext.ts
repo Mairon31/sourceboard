@@ -181,9 +181,9 @@ export function normalizeCommentBody(input: {
     ? input.richtext
     : typeof input.markdown === "string"
       ? flattenMarkdown(parseMarkdown(input.markdown))
-    : typeof input.plaintext === "string"
-      ? [{ type: "text", text: input.plaintext }]
-      : [];
+      : typeof input.plaintext === "string"
+        ? [{ type: "text", text: input.plaintext }]
+        : [];
   if (nodes.length > MAX_NODES || (!nodes.length && input.attachment == null))
     invalid("A comment must contain text or an attachment.");
   const richtext = nodes.map(normalizeNode);

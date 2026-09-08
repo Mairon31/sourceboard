@@ -35,6 +35,7 @@ export interface CommentStore {
     now: number;
   }): Promise<boolean>;
   hasLike(userId: string, targetType: "POST" | "COMMENT", targetId: string): Promise<boolean>;
+  getLikedCommentIds?(userId: string, commentIds: string[]): Promise<Set<string>>;
 }
 
 interface CommentRow {
@@ -291,6 +292,20 @@ export function createD1CommentStore(db: D1Database): CommentStore {
         .bind(userId, targetType, targetId)
         .first<{ id: string }>();
       return Boolean(row);
+    },
+
+    async getLikedCommentIds(userId, commentIds) {
+      if (!commentIds.length) return new Set<string>();
+      const placeholders = commentIds.map(() => "?").join(", ");
+      const rows = await db
+        .prepare(
+          `SELECT target_id AS targetId FROM reactions
+           WHERE user_id = ? AND target_type = 'COMMENT' AND reaction_type = 'LIKE'
+             AND target_id IN (${placeholders})`,
+        )
+        .bind(userId, ...commentIds)
+        .all<{ targetId: string }>();
+      return new Set(rows.results.map((row) => row.targetId));
     },
 
     async toggleLike({ userId, targetType, targetId, now }) {

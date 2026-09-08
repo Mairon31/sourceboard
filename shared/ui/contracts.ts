@@ -81,6 +81,10 @@ export interface CommentView {
   editedAt?: string;
   state: CommentState;
   reaction: ReactionSummary;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canReport?: boolean;
+  commentHref?: string;
   attachment?: CommentAttachmentView;
   replies: CommentView[];
 }

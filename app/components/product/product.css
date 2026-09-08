@@ -820,6 +820,36 @@
   color: var(--text-muted);
 }
 
+.product-comment__heading {
+  min-width: 0;
+}
+
+.product-comment__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.product-comment__date {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-decoration: none;
+}
+
+.product-comment__menu {
+  margin-left: auto;
+}
+
+.product-comment-report {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--bg-app-secondary);
+}
+
 .product-comment__bubble {
   display: grid;
   gap: var(--space-3);
