@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  normalizeCommentBody,
-  parseStoredCommentBody,
-} from "../../worker/comments/richtext";
+import { normalizeCommentBody, parseStoredCommentBody } from "../../worker/comments/richtext";
 
 describe("Phase 5 comment rich text", () => {
   it("normalizes an allowlisted AST into searchable plaintext", () => {
@@ -41,9 +38,7 @@ describe("Phase 5 comment rich text", () => {
   });
 
   it("rejects HTML, javascript links and arbitrary image nodes", () => {
-    expect(() => normalizeCommentBody({ plaintext: "<img src=x>" })).toThrow(
-      "HTML is not allowed",
-    );
+    expect(() => normalizeCommentBody({ plaintext: "<img src=x>" })).toThrow("HTML is not allowed");
     expect(() =>
       normalizeCommentBody({
         richtext: [{ type: "link", url: "javascript:alert(1)", label: "x" }],
