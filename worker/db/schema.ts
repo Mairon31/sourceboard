@@ -521,6 +521,36 @@ export const pointLedger = sqliteTable(
   ],
 );
 
+export const reputationRewardRules = sqliteTable(
+  "reputation_reward_rules",
+  {
+    id: text("id").primaryKey(),
+    rewardType: text("reward_type").notNull(),
+    version: integer("version", { mode: "number" }).notNull(),
+    amount: integer("amount", { mode: "number" }).notNull(),
+    provisional: integer("provisional", { mode: "boolean" }).notNull().default(false),
+    status: text("status").notNull().default("ACTIVE"),
+    createdByUserId: text("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("reputation_reward_rules_type_version_unique").on(table.rewardType, table.version),
+    uniqueIndex("reputation_reward_rules_active_type_unique")
+      .on(table.rewardType)
+      .where(sql`${table.status} = 'ACTIVE'`),
+    check(
+      "reputation_reward_rules_type_check",
+      sql`${table.rewardType} IN ('ACCEPTED_SOURCE', 'VERIFIED_SOURCE')`,
+    ),
+    check("reputation_reward_rules_version_check", sql`${table.version} > 0`),
+    check("reputation_reward_rules_amount_check", sql`${table.amount} > 0`),
+    check("reputation_reward_rules_provisional_check", sql`${table.provisional} IN (0, 1)`),
+    check("reputation_reward_rules_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
+  ],
+);
+
 export const achievementCatalog = sqliteTable(
   "achievement_catalog",
   {

@@ -118,7 +118,7 @@ function PreferencesPanel({ data }: { data: SettingsData }) {
     const saved = await persistPreferenceChange({
       previous,
       next,
-      apply: setValues,
+      apply: (value) => setValues(value),
       persist: (candidate) => persistPreferences(candidate, allowNsfwDirectOverride),
     });
     setStatus(

@@ -95,7 +95,10 @@ describe("Phase 12 search service", () => {
     const { db, prepared } = fakeDatabase();
     const service = createSearchService({
       db: db as unknown as D1Database,
-      profileStore: { getPreferences: vi.fn(async () => preferences()) },
+      profileStore: {
+        getPreferences: vi.fn(async () => preferences()),
+        getEquippedCosmetics: vi.fn(async () => ({})),
+      },
       now: () => 2,
     });
 
@@ -133,7 +136,10 @@ describe("Phase 12 search service", () => {
     const getPreferences = vi.fn(async () => preferences({ hideNsfw: false, blurNsfw: true }));
     const service = createSearchService({
       db: db as unknown as D1Database,
-      profileStore: { getPreferences },
+      profileStore: {
+        getPreferences,
+        getEquippedCosmetics: vi.fn(async () => ({})),
+      },
       now: () => 2,
     });
 
