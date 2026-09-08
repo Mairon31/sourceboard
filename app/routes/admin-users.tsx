@@ -8,6 +8,7 @@ import {
   AdminUserControlDialog,
   type AdminUserControlCapabilities,
 } from "../components/admin/AdminUserControlDialog";
+import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { Badge, Button, Card, Input, Modal, OverlayActionRow, Textarea } from "../components/ui";
 import { loadAdminAccess } from "../data/admin-access";
 import { loadCapabilityAccess } from "../data/capability-access";
@@ -102,6 +103,26 @@ function RoleBadges({ roles }: { roles: string[] }) {
       {roles.map((role) => (
         <Badge key={role}>{role}</Badge>
       ))}
+    </div>
+  );
+}
+
+function AdminUserIdentity({ user, showJoined = false }: { user: AdminUserRow; showJoined?: boolean }) {
+  return (
+    <div className="admin-table__copy admin-user-identity">
+      <CosmeticIdentity
+        displayName={user.displayName}
+        avatarUrl={user.avatarUrl}
+        avatarFrame={user.cosmetics?.avatarFrame}
+        profileEffect={user.cosmetics?.profileEffect}
+        nameFont={user.cosmetics?.nameFont}
+        nameEffect={user.cosmetics?.nameEffect}
+        visuals={user.cosmetics?.visuals}
+        mode="compact"
+        nameAs="strong"
+      />
+      <span>@{user.username}</span>
+      {showJoined ? <span>Joined {formatDate(user.createdAt)}</span> : null}
     </div>
   );
 }
@@ -249,11 +270,7 @@ export default function AdminUsersRoute() {
               </div>
               {users.map((user) => (
                 <div className="admin-table__row" role="row" key={user.id}>
-                  <div className="admin-table__copy">
-                    <strong>{user.displayName}</strong>
-                    <span>@{user.username}</span>
-                    <span>Joined {formatDate(user.createdAt)}</span>
-                  </div>
+                  <AdminUserIdentity user={user} showJoined />
                   <RoleBadges roles={user.roles} />
                   <span
                     className={`admin-status-badge admin-status-badge--${user.status.toLowerCase()}`}
@@ -270,10 +287,7 @@ export default function AdminUsersRoute() {
               {users.map((user) => (
                 <Card className="admin-mobile-review-card admin-surface" key={user.id}>
                   <div className="admin-mobile-review-card__row">
-                    <div className="admin-table__copy">
-                      <strong>{user.displayName}</strong>
-                      <span>@{user.username}</span>
-                    </div>
+                    <AdminUserIdentity user={user} />
                     <span
                       className={`admin-status-badge admin-status-badge--${user.status.toLowerCase()}`}
                     >
