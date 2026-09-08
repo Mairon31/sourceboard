@@ -23,7 +23,7 @@ jobs:
       - name: Apply targeted refresh fix
         run: python .github/scripts/fix_emote_workspace_refresh.py
       - name: Format touched files
-        run: npx prettier --write app/components/admin/store/AdminEmotePackManager.tsx tests/e2e/admin.spec.ts
+        run: npx prettier --write app/components/admin/store/AdminEmotePackManager.tsx app/routes/admin-store.tsx tests/e2e/admin.spec.ts
       - name: Verify types and focused emote upload
         run: |
           npm run typecheck
@@ -34,6 +34,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/components/admin/store/AdminEmotePackManager.tsx tests/e2e/admin.spec.ts
-          git commit -m "fix: refresh draft emotes after upload"
+          git add app/components/admin/store/AdminEmotePackManager.tsx app/routes/admin-store.tsx tests/e2e/admin.spec.ts
+          git commit -m "fix: stabilize async admin forms"
           git push origin HEAD:master
