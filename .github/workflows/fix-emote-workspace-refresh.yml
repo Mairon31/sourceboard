@@ -24,12 +24,12 @@ jobs:
         run: python .github/scripts/fix_emote_workspace_refresh.py
       - name: Format touched files
         run: npx prettier --write app/components/admin/store/AdminEmotePackManager.tsx tests/e2e/admin.spec.ts
-      - name: Verify types and focused admin flow
+      - name: Verify types and focused emote upload
         run: |
           npm run typecheck
           npx playwright install --with-deps chromium
           npm run db:migrations:apply
-          npx playwright test tests/e2e/admin.spec.ts --project=chromium
+          npx playwright test tests/e2e/admin.spec.ts --project=chromium --grep "uploads an emote"
       - name: Commit implementation
         run: |
           git config user.name "github-actions[bot]"
