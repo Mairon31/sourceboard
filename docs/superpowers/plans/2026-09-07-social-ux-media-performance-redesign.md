@@ -10,6 +10,24 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-07-social-ux-media-performance-redesign.md`
 
+## Execution checkpoint — 2026-09-07
+
+- Auditoría y diseño aprobados ya están publicados en `master` (`e6427ee`).
+- Completadas las primitivas compartidas en `b0a2724`: `ConfirmDialog`,
+  `ConfirmAction` y `ShareAction`, con estados busy/error y fallback de copia.
+- Completado el parser/renderer seguro en `ef27046`: AST allowlisted para marks,
+  links HTTP(S), quotes, listas y código; no HTML, imágenes Markdown ni
+  `javascript:`; preview y normalización usan el mismo AST.
+- Implementado en `b19c40f` el corte parcial de comentarios: permisos de autor,
+  likes del viewer, anchors estables, edición, borrado con confirmación,
+  reportes auditados, compartir y mutaciones locales sin `window.location.reload()`.
+- Evidencia de este corte: 4 archivos de pruebas focalizadas, 12 tests verdes;
+  typecheck verde. No se ejecutó todavía E2E de comentarios ni la suite final.
+- Próximo punto de reanudación: completar Task 4 Step 5/6 (E2E y revisión del
+  corte), después continuar Task 5 (picker KLIPY con AbortController/debounce/cache)
+  y Tasks 6–13. No declarar la fase completa hasta ejecutar todos los gates del
+  final de este plan.
+
 ## Global Constraints
 
 - Trabajar directamente sobre `master`; preservar cambios existentes; no `git reset --hard`, borrados masivos ni force push.
@@ -41,7 +59,7 @@
 
   Expected: no whitespace errors; no código de producto modificado.
 
-- [ ] **Step 3: Commit documental**
+- [x] **Step 3: Commit documental**
 
   Run: `git add docs/SOCIAL_UX_MEDIA_PERFORMANCE_AUDIT.md docs/superpowers/specs/2026-09-07-social-ux-media-performance-redesign.md docs/superpowers/plans/2026-09-07-social-ux-media-performance-redesign.md; git commit -m "docs: add social ux media performance audit"`
 
@@ -57,7 +75,7 @@
 
 **Interfaces:** `ConfirmAction` recibe `{title, description, confirmLabel, destructive, onConfirm}` y `ShareAction` recibe `{url, title, text}`; ambos exponen estados busy/error sin navegar de forma destructiva.
 
-- [ ] **Step 1: Escribir tests rojos**
+- [x] **Step 1: Escribir tests rojos**
 
   Verificar por fuente/render que existe `ConfirmDialog` basado en `Modal`, que
   los botones icon-only usan `aria-label`, y que `ShareAction` intenta
@@ -69,20 +87,20 @@
 
   Expected: FAIL porque las primitivas nuevas aún no existen.
 
-- [ ] **Step 3: Implementar mínimo**
+- [x] **Step 3: Implementar mínimo**
 
   Añadir `ConfirmDialog` controlado a los overlays existentes, reutilizar
   `CloseIcon`/`CheckIcon` y agregar solo iconos necesarios. `ShareAction` debe
   usar `navigator.share({url,title,text})` si está disponible; fallback a
   `navigator.clipboard.writeText(url)` y, si falla, dejar un error visible.
 
-- [ ] **Step 4: Ejecutar GREEN**
+- [x] **Step 4: Ejecutar GREEN**
 
   Run: `npm test -- --run tests/unit/social-ux-primitives.test.ts && npm run typecheck`
 
   Expected: PASS y typecheck limpio.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run: `git add app/components/ui/overlays.tsx app/components/ui/icons.tsx app/components/product/ShareAction.tsx app/components/product/ConfirmAction.tsx app/components/product/product.css tests/unit/social-ux-primitives.test.ts; git commit -m "feat: add shared social action primitives"`
 
@@ -97,7 +115,7 @@
 
 **Interfaces:** `parseMarkdown(input: string): SafeRichTextNode[]`, `renderMarkdownPreview(input: string): SafeRichTextNode[]` y `RichText({nodes, className})` usan los mismos nodos serializables.
 
-- [ ] **Step 1: Escribir tests rojos**
+- [x] **Step 1: Escribir tests rojos**
 
   Cubrir `**bold**`, `*italic*`, `~~strike~~`, `` `code` ``, links HTTP(S),
   quote, listas y bloque de código; rechazar `<script>`, image Markdown,
@@ -109,22 +127,22 @@
 
   Expected: FAIL por parser/nodos faltantes.
 
-- [ ] **Step 3: Implementar parser allowlisted**
+- [x] **Step 3: Implementar parser allowlisted**
 
   Construir un parser pequeño sin `dangerouslySetInnerHTML`. Limitar longitud,
   nodos, profundidad y etiquetas; normalizar links con la validación existente.
   Extender `CommentRichTextViewNode` con marks/block nodes solo si el parser los
   produce. Reusar la normalización en `worker/comments/richtext.ts`.
 
-- [ ] **Step 4: Ejecutar GREEN**
+- [x] **Step 4: Ejecutar GREEN**
 
   Run: `npm test -- --run tests/unit/markdown-richtext.test.ts tests/unit/comment-richtext.test.ts && npm run typecheck`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
   Run: `git add shared/richtext shared/ui/contracts.ts worker/comments/richtext.ts app/components/product/RichText.tsx tests/unit/markdown-richtext.test.ts; git commit -m "feat: add safe shared markdown rendering"`
 
-### Task 4: Comentarios inline, acciones y reportes auditados
+### Task 4: Comentarios inline, acciones y reportes auditados (parcial)
 
 **Files:**
 - Modify: `worker/comments/service.ts`
@@ -140,7 +158,7 @@
 
 **Interfaces:** Comment views expose `canEdit`, `canDelete`, `canReport`, `viewerReacted` y `commentHref`; report submissions use `{targetType,targetId,category,detail}`; successful mutations update local state without `window.location.reload()`.
 
-- [ ] **Step 1: Escribir tests rojos**
+- [x] **Step 1: Escribir tests rojos**
 
   Agregar assertions para report POST+COMMENT, dedupe, audit linkage,
   viewer-like state, author edit/delete controls, non-author report controls,
@@ -152,14 +170,14 @@
 
   Expected: FAIL en contrato/servicio o selectores de UI.
 
-- [ ] **Step 3: Completar backend mínimo**
+- [x] **Step 3: Completar backend mínimo**
 
   Reusar `moderation_reports` y `audit_logs`; escribir el audit row en la misma
   operación lógica del reporte, conservar dedupe por reporter/target/category,
   y consultar `hasLike` por lote o consulta acotada para no dejar
   `viewerReacted:false` fijo. Mantener 24h, soft delete, privacy y entitlements.
 
-- [ ] **Step 4: Completar UI inline**
+- [x] **Step 4: Completar UI inline**
 
   Refactorizar `CommentThread` a un estado local por comentario, usar
   `RichText`, `Dropdown`, `ConfirmAction`, `ShareAction` y un editor inline que
