@@ -1,4 +1,4 @@
-import { createAdminUserControlService, type UserSanctionKind } from "../admin/user-control";
+import { createAdminUserControlService } from "../admin/user-control";
 import { createAuthContext, createAuthService } from "../auth/service";
 import { hasCapability, type Capability } from "../auth/rbac";
 import { assertCsrfToken, assertSameOrigin } from "../auth/security";
