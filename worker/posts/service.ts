@@ -219,6 +219,7 @@ async function toPostSummary(
     description: post.post.description || undefined,
     author: authorForPost(post, profileVisible, cosmetics),
     createdAt: new Date(post.post.createdAt).toISOString(),
+    updatedAt: new Date(post.post.updatedAt).toISOString(),
     status: post.post.status,
     visibility: post.post.visibility,
     isNsfw: post.post.isNsfw,

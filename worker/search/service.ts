@@ -67,6 +67,7 @@ interface PostSearchRow {
   comment_count: number;
   like_count: number;
   created_at: number;
+  updated_at: number;
   media_id: string;
   media_width: number | null;
   media_height: number | null;
@@ -187,6 +188,7 @@ function toPostSummary(
     description: row.description || undefined,
     author,
     createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.updated_at).toISOString(),
     status: postStatus(row.status),
     visibility: postVisibility(row.visibility),
     isNsfw: row.is_nsfw === 1,
@@ -287,6 +289,7 @@ function postSearchQuery(
       p.comment_count,
       p.like_count,
       p.created_at,
+      p.updated_at,
       m.id AS media_id,
       m.width AS media_width,
       m.height AS media_height,

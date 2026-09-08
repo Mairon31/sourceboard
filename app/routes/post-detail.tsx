@@ -126,6 +126,7 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
         headline: post.title,
         articleBody: description,
         datePublished: post.createdAt,
+        dateModified: post.updatedAt,
         mainEntityOfPage: loaderData.canonicalUrl,
         author,
         ...(imageUrl ? { image: imageUrl } : {}),
