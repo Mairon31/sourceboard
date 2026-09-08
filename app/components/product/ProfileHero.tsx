@@ -22,9 +22,7 @@ function ProfileBanner({ profile }: { profile: PublicProfileDto }) {
     <div
       className={`product-profile-banner${profile.cosmetics?.profileBanner ? " product-profile-banner--nebula" : ""}`}
       aria-label={`${profile.displayName} profile banner`}
-      style={
-        profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined
-      }
+      style={profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined}
     />
   );
 }
@@ -36,12 +34,7 @@ function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
   return (
     <div className="product-social-links">
       {profile.socialLinks.map((link) => (
-        <a
-          key={`${link.platform}-${link.url}`}
-          href={link.url}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a key={`${link.platform}-${link.url}`} href={link.url} target="_blank" rel="noreferrer">
           {link.platform}
         </a>
       ))}
