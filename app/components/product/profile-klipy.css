@@ -478,6 +478,6 @@
   }
 
   .product-comment-attachment--gif {
-    width: min(100%, 360px);
+    width: min(100%, 220px);
   }
 }

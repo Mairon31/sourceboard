@@ -156,7 +156,7 @@ export function MediaPicker({
     setActivePackId(packId);
     document
       .getElementById(`comment-emote-pack-${packId}`)
-      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      ?.scrollIntoView({ block: "nearest", behavior: "auto" });
   }
 
   return (
