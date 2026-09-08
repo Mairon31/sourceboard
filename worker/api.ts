@@ -1,6 +1,7 @@
 import { REQUEST_ID_HEADER, resolveRequestId } from "../shared/http/request-id";
 import type { SourceBoardEnvironment } from "./environment";
 import { handleAuthRequest } from "./auth/api";
+import { handleNotificationRequest } from "./notifications/api";
 import { handleProfileApiRequest } from "./profile/api";
 import { handlePostApiRequest } from "./posts/api";
 import { handleCommentApiRequest } from "./comments/api";
@@ -41,6 +42,11 @@ export async function handleApiRequest(
   const authResponse = await handleAuthRequest(request, requestId, env ?? {});
   if (authResponse) {
     return authResponse;
+  }
+
+  const notificationResponse = await handleNotificationRequest(request, requestId, env ?? {});
+  if (notificationResponse) {
+    return notificationResponse;
   }
 
   const profileResponse = await handleProfileApiRequest(request, requestId, env ?? {});
