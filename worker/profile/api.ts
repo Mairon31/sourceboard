@@ -86,7 +86,7 @@ async function handleFriendDiscovery(
 }
 
 async function normalizeProfileMutation(request: Request, url: URL): Promise<Request> {
-  if (request.method !== "PATCH" || url.pathname !== "/api/profile") return request;
+  if (request.method !== "PATCH" || url.pathname !== "/api/profile/me") return request;
   let body: unknown;
   try {
     body = await request.clone().json();
