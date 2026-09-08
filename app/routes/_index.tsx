@@ -28,34 +28,26 @@ export async function loader({ request, context }: LoaderArgs) {
       feeds: { recent: [], friends: [], answered: [], verified: [] },
     }),
     async (runtime, userId) => {
-      const db = runtime.db;
       const service = createPostService({
-        store: createD1PostStore(db),
-        profileStore: createD1ProfileStore(db),
+        store: createD1PostStore(runtime.db),
+        profileStore: createD1ProfileStore(runtime.db),
       });
-      const [recent, friends, answered, verified] = await Promise.all(
-        (["recent", "friends", "answered", "verified"] as const).map((kind) =>
-          service.listFeed({ viewerId: userId, kind, cursor: null, limit: 20 }),
-        ),
-      );
-      const allPosts = [...recent.posts, ...friends.posts, ...answered.posts, ...verified.posts];
+      const recent = await service.listFeed({ viewerId: userId, kind: "recent", cursor: null, limit: 20 });
       const likedIds = await readViewerLikedPostIds(
-        db,
+        runtime.db,
         userId,
-        allPosts.map((post) => post.id),
+        recent.posts.map((post) => post.id),
       );
-      const withViewerReaction = (posts: typeof recent.posts) =>
-        posts.map((post) => ({
-          ...post,
-          reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
-        }));
       return {
         unavailable: false,
         feeds: {
-          recent: withViewerReaction(recent.posts),
-          friends: withViewerReaction(friends.posts),
-          answered: withViewerReaction(answered.posts),
-          verified: withViewerReaction(verified.posts),
+          recent: recent.posts.map((post) => ({
+            ...post,
+            reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
+          })),
+          friends: [],
+          answered: [],
+          verified: [],
         },
       };
     },
@@ -63,14 +55,40 @@ export async function loader({ request, context }: LoaderArgs) {
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
+type FeedPosts = LoaderData["feeds"]["recent"];
+
+type FeedResourceResponse = {
+  unavailable: boolean;
+  posts: FeedPosts;
+};
 
 function FeedCollection({
   posts,
   unavailable,
+  loading,
+  error,
 }: {
-  posts: LoaderData["feeds"]["recent"];
+  posts: FeedPosts;
   unavailable: boolean;
+  loading?: boolean;
+  error?: string | null;
 }) {
+  if (loading) {
+    return (
+      <div className="product-empty-state product-empty-state--compact" role="status">
+        <strong>Loading feed…</strong>
+        <p>Fetching this view without blocking the rest of Home.</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="product-empty-state product-empty-state--compact" role="alert">
+        <strong>Feed unavailable</strong>
+        <p>{error}</p>
+      </div>
+    );
+  }
   if (unavailable) {
     return (
       <Card className="product-empty-state">
@@ -97,10 +115,46 @@ function FeedCollection({
 }
 
 export default function HomeRoute() {
-  const { feeds, unavailable } = useLoaderData<LoaderData>();
+  const data = useLoaderData<LoaderData>();
+  const [feeds, setFeeds] = useState(data.feeds);
   const [feed, setFeed] = useState<FeedMode>("recent");
+  const [loadedFeeds, setLoadedFeeds] = useState<Set<FeedMode>>(
+    () => new Set<FeedMode>(data.unavailable ? [] : ["recent"]),
+  );
+  const [loadingFeed, setLoadingFeed] = useState<FeedMode | null>(null);
+  const [feedError, setFeedError] = useState<Partial<Record<FeedMode, string>>>({});
   const active = feedOptions.find((option) => option.value === feed) ?? feedOptions[0];
   const posts = feeds[feed];
+
+  async function loadFeed(nextFeed: FeedMode) {
+    if (data.unavailable || loadedFeeds.has(nextFeed) || loadingFeed === nextFeed) return;
+    setLoadingFeed(nextFeed);
+    setFeedError((current) => ({ ...current, [nextFeed]: undefined }));
+    try {
+      const response = await fetch(`/resources/feed/${encodeURIComponent(nextFeed)}`, {
+        headers: { accept: "application/json" },
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => null)) as FeedResourceResponse | null;
+      if (!response.ok || !payload || payload.unavailable) {
+        throw new Error("This feed could not be loaded. Try again.");
+      }
+      setFeeds((current) => ({ ...current, [nextFeed]: payload.posts }));
+      setLoadedFeeds((current) => new Set(current).add(nextFeed));
+    } catch (error) {
+      setFeedError((current) => ({
+        ...current,
+        [nextFeed]: error instanceof Error ? error.message : "This feed could not be loaded.",
+      }));
+    } finally {
+      setLoadingFeed((current) => (current === nextFeed ? null : current));
+    }
+  }
+
+  function selectFeed(nextFeed: FeedMode) {
+    setFeed(nextFeed);
+    if (!loadedFeeds.has(nextFeed)) void loadFeed(nextFeed);
+  }
 
   return (
     <ProductShell wide>
@@ -127,20 +181,30 @@ export default function HomeRoute() {
           </div>
         </div>
         <nav className="product-store-filter-bar product-feed-filter-tabs" aria-label="Feed filters">
-          {feedOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`product-store-filter${feed === option.value ? " product-store-filter--active is-active" : ""}`}
-              aria-pressed={feed === option.value}
-              onClick={() => setFeed(option.value)}
-            >
-              <span className="product-feed-filter-tabs__label">{option.label}</span>
-              <span className="product-feed-filter-tabs__count">{feeds[option.value].length}</span>
-            </button>
-          ))}
+          {feedOptions.map((option) => {
+            const loaded = loadedFeeds.has(option.value);
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`product-store-filter${feed === option.value ? " product-store-filter--active is-active" : ""}`}
+                aria-pressed={feed === option.value}
+                onClick={() => selectFeed(option.value)}
+              >
+                <span className="product-feed-filter-tabs__label">{option.label}</span>
+                <span className="product-feed-filter-tabs__count" aria-label={loaded ? `${feeds[option.value].length} loaded posts` : "Loads on demand"}>
+                  {loaded ? feeds[option.value].length : "·"}
+                </span>
+              </button>
+            );
+          })}
         </nav>
-        <FeedCollection posts={posts} unavailable={unavailable} />
+        <FeedCollection
+          posts={posts}
+          unavailable={data.unavailable}
+          loading={loadingFeed === feed}
+          error={feedError[feed] ?? null}
+        />
       </section>
     </ProductShell>
   );
