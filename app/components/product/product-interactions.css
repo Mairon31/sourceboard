@@ -1,3 +1,10 @@
+.product-nav__link:focus-visible,
+.product-nav__create:focus-visible,
+.product-mobile-nav__create:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .product-post--clickable {
   cursor: pointer;
 }

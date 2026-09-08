@@ -6,7 +6,10 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  overflow-x: auto;
   box-sizing: border-box;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .product-store-grid {
