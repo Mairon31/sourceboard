@@ -122,7 +122,7 @@ export default function HomeRoute() {
         <div className="product-feed-workspace__toolbar">
           <div>
             <span className="product-eyebrow">Feed</span>
-            <h2 id="feed-heading">{active.label}</h2>
+            <h2 id="feed-heading">Source requests</h2>
             <p>{active.description}</p>
           </div>
           <nav
