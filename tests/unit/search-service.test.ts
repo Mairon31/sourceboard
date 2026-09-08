@@ -38,6 +38,7 @@ function fakeDatabase() {
       comment_count: 2,
       like_count: 3,
       created_at: 1_000,
+      updated_at: 1_100,
       media_id: "asset-1",
       media_width: 640,
       media_height: 480,
@@ -117,6 +118,7 @@ describe("Phase 12 search service", () => {
       displayName: "Anonymous Author",
     });
     expect(result.posts[0]?.author.username).toBeUndefined();
+    expect(result.posts[0]?.updatedAt).toBe(new Date(1_100).toISOString());
     expect(result.profiles[0]?.username).toBe("public-person");
     expect(prepared).toHaveLength(2);
     const postQuery = prepared.find(({ sql }) => sql.includes("public_post_search"));
@@ -125,6 +127,7 @@ describe("Phase 12 search service", () => {
     expect(postQuery?.sql).toContain("p.visibility = 'PUBLIC'");
     expect(postQuery?.sql).toContain("p.is_nsfw = 0");
     expect(postQuery?.sql).toContain("p.created_at < ?");
+    expect(postQuery?.sql).toContain("p.updated_at");
     expect(postQuery?.sql).not.toMatch(/LIKE\s+['"]?%/i);
     expect(profileQuery?.sql).toContain("p.profile_visibility = 'PUBLIC'");
     expect(profileQuery?.sql).toContain("public_profile_search MATCH ?");
