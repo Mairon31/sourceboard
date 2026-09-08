@@ -63,6 +63,7 @@ function dependencies() {
   const getRelationship = vi.fn(async (): Promise<Relationship> => "NONE");
   const getBlock = vi.fn(async () => false);
   const listFeed = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
+  const listByAuthor = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
   const getPost = vi.fn(async () => post());
   const profileStore = {
     getProfileByUserId: vi.fn(async () => ({
@@ -99,6 +100,7 @@ function dependencies() {
       nsfwMarkedBy: null,
     })),
     listFeed,
+    listByAuthor,
     createPost: vi.fn(async () => undefined),
     updatePost: vi.fn(async () => true),
     archivePost: vi.fn(async () => true),
@@ -107,7 +109,7 @@ function dependencies() {
     getMediaAsset: vi.fn(async () => null),
     listIndexablePosts: vi.fn(async () => []),
   } as unknown as PostStore;
-  return { profileStore, store, getRelationship, getBlock, listFeed, getPost };
+  return { profileStore, store, getRelationship, getBlock, listFeed, listByAuthor, getPost };
 }
 
 describe("Phase 4 post policy", () => {
@@ -155,6 +157,74 @@ describe("Phase 4 post policy", () => {
     expect(result.posts).toHaveLength(1);
     expect(result.posts[0]?.id).toBe("safe");
     expect(result.posts[0]?.imageUrl).toBe("/api/media/post/asset-1");
+  });
+
+  it("keeps profile activity discoverable-only for visitors", async () => {
+    const { profileStore, store, getRelationship, listByAuthor } = dependencies();
+    listByAuthor.mockResolvedValue({
+      posts: [
+        post({ id: "public", visibility: "PUBLIC" }),
+        post({ id: "friend-only", visibility: "FRIENDS_ONLY" }),
+        post({ id: "unlisted", visibility: "UNLISTED" }),
+        post({ id: "private", visibility: "PRIVATE" }),
+        post({ id: "anonymous", authorMode: "ANONYMOUS", visibility: "PUBLIC" }),
+      ],
+      nextCursor: null,
+    });
+    const service = createPostService({ store, profileStore, now: () => 2 }) as unknown as {
+      listProfileActivity(input: {
+        authorId: string;
+        viewerId: string | null;
+        limit: number;
+      }): Promise<{ posts: Array<{ id: string }> }>;
+    };
+
+    const stranger = await service.listProfileActivity({
+      authorId: "author-1",
+      viewerId: "viewer-1",
+      limit: 20,
+    });
+    expect(stranger.posts.map((item) => item.id)).toEqual(["public"]);
+
+    getRelationship.mockResolvedValue("FRIEND");
+    const friend = await service.listProfileActivity({
+      authorId: "author-1",
+      viewerId: "viewer-1",
+      limit: 20,
+    });
+    expect(friend.posts.map((item) => item.id)).toEqual(["public", "friend-only"]);
+  });
+
+  it("lets owners see their own non-hidden profile activity", async () => {
+    const { profileStore, store, listByAuthor } = dependencies();
+    listByAuthor.mockResolvedValue({
+      posts: [
+        post({ id: "public", visibility: "PUBLIC" }),
+        post({ id: "unlisted", visibility: "UNLISTED" }),
+        post({ id: "private", visibility: "PRIVATE" }),
+        post({ id: "anonymous", authorMode: "ANONYMOUS", visibility: "PUBLIC" }),
+      ],
+      nextCursor: null,
+    });
+    const service = createPostService({ store, profileStore, now: () => 2 }) as unknown as {
+      listProfileActivity(input: {
+        authorId: string;
+        viewerId: string | null;
+        limit: number;
+      }): Promise<{ posts: Array<{ id: string }> }>;
+    };
+
+    const owner = await service.listProfileActivity({
+      authorId: "author-1",
+      viewerId: "author-1",
+      limit: 20,
+    });
+    expect(owner.posts.map((item) => item.id)).toEqual([
+      "public",
+      "unlisted",
+      "private",
+      "anonymous",
+    ]);
   });
 
   it("reads an authenticated viewer's existing post likes from reactions", async () => {
