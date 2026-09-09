@@ -1,0 +1,33 @@
+name: Product slices verification
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+
+permissions:
+  contents: read
+
+jobs:
+  product-slices:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Verify cosmetics
+        run: npm test -- tests/unit/global-cosmetic-visuals.test.ts tests/unit/cosmetic-identity-navigation.test.ts tests/unit/store-effects.test.ts
+      - name: Verify reputation and contributions
+        run: npm test -- tests/unit/reputation-rules.test.ts tests/unit/reputation-service.test.ts tests/unit/reputation-admin.test.ts tests/unit/reputation-admin-wiring.test.ts
+      - name: Verify public resources
+        run: npm test -- tests/unit/public-seo-resources.test.ts
+      - name: Verify settings and motion
+        run: npm test -- tests/unit/settings-redesign.test.ts tests/unit/profile-account-klipy-picker.test.ts
+      - name: Verify search
+        run: npm test -- tests/unit/search-index.test.ts tests/unit/search-service.test.ts
+      - name: Typecheck
+        run: npm run typecheck
