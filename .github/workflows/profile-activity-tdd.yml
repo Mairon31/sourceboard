@@ -1,4 +1,4 @@
-name: Profile activity verification
+name: Profile and auth verification
 
 on:
   push:
@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  profile-activity:
+  profile-auth:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -21,10 +21,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Check formatting
-        run: npx prettier --check worker/posts/store.ts worker/posts/service.ts app/routes/profile.tsx app/components/product/profile-layout-polish.css tests/unit/post-policy.test.ts tests/unit/product-mobile-ux.test.ts
-      - name: Lint profile activity files
-        run: npx eslint worker/posts/store.ts worker/posts/service.ts app/routes/profile.tsx tests/unit/post-policy.test.ts tests/unit/product-mobile-ux.test.ts
+        run: npx prettier --check worker/auth/api.ts worker/posts/store.ts worker/posts/service.ts app/routes/profile.tsx app/components/product/profile-layout-polish.css tests/unit/post-policy.test.ts tests/unit/product-mobile-ux.test.ts
+      - name: Lint changed TypeScript
+        run: npx eslint worker/auth/api.ts worker/posts/store.ts worker/posts/service.ts app/routes/profile.tsx tests/unit/post-policy.test.ts tests/unit/product-mobile-ux.test.ts
       - name: Typecheck
         run: npm run typecheck
-      - name: Run profile activity regressions
-        run: npm test -- tests/unit/post-policy.test.ts tests/unit/product-mobile-ux.test.ts
+      - name: Run profile and auth regressions
+        run: npm test -- tests/unit/post-policy.test.ts tests/unit/product-mobile-ux.test.ts tests/unit/auth-form-requests.test.ts tests/unit/auth-security.test.ts tests/unit/auth-service.test.ts tests/unit/google-auth-hosting.test.ts
