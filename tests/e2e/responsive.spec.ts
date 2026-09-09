@@ -73,7 +73,7 @@ test("authorized Admin Store collapses to mobile cards without document overflow
   await installAdminStoreFixture(page);
   await page.goto("/admin/store");
   await waitForUiReady(page);
-  await page.getByRole("tab", { name: "Emote packs" }).click();
+  await page.getByRole("tab", { name: "Emote Packs" }).click();
 
   const pack = page.locator(".admin-store-pack-list__item").filter({ hasText: "E2E Draft Pack" });
   await expect(pack).toBeVisible();

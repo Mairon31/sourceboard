@@ -660,12 +660,16 @@
 @media (max-width: 520px) {
   .admin-store-mode-tabs {
     width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
   }
 
   .admin-store-mode-tabs button {
-    min-width: 0;
-    flex: 1 1 0;
+    min-width: max-content;
+    flex: 0 0 auto;
     padding-inline: 10px;
+    white-space: nowrap;
   }
 
   .admin-store-card-actions,
