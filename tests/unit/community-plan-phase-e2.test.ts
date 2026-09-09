@@ -33,6 +33,11 @@ describe("community plan phase E2", () => {
     expect(route).toContain("<AdminCosmeticGuide");
   });
 
+  it("lands sticker-only administrators in the Sticker Packs workspace", () => {
+    const route = read("../../app/routes/admin-store.tsx");
+    expect(route).toContain('access.emoteManage ? "EMOTE_PACKS" : "STICKER_PACKS"');
+  });
+
   it("provides an Admin Preset Laboratory over the real SourceBoard preset registries", () => {
     const lab = read("../../app/components/admin/store/AdminPresetLaboratory.tsx");
     expect(lab).toContain("AVATAR_FRAME_PRESETS");
