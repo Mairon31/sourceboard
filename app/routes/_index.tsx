@@ -212,7 +212,6 @@ export default function HomeRoute() {
           role="tablist"
         >
           {feedOptions.map((option, index) => {
-            const loaded = loadedFeeds.has(option.value);
             return (
               <button
                 key={option.value}
@@ -230,14 +229,6 @@ export default function HomeRoute() {
                 onKeyDown={(event) => handleFeedKeyDown(event, index)}
               >
                 <span className="product-feed-filter-tabs__label">{option.label}</span>
-                <span
-                  className="product-feed-filter-tabs__count"
-                  aria-label={
-                    loaded ? `${feeds[option.value].length} loaded posts` : "Loads on demand"
-                  }
-                >
-                  {loaded ? feeds[option.value].length : "·"}
-                </span>
               </button>
             );
           })}

@@ -2110,3 +2110,11 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Community plan: keep friend counters visually separated from their labels. */
+.product-friends-tab-count {
+  display: inline-flex;
+  min-width: 1.5em;
+  justify-content: center;
+  margin-inline-start: 0.45rem;
+}

@@ -28,6 +28,10 @@ export interface AdminEmote {
   shortcode: string;
   label: string;
   assetKey: string;
+  contentType: string | null;
+  mediaWidth: number | null;
+  mediaHeight: number | null;
+  isAnimated: boolean | number;
   packId: string | null;
   sortOrder: number;
   status: "ACTIVE" | "DISABLED";

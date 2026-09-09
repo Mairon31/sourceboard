@@ -6,7 +6,8 @@ import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
-import { assertPostImage, sha256Hex } from "../posts/image";
+import { sha256Hex } from "../posts/image";
+import { assertCatalogImage } from "./image";
 import { enforceRateLimit } from "../security/rate-limit";
 import { resolvePublicFailure } from "../http/public-failure";
 
@@ -217,9 +218,17 @@ function isCatalogLifecycleSchemaError(error: unknown): boolean {
     message.includes("no such column") || message.includes("has no column named");
   return (
     missingColumn &&
-    ["lifecycle_state", "is_enabled", "is_featured", "moderation_state", "updated_at"].some(
-      (column) => message.includes(column),
-    )
+    [
+      "lifecycle_state",
+      "is_enabled",
+      "is_featured",
+      "moderation_state",
+      "updated_at",
+      "content_type",
+      "media_width",
+      "media_height",
+      "is_animated",
+    ].some((column) => message.includes(column))
   );
 }
 
@@ -236,7 +245,7 @@ async function hasCatalogLifecycleSchema(db: D1Database): Promise<boolean> {
 async function legacyListEmotes(db: D1Database) {
   return db
     .prepare(
-      `SELECT id, shortcode AS key, label, asset_key AS assetKey, status, CASE WHEN status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
+      `SELECT id, shortcode AS key, label, asset_key AS assetKey, NULL AS contentType, NULL AS mediaWidth, NULL AS mediaHeight, 0 AS isAnimated, status, CASE WHEN status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
             CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, 'CLEAR' AS moderationState, created_at AS updatedAt, pack_id AS packId,
             sort_order AS sortOrder, created_at AS createdAt FROM emote_catalog ORDER BY sort_order ASC, created_at DESC LIMIT 500`,
     )
@@ -301,7 +310,7 @@ async function legacyGetEmotePackDetail(
   if (!pack) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
   const emotes = await env
     .DB!.prepare(
-      `SELECT id, shortcode, label, asset_key AS assetKey, pack_id AS packId, sort_order AS sortOrder, status,
+      `SELECT id, shortcode, label, asset_key AS assetKey, NULL AS contentType, NULL AS mediaWidth, NULL AS mediaHeight, 0 AS isAnimated, pack_id AS packId, sort_order AS sortOrder, status,
             CASE WHEN status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState, CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled,
             'CLEAR' AS moderationState, created_at AS createdAt, created_at AS updatedAt
      FROM emote_catalog WHERE pack_id = ? ORDER BY sort_order ASC, created_at ASC`,
@@ -322,7 +331,7 @@ async function handleList(kind: CatalogKind, env: SourceBoardEnvironment, reques
   if (kind === "emote") {
     try {
       const rows = await env.DB.prepare(
-        `SELECT id, shortcode AS key, label, asset_key AS assetKey, status, lifecycle_state AS lifecycleState, is_enabled AS isEnabled,
+        `SELECT id, shortcode AS key, label, asset_key AS assetKey, content_type AS contentType, media_width AS mediaWidth, media_height AS mediaHeight, is_animated AS isAnimated, status, lifecycle_state AS lifecycleState, is_enabled AS isEnabled,
                 moderation_state AS moderationState, updated_at AS updatedAt, pack_id AS packId, sort_order AS sortOrder, created_at AS createdAt
          FROM emote_catalog ORDER BY sort_order ASC, created_at DESC LIMIT 500`,
       ).all();
@@ -383,7 +392,7 @@ async function handleCreate(
     if (!pack) return failure("PACK_NOT_FOUND", "Emote pack not found.", requestId, 404);
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const metadata = assertPostImage(bytes, file.type);
+  const metadata = assertCatalogImage(bytes, file.type);
   const id = createIdentifier();
   const assetKey = `catalog/${kind}/${id}`;
   const now = Date.now();
@@ -393,11 +402,23 @@ async function handleCreate(
       try {
         await env.DB.prepare(
           `INSERT INTO emote_catalog
-           (id, shortcode, label, asset_key, pack_id, status, sort_order, lifecycle_state,
+           (id, shortcode, label, asset_key, content_type, media_width, media_height, is_animated, pack_id, status, sort_order, lifecycle_state,
             is_enabled, moderation_state, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, 'ACTIVE', 0, 'PUBLISHED', 1, 'CLEAR', ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, 'PUBLISHED', 1, 'CLEAR', ?, ?)`,
         )
-          .bind(id, key, label, assetKey, packId, now, now)
+          .bind(
+            id,
+            key,
+            label,
+            assetKey,
+            metadata.contentType,
+            metadata.width,
+            metadata.height,
+            metadata.animated ? 1 : 0,
+            packId,
+            now,
+            now,
+          )
           .run();
       } catch (error) {
         if (!isCatalogLifecycleSchemaError(error)) throw error;
@@ -412,10 +433,21 @@ async function handleCreate(
       }
     } else {
       await env.DB.prepare(
-        `INSERT INTO sticker_catalog (id, slug, label, asset_key, pack_id, status, sort_order, created_at)
-         VALUES (?, ?, ?, ?, ?, 'ACTIVE', 0, ?)`,
+        `INSERT INTO sticker_catalog (id, slug, label, asset_key, content_type, media_width, media_height, is_animated, pack_id, status, sort_order, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, ?)`,
       )
-        .bind(id, key, label, assetKey, packId, now)
+        .bind(
+          id,
+          key,
+          label,
+          assetKey,
+          metadata.contentType,
+          metadata.width,
+          metadata.height,
+          metadata.animated ? 1 : 0,
+          packId,
+          now,
+        )
         .run();
     }
   } catch (error) {
@@ -434,6 +466,10 @@ async function handleCreate(
       lifecycleState: kind === "emote" ? "PUBLISHED" : undefined,
       isEnabled: kind === "emote" ? true : undefined,
       moderationState: kind === "emote" ? "CLEAR" : undefined,
+      contentType: metadata.contentType,
+      mediaWidth: metadata.width,
+      mediaHeight: metadata.height,
+      isAnimated: metadata.animated,
       checksumSha256: await sha256Hex(bytes.buffer as ArrayBuffer),
     },
     requestId,
@@ -515,7 +551,7 @@ async function getEmotePackDetail(
       .first();
     if (!pack) return failure("NOT_FOUND", "Emote pack not found.", requestId, 404);
     const emotes = await env.DB.prepare(
-      `SELECT id, shortcode, label, asset_key AS assetKey, pack_id AS packId, sort_order AS sortOrder, status, lifecycle_state AS lifecycleState,
+      `SELECT id, shortcode, label, asset_key AS assetKey, content_type AS contentType, media_width AS mediaWidth, media_height AS mediaHeight, is_animated AS isAnimated, pack_id AS packId, sort_order AS sortOrder, status, lifecycle_state AS lifecycleState,
               is_enabled AS isEnabled, moderation_state AS moderationState, created_at AS createdAt, updated_at AS updatedAt
        FROM emote_catalog WHERE pack_id = ? ORDER BY sort_order ASC, created_at ASC`,
     )
@@ -1177,13 +1213,23 @@ async function replaceEmoteImage(
   if (!(file instanceof File))
     return failure("INVALID_CATALOG_ITEM", "An image file is required.", requestId, 400);
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const metadata = assertPostImage(bytes, file.type);
+  const metadata = assertCatalogImage(bytes, file.type);
   const newAssetKey = `catalog/emote/${createIdentifier()}`;
   await env.MEDIA.put(newAssetKey, bytes, { httpMetadata: { contentType: metadata.contentType } });
   try {
     if (await hasCatalogLifecycleSchema(env.DB)) {
-      await env.DB.prepare("UPDATE emote_catalog SET asset_key = ?, updated_at = ? WHERE id = ?")
-        .bind(newAssetKey, Date.now(), id)
+      await env.DB.prepare(
+        "UPDATE emote_catalog SET asset_key = ?, content_type = ?, media_width = ?, media_height = ?, is_animated = ?, updated_at = ? WHERE id = ?",
+      )
+        .bind(
+          newAssetKey,
+          metadata.contentType,
+          metadata.width,
+          metadata.height,
+          metadata.animated ? 1 : 0,
+          Date.now(),
+          id,
+        )
         .run();
     } else {
       await env.DB.prepare("UPDATE emote_catalog SET asset_key = ? WHERE id = ?")
@@ -1198,12 +1244,20 @@ async function replaceEmoteImage(
   await audit(env.DB, actorUserId, requestId, "EMOTE_IMAGE_REPLACED", "EMOTE", id, null, {
     oldAssetKey: current.assetKey,
     newAssetKey,
+    contentType: metadata.contentType,
+    mediaWidth: metadata.width,
+    mediaHeight: metadata.height,
+    isAnimated: metadata.animated,
   });
   return response(
     {
       emote: {
         id,
         assetKey: newAssetKey,
+        contentType: metadata.contentType,
+        mediaWidth: metadata.width,
+        mediaHeight: metadata.height,
+        isAnimated: metadata.animated,
         checksumSha256: await sha256Hex(bytes.buffer as ArrayBuffer),
       },
     },
