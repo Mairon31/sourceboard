@@ -23,6 +23,19 @@ The expansion is incremental on top of the existing D1/R2/Workers product archit
 - Public pack usability requires the parent pack and member asset to satisfy their publication, enablement and moderation rules.
 - Username quotas are enforced in D1 as well as in the service policy. The history trigger closes the race where concurrent requests could otherwise both pass a pre-write quota check.
 
+## Dependency security boundary
+
+A dedicated npm audit diagnostic was run against the PR lockfile after the functional gate completed.
+
+`npm audit --omit=dev` reports zero production dependency vulnerabilities. The eight advisories reported by a full `npm audit` are confined to development tooling and come from two dependency chains:
+
+- Cloudflare development tooling: `@cloudflare/vite-plugin` / `wrangler` -> `miniflare` -> `sharp`;
+- Drizzle development tooling: `drizzle-kit` -> `@esbuild-kit/*` -> an older nested `esbuild`.
+
+The registry's automatic fixes would downgrade the Cloudflare and Drizzle toolchains to substantially older versions, so they are not accepted as security fixes for this project. A diagnostic install using the currently available latest `@cloudflare/vite-plugin`, `wrangler` and `drizzle-kit` versions still reports the same eight development-only advisories.
+
+The permanent CI now runs `npm run audit:prod` immediately after `npm ci`. Any future advisory affecting the production dependency graph will therefore fail the standard merge gate, while unresolved upstream development-tool advisories remain visible rather than being hidden with forced overrides or unsafe downgrades.
+
 ## Responsive Admin Store contract
 
 At narrow widths the Admin Store mode selector is a contained horizontal scroller. Tabs keep readable labels instead of being compressed below their content width, and their internal overflow must not increase the document width.
@@ -41,4 +54,4 @@ Before this documentation commit, the focused repair gate passed:
 
 That focused run also verified the mobile Admin Store overflow regression after changing the mode selector to contained horizontal scrolling. The temporary repair workflow removed itself after the successful run; the repository retains only the standard `ci.yml` workflow.
 
-The standard CI workflow on the final normal commit remains the authoritative merge gate for lint/format, typecheck, the full unit suite, production build, Worker dry-run, local migrations and the complete Playwright suite.
+The standard CI workflow on the final normal commit is the authoritative merge gate for the production dependency audit, lint/format, typecheck, the full unit suite, production build, Worker dry-run, local migrations and the complete Playwright suite.
