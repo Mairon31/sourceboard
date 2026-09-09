@@ -1,0 +1,50 @@
+name: Phase F lint cleanup
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+
+permissions:
+  contents: write
+
+jobs:
+  lint-cleanup:
+    if: "${{ github.event.head_commit.message != 'fix(store): simplify global entitlement check' }}"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply exact lint cleanup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('worker/store/service.ts')
+          text = path.read_text()
+          old = '      if (Boolean(item.isGlobal)) {'
+          new = '      if (item.isGlobal) {'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one lint anchor, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Verify focused lint and Store tests
+        run: |
+          npx eslint worker/store/service.ts tests/unit/community-plan-phase-e1.test.ts tests/unit/community-plan-phase-e2.test.ts
+          npm test -- tests/unit/store-service.test.ts tests/unit/community-plan-phase-e1.test.ts
+          git diff --check
+      - name: Commit verified cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker/store/service.ts
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "fix(store): simplify global entitlement check"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
