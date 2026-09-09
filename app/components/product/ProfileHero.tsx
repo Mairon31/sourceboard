@@ -193,7 +193,9 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
       <div className="product-profile-content">
         <div className="product-profile-identity">
           <div className="product-profile-name">
-            <span className="product-eyebrow">{isOwnProfile ? "Your profile" : "Public profile"}</span>
+            <span className="product-eyebrow">
+              {isOwnProfile ? "Your profile" : "Public profile"}
+            </span>
             <CosmeticIdentity
               displayName={profile.displayName}
               avatarUrl={profile.avatarUrl}
@@ -219,7 +221,11 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
               relationship={relationship}
               onRelationshipChange={setRelationship}
             />
-            <BlockAction profile={profile} relationship={relationship} onRelationshipChange={setRelationship} />
+            <BlockAction
+              profile={profile}
+              relationship={relationship}
+              onRelationshipChange={setRelationship}
+            />
             {editControl}
             <ShareAction
               url={`/u/${encodeURIComponent(profile.username)}`}
@@ -230,9 +236,13 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
 
         {profile.bio ? <p className="product-profile-bio">{profile.bio}</p> : null}
 
-        <div className="product-profile-summary" aria-label="Profile summary">
+        <div
+          className="product-profile-summary product-profile-stats--compact"
+          aria-label="Profile summary"
+        >
           <span>
-            <strong>{profile.friendCount}</strong> {profile.friendCount === 1 ? "friend" : "friends"}
+            <strong>{profile.friendCount}</strong>{" "}
+            {profile.friendCount === 1 ? "friend" : "friends"}
           </span>
           <span>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends only"}</span>
         </div>
