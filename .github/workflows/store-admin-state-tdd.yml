@@ -1,0 +1,22 @@
+name: Store admin state TDD
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+
+permissions:
+  contents: read
+
+jobs:
+  store-admin-state:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test -- tests/unit/store-catalog-redesign.test.ts
