@@ -17,16 +17,6 @@ function read(path: string): string {
   return existsSync(url) ? readFileSync(url, "utf8") : "";
 }
 
-function history(...changedAt: number[]): UsernameChangeRecord[] {
-  return changedAt.map((at, index) => ({
-    id: `change-${index}`,
-    userId: "user-1",
-    oldUsername: `old_${index}`,
-    newUsername: `new_${index}`,
-    changedAt: at,
-  }));
-}
-
 function fakeStore(options?: {
   changes?: UsernameChangeRecord[];
   usernameOwnerId?: string | null;
