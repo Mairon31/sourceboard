@@ -8,9 +8,7 @@ interface CapturedStatement {
 
 function createDb(options: { first?: (sql: string) => unknown } = {}) {
   const statements: CapturedStatement[] = [];
-  const batch = vi.fn(async (items: unknown[]) =>
-    items.map(() => ({ meta: { changes: 1 } })),
-  );
+  const batch = vi.fn(async (items: unknown[]) => items.map(() => ({ meta: { changes: 1 } })));
   const db = {
     prepare(sql: string) {
       const captured: CapturedStatement = { sql, values: [] };
