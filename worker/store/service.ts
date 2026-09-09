@@ -286,7 +286,7 @@ export function createStoreService(db: D1Database) {
         .first<{ id: string; pricePoints: number; isGlobal: number }>();
       if (!item) throw new StoreError(409, "PURCHASE_UNAVAILABLE", "The item is unavailable.");
 
-      if (Boolean(item.isGlobal)) {
+      if (item.isGlobal) {
         return {
           id: `included:${itemId}`,
           storeItemId: itemId,
