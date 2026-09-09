@@ -37,7 +37,7 @@ test("home presents the connected production feed", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Presentation build" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Find the original source" })).toBeVisible();
   await expect(
-    page.locator(".product-feed-cta").getByRole("link", { name: "Create post" }),
+    page.getByRole("main").getByRole("link", { name: "Create post", exact: true }),
   ).toBeVisible();
 });
 
@@ -54,7 +54,7 @@ test("search surface accepts a public discovery query", async ({ page }) => {
   await page.getByRole("search").getByLabel("Search SourceBoard").press("Enter");
 
   await expect(page).toHaveURL(/\/search\?q=source/);
-  await expect(page.getByRole("heading", { name: /Search results for/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Results for/ })).toBeVisible();
   await expect(page.getByText(/No public matches|Search unavailable/)).toBeVisible();
 });
 

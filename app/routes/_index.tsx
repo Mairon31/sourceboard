@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { Link, useLoaderData } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
@@ -128,6 +128,12 @@ export default function HomeRoute() {
   );
   const [loadingFeed, setLoadingFeed] = useState<FeedMode | null>(null);
   const [feedError, setFeedError] = useState<Partial<Record<FeedMode, string>>>({});
+  const feedTabRefs = useRef<Record<FeedMode, HTMLButtonElement | null>>({
+    recent: null,
+    friends: null,
+    answered: null,
+    verified: null,
+  });
   const active = feedOptions.find((option) => option.value === feed) ?? feedOptions[0];
   const posts = feeds[feed];
 
@@ -161,6 +167,21 @@ export default function HomeRoute() {
     if (!loadedFeeds.has(nextFeed)) void loadFeed(nextFeed);
   }
 
+  function handleFeedKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % feedOptions.length;
+    if (event.key === "ArrowLeft")
+      nextIndex = (index - 1 + feedOptions.length) % feedOptions.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = feedOptions.length - 1;
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextFeed = feedOptions[nextIndex].value;
+    selectFeed(nextFeed);
+    feedTabRefs.current[nextFeed]?.focus();
+  }
+
   return (
     <ProductShell wide>
       <section className="product-home-compact-lead">
@@ -188,16 +209,25 @@ export default function HomeRoute() {
         <nav
           className="product-store-filter-bar product-feed-filter-tabs"
           aria-label="Feed filters"
+          role="tablist"
         >
-          {feedOptions.map((option) => {
+          {feedOptions.map((option, index) => {
             const loaded = loadedFeeds.has(option.value);
             return (
               <button
                 key={option.value}
+                ref={(element) => {
+                  feedTabRefs.current[option.value] = element;
+                }}
+                id={`feed-tab-${option.value}`}
                 type="button"
+                role="tab"
+                aria-selected={feed === option.value}
+                aria-controls={`feed-panel-${option.value}`}
+                tabIndex={feed === option.value ? 0 : -1}
                 className={`product-store-filter${feed === option.value ? " product-store-filter--active is-active" : ""}`}
-                aria-pressed={feed === option.value}
                 onClick={() => selectFeed(option.value)}
+                onKeyDown={(event) => handleFeedKeyDown(event, index)}
               >
                 <span className="product-feed-filter-tabs__label">{option.label}</span>
                 <span
@@ -212,12 +242,19 @@ export default function HomeRoute() {
             );
           })}
         </nav>
-        <FeedCollection
-          posts={posts}
-          unavailable={data.unavailable}
-          loading={loadingFeed === feed}
-          error={feedError[feed] ?? null}
-        />
+        <div
+          id={`feed-panel-${feed}`}
+          role="tabpanel"
+          aria-labelledby={`feed-tab-${feed}`}
+          tabIndex={0}
+        >
+          <FeedCollection
+            posts={posts}
+            unavailable={data.unavailable}
+            loading={loadingFeed === feed}
+            error={feedError[feed] ?? null}
+          />
+        </div>
       </section>
     </ProductShell>
   );

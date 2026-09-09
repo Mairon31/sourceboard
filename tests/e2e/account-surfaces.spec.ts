@@ -43,6 +43,8 @@ test("settings surface includes NSFW and appearance preferences", async ({ page 
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await expect(page.getByRole("switch", { name: "Hide NSFW posts" })).toBeVisible();
   await expect(page.getByRole("switch", { name: "Blur NSFW media" })).toBeVisible();
-  await expect(page.getByRole("main").getByRole("heading", { name: "Appearance" })).toBeVisible();
+  await expect(
+    page.getByRole("main").getByRole("heading", { name: "Theme", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("main").getByRole("button", { name: "System theme" })).toBeVisible();
 });

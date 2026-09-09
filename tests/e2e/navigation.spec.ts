@@ -31,7 +31,11 @@ test("home exposes the SourceBoard product navigation", async ({ page }) => {
   await expect(page.getByRole("link", { name: "SourceBoard" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Friends" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Store" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Primary navigation" })
+      .getByRole("link", { name: "Store", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", {
       name: "Create post",
