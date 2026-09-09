@@ -58,6 +58,27 @@ describe("community plan phase D", () => {
     }
   });
 
+  it("rejects relative units in bounded geometry", () => {
+    for (const css of [
+      ".cosmetic-root .profile-card { border-width: 25vw; }",
+      ".cosmetic-root .profile-name-area { letter-spacing: 20rem; }",
+      ".cosmetic-root .profile-card { box-shadow: 0 0 100vmax #000; }",
+      ".cosmetic-root .profile-card { border-radius: 1000%; }",
+    ]) {
+      expect(() => sanitizeCommunityCosmeticCss(css, "demo")).toThrow();
+    }
+  });
+
+  it("rejects unbounded transform arguments", () => {
+    for (const css of [
+      ".cosmetic-root .profile-name-area { transform: translateX(100vw); }",
+      ".cosmetic-root .profile-name-area { transform: scale(1, 50); }",
+      ".cosmetic-root .profile-name-area { transform: rotate(999turn); }",
+    ]) {
+      expect(() => sanitizeCommunityCosmeticCss(css, "demo")).toThrow();
+    }
+  });
+
   it("provides a dedicated authenticated Store creator with live CSS preview", () => {
     const routes = read("../../app/routes.ts");
     const route = read("../../app/routes/store-create.tsx");
