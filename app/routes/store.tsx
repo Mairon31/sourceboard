@@ -22,6 +22,7 @@ const STORE_FILTERS = [
 ] as const;
 
 type StoreFilter = (typeof STORE_FILTERS)[number]["key"];
+const INCLUDED_STORE_STATE = { state: "INCLUDED" as const }.state;
 const COSMETIC_TYPES = new Set<StoreItemType>([
   "AVATAR_FRAME",
   "PROFILE_BANNER",
@@ -103,14 +104,17 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           : [];
         const id = String(item.id);
         const equippedItem = equippedIds.has(id);
+        const isGlobal = Boolean(item.isGlobal);
         const ownedItem = adminUnlocked || ownedIds.has(id);
-        const state: StoreItemView["state"] = equippedItem
-          ? "EQUIPPED"
-          : ownedItem
-            ? "OWNED"
-            : points !== null && Number(item.pricePoints) > points
-              ? "INSUFFICIENT_POINTS"
-              : "AVAILABLE";
+        const state: StoreItemView["state"] = isGlobal
+          ? INCLUDED_STORE_STATE
+          : equippedItem
+            ? "EQUIPPED"
+            : ownedItem
+              ? "OWNED"
+              : points !== null && Number(item.pricePoints) > points
+                ? "INSUFFICIENT_POINTS"
+                : "AVAILABLE";
         return {
           id,
           name: String(item.name),
@@ -120,6 +124,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           price: Number(item.pricePoints),
           createdAt: new Date(Number(item.createdAt)).toISOString(),
           featured: Boolean(item.isFeatured),
+          isGlobal,
           owned: ownedItem,
           equipped: equippedItem,
           previewLabel: String(item.name),
@@ -192,7 +197,7 @@ export default function StoreRoute() {
           : candidate,
       ),
     );
-    if (!adminUnlocked && currentPoints !== null) {
+    if (!adminUnlocked && currentPoints !== null && item.price > 0) {
       setCurrentPoints((balance) =>
         balance === null ? balance : Math.max(0, balance - Math.max(0, item.price)),
       );
@@ -296,6 +301,7 @@ export default function StoreRoute() {
       navigate("/login");
       return;
     }
+    if (item.state === "INCLUDED") return;
     if (item.state === "EQUIPPED") {
       if (COSMETIC_TYPES.has(item.type)) void unequip(item);
       return;

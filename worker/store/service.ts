@@ -35,7 +35,7 @@ interface StorePreviewAsset {
   assetKey: string;
 }
 
-type StoreCatalogRow = StoreItemInput & { previewAssets: StorePreviewAsset[] };
+type StoreCatalogRow = StoreItemInput & { previewAssets: StorePreviewAsset[]; isGlobal: boolean };
 
 export interface StoreItemInput {
   id: string;
@@ -162,7 +162,7 @@ export function createStoreService(db: D1Database) {
           const type = String(item.type);
           const packId = typeof config.packId === "string" ? config.packId : null;
           if (!packId || (type !== "EMOTE_PACK" && type !== "STICKER_PACK"))
-            return { ...item, previewAssets: [] as StorePreviewAsset[] };
+            return { ...item, previewAssets: [] as StorePreviewAsset[], isGlobal: false };
           const rows =
             type === "EMOTE_PACK"
               ? await listEmotePreviewAssets(db, packId)
@@ -172,7 +172,14 @@ export function createStoreService(db: D1Database) {
                   )
                   .bind(packId)
                   .all<StorePreviewAsset>();
-          return { ...item, previewAssets: rows.results };
+          const globalRow =
+            type === "EMOTE_PACK"
+              ? await db
+                  .prepare("SELECT is_global AS isGlobal FROM emote_packs WHERE id = ?")
+                  .bind(packId)
+                  .first<{ isGlobal: number }>()
+              : null;
+          return { ...item, previewAssets: rows.results, isGlobal: Boolean(globalRow?.isGlobal) };
         }),
       );
     },
@@ -188,6 +195,70 @@ export function createStoreService(db: D1Database) {
     async purchase(userId: string, itemId: string, idempotencyKey: string, now = Date.now()) {
       if (!/^[A-Za-z0-9:_-]{16,128}$/.test(idempotencyKey))
         throw new StoreError(400, "INVALID_IDEMPOTENCY_KEY", "The idempotency key is invalid.");
+
+      const item = await db
+        .prepare(
+          `SELECT s.id, s.price_points AS pricePoints,
+                  CASE WHEN s.type = 'EMOTE_PACK' THEN COALESCE(p.is_global, 0) ELSE 0 END AS isGlobal
+           FROM store_items s
+           LEFT JOIN emote_packs p ON p.id = json_extract(s.config_json, '$.packId')
+           WHERE s.id = ? AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
+             AND (s.starts_at IS NULL OR s.starts_at <= ?)
+             AND (s.ends_at IS NULL OR s.ends_at > ?)`,
+        )
+        .bind(itemId, now, now)
+        .first<{ id: string; pricePoints: number; isGlobal: number }>();
+      if (!item) throw new StoreError(409, "PURCHASE_UNAVAILABLE", "The item is unavailable.");
+
+      if (Boolean(item.isGlobal)) {
+        return {
+          id: `included:${itemId}`,
+          storeItemId: itemId,
+          pricePaid: 0,
+          idempotencyKey: `included:${itemId}`,
+          included: true as const,
+        };
+      }
+
+      const pricePoints = Number(item.pricePoints);
+      if (pricePoints === 0) {
+        const claimKey = `store:free:${userId}:${itemId}`;
+        const purchaseId = createIdentifier();
+        await db.batch([
+          db
+            .prepare(
+              `INSERT OR IGNORE INTO store_purchases
+               (id, user_id, store_item_id, price_paid, ledger_debit_id, idempotency_key, created_at)
+               SELECT ?, ?, id, 0, ?, ?, ? FROM store_items
+               WHERE id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1
+                 AND (starts_at IS NULL OR starts_at <= ?)
+                 AND (ends_at IS NULL OR ends_at > ?)`,
+            )
+            .bind(purchaseId, userId, `free:${itemId}`, claimKey, now, itemId, now, now),
+          db
+            .prepare(
+              `INSERT OR IGNORE INTO user_inventory (user_id, store_item_id, acquired_at, source)
+               SELECT user_id, store_item_id, created_at, 'PURCHASE' FROM store_purchases WHERE idempotency_key = ?`,
+            )
+            .bind(claimKey),
+        ]);
+        const claim = await db
+          .prepare(
+            `SELECT id, store_item_id AS storeItemId, price_paid AS pricePaid, idempotency_key AS idempotencyKey
+             FROM store_purchases WHERE idempotency_key = ?`,
+          )
+          .bind(claimKey)
+          .first<{
+            id: string;
+            storeItemId: string;
+            pricePaid: number;
+            idempotencyKey: string;
+          }>();
+        if (!claim)
+          throw new StoreError(409, "PURCHASE_UNAVAILABLE", "The free item could not be claimed.");
+        return claim;
+      }
+
       const purchaseKey = `store:${userId}:${idempotencyKey}`;
       const ledgerId = createIdentifier();
       const purchaseId = createIdentifier();
@@ -200,6 +271,7 @@ export function createStoreService(db: D1Database) {
              SELECT ?, ?, -price_points, 'REVERSAL', 'STORE_PURCHASE', 'store.purchase', ?, ?, ?, ?
              FROM store_items
              WHERE id = ? AND ${available.sql}
+               AND price_points > 0
                AND NOT EXISTS (SELECT 1 FROM user_inventory WHERE user_id = ? AND store_item_id = ?)
                AND NOT EXISTS (SELECT 1 FROM store_purchases WHERE idempotency_key = ?)
                AND (SELECT COALESCE(SUM(amount), 0) FROM point_ledger WHERE user_id = ?) >= price_points`,

@@ -12,13 +12,15 @@ function categoryLabel(type: StoreItemType): string {
 }
 
 function actionLabel(item: StoreItemView, adminUnlocked: boolean, authenticated: boolean): string {
+  if (item.state === "INCLUDED") return "Included";
   if (!authenticated) return "Sign in";
   if (item.state === "EQUIPPED") return "Unequip";
   if (item.state === "DISABLED") return "Unavailable";
   if (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) return "Not enough points";
   if (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked)) return "Unlocked";
   if (item.state === "OWNED" || adminUnlocked) return "Equip";
-  return "Redeem";
+  if (item.price === 0) return "Get";
+  return "Purchase";
 }
 
 function priceLabel(price: number): string {
@@ -113,6 +115,7 @@ export function StoreItemCard({
   const label = actionLabel(item, adminUnlocked, authenticated);
   const disabled =
     busy ||
+    item.state === "INCLUDED" ||
     item.state === "DISABLED" ||
     (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) ||
     (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked));
@@ -129,16 +132,18 @@ export function StoreItemCard({
         <div>
           <span className="product-store-item__price">
             {item.price > 0 ? <i className="product-store-coin" aria-hidden="true" /> : null}
-            {priceLabel(item.price)}
+            {item.state === "INCLUDED" ? "Included" : priceLabel(item.price)}
           </span>
           <div className="product-store-state">
-            {item.equipped
-              ? "Currently equipped"
-              : item.owned
-                ? "Owned"
-                : item.state === "INSUFFICIENT_POINTS"
-                  ? "More points required"
-                  : "Available"}
+            {item.state === "INCLUDED"
+              ? "Included for everyone"
+              : item.equipped
+                ? "Currently equipped"
+                : item.owned
+                  ? "Owned"
+                  : item.state === "INSUFFICIENT_POINTS"
+                    ? "More points required"
+                    : "Available"}
           </div>
         </div>
         <button
