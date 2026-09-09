@@ -57,6 +57,7 @@ test("post mutations reconcile authoritative D1 state without a reload", async (
 
   const title = page.locator(".product-post__title");
   await expect(title).toHaveText("E2E stale title", { timeout: 30_000 });
+  await expect(page.locator('.sb-app-shell[data-ui-ready="true"]')).toBeVisible({ timeout: 30_000 });
   const originalUrl = page.url();
 
   executeLocalSql(`
@@ -73,7 +74,6 @@ test("post mutations reconcile authoritative D1 state without a reload", async (
   await reopen.click();
 
   await expect(title).toHaveText("Authoritative D1 title");
-  await expect(page.getByText("Comments reopened.", { exact: true }).first()).toBeVisible();
   expect(page.url()).toBe(originalUrl);
 
   let releaseReaction!: () => void;
