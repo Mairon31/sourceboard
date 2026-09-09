@@ -23,6 +23,16 @@ jobs:
       - run: npm ci
       - name: Apply Phase A implementation
         run: python .github/scripts/apply-phase-a-green.py
+      - name: Use shared public HTTP error
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("worker/catalog/image.ts")
+          text = path.read_text()
+          text = text.replace('import {\n  assertPostImage,\n  PostImageError,\n  type PostImageContentType,\n} from "../posts/image";', 'import { assertPostImage, type PostImageContentType } from "../posts/image";\nimport { PostError } from "../posts/errors";')
+          text = text.replace("PostImageError", "PostError")
+          path.write_text(text)
+          PY
       - name: Format changed files
         run: npx prettier --write worker/catalog/image.ts worker/catalog/api.ts worker/db/schema.ts app/components/admin/store/types.ts app/components/admin/store/AdminEmotePackManager.tsx app/routes/_index.tsx app/components/product/product.css app/components/product/post-card-refresh.css tests/unit/community-plan-phase-a.test.ts
       - name: Apply all local D1 migrations
