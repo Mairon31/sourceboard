@@ -1,12 +1,16 @@
-name: Community plan Phase E2 RED
+name: Community plan Phase E2 GREEN
 
 on:
   push:
     branches:
       - feature/community-cosmetics-profile-identity-emotes
 
+permissions:
+  contents: write
+
 jobs:
-  phase-e2-red:
+  phase-e2-green:
+    if: "${{ github.event.head_commit.message != 'feat(admin): add preset lab and cosmetic guide' }}"
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -17,5 +21,23 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Run Phase E2 contract
-        run: npm test -- tests/unit/community-plan-phase-e2.test.ts
+      - name: Apply Phase E2 implementation
+        run: python .github/scripts/apply-phase-e2-green.py
+      - name: Format changed source
+        run: npx prettier --write shared/store/community-css.ts app/components/admin/store/AdminPresetLaboratory.tsx app/components/admin/store/AdminCosmeticGuide.tsx app/components/admin/store/admin-store-labs.css app/routes/admin-store.tsx app/routes/store.tsx tests/unit/community-plan-phase-e2.test.ts
+      - name: Run Phase E2 and regression tests
+        run: npm test -- tests/unit/community-plan-phase-e2.test.ts tests/unit/community-plan-phase-d.test.ts tests/unit/community-plan-phase-c.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/store-service.test.ts tests/unit/store-effects.test.ts tests/unit/global-cosmetic-visuals.test.ts tests/unit/profile-service.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Verify diff
+        run: git diff --check
+      - name: Commit verified implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add shared/store/community-css.ts app/components/admin/store/AdminPresetLaboratory.tsx app/components/admin/store/AdminCosmeticGuide.tsx app/components/admin/store/admin-store-labs.css app/routes/admin-store.tsx app/routes/store.tsx
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "feat(admin): add preset lab and cosmetic guide"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
