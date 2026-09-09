@@ -111,4 +111,14 @@ describe("store catalog lifecycle", () => {
     expect(adminPacks).toContain("toggleEmoteEnabled");
     expect(adminPacks).toContain("isEnabled: !truthy(emote.isEnabled)");
   });
+
+  it("keeps archived catalog state server-enforced and exposes pack Store controls", () => {
+    expect(storeAdmin).toContain("STORE_ITEM_ARCHIVED");
+    expect(catalogApi).toContain("PACK_ARCHIVED");
+    expect(catalogApi).toContain("EMOTE_ARCHIVED");
+    expect(catalogApi).toContain("EMOTE_MODERATION_BLOCKED");
+    expect(adminPacks).toContain("Feature Store offering");
+    expect(adminPacks).toContain("Unfeature Store offering");
+    expect(adminPacks).toContain("Store archived");
+  });
 });
