@@ -8,7 +8,9 @@ interface CapturedStatement {
 
 function createDb(options: { first?: (sql: string) => unknown } = {}) {
   const statements: CapturedStatement[] = [];
-  const batch = vi.fn(async (items: unknown[]) => items.map(() => ({ meta: { changes: 1 } })));
+  const batch = vi.fn(async (items: unknown[]) =>
+    items.map(() => ({ meta: { changes: 1 } })),
+  );
   const db = {
     prepare(sql: string) {
       const captured: CapturedStatement = { sql, values: [] };
@@ -68,7 +70,8 @@ describe("admin user moderation controls", () => {
 
   it("anonymizes an account as an irreversible privacy-preserving moderation action", async () => {
     const { db, statements, batch } = createDb({
-      first: (sql) => (sql.includes("SELECT id, status FROM users") ? { id: "user-2", status: "ACTIVE" } : null),
+      first: (sql) =>
+        sql.includes("SELECT id, status FROM users") ? { id: "user-2", status: "ACTIVE" } : null,
     });
     const service = createAdminUserControlService(db);
 
