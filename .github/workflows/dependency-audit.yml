@@ -18,12 +18,34 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: npm audit evidence
+      - name: Production dependency audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --json > npm-audit-prod.json
+          status=$?
+          node -e 'const fs=require("fs"); const a=JSON.parse(fs.readFileSync("npm-audit-prod.json","utf8")); console.log("PROD_AUDIT_METADATA="+JSON.stringify(a.metadata)); console.log("PROD_AUDIT_VULNERABILITIES="+JSON.stringify(a.vulnerabilities));'
+          echo "production npm audit exit code: $status"
+          exit 0
+      - name: Toolchain advisory evidence
         shell: bash
         run: |
           set +e
           npm audit --json > npm-audit.json
           status=$?
           node -e 'const fs=require("fs"); const a=JSON.parse(fs.readFileSync("npm-audit.json","utf8")); console.log("AUDIT_METADATA="+JSON.stringify(a.metadata)); console.log("AUDIT_VULNERABILITIES="+JSON.stringify(a.vulnerabilities));'
-          echo "npm audit exit code: $status"
+          echo "full npm audit exit code: $status"
+          exit 0
+      - name: Registry versions and latest candidate audit
+        shell: bash
+        run: |
+          set +e
+          echo "LATEST_PLUGIN=$(npm view @cloudflare/vite-plugin version)"
+          echo "LATEST_WRANGLER=$(npm view wrangler version)"
+          echo "LATEST_DRIZZLE_KIT=$(npm view drizzle-kit version)"
+          echo "LATEST_MINIFLARE=$(npm view miniflare version)"
+          echo "LATEST_SHARP=$(npm view sharp version)"
+          npm install --package-lock-only --ignore-scripts --no-audit @cloudflare/vite-plugin@latest wrangler@latest drizzle-kit@latest
+          npm audit --json > npm-audit-latest.json
+          node -e 'const fs=require("fs"); const a=JSON.parse(fs.readFileSync("npm-audit-latest.json","utf8")); console.log("LATEST_CANDIDATE_METADATA="+JSON.stringify(a.metadata)); console.log("LATEST_CANDIDATE_VULNERABILITIES="+JSON.stringify(a.vulnerabilities));'
           exit 0
