@@ -7,7 +7,13 @@ function read(path: string): string {
   return existsSync(url) ? readFileSync(url, "utf8") : "";
 }
 
-function createPurchaseDb({ pricePoints, isGlobal = false }: { pricePoints: number; isGlobal?: boolean }) {
+function createPurchaseDb({
+  pricePoints,
+  isGlobal = false,
+}: {
+  pricePoints: number;
+  isGlobal?: boolean;
+}) {
   const queries: string[] = [];
   const bindings: Array<{ query: string; values: unknown[] }> = [];
   const db = {
@@ -44,7 +50,9 @@ function createPurchaseDb({ pricePoints, isGlobal = false }: { pricePoints: numb
     batch: vi.fn(async (statements: Array<D1PreparedStatement & { __query?: string }>) => {
       if (
         pricePoints === 0 &&
-        statements.some((statement) => statement.__query?.includes("INSERT OR IGNORE INTO point_ledger"))
+        statements.some((statement) =>
+          statement.__query?.includes("INSERT OR IGNORE INTO point_ledger"),
+        )
       ) {
         throw new Error("CHECK constraint failed: point_ledger_amount_nonzero_check");
       }
@@ -64,7 +72,9 @@ describe("Store entitlement modes", () => {
 
     expect(first.pricePaid).toBe(0);
     expect(second.idempotencyKey).toBe(first.idempotencyKey);
-    expect(queries.some((query) => query.includes("INSERT OR IGNORE INTO point_ledger"))).toBe(false);
+    expect(queries.some((query) => query.includes("INSERT OR IGNORE INTO point_ledger"))).toBe(
+      false,
+    );
     const freePurchaseBinds = bindings.filter(({ query }) =>
       query.includes("INSERT OR IGNORE INTO store_purchases"),
     );
@@ -75,11 +85,20 @@ describe("Store entitlement modes", () => {
 
   it("treats a published global pack as included without creating ownership", async () => {
     const { db, queries } = createPurchaseDb({ pricePoints: 0, isGlobal: true });
-    const purchase = await createStoreService(db).purchase("user", "item", "client-global-pack-01", 100);
+    const purchase = await createStoreService(db).purchase(
+      "user",
+      "item",
+      "client-global-pack-01",
+      100,
+    );
 
     expect(purchase).toMatchObject({ storeItemId: "item", pricePaid: 0, included: true });
-    expect(queries.some((query) => query.includes("INSERT OR IGNORE INTO user_inventory"))).toBe(false);
-    expect(queries.some((query) => query.includes("INSERT OR IGNORE INTO point_ledger"))).toBe(false);
+    expect(queries.some((query) => query.includes("INSERT OR IGNORE INTO user_inventory"))).toBe(
+      false,
+    );
+    expect(queries.some((query) => query.includes("INSERT OR IGNORE INTO point_ledger"))).toBe(
+      false,
+    );
   });
 
   it("presents global, free claimable and paid items as distinct Store states", () => {
