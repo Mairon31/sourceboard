@@ -691,10 +691,23 @@ async function updateEmotePack(
       ? "PUBLISHED"
       : "DRAFT"
     : ((body.lifecycleState as LifecycleState | undefined) ?? current.lifecycleState);
-  const isEnabled = legacyStatus
+  let isEnabled = legacyStatus
     ? legacyStatus === "ACTIVE"
     : ((body.isEnabled as boolean | undefined) ?? Number(current.isEnabled) === 1);
   const isGlobal = body.isGlobal === undefined ? Number(current.isGlobal) === 1 : body.isGlobal;
+
+  if (
+    (current.lifecycleState === "ARCHIVED" && lifecycleState === "PUBLISHED") ||
+    (lifecycleState === "ARCHIVED" && body.isEnabled === true)
+  ) {
+    return failure(
+      "PACK_ARCHIVED",
+      "Restore this pack to draft before publishing or enabling it.",
+      requestId,
+      409,
+    );
+  }
+  if (lifecycleState === "ARCHIVED") isEnabled = false;
 
   if (lifecycleState === "PUBLISHED") {
     const usable = await env.DB.prepare(
@@ -982,14 +995,44 @@ async function updateEmote(
     body.lifecycleState === undefined ? current.lifecycleState : body.lifecycleState;
   if (!isLifecycle(lifecycleState))
     return failure("INVALID_LIFECYCLE", "Lifecycle state is invalid.", requestId, 400);
-  const isEnabled = body.isEnabled === undefined ? Number(current.isEnabled) === 1 : body.isEnabled;
+  const currentEnabled = Number(current.isEnabled) === 1;
+  let isEnabled = body.isEnabled === undefined ? currentEnabled : body.isEnabled;
   if (typeof isEnabled !== "boolean")
     return failure("INVALID_ENABLEMENT", "isEnabled must be boolean.", requestId, 400);
+  if (
+    (current.lifecycleState === "ARCHIVED" && lifecycleState === "PUBLISHED") ||
+    (lifecycleState === "ARCHIVED" && body.isEnabled === true)
+  ) {
+    return failure(
+      "EMOTE_ARCHIVED",
+      "Restore this emote to draft before publishing or enabling it.",
+      requestId,
+      409,
+    );
+  }
+  if (
+    body.isEnabled === true &&
+    (current.moderationState === "HIDDEN" || current.moderationState === "REMOVED")
+  ) {
+    return failure(
+      "EMOTE_MODERATION_BLOCKED",
+      "Hidden or removed emotes cannot be enabled until moderation permits it.",
+      requestId,
+      409,
+    );
+  }
+  if (
+    lifecycleState === "ARCHIVED" ||
+    current.moderationState === "HIDDEN" ||
+    current.moderationState === "REMOVED"
+  ) {
+    isEnabled = false;
+  }
   if (body.lifecycleState !== undefined) {
     updates.push("lifecycle_state = ?");
     binds.push(lifecycleState);
   }
-  if (body.isEnabled !== undefined) {
+  if (body.isEnabled !== undefined || isEnabled !== currentEnabled) {
     updates.push("is_enabled = ?");
     binds.push(isEnabled ? 1 : 0);
   }

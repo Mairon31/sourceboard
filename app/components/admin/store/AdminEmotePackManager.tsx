@@ -256,7 +256,11 @@ function EmoteEditor({
               <span>Lifecycle</span>
               <select
                 value={lifecycleState}
-                onChange={(event) => setLifecycleState(event.target.value as StoreLifecycleState)}
+                onChange={(event) => {
+                  const next = event.target.value as StoreLifecycleState;
+                  setLifecycleState(next);
+                  if (next === "ARCHIVED") setEnabled(false);
+                }}
               >
                 <option value="DRAFT">Draft</option>
                 <option value="PUBLISHED">Published</option>
@@ -267,9 +271,12 @@ function EmoteEditor({
               <input
                 type="checkbox"
                 checked={enabled}
+                disabled={lifecycleState === "ARCHIVED"}
                 onChange={(event) => setEnabled(event.target.checked)}
               />
-              <span>Enabled</span>
+              <span>
+                {lifecycleState === "ARCHIVED" ? "Archived emotes stay disabled" : "Enabled"}
+              </span>
             </label>
             <div className="admin-store-inline-actions">
               <Button type="button" size="sm" loading={disabled} onClick={() => void save()}>
@@ -634,6 +641,32 @@ export function AdminEmotePackManager({
     }
   }
 
+  async function updateStoreOffering(action: "FEATURE" | "UNFEATURE", successMessage: string) {
+    if (!detail?.storeItemId) return;
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/admin/store/${encodeURIComponent(detail.storeItemId)}/actions`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+          body: JSON.stringify({ action }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus(errorMessage(payload, "Could not update this Store offering."));
+        return;
+      }
+      onStatus(successMessage);
+      await Promise.all([onRefreshPacks(), loadDetail()]);
+    } catch {
+      onStatus("Could not update this Store offering. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function archiveStoreOffering() {
     if (!detail?.storeItemId || archiveReason.trim().length < 3) return;
     setBusy(true);
@@ -757,6 +790,14 @@ export function AdminEmotePackManager({
                 </span>
                 <span className="admin-store-pack-list__meta">
                   <Badge tone={lifecycleTone(pack.lifecycleState)}>{pack.lifecycleState}</Badge>
+                  <Badge tone={truthy(pack.isEnabled) ? "success" : "neutral"}>
+                    {truthy(pack.isEnabled) ? "Enabled" : "Disabled"}
+                  </Badge>
+                  <small>
+                    {pack.storeLifecycleState
+                      ? `Store ${pack.storeLifecycleState}`
+                      : "No Store offering"}
+                  </small>
                   <small>{pack.emoteCount} emotes</small>
                 </span>
               </button>
@@ -913,23 +954,32 @@ export function AdminEmotePackManager({
                       loading={busy}
                       onClick={() =>
                         void patchPack(
-                          {
-                            lifecycleState:
-                              detail.lifecycleState === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
-                          },
-                          detail.lifecycleState === "PUBLISHED"
-                            ? "Pack unpublished."
-                            : "Pack published.",
+                          detail.lifecycleState === "ARCHIVED"
+                            ? { lifecycleState: "DRAFT", isEnabled: false }
+                            : {
+                                lifecycleState:
+                                  detail.lifecycleState === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
+                              },
+                          detail.lifecycleState === "ARCHIVED"
+                            ? "Pack restored to draft."
+                            : detail.lifecycleState === "PUBLISHED"
+                              ? "Pack unpublished."
+                              : "Pack published.",
                         )
                       }
                     >
-                      {detail.lifecycleState === "PUBLISHED" ? "Unpublish" : "Publish"}
+                      {detail.lifecycleState === "ARCHIVED"
+                        ? "Restore pack to draft"
+                        : detail.lifecycleState === "PUBLISHED"
+                          ? "Unpublish"
+                          : "Publish"}
                     </Button>
                     <Button
                       type="button"
                       size="sm"
                       variant="secondary"
                       loading={busy}
+                      disabled={detail.lifecycleState === "ARCHIVED"}
                       onClick={() =>
                         void patchPack(
                           { isEnabled: !truthy(detail.isEnabled) },
@@ -937,7 +987,11 @@ export function AdminEmotePackManager({
                         )
                       }
                     >
-                      {truthy(detail.isEnabled) ? "Disable" : "Enable"}
+                      {detail.lifecycleState === "ARCHIVED"
+                        ? "Archived"
+                        : truthy(detail.isEnabled)
+                          ? "Disable"
+                          : "Enable"}
                     </Button>
                     <Button
                       type="button"
@@ -949,14 +1003,42 @@ export function AdminEmotePackManager({
                       Duplicate
                     </Button>
                     {detail.storeItemId ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setArchiving(true)}
-                      >
-                        Archive Store offering
-                      </Button>
+                      <>
+                        {detail.storeLifecycleState === "ARCHIVED" ? (
+                          <Button type="button" size="sm" variant="secondary" disabled>
+                            Store archived
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            loading={busy}
+                            onClick={() =>
+                              void updateStoreOffering(
+                                truthy(detail.isFeatured) ? "UNFEATURE" : "FEATURE",
+                                truthy(detail.isFeatured)
+                                  ? "Store offering unfeatured."
+                                  : "Store offering featured.",
+                              )
+                            }
+                          >
+                            {truthy(detail.isFeatured)
+                              ? "Unfeature Store offering"
+                              : "Feature Store offering"}
+                          </Button>
+                        )}
+                        {detail.storeLifecycleState !== "ARCHIVED" ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setArchiving(true)}
+                          >
+                            Archive Store offering
+                          </Button>
+                        ) : null}
+                      </>
                     ) : null}
                   </div>
                 ) : null}

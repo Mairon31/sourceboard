@@ -74,9 +74,10 @@ describe("store catalog lifecycle", () => {
   });
 
   it("structures the public Store into Featured New Owned and catalog sections", () => {
-    expect(storeRoute).toContain("featuredItems");
-    expect(storeRoute).toContain("newItems");
-    expect(storeRoute).toContain("ownedItems");
+    expect(storeRoute).toContain("partitionStoreItems");
+    expect(storeRoute).toContain("sections.featured");
+    expect(storeRoute).toContain("sections.newest");
+    expect(storeRoute).toContain("sections.owned");
     expect(storeSection).toContain("product-store-section");
     expect(storeCard).toContain("StorePreview");
   });
