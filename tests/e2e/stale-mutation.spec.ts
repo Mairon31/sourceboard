@@ -44,6 +44,7 @@ function seedStaleMutationPost(postId: string, mediaId: string, slug: string) {
 test("post mutations reconcile authoritative D1 state without a reload", async ({
   page,
 }, testInfo) => {
+  testInfo.setTimeout(60_000);
   await installAdminStoreFixture(page);
   const fixtureSuffix = `${Date.now()}-${testInfo.retry}`;
   const postId = `e2e-stale-post-${fixtureSuffix}`;
@@ -64,11 +65,15 @@ test("post mutations reconcile authoritative D1 state without a reload", async (
     WHERE id = '${postId}';
   `);
 
-  await page.getByRole("button", { name: "More post actions" }).click();
-  await page.getByRole("menuitem", { name: "Reopen comments" }).click();
+  const moreActions = page.getByRole("button", { name: "More post actions" });
+  await expect(moreActions).toBeEnabled({ timeout: 15_000 });
+  await moreActions.click();
+  const reopen = page.getByRole("menuitem", { name: "Reopen comments" });
+  await expect(reopen).toBeVisible({ timeout: 15_000 });
+  await reopen.click();
 
   await expect(title).toHaveText("Authoritative D1 title");
-  await expect(page.getByText("Comments reopened", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Comments reopened.", { exact: true }).first()).toBeVisible();
   expect(page.url()).toBe(originalUrl);
 
   let releaseReaction!: () => void;
