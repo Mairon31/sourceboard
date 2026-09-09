@@ -7,7 +7,7 @@ import { createPostService } from "../../worker/posts/service";
 import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
 import { loadAdminAccess } from "../data/admin-access";
-import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
 import { ProfileActivity } from "../components/product/ProfileActivity";
 import { ProfileEditor } from "../components/product/ProfileEditor";
@@ -21,7 +21,7 @@ interface LoaderArgs extends ServerLoaderArgs {
 
 export async function loader({ params, request, context }: LoaderArgs) {
   const [profileResult, adminAccess] = await Promise.all([
-    withServerSession(
+    withOptionalServerSession(
       request,
       context,
       (unavailable) => ({ profile: null, activityPosts: [], unavailable }),
