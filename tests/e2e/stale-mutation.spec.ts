@@ -41,60 +41,63 @@ function seedStaleMutationPost(postId: string, mediaId: string, slug: string) {
   `);
 }
 
-test("post mutations reconcile authoritative D1 state without a reload", async ({ page }, testInfo) => {
-  await installAdminStoreFixture(page);
-  const fixtureSuffix = `${Date.now()}-${testInfo.retry}`;
-  const postId = `e2e-stale-post-${fixtureSuffix}`;
-  const mediaId = `e2e-stale-media-${fixtureSuffix}`;
-  const slug = `e2e-stale-${fixtureSuffix}`;
-  seedStaleMutationPost(postId, mediaId, slug);
+test(
+  "post mutations reconcile authoritative D1 state without a reload",
+  async ({ page }, testInfo) => {
+    await installAdminStoreFixture(page);
+    const fixtureSuffix = `${Date.now()}-${testInfo.retry}`;
+    const postId = `e2e-stale-post-${fixtureSuffix}`;
+    const mediaId = `e2e-stale-media-${fixtureSuffix}`;
+    const slug = `e2e-stale-${fixtureSuffix}`;
+    seedStaleMutationPost(postId, mediaId, slug);
 
-  const response = await page.goto(`/posts/${postId}/${slug}`);
-  expect(response?.status()).toBeLessThan(400);
-  await waitForUiReady(page);
+    const response = await page.goto(`/posts/${postId}/${slug}`);
+    expect(response?.status()).toBeLessThan(400);
+    await waitForUiReady(page);
 
-  const title = page.locator(".product-post__title");
-  await expect(title).toHaveText("E2E stale title");
-  const originalUrl = page.url();
+    const title = page.locator(".product-post__title");
+    await expect(title).toHaveText("E2E stale title");
+    const originalUrl = page.url();
 
-  executeLocalSql(`
-    UPDATE posts
-    SET title = 'Authoritative D1 title', updated_at = ${Date.now()}
-    WHERE id = '${postId}';
-  `);
+    executeLocalSql(`
+      UPDATE posts
+      SET title = 'Authoritative D1 title', updated_at = ${Date.now()}
+      WHERE id = '${postId}';
+    `);
 
-  await page.getByRole("button", { name: "More post actions" }).click();
-  await page.getByRole("menuitem", { name: "Close comments" }).click();
+    await page.getByRole("button", { name: "More post actions" }).click();
+    await page.getByRole("menuitem", { name: "Close comments" }).click();
 
-  await expect(title).toHaveText("Authoritative D1 title");
-  await expect(page.getByText("Comments closed", { exact: true }).first()).toBeVisible();
-  expect(page.url()).toBe(originalUrl);
+    await expect(title).toHaveText("Authoritative D1 title");
+    await expect(page.getByText("Comments closed", { exact: true }).first()).toBeVisible();
+    expect(page.url()).toBe(originalUrl);
 
-  let releaseReaction!: () => void;
-  const reactionRelease = new Promise<void>((resolveRelease) => {
-    releaseReaction = resolveRelease;
-  });
-  let reactionRequests = 0;
-  await page.route(`**/api/reactions/POST/${postId}`, async (route) => {
-    reactionRequests += 1;
-    await reactionRelease;
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ liked: true }),
+    let releaseReaction!: () => void;
+    const reactionRelease = new Promise<void>((resolveRelease) => {
+      releaseReaction = resolveRelease;
     });
-  });
+    let reactionRequests = 0;
+    await page.route(`**/api/reactions/POST/${postId}`, async (route) => {
+      reactionRequests += 1;
+      await reactionRelease;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ liked: true }),
+      });
+    });
 
-  const likeButton = page.locator(".product-post__actions button[aria-pressed]");
-  await expect(likeButton).toHaveAttribute("aria-label", "Like post");
-  await likeButton.click();
-  await expect(likeButton).toBeDisabled();
-  await expect(likeButton).toHaveAttribute("aria-label", "Unlike post");
-  await likeButton.dispatchEvent("click");
-  await expect.poll(() => reactionRequests).toBe(1);
+    const likeButton = page.locator(".product-post__actions button[aria-pressed]");
+    await expect(likeButton).toHaveAttribute("aria-label", "Like post");
+    await likeButton.click();
+    await expect(likeButton).toBeDisabled();
+    await expect(likeButton).toHaveAttribute("aria-label", "Unlike post");
+    await likeButton.dispatchEvent("click");
+    await expect.poll(() => reactionRequests).toBe(1);
 
-  releaseReaction();
-  await expect(likeButton).toBeEnabled();
-  await expect(likeButton).toHaveAttribute("aria-label", "Unlike post");
-  expect(reactionRequests).toBe(1);
-});
+    releaseReaction();
+    await expect(likeButton).toBeEnabled();
+    await expect(likeButton).toHaveAttribute("aria-label", "Unlike post");
+    expect(reactionRequests).toBe(1);
+  },
+);
