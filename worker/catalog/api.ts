@@ -22,6 +22,86 @@ const CAPABILITIES: Record<CatalogKind, Capability> = {
 const EMOTE_PACK_ROUTE = "/api/admin/catalog/emote-packs";
 const LIFECYCLE_STATES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
 
+export function isEmoteBecomingPubliclyUsable(
+  current: { lifecycleState: LifecycleState; isEnabled: boolean },
+  next: { lifecycleState: LifecycleState; isEnabled: boolean },
+): boolean {
+  const currentUsable = current.lifecycleState === "PUBLISHED" && current.isEnabled;
+  const nextUsable = next.lifecycleState === "PUBLISHED" && next.isEnabled;
+  return !currentUsable && nextUsable;
+}
+
+export function isParentPackEligible(input: {
+  packId: string | null;
+  lifecycleState: LifecycleState | null;
+  isEnabled: boolean | null;
+}): boolean {
+  return (
+    input.packId === null || (input.lifecycleState === "PUBLISHED" && input.isEnabled === true)
+  );
+}
+
+export function resolveEmoteModerationTransition(
+  input: {
+    moderationState: ModerationState;
+    lifecycleState: LifecycleState;
+    isEnabled: boolean;
+  },
+  action: ModerationAction,
+): { moderationState: ModerationState; isEnabled: boolean } {
+  const { moderationState, lifecycleState } = input;
+
+  if (moderationState === "REMOVED" && action !== "RESTORE") {
+    throw new CatalogOperationError(
+      409,
+      "EMOTE_REMOVED",
+      "Removed emotes must be restored before other moderation actions.",
+    );
+  }
+
+  if (action === "FLAG") {
+    if (moderationState !== "CLEAR") {
+      throw new CatalogOperationError(
+        409,
+        "INVALID_MODERATION_TRANSITION",
+        "Only clear emotes can be flagged.",
+      );
+    }
+    return { moderationState: "FLAGGED", isEnabled: input.isEnabled };
+  }
+
+  if (action === "HIDE") {
+    if (moderationState !== "CLEAR" && moderationState !== "FLAGGED") {
+      throw new CatalogOperationError(
+        409,
+        "INVALID_MODERATION_TRANSITION",
+        "That emote cannot be hidden.",
+      );
+    }
+    return { moderationState: "HIDDEN", isEnabled: false };
+  }
+
+  if (action === "RESTORE") {
+    if (
+      moderationState !== "FLAGGED" &&
+      moderationState !== "HIDDEN" &&
+      moderationState !== "REMOVED"
+    ) {
+      throw new CatalogOperationError(
+        409,
+        "INVALID_MODERATION_TRANSITION",
+        "That emote does not need restoration.",
+      );
+    }
+    return {
+      moderationState: "CLEAR",
+      isEnabled: moderationState === "REMOVED" ? false : lifecycleState !== "ARCHIVED",
+    };
+  }
+
+  return { moderationState: "REMOVED", isEnabled: false };
+}
+
 class CatalogOperationError extends Error {
   constructor(
     readonly status: number,
@@ -1010,8 +1090,12 @@ async function updateEmote(
       409,
     );
   }
+  const becomesPubliclyUsable = isEmoteBecomingPubliclyUsable(
+    { lifecycleState: current.lifecycleState, isEnabled: currentEnabled },
+    { lifecycleState, isEnabled },
+  );
   if (
-    body.isEnabled === true &&
+    (body.isEnabled === true || becomesPubliclyUsable) &&
     (current.moderationState === "HIDDEN" || current.moderationState === "REMOVED")
   ) {
     return failure(
@@ -1156,50 +1240,16 @@ async function moderateEmote(
       isEnabled: number;
     }>();
   if (!current) return failure("NOT_FOUND", "Emote not found.", requestId, 404);
-  if (current.moderationState === "REMOVED") {
-    return failure(
-      "EMOTE_REMOVED",
-      "Removed emotes cannot be restored by the ordinary flow.",
-      requestId,
-      409,
-    );
-  }
-
-  let next: ModerationState = current.moderationState;
-  let enabled = Number(current.isEnabled) === 1;
-  if (action === "FLAG") {
-    if (current.moderationState !== "CLEAR")
-      return failure(
-        "INVALID_MODERATION_TRANSITION",
-        "Only clear emotes can be flagged.",
-        requestId,
-        409,
-      );
-    next = "FLAGGED";
-  } else if (action === "HIDE") {
-    if (current.moderationState !== "CLEAR" && current.moderationState !== "FLAGGED")
-      return failure(
-        "INVALID_MODERATION_TRANSITION",
-        "That emote cannot be hidden.",
-        requestId,
-        409,
-      );
-    next = "HIDDEN";
-    enabled = false;
-  } else if (action === "RESTORE") {
-    if (current.moderationState !== "FLAGGED" && current.moderationState !== "HIDDEN")
-      return failure(
-        "INVALID_MODERATION_TRANSITION",
-        "That emote does not need restoration.",
-        requestId,
-        409,
-      );
-    next = "CLEAR";
-    enabled = current.lifecycleState !== "ARCHIVED";
-  } else if (action === "REMOVE") {
-    next = "REMOVED";
-    enabled = false;
-  }
+  const transition = resolveEmoteModerationTransition(
+    {
+      moderationState: current.moderationState,
+      lifecycleState: current.lifecycleState,
+      isEnabled: Number(current.isEnabled) === 1,
+    },
+    action,
+  );
+  const next = transition.moderationState;
+  const enabled = transition.isEnabled;
   const legacyActive =
     current.lifecycleState === "PUBLISHED" && enabled && next !== "HIDDEN" && next !== "REMOVED";
   await env.DB.prepare(
@@ -1311,9 +1361,11 @@ async function handlePublicAsset(
       if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
       if (row.moderationState === "HIDDEN" || row.moderationState === "REMOVED")
         return blockedEmoteResponse(requestId);
-      const packAvailable =
-        row.packId === null ||
-        (row.packLifecycleState === "PUBLISHED" && Number(row.packEnabled) === 1);
+      const packAvailable = isParentPackEligible({
+        packId: row.packId,
+        lifecycleState: row.packLifecycleState,
+        isEnabled: row.packEnabled === null ? null : Number(row.packEnabled) === 1,
+      });
       if (row.lifecycleState !== "PUBLISHED" || Number(row.isEnabled) !== 1 || !packAvailable)
         return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
       assetKey = row.assetKey;

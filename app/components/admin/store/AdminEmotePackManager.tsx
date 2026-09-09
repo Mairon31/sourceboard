@@ -387,7 +387,9 @@ function EmoteEditor({
                     Hide
                   </button>
                 ) : null}
-                {emote.moderationState === "FLAGGED" || emote.moderationState === "HIDDEN" ? (
+                {emote.moderationState === "FLAGGED" ||
+                emote.moderationState === "HIDDEN" ||
+                emote.moderationState === "REMOVED" ? (
                   <button type="button" onClick={() => setModerationAction("RESTORE")}>
                     Restore
                   </button>
@@ -400,9 +402,7 @@ function EmoteEditor({
                   >
                     Remove
                   </button>
-                ) : (
-                  <span className="admin-store-terminal-state">Removed is terminal</span>
-                )}
+                ) : null}
               </div>
             </details>
           </div>
