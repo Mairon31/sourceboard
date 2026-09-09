@@ -21,6 +21,7 @@ const storeCard = read("../../app/components/product/StoreItemCard.tsx");
 const adminStoreRoute = read("../../app/routes/admin-store.tsx");
 const adminCosmetics = read("../../app/components/admin/store/AdminCosmeticCatalog.tsx");
 const adminPacks = read("../../app/components/admin/store/AdminEmotePackManager.tsx");
+const adminTypes = read("../../app/components/admin/store/types.ts");
 const adminEditor = read("../../app/components/admin/store/AdminStoreEditor.tsx");
 
 describe("store catalog lifecycle", () => {
@@ -113,6 +114,15 @@ describe("store catalog lifecycle", () => {
     expect(adminPacks).toContain("moderationState");
     expect(adminPacks).toContain("toggleEmoteEnabled");
     expect(adminPacks).toContain("isEnabled: !truthy(emote.isEnabled)");
+  });
+
+  it("shows decision-useful pack summaries before an admin opens a pack", () => {
+    expect(adminTypes).toContain("previewEmoteId");
+    expect(catalogApi).toContain("AS previewEmoteId");
+    expect(adminPacks).toContain("pack.previewEmoteId");
+    expect(adminPacks).toContain("pack.description");
+    expect(adminPacks).toContain("pack.pricePoints");
+    expect(adminPacks).toContain("Store visibility");
   });
 
   it("keeps archived catalog state server-enforced and exposes pack Store controls", () => {
