@@ -14,6 +14,23 @@ describe("Phase 5 comment rich text", () => {
     ).toMatchObject({ plaintext: "Found it sourcesource https://example.com/source" });
   });
 
+  it("preserves canonical colon-delimited emote shortcodes across normalization and legacy reads", () => {
+    const normalized = normalizeCommentBody({ markdown: "Hello :wave: and :party_cat:" });
+
+    expect(normalized.richtext).toEqual([
+      { type: "text", text: "Hello " },
+      { type: "emote", shortcode: ":wave:" },
+      { type: "text", text: " and " },
+      { type: "emote", shortcode: ":party_cat:" },
+    ]);
+    expect(normalized.plaintext).toBe("Hello :wave: and :party_cat:");
+
+    expect(
+      parseStoredCommentBody(JSON.stringify([{ type: "emote", shortcode: "wave" }]), null)
+        .richtext,
+    ).toEqual([{ type: "emote", shortcode: ":wave:" }]);
+  });
+
   it("reconstructs Markdown marks for legacy comments stored as plain text nodes", () => {
     const body = parseStoredCommentBody(
       JSON.stringify([
