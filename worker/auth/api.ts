@@ -58,6 +58,7 @@ const roleChangeSchema = z.object({
 });
 
 type InputRecord = Record<string, unknown>;
+type InputRequest = Pick<Request, "headers" | "json" | "formData" | "text">;
 
 const PUBLIC_AUTH_MUTATIONS = new Set([
   "POST /api/auth/register",
@@ -87,7 +88,7 @@ function firebasePublicConfig(env: SourceBoardEnvironment) {
   };
 }
 
-async function parseInput(request: Request): Promise<InputRecord> {
+async function parseInput(request: InputRequest): Promise<InputRecord> {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     const value: unknown = await request.json();
