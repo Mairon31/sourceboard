@@ -784,21 +784,45 @@ export function AdminEmotePackManager({
                 className={`admin-store-pack-list__item${active ? " admin-store-pack-list__item--active" : ""}`}
                 onClick={() => onSelectPack(pack.id)}
               >
-                <span>
-                  <strong>{pack.label}</strong>
-                  <small>{pack.slug}</small>
+                <span className="admin-store-pack-list__preview" aria-hidden="true">
+                  {pack.previewEmoteId ? (
+                    <img
+                      src={`/api/admin/catalog/emotes/${encodeURIComponent(pack.previewEmoteId)}/media`}
+                      alt=""
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span>No preview</span>
+                  )}
                 </span>
-                <span className="admin-store-pack-list__meta">
-                  <Badge tone={lifecycleTone(pack.lifecycleState)}>{pack.lifecycleState}</Badge>
-                  <Badge tone={truthy(pack.isEnabled) ? "success" : "neutral"}>
-                    {truthy(pack.isEnabled) ? "Enabled" : "Disabled"}
-                  </Badge>
-                  <small>
-                    {pack.storeLifecycleState
-                      ? `Store ${pack.storeLifecycleState}`
-                      : "No Store offering"}
+                <span className="admin-store-pack-list__summary">
+                  <span className="admin-store-pack-list__title">
+                    <strong>{pack.label}</strong>
+                    <small>{pack.slug}</small>
+                  </span>
+                  <small className="admin-store-pack-list__description">
+                    {pack.description || "No description."}
                   </small>
-                  <small>{pack.emoteCount} emotes</small>
+                  <span className="admin-store-pack-list__meta">
+                    <Badge tone={lifecycleTone(pack.lifecycleState)}>{pack.lifecycleState}</Badge>
+                    <Badge tone={truthy(pack.isEnabled) ? "success" : "neutral"}>
+                      {truthy(pack.isEnabled) ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </span>
+                  <span className="admin-store-pack-list__facts">
+                    <small>
+                      {pack.pricePoints === 0 ? "Free" : `${pack.pricePoints ?? 0} pts`}
+                    </small>
+                    <small>
+                      Store visibility: {pack.storeLifecycleState ?? "No offering"}
+                      {pack.storeLifecycleState
+                        ? truthy(pack.storeEnabled)
+                          ? " / enabled"
+                          : " / disabled"
+                        : ""}
+                    </small>
+                    <small>{pack.emoteCount} emotes</small>
+                  </span>
                 </span>
               </button>
             );

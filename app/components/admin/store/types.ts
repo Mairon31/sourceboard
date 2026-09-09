@@ -54,6 +54,7 @@ export interface EmotePackSummary {
   storeLifecycleState: StoreLifecycleState | null;
   storeEnabled: boolean | number | null;
   isFeatured: boolean | number | null;
+  previewEmoteId: string | null;
   emoteCount: number;
 }
 

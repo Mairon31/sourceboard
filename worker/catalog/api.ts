@@ -272,7 +272,9 @@ async function legacyListEmotePacks(
       `SELECT p.id, p.slug, p.label, p.status, CASE WHEN p.status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
             CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, 0 AS isGlobal, p.created_at AS createdAt, p.created_at AS updatedAt, s.id AS storeItemId,
             s.description, s.price_points AS pricePoints, CASE WHEN s.is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS storeLifecycleState,
-            s.is_active AS storeEnabled, 0 AS isFeatured, s.is_active AS isActive, COUNT(e.id) AS emoteCount
+            s.is_active AS storeEnabled, 0 AS isFeatured, s.is_active AS isActive,
+            (SELECT preview.id FROM emote_catalog preview WHERE preview.pack_id = p.id ORDER BY preview.sort_order ASC, preview.created_at ASC LIMIT 1) AS previewEmoteId,
+            COUNT(e.id) AS emoteCount
      FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
      LEFT JOIN emote_catalog e ON e.pack_id = p.id GROUP BY p.id, p.slug, p.label, p.status, p.created_at, s.id, s.description, s.price_points, s.is_active
      ORDER BY p.created_at DESC LIMIT 200`,
@@ -476,7 +478,9 @@ async function listEmotePacks(env: SourceBoardEnvironment, requestId: string): P
     const rows = await env.DB.prepare(
       `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.is_global AS isGlobal, p.created_at AS createdAt, p.updated_at AS updatedAt,
               s.id AS storeItemId, s.description, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState, s.is_enabled AS storeEnabled,
-              s.is_featured AS isFeatured, s.is_active AS isActive, COUNT(e.id) AS emoteCount
+              s.is_featured AS isFeatured, s.is_active AS isActive,
+              (SELECT preview.id FROM emote_catalog preview WHERE preview.pack_id = p.id ORDER BY preview.sort_order ASC, preview.created_at ASC LIMIT 1) AS previewEmoteId,
+              COUNT(e.id) AS emoteCount
        FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
        LEFT JOIN emote_catalog e ON e.pack_id = p.id GROUP BY p.id, p.slug, p.label, p.status, p.lifecycle_state, p.is_enabled, p.is_global, p.created_at, p.updated_at,
                 s.id, s.description, s.price_points, s.lifecycle_state, s.is_enabled, s.is_featured, s.is_active ORDER BY p.created_at DESC LIMIT 200`,
