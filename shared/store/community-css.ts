@@ -199,17 +199,57 @@ function validateTransform(value: string): void {
     invalid("Only bounded translate, scale and rotate transforms are allowed.");
 }
 
+function validateFilterAmount(raw: string, label: string): void {
+  const value = raw.trim();
+  const percent = value.match(/^([+-]?(?:\d+(?:\.\d+)?|\.\d+))%$/);
+  const amount = percent
+    ? Number(percent[1]) / 100
+    : CSS_NUMBER.test(value)
+      ? Number(value)
+      : Number.NaN;
+  if (!Number.isFinite(amount) || amount < 0 || amount > 2)
+    invalid(`${label} must stay between 0 and 200%.`);
+}
+
+function validateBlurFilterArg(raw: string): void {
+  const value = raw.trim();
+  if (/^[+-]?0(?:\.0+)?$/.test(value)) return;
+  const match = value.match(CSS_PIXEL);
+  const amount = match ? Number(match[1]) : Number.NaN;
+  if (!Number.isFinite(amount) || amount < 0 || amount > 12)
+    invalid("Blur must stay between 0 and 12px.");
+}
+
+function validateHueFilterArg(raw: string): void {
+  const value = raw.trim();
+  if (/^[+-]?0(?:\.0+)?$/.test(value)) return;
+  const match = value.match(CSS_DEGREE);
+  if (!match || Math.abs(Number(match[1])) > 360)
+    invalid("Hue rotation must stay within 360deg.");
+}
+
 function validateFilter(value: string): void {
   if (/drop-shadow|url\s*\(/i.test(value)) invalid("That filter is not allowed.");
-  if (
-    !/^(?:\s*(?:blur\([^)]*\)|brightness\([^)]*\)|saturate\([^)]*\)|contrast\([^)]*\)|hue-rotate\([^)]*\))\s*)+$/i.test(
-      value,
-    )
-  )
-    invalid("Only bounded blur/color filters are allowed.");
-  for (const match of value.matchAll(/blur\(\s*(\d+(?:\.\d+)?)px\s*\)/gi)) {
-    if (Number(match[1]) > 12) invalid("Blur must be 12px or smaller.");
+  if (/\b(?:calc|min|max|clamp)\s*\(/i.test(value))
+    invalid("Filter math functions are not allowed.");
+
+  const pattern = /(blur|brightness|saturate|contrast|hue-rotate)\(([^()]*)\)/gi;
+  let cursor = 0;
+  let matched = false;
+  for (const match of value.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    if (value.slice(cursor, index).trim()) invalid("Only bounded color filters are allowed.");
+    matched = true;
+    const name = (match[1] ?? "").toLowerCase();
+    const raw = (match[2] ?? "").trim();
+    if (!raw || raw.includes(",") || /\s/.test(raw))
+      invalid(`${name}() accepts exactly one bounded value.`);
+    if (name === "blur") validateBlurFilterArg(raw);
+    else if (name === "hue-rotate") validateHueFilterArg(raw);
+    else validateFilterAmount(raw, name);
+    cursor = index + match[0].length;
   }
+  if (!matched || value.slice(cursor).trim()) invalid("Only bounded color filters are allowed.");
 }
 
 function durationMs(value: string): number[] {
