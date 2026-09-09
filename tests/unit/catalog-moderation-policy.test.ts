@@ -9,7 +9,10 @@ type ResolveModerationTransition = (
     isEnabled: boolean;
   },
   action: "FLAG" | "HIDE" | "RESTORE" | "REMOVE",
-) => { moderationState: "CLEAR" | "FLAGGED" | "HIDDEN" | "REMOVED"; isEnabled: boolean };
+) => {
+  moderationState: "CLEAR" | "FLAGGED" | "HIDDEN" | "REMOVED";
+  isEnabled: boolean;
+};
 
 type IsEmoteBecomingPubliclyUsable = (
   current: { lifecycleState: "DRAFT" | "PUBLISHED" | "ARCHIVED"; isEnabled: boolean },
@@ -61,9 +64,9 @@ describe("catalog emote moderation policy", () => {
 
   it("requires published enabled parent packs while allowing ungrouped emotes", () => {
     expect(policy.isParentPackEligible).toBeTypeOf("function");
-    expect(policy.isParentPackEligible!({ packId: null, lifecycleState: null, isEnabled: null })).toBe(
-      true,
-    );
+    expect(
+      policy.isParentPackEligible!({ packId: null, lifecycleState: null, isEnabled: null }),
+    ).toBe(true);
     expect(
       policy.isParentPackEligible!({
         packId: "pack-1",
