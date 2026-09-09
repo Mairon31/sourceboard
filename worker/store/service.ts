@@ -168,7 +168,10 @@ export function createStoreService(db: D1Database) {
               ? await listEmotePreviewAssets(db, packId)
               : await db
                   .prepare(
-                    `SELECT id, label, asset_key AS assetKey FROM sticker_catalog WHERE pack_id = ? AND status = 'ACTIVE' ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+                    `SELECT id, label, asset_key AS assetKey FROM sticker_catalog
+                     WHERE pack_id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1
+                       AND moderation_state NOT IN ('HIDDEN', 'REMOVED')
+                     ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
                   )
                   .bind(packId)
                   .all<StorePreviewAsset>();

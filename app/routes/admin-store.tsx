@@ -7,6 +7,7 @@ import { AdminCommunityCosmeticReviews } from "../components/admin/store/AdminCo
 import { AdminCosmeticCatalog } from "../components/admin/store/AdminCosmeticCatalog";
 import { AdminEmotePackManager } from "../components/admin/store/AdminEmotePackManager";
 import { AdminPackStoreCatalog } from "../components/admin/store/AdminPackStoreCatalog";
+import { AdminStickerPackManager } from "../components/admin/store/AdminStickerPackManager";
 import type { AdminStoreItem, EmotePackSummary } from "../components/admin/store/types";
 import { Button, Card, Input, Textarea } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
@@ -24,6 +25,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
       storeManage: false,
       emoteManage: false,
       catalogModerate: false,
+      stickerManage: false,
     }),
     async (runtime, userId) => {
       if (!userId) {
@@ -33,16 +35,19 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           storeManage: false,
           emoteManage: false,
           catalogModerate: false,
+          stickerManage: false,
         };
       }
       const authorization = await createD1AuthStore(runtime.db).getAuthorization(userId);
       const storeManage = hasCapability(authorization, "store.manage");
       const emoteManage = hasCapability(authorization, "emote.manage");
+      const stickerManage = hasCapability(authorization, "sticker.manage");
       return {
-        authorized: storeManage || emoteManage,
+        authorized: storeManage || emoteManage || stickerManage,
         unavailable: false,
         storeManage,
         emoteManage,
+        stickerManage,
         catalogModerate: hasCapability(authorization, "catalog.moderate"),
       };
     },
@@ -245,16 +250,18 @@ export default function AdminStoreRoute() {
             >
               Community review
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "STICKER_PACKS"}
-              className={mode === "STICKER_PACKS" ? "admin-store-mode-tab--active" : undefined}
-              onClick={() => setMode("STICKER_PACKS")}
-            >
-              Sticker packs
-            </button>
           </>
+        ) : null}
+        {access.stickerManage || access.storeManage ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "STICKER_PACKS"}
+            className={mode === "STICKER_PACKS" ? "admin-store-mode-tab--active" : undefined}
+            onClick={() => setMode("STICKER_PACKS")}
+          >
+            Sticker packs
+          </button>
         ) : null}
         {access.emoteManage ? (
           <button
@@ -324,15 +331,8 @@ export default function AdminStoreRoute() {
         <AdminCommunityCosmeticReviews onStatus={setStatus} onCatalogRefresh={loadStoreCatalog} />
       ) : null}
 
-      {!loading && mode === "STICKER_PACKS" && access.storeManage ? (
-        <AdminPackStoreCatalog
-          items={items}
-          type="STICKER_PACK"
-          title="Sticker packs"
-          description="Manage sticker pack pricing, publication, lifecycle and availability separately from cosmetics and emotes."
-          onRefresh={loadStoreCatalog}
-          onStatus={setStatus}
-        />
+      {!loading && mode === "STICKER_PACKS" && (access.stickerManage || access.storeManage) ? (
+        <AdminStickerPackManager onStatus={setStatus} />
       ) : null}
 
       {!loading && mode === "EMOTE_PACKS" && access.emoteManage ? (

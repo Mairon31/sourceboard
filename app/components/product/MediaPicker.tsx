@@ -27,7 +27,24 @@ interface EmotePack {
   emotes: EmotePickerItem[];
 }
 
-export type MediaPickerSelection = KlipyMediaItem | EmotePickerItem;
+export interface SourceBoardStickerItem {
+  id: string;
+  label: string;
+  url: string;
+  preview: string;
+  type: "STICKER";
+  provider: "sourceboard";
+  packId: string;
+  isAnimated: boolean;
+}
+
+interface StickerPack {
+  id: string;
+  label: string;
+  stickers: SourceBoardStickerItem[];
+}
+
+export type MediaPickerSelection = KlipyMediaItem | EmotePickerItem | SourceBoardStickerItem;
 
 const mediaCache = new Map<string, KlipyMediaItem[]>();
 
@@ -45,6 +62,7 @@ export function MediaPicker({
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<KlipyMediaItem[]>([]);
   const [packs, setPacks] = useState<EmotePack[]>([]);
+  const [stickerPacks, setStickerPacks] = useState<StickerPack[]>([]);
   const [activePackId, setActivePackId] = useState<string>();
   const [status, setStatus] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -54,6 +72,24 @@ export function MediaPicker({
   useEffect(() => {
     setQuery("");
     setStatus(undefined);
+  }, [kind]);
+
+  useEffect(() => {
+    if (kind !== "STICKER") return;
+    const controller = new AbortController();
+    void fetch("/api/comments/stickers", { signal: controller.signal })
+      .then(async (response) => {
+        const payload = (await response.json().catch(() => null)) as {
+          packs?: StickerPack[];
+        } | null;
+        if (!response.ok) throw new Error("SourceBoard stickers are unavailable.");
+        setStickerPacks(Array.isArray(payload?.packs) ? payload.packs : []);
+      })
+      .catch((cause: unknown) => {
+        if (cause instanceof DOMException && cause.name === "AbortError") return;
+        setStickerPacks([]);
+      });
+    return () => controller.abort();
   }, [kind]);
 
   useEffect(() => {
@@ -261,19 +297,47 @@ export function MediaPicker({
           </div>
         </>
       ) : (
-        <div className="product-comment-media-picker__results" aria-label={`${kind} results`}>
-          {items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={item.type === "STICKER" ? "is-sticker" : undefined}
-              aria-label={`Add ${item.title}`}
-              onClick={() => onSelect(item)}
-            >
-              <img src={item.url || item.preview} alt={item.title} loading="lazy" />
-            </button>
-          ))}
-        </div>
+        <>
+          {kind === "STICKER" && stickerPacks.length ? (
+            <div className="product-comment-media-picker__sourceboard-stickers">
+              {stickerPacks.map((pack) => (
+                <section key={pack.id}>
+                  <h3>{pack.label}</h3>
+                  <div
+                    className="product-comment-media-picker__results"
+                    aria-label={`${pack.label} stickers`}
+                  >
+                    {pack.stickers.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="is-sticker"
+                        aria-label={`Add ${item.label}`}
+                        onClick={() => onSelect(item)}
+                      >
+                        <img src={item.url} alt={item.label} loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+              <h3>KLIPY</h3>
+            </div>
+          ) : null}
+          <div className="product-comment-media-picker__results" aria-label={`${kind} results`}>
+            {items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={item.type === "STICKER" ? "is-sticker" : undefined}
+                aria-label={`Add ${item.title}`}
+                onClick={() => onSelect(item)}
+              >
+                <img src={item.url || item.preview} alt={item.title} loading="lazy" />
+              </button>
+            ))}
+          </div>
+        </>
       )}
       {busy ? <small role="status">Loading…</small> : null}
       {!busy && status ? <small role="status">{status}</small> : null}

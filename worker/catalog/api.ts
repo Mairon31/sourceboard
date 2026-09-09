@@ -21,6 +21,7 @@ const CAPABILITIES: Record<CatalogKind, Capability> = {
   sticker: "sticker.manage",
 };
 const EMOTE_PACK_ROUTE = "/api/admin/catalog/emote-packs";
+const STICKER_PACK_ROUTE = "/api/admin/catalog/sticker-packs";
 const LIFECYCLE_STATES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
 
 export function isEmoteBecomingPubliclyUsable(
@@ -132,6 +133,10 @@ function routeKind(pathname: string): CatalogKind | null {
 
 function isEmotePackRoute(pathname: string): boolean {
   return pathname === EMOTE_PACK_ROUTE || pathname.startsWith(`${EMOTE_PACK_ROUTE}/`);
+}
+
+function isStickerPackRoute(pathname: string): boolean {
+  return pathname === STICKER_PACK_ROUTE || pathname.startsWith(`${STICKER_PACK_ROUTE}/`);
 }
 
 function publicAsset(pathname: string): { kind: CatalogKind; id: string } | null {
@@ -385,11 +390,18 @@ async function handleCreate(
       400,
     );
   }
-  if (kind === "emote" && packId) {
-    const pack = await env.DB.prepare("SELECT id FROM emote_packs WHERE id = ?")
+  if (packId) {
+    const table = kind === "emote" ? "emote_packs" : "sticker_packs";
+    const pack = await env.DB.prepare(`SELECT id FROM ${table} WHERE id = ?`)
       .bind(packId)
       .first<{ id: string }>();
-    if (!pack) return failure("PACK_NOT_FOUND", "Emote pack not found.", requestId, 404);
+    if (!pack)
+      return failure(
+        "PACK_NOT_FOUND",
+        kind === "emote" ? "Emote pack not found." : "Sticker pack not found.",
+        requestId,
+        404,
+      );
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
   const metadata = assertCatalogImage(bytes, file.type);
@@ -433,8 +445,8 @@ async function handleCreate(
       }
     } else {
       await env.DB.prepare(
-        `INSERT INTO sticker_catalog (id, slug, label, asset_key, content_type, media_width, media_height, is_animated, pack_id, status, sort_order, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, ?)`,
+        `INSERT INTO sticker_catalog (id, slug, label, asset_key, content_type, media_width, media_height, is_animated, pack_id, status, sort_order, lifecycle_state, is_enabled, moderation_state, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 0, 'PUBLISHED', 1, 'CLEAR', ?, ?)`,
       )
         .bind(
           id,
@@ -446,6 +458,7 @@ async function handleCreate(
           metadata.height,
           metadata.animated ? 1 : 0,
           packId,
+          now,
           now,
         )
         .run();
@@ -463,9 +476,9 @@ async function handleCreate(
       label,
       packId,
       status: "ACTIVE",
-      lifecycleState: kind === "emote" ? "PUBLISHED" : undefined,
-      isEnabled: kind === "emote" ? true : undefined,
-      moderationState: kind === "emote" ? "CLEAR" : undefined,
+      lifecycleState: "PUBLISHED",
+      isEnabled: true,
+      moderationState: "CLEAR",
       contentType: metadata.contentType,
       mediaWidth: metadata.width,
       mediaHeight: metadata.height,
@@ -493,13 +506,66 @@ async function handleStickerStatus(
   assertSameOrigin(request);
   assertCsrfToken(request);
   const body = parseBody(await request.json());
-  if (body.status !== "ACTIVE" && body.status !== "DISABLED")
-    return failure("INVALID_STATUS", "Status must be ACTIVE or DISABLED.", requestId, 400);
-  const result = await env.DB.prepare("UPDATE sticker_catalog SET status = ? WHERE id = ?")
-    .bind(body.status, id)
+  const current = await env.DB.prepare(
+    `SELECT id, label, status, lifecycle_state AS lifecycleState, is_enabled AS isEnabled,
+            moderation_state AS moderationState, sort_order AS sortOrder
+     FROM sticker_catalog WHERE id = ?`,
+  )
+    .bind(id)
+    .first<{
+      id: string;
+      label: string;
+      status: string;
+      lifecycleState: LifecycleState;
+      isEnabled: number;
+      moderationState: ModerationState;
+      sortOrder: number;
+    }>();
+  if (!current) return failure("NOT_FOUND", "Catalog item not found.", requestId, 404);
+  const label = body.label === undefined ? current.label : String(body.label).trim();
+  const lifecycleState =
+    body.lifecycleState === undefined ? current.lifecycleState : body.lifecycleState;
+  const moderationState =
+    body.moderationState === undefined ? current.moderationState : body.moderationState;
+  let isEnabled =
+    body.isEnabled === undefined ? Number(current.isEnabled) === 1 : body.isEnabled === true;
+  const sortOrder = body.sortOrder === undefined ? current.sortOrder : Number(body.sortOrder);
+  if (
+    !label ||
+    !isLifecycle(lifecycleState) ||
+    !(LIFECYCLE_STATES as readonly string[]).includes(String(lifecycleState))
+  )
+    return failure("INVALID_STICKER", "Sticker lifecycle or label is invalid.", requestId, 400);
+  if (!(["CLEAR", "FLAGGED", "HIDDEN", "REMOVED"] as unknown[]).includes(moderationState))
+    return failure("INVALID_STICKER", "Sticker moderation state is invalid.", requestId, 400);
+  if (!Number.isInteger(sortOrder))
+    return failure("INVALID_STICKER", "Sticker order is invalid.", requestId, 400);
+  if (
+    lifecycleState === "ARCHIVED" ||
+    moderationState === "HIDDEN" ||
+    moderationState === "REMOVED"
+  )
+    isEnabled = false;
+  const active = lifecycleState === "PUBLISHED" && isEnabled;
+  await env.DB.prepare(
+    `UPDATE sticker_catalog SET label = ?, lifecycle_state = ?, is_enabled = ?, moderation_state = ?,
+            status = ?, sort_order = ?, updated_at = ? WHERE id = ?`,
+  )
+    .bind(
+      label,
+      lifecycleState,
+      isEnabled ? 1 : 0,
+      moderationState,
+      active ? "ACTIVE" : "DISABLED",
+      sortOrder,
+      Date.now(),
+      id,
+    )
     .run();
-  if (!result.meta.changes) return failure("NOT_FOUND", "Catalog item not found.", requestId, 404);
-  return response({ id, status: body.status }, requestId);
+  return response(
+    { sticker: { id, label, lifecycleState, isEnabled, moderationState, sortOrder } },
+    requestId,
+  );
 }
 
 async function listEmotePacks(env: SourceBoardEnvironment, requestId: string): Promise<Response> {
@@ -1335,6 +1401,293 @@ function blockedEmoteResponse(requestId: string): Response {
   });
 }
 
+async function listStickerPacks(env: SourceBoardEnvironment, requestId: string): Promise<Response> {
+  if (!env.DB)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  const rows = await env.DB.prepare(
+    `SELECT p.id, p.slug, p.label, p.description, p.status, p.lifecycle_state AS lifecycleState,
+            p.is_enabled AS isEnabled, p.is_global AS isGlobal, p.creator_user_id AS creatorUserId,
+            p.moderation_state AS moderationState, p.created_at AS createdAt, p.updated_at AS updatedAt,
+            s.id AS storeItemId, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState,
+            s.is_enabled AS storeEnabled, COUNT(st.id) AS stickerCount
+     FROM sticker_packs p
+     LEFT JOIN store_items s ON s.type = 'STICKER_PACK' AND json_extract(s.config_json, '$.packId') = p.id
+     LEFT JOIN sticker_catalog st ON st.pack_id = p.id
+     GROUP BY p.id, s.id ORDER BY p.created_at DESC LIMIT 200`,
+  ).all();
+  return response({ packs: rows.results }, requestId);
+}
+
+async function getStickerPackDetail(
+  packId: string,
+  env: SourceBoardEnvironment,
+  requestId: string,
+): Promise<Response> {
+  if (!env.DB)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  const pack = await env.DB.prepare(
+    `SELECT p.id, p.slug, p.label, p.description, p.status, p.lifecycle_state AS lifecycleState,
+            p.is_enabled AS isEnabled, p.is_global AS isGlobal, p.creator_user_id AS creatorUserId,
+            p.moderation_state AS moderationState, p.created_at AS createdAt, p.updated_at AS updatedAt,
+            s.id AS storeItemId, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState,
+            s.is_enabled AS storeEnabled
+     FROM sticker_packs p LEFT JOIN store_items s ON s.type = 'STICKER_PACK'
+       AND json_extract(s.config_json, '$.packId') = p.id WHERE p.id = ?`,
+  )
+    .bind(packId)
+    .first();
+  if (!pack) return failure("NOT_FOUND", "Sticker pack not found.", requestId, 404);
+  const stickers = await env.DB.prepare(
+    `SELECT id, slug, label, asset_key AS assetKey, content_type AS contentType,
+            media_width AS mediaWidth, media_height AS mediaHeight, is_animated AS isAnimated,
+            pack_id AS packId, sort_order AS sortOrder, status, lifecycle_state AS lifecycleState,
+            is_enabled AS isEnabled, moderation_state AS moderationState, created_at AS createdAt,
+            updated_at AS updatedAt FROM sticker_catalog WHERE pack_id = ?
+     ORDER BY sort_order ASC, created_at ASC`,
+  )
+    .bind(packId)
+    .all();
+  return response({ pack: { ...pack, stickers: stickers.results } }, requestId);
+}
+
+async function createStickerPack(
+  request: Request,
+  actorUserId: string,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  if (!env.DB)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  assertSameOrigin(request);
+  assertCsrfToken(request);
+  const body = parseBody(await request.json());
+  const slug = String(body.slug ?? "")
+    .trim()
+    .toLowerCase();
+  const label = String(body.label ?? "").trim();
+  const description = String(body.description ?? "").trim();
+  const pricePoints = Number(body.pricePoints ?? 0);
+  const isGlobal = body.isGlobal === true;
+  if (
+    !/^[a-z0-9][a-z0-9-]{1,63}$/.test(slug) ||
+    !label ||
+    label.length > 120 ||
+    description.length > 500 ||
+    !Number.isInteger(pricePoints) ||
+    pricePoints < 0
+  )
+    return failure(
+      "INVALID_STICKER_PACK",
+      "A valid slug, label, description and price are required.",
+      requestId,
+      400,
+    );
+  const id = createIdentifier();
+  const storeItemId = createIdentifier();
+  const now = Date.now();
+  try {
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO sticker_packs
+         (id, slug, label, description, status, lifecycle_state, is_enabled, is_global,
+          creator_user_id, moderation_state, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'DISABLED', 'DRAFT', 0, ?, ?, 'CLEAR', ?, ?)`,
+      ).bind(id, slug, label, description, isGlobal ? 1 : 0, actorUserId, now, now),
+      env.DB.prepare(
+        `INSERT INTO store_items
+         (id, type, name, description, price_points, config_json, is_active, lifecycle_state,
+          is_enabled, is_featured, sort_order, created_at, updated_at)
+         VALUES (?, 'STICKER_PACK', ?, ?, ?, ?, 0, 'DRAFT', 0, 0, 1100, ?, ?)`,
+      ).bind(
+        storeItemId,
+        label,
+        description,
+        pricePoints,
+        JSON.stringify({ packId: id }),
+        now,
+        now,
+      ),
+    ]);
+  } catch (error) {
+    if (String(error).includes("UNIQUE"))
+      return failure(
+        "PACK_SLUG_EXISTS",
+        "That sticker pack slug is already in use.",
+        requestId,
+        409,
+      );
+    throw error;
+  }
+  return response(
+    {
+      pack: {
+        id,
+        slug,
+        label,
+        description,
+        pricePoints,
+        isGlobal,
+        lifecycleState: "DRAFT",
+        isEnabled: false,
+        moderationState: "CLEAR",
+        storeItemId,
+      },
+    },
+    requestId,
+    201,
+  );
+}
+
+async function updateStickerPack(
+  packId: string,
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  if (!env.DB)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "The catalog is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  assertSameOrigin(request);
+  assertCsrfToken(request);
+  const body = parseBody(await request.json());
+  const current = await env.DB.prepare(
+    `SELECT id, label, description, lifecycle_state AS lifecycleState, is_enabled AS isEnabled,
+            is_global AS isGlobal, moderation_state AS moderationState FROM sticker_packs WHERE id = ?`,
+  )
+    .bind(packId)
+    .first<{
+      id: string;
+      label: string;
+      description: string;
+      lifecycleState: LifecycleState;
+      isEnabled: number;
+      isGlobal: number;
+      moderationState: ModerationState;
+    }>();
+  if (!current) return failure("NOT_FOUND", "Sticker pack not found.", requestId, 404);
+  const label = body.label === undefined ? current.label : String(body.label).trim();
+  const description =
+    body.description === undefined ? current.description : String(body.description).trim();
+  const lifecycleState =
+    body.lifecycleState === undefined ? current.lifecycleState : body.lifecycleState;
+  const moderationState =
+    body.moderationState === undefined ? current.moderationState : body.moderationState;
+  const isGlobal = body.isGlobal === undefined ? Boolean(current.isGlobal) : body.isGlobal === true;
+  let isEnabled =
+    body.isEnabled === undefined ? Boolean(current.isEnabled) : body.isEnabled === true;
+  if (!label || label.length > 120 || description.length > 500 || !isLifecycle(lifecycleState))
+    return failure("INVALID_STICKER_PACK", "Sticker pack fields are invalid.", requestId, 400);
+  if (!(["CLEAR", "FLAGGED", "HIDDEN", "REMOVED"] as unknown[]).includes(moderationState))
+    return failure(
+      "INVALID_STICKER_PACK",
+      "Sticker pack moderation state is invalid.",
+      requestId,
+      400,
+    );
+  if (
+    lifecycleState === "ARCHIVED" ||
+    moderationState === "HIDDEN" ||
+    moderationState === "REMOVED"
+  )
+    isEnabled = false;
+  if (lifecycleState === "PUBLISHED" && isEnabled) {
+    const usable = await env.DB.prepare(
+      `SELECT 1 FROM sticker_catalog WHERE pack_id = ? AND lifecycle_state = 'PUBLISHED'
+       AND is_enabled = 1 AND moderation_state NOT IN ('HIDDEN','REMOVED') LIMIT 1`,
+    )
+      .bind(packId)
+      .first();
+    if (!usable)
+      return failure(
+        "EMPTY_STICKER_PACK",
+        "Publish at least one usable sticker before publishing this pack.",
+        requestId,
+        409,
+      );
+  }
+  const active = lifecycleState === "PUBLISHED" && isEnabled;
+  const now = Date.now();
+  const pricePoints = body.pricePoints === undefined ? null : Number(body.pricePoints);
+  if (pricePoints !== null && (!Number.isInteger(pricePoints) || pricePoints < 0))
+    return failure("INVALID_STICKER_PACK", "Sticker pack price is invalid.", requestId, 400);
+  await env.DB.prepare(
+    `UPDATE sticker_packs SET label = ?, description = ?, lifecycle_state = ?, is_enabled = ?,
+            is_global = ?, moderation_state = ?, status = ?, updated_at = ? WHERE id = ?`,
+  )
+    .bind(
+      label,
+      description,
+      lifecycleState,
+      isEnabled ? 1 : 0,
+      isGlobal ? 1 : 0,
+      moderationState,
+      active ? "ACTIVE" : "DISABLED",
+      now,
+      packId,
+    )
+    .run();
+  if (pricePoints === null) {
+    await env.DB.prepare(
+      `UPDATE store_items SET name = ?, description = ?, lifecycle_state = ?, is_enabled = ?,
+              is_active = ?, updated_at = ? WHERE type = 'STICKER_PACK'
+       AND json_extract(config_json, '$.packId') = ?`,
+    )
+      .bind(label, description, lifecycleState, isEnabled ? 1 : 0, active ? 1 : 0, now, packId)
+      .run();
+  } else {
+    await env.DB.prepare(
+      `UPDATE store_items SET name = ?, description = ?, price_points = ?, lifecycle_state = ?,
+              is_enabled = ?, is_active = ?, updated_at = ? WHERE type = 'STICKER_PACK'
+       AND json_extract(config_json, '$.packId') = ?`,
+    )
+      .bind(
+        label,
+        description,
+        pricePoints,
+        lifecycleState,
+        isEnabled ? 1 : 0,
+        active ? 1 : 0,
+        now,
+        packId,
+      )
+      .run();
+  }
+  return response(
+    {
+      pack: {
+        id: packId,
+        label,
+        description,
+        lifecycleState,
+        isEnabled,
+        isGlobal,
+        moderationState,
+        updated: true,
+      },
+    },
+    requestId,
+  );
+}
+
 async function handleAdminEmoteAsset(
   id: string,
   env: SourceBoardEnvironment,
@@ -1429,13 +1782,52 @@ async function handlePublicAsset(
       assetKey = row.assetKey;
     }
   } else {
-    const row = await env.DB.prepare(
-      "SELECT asset_key AS assetKey FROM sticker_catalog WHERE id = ? AND status = 'ACTIVE'",
-    )
-      .bind(id)
-      .first<{ assetKey: string }>();
-    if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
-    assetKey = row.assetKey;
+    try {
+      const row = await env.DB.prepare(
+        `SELECT st.asset_key AS assetKey, st.lifecycle_state AS lifecycleState,
+                st.is_enabled AS isEnabled, st.moderation_state AS moderationState,
+                st.pack_id AS packId, p.lifecycle_state AS packLifecycleState,
+                p.is_enabled AS packEnabled, p.moderation_state AS packModerationState
+         FROM sticker_catalog st LEFT JOIN sticker_packs p ON p.id = st.pack_id WHERE st.id = ?`,
+      )
+        .bind(id)
+        .first<{
+          assetKey: string;
+          lifecycleState: LifecycleState;
+          isEnabled: number;
+          moderationState: ModerationState;
+          packId: string | null;
+          packLifecycleState: LifecycleState | null;
+          packEnabled: number | null;
+          packModerationState: ModerationState | null;
+        }>();
+      if (
+        !row ||
+        row.lifecycleState !== "PUBLISHED" ||
+        Number(row.isEnabled) !== 1 ||
+        row.moderationState === "HIDDEN" ||
+        row.moderationState === "REMOVED"
+      )
+        return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+      if (
+        row.packId &&
+        (row.packLifecycleState !== "PUBLISHED" ||
+          Number(row.packEnabled) !== 1 ||
+          row.packModerationState === "HIDDEN" ||
+          row.packModerationState === "REMOVED")
+      )
+        return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+      assetKey = row.assetKey;
+    } catch (error) {
+      if (!isCatalogLifecycleSchemaError(error)) throw error;
+      const row = await env.DB.prepare(
+        "SELECT asset_key AS assetKey FROM sticker_catalog WHERE id = ? AND status = 'ACTIVE'",
+      )
+        .bind(id)
+        .first<{ assetKey: string }>();
+      if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
+      assetKey = row.assetKey;
+    }
   }
 
   const object = await env.MEDIA.get(assetKey);
@@ -1452,7 +1844,10 @@ async function handlePublicAsset(
 
 export function isCatalogRoute(pathname: string): boolean {
   return (
-    routeKind(pathname) !== null || isEmotePackRoute(pathname) || publicAsset(pathname) !== null
+    routeKind(pathname) !== null ||
+    isEmotePackRoute(pathname) ||
+    isStickerPackRoute(pathname) ||
+    publicAsset(pathname) !== null
   );
 }
 
@@ -1465,7 +1860,8 @@ export async function handleCatalogRequest(
   const kind = routeKind(url.pathname);
   const asset = publicAsset(url.pathname);
   const packRoute = isEmotePackRoute(url.pathname);
-  if (!kind && !asset && !packRoute) return null;
+  const stickerPackRoute = isStickerPackRoute(url.pathname);
+  if (!kind && !asset && !packRoute && !stickerPackRoute) return null;
   try {
     if (asset && request.method === "GET") {
       return await handlePublicAsset(asset.kind, asset.id, env, requestId);
@@ -1501,6 +1897,25 @@ export async function handleCatalogRequest(
         );
       }
       return failure("NOT_FOUND", "Emote pack endpoint not found.", requestId, 404);
+    }
+
+    if (stickerPackRoute) {
+      const actorUserId = await requireCapability(request, requestId, env, "sticker.manage");
+      if (request.method === "GET" && url.pathname === STICKER_PACK_ROUTE)
+        return await listStickerPacks(env, requestId);
+      if (request.method === "POST" && url.pathname === STICKER_PACK_ROUTE)
+        return await createStickerPack(request, actorUserId, requestId, env);
+      const detailMatch = url.pathname.match(/^\/api\/admin\/catalog\/sticker-packs\/([^/]+)$/);
+      if (request.method === "GET" && detailMatch)
+        return await getStickerPackDetail(decodeURIComponent(detailMatch[1] ?? ""), env, requestId);
+      if (request.method === "PATCH" && detailMatch)
+        return await updateStickerPack(
+          decodeURIComponent(detailMatch[1] ?? ""),
+          request,
+          requestId,
+          env,
+        );
+      return failure("NOT_FOUND", "Sticker pack endpoint not found.", requestId, 404);
     }
 
     if (!kind) return null;
