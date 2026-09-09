@@ -39,7 +39,7 @@ async function actor(
   request: Request,
   requestId: string,
   env: SourceBoardEnvironment,
-  capability?: "source.verify",
+  capability?: "source.verify" | "source.revoke_verification",
 ) {
   const database = db(env);
   const session = await createAuthService({ store: createD1AuthStore(database), env }).getSession(
@@ -51,7 +51,11 @@ async function actor(
     capability &&
     !hasCapability(await auth.getAuthorization(createAuthContext(request, requestId)), capability)
   ) {
-    throw new PostError(403, "CAPABILITY_REQUIRED", "You are not allowed to verify sources.");
+    throw new PostError(
+      403,
+      "CAPABILITY_REQUIRED",
+      "You are not allowed to manage source verification.",
+    );
   }
   return { id: session.user.id, store: createD1AuthStore(database) };
 }
@@ -60,10 +64,20 @@ function postId(pathname: string): string | null {
     pathname.match(/^\/api\/posts\/([^/]+)\/source\/(accept|revoke|verify|unverify)$/)?.[1] ?? null
   );
 }
-function action(pathname: string): string | null {
-  return (
-    pathname.match(/^\/api\/posts\/[^/]+\/source\/(accept|revoke|verify|unverify)$/)?.[1] ?? null
-  );
+type SourceAction = "accept" | "revoke" | "verify" | "unverify";
+
+function action(pathname: string): SourceAction | null {
+  const matched =
+    pathname.match(/^\/api\/posts\/[^/]+\/source\/(accept|revoke|verify|unverify)$/)?.[1] ?? null;
+  return matched as SourceAction | null;
+}
+
+export function requiredSourceCapability(
+  kind: SourceAction,
+): "source.verify" | "source.revoke_verification" | undefined {
+  if (kind === "verify") return "source.verify";
+  if (kind === "unverify") return "source.revoke_verification";
+  return undefined;
 }
 async function requestBody(request: Request): Promise<Record<string, unknown>> {
   const value: unknown = await request.json();
@@ -216,14 +230,9 @@ export async function handleSourceRequest(
         "INVALID_SOURCE_COMMENT",
         "The comment must belong to this post and be visible.",
       );
-    const needsVerification = kind === "verify" || kind === "unverify";
-    const current = await actor(
-      request,
-      requestId,
-      env,
-      needsVerification ? "source.verify" : undefined,
-    );
-    if (!needsVerification && current.id !== target.post_author_id)
+    const capability = requiredSourceCapability(kind);
+    const current = await actor(request, requestId, env, capability);
+    if (!capability && current.id !== target.post_author_id)
       throw new PostError(403, "POST_AUTHOR_REQUIRED", "Only the post author can accept a source.");
     if (kind === "accept") {
       const resolvedAt = Date.now();
