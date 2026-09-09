@@ -23,6 +23,18 @@ jobs:
       - run: npm ci
       - name: Apply Phase D implementation
         run: python .github/scripts/apply-phase-d-green.py
+      - name: Keep community styles on ProfileIdentityCard only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("app/components/product/ProfileEditor.tsx")
+          text = path.read_text()
+          text = text.replace(
+              '              visuals={profile.cosmetics?.visuals}\n              communityStyles={profile.cosmetics?.communityStyles}\n              mode="profile"',
+              '              visuals={profile.cosmetics?.visuals}\n              mode="profile"',
+          )
+          path.write_text(text)
+          PY
       - name: Format changed files
         run: npx prettier --write shared/store/community-css.ts worker/store/community-api.ts app/routes/store-create.tsx app/components/product/CommunityCosmeticStudio.tsx app/components/product/community-cosmetics.css app/routes.ts app/routes/store.tsx shared/ui/contracts.ts worker/store/service.ts app/components/product/StoreItemCard.tsx worker/profile/types.ts worker/profile/store.ts app/components/product/ProfileIdentityCard.tsx app/components/product/ProfileHero.tsx app/components/product/ProfileEditor.tsx app/components/product/CosmeticIdentity.tsx app/components/admin/store/AdminCommunityCosmeticReviews.tsx tests/unit/community-plan-phase-d.test.ts
       - name: Apply all local D1 migrations
