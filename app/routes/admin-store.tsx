@@ -76,7 +76,7 @@ function errorMessage(payload: unknown, fallback: string): string {
 export default function AdminStoreRoute() {
   const access = useLoaderData<typeof loader>();
   const [mode, setMode] = useState<AdminStoreMode>(
-    access.storeManage ? "COSMETICS" : "EMOTE_PACKS",
+    access.storeManage ? "COSMETICS" : access.emoteManage ? "EMOTE_PACKS" : "STICKER_PACKS",
   );
   const [items, setItems] = useState<AdminStoreItem[]>([]);
   const [packs, setPacks] = useState<EmotePackSummary[]>([]);
