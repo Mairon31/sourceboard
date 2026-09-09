@@ -1,0 +1,26 @@
+name: Catalog moderation TDD
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+    paths:
+      - tests/unit/catalog-moderation-policy.test.ts
+      - worker/catalog/api.ts
+      - app/components/admin/store/AdminEmotePackManager.tsx
+      - .github/workflows/catalog-moderation-tdd.yml
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-moderation-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test -- tests/unit/catalog-moderation-policy.test.ts
