@@ -67,6 +67,8 @@ function validateGlobalSafety(source: string): void {
     invalid("Custom CSS must be 12 KB or smaller.");
   if (/@import\b/i.test(source)) invalid("@import is not allowed in community cosmetics.");
   if (/url\s*\(/i.test(source)) invalid("url() is not allowed in community cosmetics.");
+  if (/(?:-webkit-)?image-set\s*\(|\bimage\s*\(/i.test(source))
+    invalid("External image functions are not allowed in community cosmetics.");
   if (/expression\s*\(|javascript:|vbscript:|behavior\s*:/i.test(source))
     invalid("External or executable CSS is not allowed.");
   if (/<\/?(?:style|script|iframe)\b/i.test(source)) invalid("HTML is not allowed in custom CSS.");
