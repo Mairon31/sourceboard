@@ -40,10 +40,11 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(thread).toContain('item.type === "EMOTE"');
   });
 
-  it("uses colon syntax in Markdown but canonical bare shortcodes in stored richtext", () => {
+  it("uses canonical colon syntax in Markdown and stored richtext", () => {
     expect(markdown).toContain("normalizeEmoteShortcode");
     expect(markdown).toContain("formatEmoteMarkdown");
     expect(commentRichtext).toContain("normalizeEmoteShortcode");
+    expect(commentRichtext).toContain("formatEmoteMarkdown(shortcode)");
     expect(commentRichtext).toContain("upgradeLegacyEmoteNodes");
     expect(thread).toContain("formatEmoteMarkdown(item.shortcode)");
     expect(thread).not.toContain("}${item.shortcode}`");

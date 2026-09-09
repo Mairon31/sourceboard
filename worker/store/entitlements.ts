@@ -1,3 +1,4 @@
+import { normalizeEmoteShortcode } from "../../shared/richtext/markdown";
 import { PostError } from "../posts/errors";
 import type { NormalizedCommentBody } from "../comments/richtext";
 import { isStoreAdmin, isStoreLifecycleSchemaError } from "./service";
@@ -93,7 +94,10 @@ export function createEntitlementChecker(db: D1Database) {
   ): Promise<void> {
     const shortcodes = [
       ...new Set(
-        body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode),
+        body.richtext
+          .filter((node) => node.type === "emote")
+          .map((node) => normalizeEmoteShortcode(node.shortcode))
+          .filter((shortcode): shortcode is string => Boolean(shortcode)),
       ),
     ];
     let adminUnlocked: boolean | null = null;

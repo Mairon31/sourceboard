@@ -144,7 +144,7 @@ function parseInline(source: string, depth: number): SafeInlineRichTextNode[] {
         const shortcode = normalizeEmoteShortcode(match[0]);
         if (shortcode) {
           flush();
-          nodes.push({ type: "emote", shortcode });
+          nodes.push({ type: "emote", shortcode: formatEmoteMarkdown(shortcode) });
           index += match[0].length - 1;
           continue;
         }
