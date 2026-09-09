@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import * as catalogApi from "../../worker/catalog/api";
 
@@ -26,6 +27,10 @@ const policy = catalogApi as unknown as {
   isEmoteBecomingPubliclyUsable?: IsEmoteBecomingPubliclyUsable;
   isParentPackEligible?: IsParentPackEligible;
 };
+const adminPacks = readFileSync(
+  new URL("../../app/components/admin/store/AdminEmotePackManager.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("catalog emote moderation policy", () => {
   it("restores a removed emote to clear without silently re-enabling it", () => {
@@ -80,5 +85,12 @@ describe("catalog emote moderation policy", () => {
         isEnabled: false,
       }),
     ).toBe(false);
+  });
+
+  it("offers Restore for removed emotes instead of treating removal as terminal", () => {
+    expect(adminPacks).not.toContain("Removed is terminal");
+    expect(adminPacks).toMatch(
+      /emote\.moderationState === "REMOVED"[\s\S]{0,500}setModerationAction\("RESTORE"\)/,
+    );
   });
 });
