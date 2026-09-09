@@ -33,6 +33,12 @@ describe("community plan phase D", () => {
       ),
     ).toThrow();
     expect(() =>
+      sanitizeCommunityCosmeticCss(
+        String.raw`.cosmetic-root { background: u\72l("https://evil.test/a.png"); }`,
+        "demo",
+      ),
+    ).toThrow();
+    expect(() =>
       sanitizeCommunityCosmeticCss('@import "https://evil.test/x.css";', "demo"),
     ).toThrow();
     expect(() =>
