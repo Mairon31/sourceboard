@@ -5,6 +5,7 @@ import type {
   ProfileBannerPreset,
   ProfileEffectPreset,
 } from "../../shared/store/cosmetics";
+import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
 
 export type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY";
 
@@ -76,6 +77,15 @@ export interface NotificationRecord {
   createdAt: number;
 }
 
+export interface PublicCosmeticsDto {
+  avatarFrame?: AvatarFramePreset;
+  profileBanner?: ProfileBannerPreset;
+  profileEffect?: ProfileEffectPreset;
+  nameFont?: NameFontFamily;
+  nameEffect?: NameEffectPreset;
+  visuals?: CosmeticIdentityVisuals;
+}
+
 export interface PublicProfileDto {
   id: string;
   username: string;
@@ -83,13 +93,7 @@ export interface PublicProfileDto {
   bio: string;
   avatarUrl?: string;
   bannerUrl?: string;
-  cosmetics?: {
-    avatarFrame?: AvatarFramePreset;
-    profileBanner?: ProfileBannerPreset;
-    profileEffect?: ProfileEffectPreset;
-    nameFont?: NameFontFamily;
-    nameEffect?: NameEffectPreset;
-  };
+  cosmetics?: PublicCosmeticsDto;
   profileVisibility: ProfileVisibility;
   socialLinks: Array<{ platform: string; url: string }>;
   relationship: Relationship;
@@ -117,6 +121,7 @@ export interface FriendsListDto {
     username: string;
     displayName: string;
     avatarUrl?: string;
+    cosmetics?: PublicCosmeticsDto;
     relationship: Relationship;
     friendshipId?: string;
   }>;

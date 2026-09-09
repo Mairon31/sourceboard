@@ -17,6 +17,7 @@ describe("notification realtime client contract", () => {
             title: "A source was verified",
             body: "The accepted source was verified.",
             href: "/posts/post-1",
+            createdAt: 200,
           },
           {
             id: "notification-old",
@@ -24,6 +25,7 @@ describe("notification realtime client contract", () => {
             title: "Someone commented on your post",
             body: "New comment.",
             href: "/posts/post-1#comment-comment-1",
+            createdAt: 100,
           },
         ],
       }),
@@ -41,6 +43,7 @@ describe("notification realtime client contract", () => {
           body: "The accepted source was verified.",
           href: "/posts/post-1",
           readAt: null,
+          createdAt: 200,
         },
         {
           id: "notification-old",
@@ -52,6 +55,7 @@ describe("notification realtime client contract", () => {
           body: "New comment.",
           href: "/posts/post-1#comment-comment-1",
           readAt: null,
+          createdAt: 100,
         },
       ],
     });

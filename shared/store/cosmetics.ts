@@ -36,7 +36,16 @@ export const PROFILE_EFFECT_PRESETS = [
 
 export type ProfileEffectPreset = (typeof PROFILE_EFFECT_PRESETS)[number];
 
-export const PROFILE_BANNER_PRESETS = ["nebula", "aurora", "ember"] as const;
+export const PROFILE_BANNER_PRESETS = [
+  "nebula",
+  "aurora",
+  "ember",
+  "ocean-glass",
+  "sunset-noir",
+  "prism-grid",
+  "forest-ink",
+  "silver-wave",
+] as const;
 
 export type ProfileBannerPreset = (typeof PROFILE_BANNER_PRESETS)[number];
 
@@ -51,6 +60,12 @@ export const NAME_EFFECT_PRESETS = [
   "inferno",
   "ice",
   "aurora",
+  "hologram",
+  "void",
+  "solar",
+  "candy",
+  "terminal",
+  "chrome",
 ] as const;
 
 export type NameEffectPreset = (typeof NAME_EFFECT_PRESETS)[number];

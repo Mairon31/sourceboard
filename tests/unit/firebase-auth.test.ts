@@ -44,7 +44,7 @@ describe("Firebase Authentication REST client", () => {
     expect(JSON.parse(fetcher.mock.calls[1]?.[1]?.body as string)).toEqual({
       requestType: "VERIFY_EMAIL",
       idToken: "id-token",
-      continueUrl: "https://srcboard.me/verify-email",
+      continueUrl: "https://srcboard.me/verify-email?firebase=verified",
     });
     await expect(
       client.sendPasswordReset("alice@example.com", "https://srcboard.me/forgot-password"),

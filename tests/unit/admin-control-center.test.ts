@@ -59,11 +59,16 @@ describe("admin control center", () => {
     expect(moderationRoute).toContain("admin-mobile-review-card");
   });
 
-  it("separates verification context from the persisted decision workflow", () => {
+  it("separates verification context, decision authority, and revocation authority", () => {
     expect(verificationsRoute).toContain("admin-verification-card__context");
     expect(verificationsRoute).toContain("admin-verification-card__decision");
     expect(verificationsRoute).toContain("Open post");
-    expect(verificationsRoute).toContain("Verify source");
+    expect(verificationsRoute).toContain("Verify accepted source");
+    expect(verificationsRoute).toContain('loadCapabilityAccess(request, context, "source.verify")');
+    expect(verificationsRoute).toContain(
+      'loadCapabilityAccess(request, context, "source.revoke_verification")',
+    );
+    expect(verificationsRoute).toContain("canRevoke: revokeAccess.authorized");
     expect(verificationsRoute).toContain("readCsrfToken()");
     expect(verificationsRoute).toContain("revalidator.revalidate()");
   });

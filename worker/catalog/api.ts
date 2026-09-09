@@ -22,6 +22,86 @@ const CAPABILITIES: Record<CatalogKind, Capability> = {
 const EMOTE_PACK_ROUTE = "/api/admin/catalog/emote-packs";
 const LIFECYCLE_STATES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
 
+export function isEmoteBecomingPubliclyUsable(
+  current: { lifecycleState: LifecycleState; isEnabled: boolean },
+  next: { lifecycleState: LifecycleState; isEnabled: boolean },
+): boolean {
+  const currentUsable = current.lifecycleState === "PUBLISHED" && current.isEnabled;
+  const nextUsable = next.lifecycleState === "PUBLISHED" && next.isEnabled;
+  return !currentUsable && nextUsable;
+}
+
+export function isParentPackEligible(input: {
+  packId: string | null;
+  lifecycleState: LifecycleState | null;
+  isEnabled: boolean | null;
+}): boolean {
+  return (
+    input.packId === null || (input.lifecycleState === "PUBLISHED" && input.isEnabled === true)
+  );
+}
+
+export function resolveEmoteModerationTransition(
+  input: {
+    moderationState: ModerationState;
+    lifecycleState: LifecycleState;
+    isEnabled: boolean;
+  },
+  action: ModerationAction,
+): { moderationState: ModerationState; isEnabled: boolean } {
+  const { moderationState, lifecycleState } = input;
+
+  if (moderationState === "REMOVED" && action !== "RESTORE") {
+    throw new CatalogOperationError(
+      409,
+      "EMOTE_REMOVED",
+      "Removed emotes must be restored before other moderation actions.",
+    );
+  }
+
+  if (action === "FLAG") {
+    if (moderationState !== "CLEAR") {
+      throw new CatalogOperationError(
+        409,
+        "INVALID_MODERATION_TRANSITION",
+        "Only clear emotes can be flagged.",
+      );
+    }
+    return { moderationState: "FLAGGED", isEnabled: input.isEnabled };
+  }
+
+  if (action === "HIDE") {
+    if (moderationState !== "CLEAR" && moderationState !== "FLAGGED") {
+      throw new CatalogOperationError(
+        409,
+        "INVALID_MODERATION_TRANSITION",
+        "That emote cannot be hidden.",
+      );
+    }
+    return { moderationState: "HIDDEN", isEnabled: false };
+  }
+
+  if (action === "RESTORE") {
+    if (
+      moderationState !== "FLAGGED" &&
+      moderationState !== "HIDDEN" &&
+      moderationState !== "REMOVED"
+    ) {
+      throw new CatalogOperationError(
+        409,
+        "INVALID_MODERATION_TRANSITION",
+        "That emote does not need restoration.",
+      );
+    }
+    return {
+      moderationState: "CLEAR",
+      isEnabled: moderationState === "REMOVED" ? false : lifecycleState !== "ARCHIVED",
+    };
+  }
+
+  return { moderationState: "REMOVED", isEnabled: false };
+}
+
 class CatalogOperationError extends Error {
   constructor(
     readonly status: number,
@@ -192,7 +272,9 @@ async function legacyListEmotePacks(
       `SELECT p.id, p.slug, p.label, p.status, CASE WHEN p.status = 'ACTIVE' THEN 'PUBLISHED' ELSE 'DRAFT' END AS lifecycleState,
             CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END AS isEnabled, 0 AS isGlobal, p.created_at AS createdAt, p.created_at AS updatedAt, s.id AS storeItemId,
             s.description, s.price_points AS pricePoints, CASE WHEN s.is_active = 1 THEN 'PUBLISHED' ELSE 'DRAFT' END AS storeLifecycleState,
-            s.is_active AS storeEnabled, 0 AS isFeatured, s.is_active AS isActive, COUNT(e.id) AS emoteCount
+            s.is_active AS storeEnabled, 0 AS isFeatured, s.is_active AS isActive,
+            (SELECT preview.id FROM emote_catalog preview WHERE preview.pack_id = p.id ORDER BY preview.sort_order ASC, preview.created_at ASC LIMIT 1) AS previewEmoteId,
+            COUNT(e.id) AS emoteCount
      FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
      LEFT JOIN emote_catalog e ON e.pack_id = p.id GROUP BY p.id, p.slug, p.label, p.status, p.created_at, s.id, s.description, s.price_points, s.is_active
      ORDER BY p.created_at DESC LIMIT 200`,
@@ -396,7 +478,9 @@ async function listEmotePacks(env: SourceBoardEnvironment, requestId: string): P
     const rows = await env.DB.prepare(
       `SELECT p.id, p.slug, p.label, p.status, p.lifecycle_state AS lifecycleState, p.is_enabled AS isEnabled, p.is_global AS isGlobal, p.created_at AS createdAt, p.updated_at AS updatedAt,
               s.id AS storeItemId, s.description, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState, s.is_enabled AS storeEnabled,
-              s.is_featured AS isFeatured, s.is_active AS isActive, COUNT(e.id) AS emoteCount
+              s.is_featured AS isFeatured, s.is_active AS isActive,
+              (SELECT preview.id FROM emote_catalog preview WHERE preview.pack_id = p.id ORDER BY preview.sort_order ASC, preview.created_at ASC LIMIT 1) AS previewEmoteId,
+              COUNT(e.id) AS emoteCount
        FROM emote_packs p LEFT JOIN store_items s ON s.type = 'EMOTE_PACK' AND json_extract(s.config_json, '$.packId') = p.id
        LEFT JOIN emote_catalog e ON e.pack_id = p.id GROUP BY p.id, p.slug, p.label, p.status, p.lifecycle_state, p.is_enabled, p.is_global, p.created_at, p.updated_at,
                 s.id, s.description, s.price_points, s.lifecycle_state, s.is_enabled, s.is_featured, s.is_active ORDER BY p.created_at DESC LIMIT 200`,
@@ -691,10 +775,23 @@ async function updateEmotePack(
       ? "PUBLISHED"
       : "DRAFT"
     : ((body.lifecycleState as LifecycleState | undefined) ?? current.lifecycleState);
-  const isEnabled = legacyStatus
+  let isEnabled = legacyStatus
     ? legacyStatus === "ACTIVE"
     : ((body.isEnabled as boolean | undefined) ?? Number(current.isEnabled) === 1);
   const isGlobal = body.isGlobal === undefined ? Number(current.isGlobal) === 1 : body.isGlobal;
+
+  if (
+    (current.lifecycleState === "ARCHIVED" && lifecycleState === "PUBLISHED") ||
+    (lifecycleState === "ARCHIVED" && body.isEnabled === true)
+  ) {
+    return failure(
+      "PACK_ARCHIVED",
+      "Restore this pack to draft before publishing or enabling it.",
+      requestId,
+      409,
+    );
+  }
+  if (lifecycleState === "ARCHIVED") isEnabled = false;
 
   if (lifecycleState === "PUBLISHED") {
     const usable = await env.DB.prepare(
@@ -982,14 +1079,48 @@ async function updateEmote(
     body.lifecycleState === undefined ? current.lifecycleState : body.lifecycleState;
   if (!isLifecycle(lifecycleState))
     return failure("INVALID_LIFECYCLE", "Lifecycle state is invalid.", requestId, 400);
-  const isEnabled = body.isEnabled === undefined ? Number(current.isEnabled) === 1 : body.isEnabled;
+  const currentEnabled = Number(current.isEnabled) === 1;
+  let isEnabled = body.isEnabled === undefined ? currentEnabled : body.isEnabled;
   if (typeof isEnabled !== "boolean")
     return failure("INVALID_ENABLEMENT", "isEnabled must be boolean.", requestId, 400);
+  if (
+    (current.lifecycleState === "ARCHIVED" && lifecycleState === "PUBLISHED") ||
+    (lifecycleState === "ARCHIVED" && body.isEnabled === true)
+  ) {
+    return failure(
+      "EMOTE_ARCHIVED",
+      "Restore this emote to draft before publishing or enabling it.",
+      requestId,
+      409,
+    );
+  }
+  const becomesPubliclyUsable = isEmoteBecomingPubliclyUsable(
+    { lifecycleState: current.lifecycleState, isEnabled: currentEnabled },
+    { lifecycleState, isEnabled },
+  );
+  if (
+    (body.isEnabled === true || becomesPubliclyUsable) &&
+    (current.moderationState === "HIDDEN" || current.moderationState === "REMOVED")
+  ) {
+    return failure(
+      "EMOTE_MODERATION_BLOCKED",
+      "Hidden or removed emotes cannot be enabled until moderation permits it.",
+      requestId,
+      409,
+    );
+  }
+  if (
+    lifecycleState === "ARCHIVED" ||
+    current.moderationState === "HIDDEN" ||
+    current.moderationState === "REMOVED"
+  ) {
+    isEnabled = false;
+  }
   if (body.lifecycleState !== undefined) {
     updates.push("lifecycle_state = ?");
     binds.push(lifecycleState);
   }
-  if (body.isEnabled !== undefined) {
+  if (body.isEnabled !== undefined || isEnabled !== currentEnabled) {
     updates.push("is_enabled = ?");
     binds.push(isEnabled ? 1 : 0);
   }
@@ -1113,50 +1244,16 @@ async function moderateEmote(
       isEnabled: number;
     }>();
   if (!current) return failure("NOT_FOUND", "Emote not found.", requestId, 404);
-  if (current.moderationState === "REMOVED") {
-    return failure(
-      "EMOTE_REMOVED",
-      "Removed emotes cannot be restored by the ordinary flow.",
-      requestId,
-      409,
-    );
-  }
-
-  let next: ModerationState = current.moderationState;
-  let enabled = Number(current.isEnabled) === 1;
-  if (action === "FLAG") {
-    if (current.moderationState !== "CLEAR")
-      return failure(
-        "INVALID_MODERATION_TRANSITION",
-        "Only clear emotes can be flagged.",
-        requestId,
-        409,
-      );
-    next = "FLAGGED";
-  } else if (action === "HIDE") {
-    if (current.moderationState !== "CLEAR" && current.moderationState !== "FLAGGED")
-      return failure(
-        "INVALID_MODERATION_TRANSITION",
-        "That emote cannot be hidden.",
-        requestId,
-        409,
-      );
-    next = "HIDDEN";
-    enabled = false;
-  } else if (action === "RESTORE") {
-    if (current.moderationState !== "FLAGGED" && current.moderationState !== "HIDDEN")
-      return failure(
-        "INVALID_MODERATION_TRANSITION",
-        "That emote does not need restoration.",
-        requestId,
-        409,
-      );
-    next = "CLEAR";
-    enabled = current.lifecycleState !== "ARCHIVED";
-  } else if (action === "REMOVE") {
-    next = "REMOVED";
-    enabled = false;
-  }
+  const transition = resolveEmoteModerationTransition(
+    {
+      moderationState: current.moderationState,
+      lifecycleState: current.lifecycleState,
+      isEnabled: Number(current.isEnabled) === 1,
+    },
+    action,
+  );
+  const next = transition.moderationState;
+  const enabled = transition.isEnabled;
   const legacyActive =
     current.lifecycleState === "PUBLISHED" && enabled && next !== "HIDDEN" && next !== "REMOVED";
   await env.DB.prepare(
@@ -1268,9 +1365,11 @@ async function handlePublicAsset(
       if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
       if (row.moderationState === "HIDDEN" || row.moderationState === "REMOVED")
         return blockedEmoteResponse(requestId);
-      const packAvailable =
-        row.packId === null ||
-        (row.packLifecycleState === "PUBLISHED" && Number(row.packEnabled) === 1);
+      const packAvailable = isParentPackEligible({
+        packId: row.packId,
+        lifecycleState: row.packLifecycleState,
+        isEnabled: row.packEnabled === null ? null : Number(row.packEnabled) === 1,
+      });
       if (row.lifecycleState !== "PUBLISHED" || Number(row.isEnabled) !== 1 || !packAvailable)
         return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
       assetKey = row.assetKey;

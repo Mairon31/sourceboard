@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "react-router";
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
+import { CommunityCosmeticStudio } from "../components/product/CommunityCosmeticStudio";
 import { ProductShell, PresentationNotice } from "../components/product/ProductShell";
 import { StoreItemCard } from "../components/product/StoreItemCard";
 import { StoreSection } from "../components/product/StoreSection";
@@ -144,6 +145,16 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
+function partitionStoreItems(items: StoreItemView[], authenticated: boolean) {
+  const featured = items.filter((item) => item.featured);
+  const owned = authenticated ? items.filter((item) => item.owned || item.equipped) : [];
+  const newest = [...items]
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, 8);
+  const browse = items;
+  return { featured, owned, newest, browse };
+}
+
 export default function StoreRoute() {
   const {
     items,
@@ -159,15 +170,58 @@ export default function StoreRoute() {
   const [activeFilter, setActiveFilter] = useState<StoreFilter>("ALL");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [catalogItems, setCatalogItems] = useState(items);
+  const [currentPoints, setCurrentPoints] = useState(points);
+
+  useEffect(() => {
+    setCatalogItems(items);
+    setCurrentPoints(points);
+  }, [items, points]);
+
   const visibleItems =
-    activeFilter === "ALL" ? items : items.filter((item) => item.type === activeFilter);
-  const featuredItems = visibleItems.filter((item) => item.featured);
-  const newItems = [...visibleItems]
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-    .slice(0, 8);
-  const ownedItems = authenticated
-    ? visibleItems.filter((item) => item.owned || item.equipped)
-    : [];
+    activeFilter === "ALL"
+      ? catalogItems
+      : catalogItems.filter((item) => item.type === activeFilter);
+  const sections = partitionStoreItems(visibleItems, authenticated);
+
+  function markOwned(item: StoreItemView) {
+    setCatalogItems((current) =>
+      current.map((candidate) =>
+        candidate.id === item.id
+          ? { ...candidate, owned: true, equipped: false, state: "OWNED" }
+          : candidate,
+      ),
+    );
+    if (!adminUnlocked && currentPoints !== null) {
+      setCurrentPoints((balance) =>
+        balance === null ? balance : Math.max(0, balance - Math.max(0, item.price)),
+      );
+    }
+  }
+
+  function markEquipped(item: StoreItemView) {
+    setCatalogItems((current) =>
+      current.map((candidate) => {
+        if (candidate.id === item.id) {
+          return { ...candidate, owned: true, equipped: true, state: "EQUIPPED" };
+        }
+        if (candidate.type === item.type && candidate.equipped) {
+          return { ...candidate, owned: true, equipped: false, state: "OWNED" };
+        }
+        return candidate;
+      }),
+    );
+  }
+
+  function markUnequipped(item: StoreItemView) {
+    setCatalogItems((current) =>
+      current.map((candidate) =>
+        candidate.id === item.id
+          ? { ...candidate, owned: true, equipped: false, state: "OWNED" }
+          : candidate,
+      ),
+    );
+  }
 
   async function purchase(item: StoreItemView) {
     setBusyId(item.id);
@@ -182,6 +236,7 @@ export default function StoreRoute() {
         setFeedback("This item could not be redeemed.");
         return;
       }
+      markOwned(item);
       setFeedback(`${item.name} unlocked.`);
       revalidator.revalidate();
     } catch {
@@ -204,6 +259,7 @@ export default function StoreRoute() {
         setFeedback("This cosmetic could not be equipped.");
         return;
       }
+      markEquipped(item);
       setFeedback(`${item.name} equipped.`);
       revalidator.revalidate();
     } catch {
@@ -225,6 +281,7 @@ export default function StoreRoute() {
         setFeedback("This cosmetic could not be unequipped.");
         return;
       }
+      markUnequipped(item);
       setFeedback(`${item.name} unequipped.`);
       revalidator.revalidate();
     } catch {
@@ -278,7 +335,7 @@ export default function StoreRoute() {
           </div>
           <div className="product-store-wallet">
             <span>{adminUnlocked ? "Admin access" : "Balance"}</span>
-            <strong>{adminUnlocked ? "Admin unlocked" : `${points ?? 0} pts`}</strong>
+            <strong>{adminUnlocked ? "Admin unlocked" : `${currentPoints ?? 0} pts`}</strong>
             <small>{adminUnlocked ? "No points required" : "Earn points by contributing"}</small>
           </div>
         </header>
@@ -306,31 +363,35 @@ export default function StoreRoute() {
           </div>
         ) : null}
 
-        {featuredItems.length ? (
+        {sections.featured.length ? (
           <StoreSection
             eyebrow="Curated"
             title="Featured"
             description="Items highlighted by the SourceBoard catalog team."
           >
-            {renderItems(featuredItems)}
+            {renderItems(sections.featured)}
           </StoreSection>
         ) : null}
 
-        {newItems.length ? (
-          <StoreSection title="New" description="The newest additions to the public catalog.">
-            {renderItems(newItems)}
-          </StoreSection>
-        ) : null}
-
-        {ownedItems.length ? (
+        {sections.owned.length ? (
           <StoreSection title="Owned" description="Your unlocked and currently equipped items.">
-            {renderItems(ownedItems)}
+            {renderItems(sections.owned)}
           </StoreSection>
         ) : null}
 
-        <StoreSection title="All items" description="Browse every item in the selected category.">
-          {renderItems(visibleItems)}
-        </StoreSection>
+        {sections.newest.length ? (
+          <StoreSection title="New" description="Recent additions in the selected category.">
+            {renderItems(sections.newest)}
+          </StoreSection>
+        ) : null}
+
+        {sections.browse.length ? (
+          <StoreSection title="All items" description="Full catalog in the selected category.">
+            {renderItems(sections.browse)}
+          </StoreSection>
+        ) : null}
+
+        {authenticated ? <CommunityCosmeticStudio /> : null}
       </div>
     </ProductShell>
   );

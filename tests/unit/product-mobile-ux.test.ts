@@ -88,4 +88,9 @@ describe("mobile product UX regressions", () => {
     expect(profileEditorSource).toContain("/api/profile/media");
     expect(profileEditorSource).toContain('method: "PATCH"');
   });
+
+  it("loads public profiles and profile activity without requiring an authenticated session", () => {
+    expect(profileRouteSource).toContain("withOptionalServerSession");
+    expect(profileRouteSource).not.toContain("withServerSession(");
+  });
 });

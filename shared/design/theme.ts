@@ -1,4 +1,5 @@
 export const THEME_STORAGE_KEY = "sourceboard-theme";
+export const ANIMATIONS_STORAGE_KEY = "sourceboard-animations";
 
 export type ThemePreference = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
@@ -77,6 +78,7 @@ export function createThemeController(options: ThemeControllerOptions): ThemeCon
 
 export const THEME_INIT_SCRIPT = `(() => {
   const key = "${THEME_STORAGE_KEY}";
+  const animationsKey = "${ANIMATIONS_STORAGE_KEY}";
   let preference = "system";
   try {
     const stored = localStorage.getItem(key);
@@ -87,4 +89,10 @@ export const THEME_INIT_SCRIPT = `(() => {
   document.documentElement.dataset.theme = resolved;
   document.documentElement.dataset.themePreference = preference;
   document.documentElement.style.colorScheme = resolved;
+  let animations = "on";
+  try {
+    if (localStorage.getItem(animationsKey) === "off") animations = "off";
+  } catch {}
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) animations = "off";
+  document.documentElement.dataset.animations = animations;
 })();`;

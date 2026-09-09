@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { useLoaderData } from "react-router";
+import { Link, useLoaderData, useNavigate } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
-import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
-import { ProductShell, PageHeader } from "../components/product/ProductShell";
-import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
+import { AnimationControl } from "../components/layout/AnimationControl";
 import { ThemeControl } from "../components/layout/ThemeControl";
-import { Button, Card, Switch } from "../components/ui";
+import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
+import { PageHeader, ProductShell } from "../components/product/ProductShell";
+import { Button, Card, Input, Switch } from "../components/ui";
+import { readCsrfToken } from "../data/csrf";
+import { persistPreferenceChange } from "../data/settings-preferences";
+import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 interface SessionSummary {
   id: string;
@@ -28,14 +31,6 @@ export async function loader({ request, context }: ServerLoaderArgs) {
       return { authenticated: true, unavailable: false, preferences };
     },
   );
-}
-
-function readCookie(name: string): string | undefined {
-  const entry = document.cookie
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`));
-  return entry ? decodeURIComponent(entry.slice(name.length + 1)) : undefined;
 }
 
 type SettingsData = Awaited<ReturnType<typeof loader>>;
@@ -67,27 +62,6 @@ function createInitialPreferenceValues(data: SettingsData): PreferenceUpdate {
   };
 }
 
-type PreferenceValueSetter = (value: (current: PreferenceUpdate) => PreferenceUpdate) => void;
-
-function createPreferenceValueUpdater(
-  setValues: PreferenceValueSetter,
-): (key: keyof PreferenceUpdate, value: boolean) => void {
-  return (key, value) => setValues((current) => ({ ...current, [key]: value }));
-}
-
-function createPreferenceUpdater(
-  data: SettingsData,
-  allowNsfwDirectOverride: boolean,
-  setStatus: (value: string | null) => void,
-): (next: PreferenceUpdate) => Promise<void> {
-  return async (next) => {
-    if (!data.authenticated) return;
-    setStatus(null);
-    const saved = await persistPreferences(next, allowNsfwDirectOverride);
-    setStatus(saved ? "Saved" : "Could not save this preference.");
-  };
-}
-
 async function persistPreferences(
   next: PreferenceUpdate,
   allowNsfwDirectOverride: boolean,
@@ -97,7 +71,7 @@ async function persistPreferences(
       method: "PATCH",
       headers: {
         "content-type": "application/json",
-        "x-csrf-token": readCookie("__Host-sourceboard_csrf") ?? "",
+        "x-csrf-token": readCsrfToken(),
       },
       body: JSON.stringify({ ...next, allowNsfwDirectOverride }),
     });
@@ -107,193 +81,176 @@ async function persistPreferences(
   }
 }
 
-function SensitiveContentCard({
-  authenticated,
-  hideNsfw,
-  blurNsfw,
-  allowFriendRequests,
-  notifyActivity,
-  notifyFriendships,
-  preferenceStatus,
-  onUpdate,
-  onValueChange,
+function SettingsSectionHeader({
+  eyebrow,
+  title,
+  description,
 }: {
-  authenticated: boolean;
-  hideNsfw: boolean;
-  blurNsfw: boolean;
-  allowFriendRequests: boolean;
-  notifyActivity: boolean;
-  notifyFriendships: boolean;
-  preferenceStatus: string | null;
-  onUpdate: (next: PreferenceUpdate) => void;
-  onValueChange: (key: keyof PreferenceUpdate, value: boolean) => void;
+  eyebrow: string;
+  title: string;
+  description: string;
 }) {
   return (
-    <Card className="product-settings-section">
-      <span className="product-eyebrow">Sensitive content</span>
-      <h2>NSFW preferences</h2>
-      <p>These settings later feed server-side visibility, search and media-gateway enforcement.</p>
-      <Switch
-        label="Hide NSFW posts"
-        checked={hideNsfw}
-        disabled={!authenticated}
-        onCheckedChange={(checked) => {
-          onValueChange("hideNsfw", checked);
-          onUpdate({
-            hideNsfw: checked,
-            blurNsfw,
-            allowFriendRequests,
-            notifyActivity,
-            notifyFriendships,
-          });
-        }}
-      />
-      <Switch
-        label="Blur NSFW media"
-        checked={blurNsfw}
-        disabled={!authenticated}
-        onCheckedChange={(checked) => {
-          onValueChange("blurNsfw", checked);
-          onUpdate({
-            hideNsfw,
-            blurNsfw: checked,
-            allowFriendRequests,
-            notifyActivity,
-            notifyFriendships,
-          });
-        }}
-      />
-      {preferenceStatus ? (
-        <span className="product-store-preview-status">{preferenceStatus}</span>
-      ) : null}
-    </Card>
+    <header className="product-settings-section-header">
+      <span className="product-eyebrow">{eyebrow}</span>
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </header>
   );
 }
 
-function FriendRequestsCard({
-  authenticated,
-  allowFriendRequests,
-  hideNsfw,
-  blurNsfw,
-  notifyActivity,
-  notifyFriendships,
-  onUpdate,
-  onValueChange,
-}: {
-  authenticated: boolean;
-  allowFriendRequests: boolean;
-  hideNsfw: boolean;
-  blurNsfw: boolean;
-  notifyActivity: boolean;
-  notifyFriendships: boolean;
-  onUpdate: (next: PreferenceUpdate) => void;
-  onValueChange: (key: keyof PreferenceUpdate, value: boolean) => void;
-}) {
-  return (
-    <Card className="product-settings-section">
-      <span className="product-eyebrow">Privacy</span>
-      <h2>Profile visibility</h2>
-      <p>Profile visibility and friend-request preferences are enforced server-side.</p>
-      <Switch
-        label="Allow friend requests"
-        checked={allowFriendRequests}
-        disabled={!authenticated}
-        onCheckedChange={(checked) => {
-          onValueChange("allowFriendRequests", checked);
-          onUpdate({
-            hideNsfw,
-            blurNsfw,
-            allowFriendRequests: checked,
-            notifyActivity,
-            notifyFriendships,
-          });
-        }}
-      />
-    </Card>
-  );
-}
-
-function NotificationPreferencesCard({
-  authenticated,
-  values,
-  onUpdate,
-  onValueChange,
-}: {
-  authenticated: boolean;
-  values: PreferenceUpdate;
-  onUpdate: (next: PreferenceUpdate) => void;
-  onValueChange: (key: keyof PreferenceUpdate, value: boolean) => void;
-}) {
-  return (
-    <Card className="product-settings-section">
-      <span className="product-eyebrow">Notifications</span>
-      <h2>What should reach you</h2>
-      <p>Choose which activity is stored in your private notification feed.</p>
-      <Switch
-        label="Post and comment activity"
-        description="Replies, accepted sources and other activity on your contributions."
-        checked={values.notifyActivity}
-        disabled={!authenticated}
-        onCheckedChange={(checked) => {
-          onValueChange("notifyActivity", checked);
-          onUpdate({ ...values, notifyActivity: checked });
-        }}
-      />
-      <Switch
-        label="Friendship activity"
-        description="Friend requests, accepts and related account activity."
-        checked={values.notifyFriendships}
-        disabled={!authenticated}
-        onCheckedChange={(checked) => {
-          onValueChange("notifyFriendships", checked);
-          onUpdate({ ...values, notifyFriendships: checked });
-        }}
-      />
-    </Card>
-  );
-}
-
-function PreferencesPanel({ data }: { data: SettingsData }) {
+function usePreferenceController(data: SettingsData) {
   const [values, setValues] = useState<PreferenceUpdate>(() => createInitialPreferenceValues(data));
-  const [preferenceStatus, setPreferenceStatus] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
   const allowNsfwDirectOverride = data.preferences?.allowNsfwDirectOverride ?? false;
-  const setPreferenceValue = createPreferenceValueUpdater(setValues);
-  const updatePreferences = createPreferenceUpdater(
-    data,
-    allowNsfwDirectOverride,
-    setPreferenceStatus,
-  );
 
+  useEffect(() => {
+    setValues(createInitialPreferenceValues(data));
+  }, [data]);
+
+  async function changePreference(key: keyof PreferenceUpdate, checked: boolean) {
+    if (!data.authenticated || saving) return;
+    const previous = values;
+    const next = { ...previous, [key]: checked };
+    setSaving(true);
+    setStatus(null);
+    const saved = await persistPreferenceChange({
+      previous,
+      next,
+      apply: (value) => setValues(value),
+      persist: (candidate) => persistPreferences(candidate, allowNsfwDirectOverride),
+    });
+    setStatus(
+      saved ? "Saved" : "Could not save this preference. Your previous setting was restored.",
+    );
+    setSaving(false);
+  }
+
+  return { values, saving, status, changePreference };
+}
+
+type PreferenceController = ReturnType<typeof usePreferenceController>;
+
+function PreferenceSaveStatus({ controller }: { controller: PreferenceController }) {
+  return controller.status || controller.saving ? (
+    <span className="product-settings-save-status" role="status" aria-live="polite">
+      {controller.saving ? "Saving…" : controller.status}
+    </span>
+  ) : null;
+}
+
+function ContentPreferences({
+  data,
+  controller,
+}: {
+  data: SettingsData;
+  controller: PreferenceController;
+}) {
+  const disabled = !data.authenticated || controller.saving;
   return (
-    <>
-      <SensitiveContentCard
-        authenticated={data.authenticated}
-        hideNsfw={values.hideNsfw}
-        blurNsfw={values.blurNsfw}
-        allowFriendRequests={values.allowFriendRequests}
-        notifyActivity={values.notifyActivity}
-        notifyFriendships={values.notifyFriendships}
-        preferenceStatus={preferenceStatus}
-        onUpdate={updatePreferences}
-        onValueChange={setPreferenceValue}
+    <section id="settings-content" className="product-settings-section-group">
+      <SettingsSectionHeader
+        eyebrow="Content"
+        title="Content preferences"
+        description="Control how sensitive posts and media are exposed. These rules are enforced by the server and media gateway."
       />
-      <FriendRequestsCard
-        authenticated={data.authenticated}
-        allowFriendRequests={values.allowFriendRequests}
-        notifyActivity={values.notifyActivity}
-        notifyFriendships={values.notifyFriendships}
-        hideNsfw={values.hideNsfw}
-        blurNsfw={values.blurNsfw}
-        onUpdate={updatePreferences}
-        onValueChange={setPreferenceValue}
+      <Card className="product-settings-section">
+        <Switch
+          label="Hide NSFW posts"
+          description="Exclude sensitive posts from feeds and search when your account policy requires it."
+          checked={controller.values.hideNsfw}
+          disabled={disabled}
+          onCheckedChange={(checked) => void controller.changePreference("hideNsfw", checked)}
+        />
+        <Switch
+          label="Blur NSFW media"
+          description="Keep eligible sensitive media blurred until you explicitly reveal it."
+          checked={controller.values.blurNsfw}
+          disabled={disabled}
+          onCheckedChange={(checked) => void controller.changePreference("blurNsfw", checked)}
+        />
+      </Card>
+      <PreferenceSaveStatus controller={controller} />
+    </section>
+  );
+}
+
+function NotificationPreferences({
+  data,
+  controller,
+}: {
+  data: SettingsData;
+  controller: PreferenceController;
+}) {
+  const disabled = !data.authenticated || controller.saving;
+  return (
+    <section id="settings-notifications" className="product-settings-section-group">
+      <SettingsSectionHeader
+        eyebrow="Notifications"
+        title="Notification preferences"
+        description="Choose which private activity events should be stored in your notification feed."
       />
-      <NotificationPreferencesCard
-        authenticated={data.authenticated}
-        values={values}
-        onUpdate={updatePreferences}
-        onValueChange={setPreferenceValue}
+      <Card className="product-settings-section">
+        <Switch
+          label="Post and comment activity"
+          description="Replies, accepted sources, likes and other activity on your contributions."
+          checked={controller.values.notifyActivity}
+          disabled={disabled}
+          onCheckedChange={(checked) => void controller.changePreference("notifyActivity", checked)}
+        />
+        <Switch
+          label="Friendship activity"
+          description="Friend requests, accepts and related account activity."
+          checked={controller.values.notifyFriendships}
+          disabled={disabled}
+          onCheckedChange={(checked) =>
+            void controller.changePreference("notifyFriendships", checked)
+          }
+        />
+      </Card>
+      <PreferenceSaveStatus controller={controller} />
+    </section>
+  );
+}
+
+function PrivacyDataPreferences({
+  data,
+  controller,
+}: {
+  data: SettingsData;
+  controller: PreferenceController;
+}) {
+  const disabled = !data.authenticated || controller.saving;
+  return (
+    <section id="settings-privacy" className="product-settings-section-group">
+      <SettingsSectionHeader
+        eyebrow="Privacy & data"
+        title="Social privacy"
+        description="Control who can initiate social contact and jump to the places where SourceBoard already exposes profile visibility and block management."
       />
-    </>
+      <Card className="product-settings-section">
+        <Switch
+          label="Allow friend requests"
+          description="When disabled, your account is excluded from friend discovery and new requests are rejected server-side."
+          checked={controller.values.allowFriendRequests}
+          disabled={disabled}
+          onCheckedChange={(checked) =>
+            void controller.changePreference("allowFriendRequests", checked)
+          }
+        />
+        <div className="product-settings-link-row">
+          <div>
+            <strong>Blocked accounts</strong>
+            <span>Review and unblock accounts from the Friends workspace.</span>
+          </div>
+          <Link className="sb-button sb-button--secondary sb-button--sm" to="/friends">
+            Manage blocks
+          </Link>
+        </div>
+      </Card>
+      <PreferenceSaveStatus controller={controller} />
+    </section>
   );
 }
 
@@ -309,10 +266,101 @@ function SettingsNotice({ data }: { data: SettingsData }) {
   );
 }
 
+function PasswordPanel({ authenticated }: { authenticated: boolean }) {
+  const navigate = useNavigate();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  async function changePassword() {
+    if (!authenticated || busy) return;
+    if (newPassword.length < 12) {
+      setStatus("New passwords must contain at least 12 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setStatus("The new passwords do not match.");
+      return;
+    }
+    setBusy(true);
+    setStatus(null);
+    try {
+      const response = await fetch("/api/auth/password/change", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      if (!response.ok) {
+        setStatus(payload?.error?.message ?? "The password could not be changed.");
+        return;
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      navigate("/login");
+    } catch {
+      setStatus("The password could not be changed. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="product-settings-section product-settings-password-card">
+      <div className="product-settings-control-block">
+        <strong>Password</strong>
+        <span>Changing your password invalidates existing authenticated sessions.</span>
+        <div className="product-settings-password-fields">
+          <Input
+            label="Current password"
+            type="password"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+          />
+          <Input
+            label="New password"
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            minLength={12}
+            onChange={(event) => setNewPassword(event.target.value)}
+          />
+          <Input
+            label="Confirm new password"
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            minLength={12}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+          />
+        </div>
+        <div className="product-settings-inline-actions">
+          <Button
+            size="sm"
+            loading={busy}
+            disabled={!authenticated || !currentPassword || !newPassword || !confirmPassword}
+            onClick={() => void changePassword()}
+          >
+            Change password
+          </Button>
+          {status ? <span role="status">{status}</span> : null}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function SessionSecurityPanel() {
+  const navigate = useNavigate();
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
   async function loadSessions() {
@@ -324,7 +372,6 @@ function SessionSecurityPanel() {
       setSessions([]);
       return;
     }
-
     const response = await fetch("/api/auth/sessions");
     if (response.ok) {
       const body = (await response.json()) as { sessions?: SessionSummary[] };
@@ -341,30 +388,53 @@ function SessionSecurityPanel() {
     });
   }, []);
 
+  async function revokeSession(sessionId: string) {
+    if (busyId) return;
+    setBusyId(sessionId);
+    setStatus(null);
+    try {
+      const response = await fetch(`/api/auth/sessions/${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      if (!response.ok) {
+        setStatus("That session could not be revoked.");
+        return;
+      }
+      setSessions((current) => current.filter((session) => session.id !== sessionId));
+      setStatus("Session revoked.");
+    } catch {
+      setStatus("That session could not be revoked. Check your connection and try again.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function logoutAll() {
-    setBusy(true);
+    if (busyId) return;
+    setBusyId("all");
     setStatus(null);
     try {
       const response = await fetch("/api/auth/logout-all", {
         method: "POST",
-        headers: { "x-csrf-token": readCookie("__Host-sourceboard_csrf") ?? "" },
+        headers: { "x-csrf-token": readCsrfToken() },
       });
       if (!response.ok) {
-        setStatus("Could not log out the other sessions.");
+        setStatus("Could not log out all sessions.");
         return;
       }
-      await loadSessions();
+      setSessions([]);
+      setAuthenticated(false);
+      navigate("/login");
     } catch {
-      setStatus("Could not log out the other sessions. Try again.");
+      setStatus("Could not log out all sessions. Try again.");
     } finally {
-      setBusy(false);
+      setBusyId(null);
     }
   }
 
   return (
-    <Card className="product-settings-section">
-      <span className="product-eyebrow">Security</span>
-      <h2>Sessions</h2>
+    <Card className="product-settings-section product-settings-security-card">
       {authenticated === null ? (
         <div className="product-store-preview-status">Loading sessions…</div>
       ) : null}
@@ -376,15 +446,43 @@ function SessionSecurityPanel() {
       ) : null}
       {authenticated ? (
         <>
-          <p>{sessions.length} active session(s). Session tokens are never shown.</p>
-          <div className="product-form-grid">
+          <div className="product-settings-session-summary">
+            <strong>{sessions.length}</strong>
+            <span>active session{sessions.length === 1 ? "" : "s"}</span>
+          </div>
+          <div className="product-settings-session-list">
             {sessions.map((session) => (
-              <div className="product-store-preview-status" key={session.id}>
-                {session.current ? "Current browser session" : "Active browser session"}
+              <div className="product-settings-session" key={session.id}>
+                <div>
+                  <strong>{session.current ? "Current browser" : "Active browser"}</strong>
+                  <span>
+                    Last used{" "}
+                    {new Date(session.lastUsedAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
+                  </span>
+                </div>
+                {session.current ? (
+                  <span className="product-settings-current-session">This device</span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    loading={busyId === session.id}
+                    disabled={Boolean(busyId)}
+                    onClick={() => void revokeSession(session.id)}
+                  >
+                    Revoke
+                  </Button>
+                )}
               </div>
             ))}
           </div>
-          <Button variant="secondary" size="sm" loading={busy} onClick={() => void logoutAll()}>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={busyId === "all"}
+            disabled={Boolean(busyId)}
+            onClick={() => void logoutAll()}
+          >
             Log out all sessions
           </Button>
         </>
@@ -394,29 +492,113 @@ function SessionSecurityPanel() {
   );
 }
 
+const settingsNavigation = [
+  ["settings-account", "Account"],
+  ["settings-profile", "Profile"],
+  ["settings-content", "Content"],
+  ["settings-notifications", "Notifications"],
+  ["settings-appearance", "Appearance"],
+  ["settings-privacy", "Privacy & data"],
+  ["settings-security", "Security"],
+  ["settings-accessibility", "Accessibility"],
+] as const;
+
 export default function SettingsRoute() {
   const data = useLoaderData<SettingsData>();
+  const preferences = usePreferenceController(data);
 
   return (
     <ProductShell wide>
       <PageHeader
         eyebrow="Account"
         title="Settings"
-        description="Profile, privacy, content and appearance preferences."
+        description="Manage your account, profile, content, notifications, appearance, privacy, security and accessibility from one place."
       />
       <SettingsNotice data={data} />
 
-      <div className="product-settings-grid">
-        <PreferencesPanel data={data} />
+      <div className="product-settings-layout">
+        <nav className="product-settings-nav" aria-label="Settings sections">
+          <span className="product-settings-nav__label">Settings</span>
+          {settingsNavigation.map(([id, label]) => (
+            <a key={id} href={`#${id}`}>
+              {label}
+            </a>
+          ))}
+        </nav>
 
-        <Card className="product-settings-section">
-          <span className="product-eyebrow">Interface</span>
-          <h2>Appearance</h2>
-          <p>Use your operating-system theme by default or override it for SourceBoard.</p>
-          <ThemeControl />
-        </Card>
+        <div className="product-settings-content">
+          <section id="settings-account" className="product-settings-section-group">
+            <SettingsSectionHeader
+              eyebrow="Account"
+              title="Account access"
+              description="Manage credentials with server-enforced session invalidation. SourceBoard does not expose private account identifiers on public profile surfaces."
+            />
+            <PasswordPanel authenticated={data.authenticated} />
+          </section>
 
-        <SessionSecurityPanel />
+          <section id="settings-profile" className="product-settings-section-group">
+            <SettingsSectionHeader
+              eyebrow="Profile"
+              title="Public identity"
+              description="Avatar, banner, display name, bio, social links and profile visibility are edited directly on your profile so the result is visible while you edit."
+            />
+            <Card className="product-settings-section">
+              <div className="product-settings-link-row">
+                <div>
+                  <strong>Edit profile</strong>
+                  <span>
+                    Open the Discord-style inline profile editor and preview changes in place.
+                  </span>
+                </div>
+                <Link className="sb-button sb-button--secondary sb-button--sm" to="/profile">
+                  Open profile
+                </Link>
+              </div>
+            </Card>
+          </section>
+
+          <ContentPreferences data={data} controller={preferences} />
+          <NotificationPreferences data={data} controller={preferences} />
+
+          <section id="settings-appearance" className="product-settings-section-group">
+            <SettingsSectionHeader
+              eyebrow="Appearance"
+              title="Theme"
+              description="Follow your operating system or use a SourceBoard light or dark override on this browser."
+            />
+            <Card className="product-settings-section product-settings-appearance-card">
+              <div className="product-settings-control-block">
+                <strong>Theme</strong>
+                <span>Choose the interface color scheme used on this device.</span>
+                <ThemeControl />
+              </div>
+            </Card>
+          </section>
+
+          <PrivacyDataPreferences data={data} controller={preferences} />
+
+          <section id="settings-security" className="product-settings-section-group">
+            <SettingsSectionHeader
+              eyebrow="Security"
+              title="Active sessions"
+              description="Review authenticated browser sessions, revoke another browser immediately, or invalidate every session."
+            />
+            <SessionSecurityPanel />
+          </section>
+
+          <section id="settings-accessibility" className="product-settings-section-group">
+            <SettingsSectionHeader
+              eyebrow="Accessibility"
+              title="Motion"
+              description="Control nonessential interface movement and animated cosmetics. System reduced-motion preferences remain respected automatically."
+            />
+            <Card className="product-settings-section product-settings-appearance-card">
+              <div className="product-settings-control-block">
+                <AnimationControl />
+              </div>
+            </Card>
+          </section>
+        </div>
       </div>
     </ProductShell>
   );

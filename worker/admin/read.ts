@@ -1,3 +1,4 @@
+import { createD1ProfileStore } from "../profile/store";
 import type {
   AdminAuditFilters,
   AdminAuditRow,
@@ -132,6 +133,7 @@ export function createAdminReadService(db: D1Database): AdminReadService {
       const result = await db
         .prepare(
           `SELECT u.id, u.username, COALESCE(p.display_name, u.username) AS displayName,
+                  p.avatar_asset_id AS avatarAssetId,
                   u.status, u.created_at AS createdAt, u.last_seen_at AS lastSeenAt,
                   GROUP_CONCAT(DISTINCT r.slug) AS roles
            FROM users u
@@ -139,22 +141,33 @@ export function createAdminReadService(db: D1Database): AdminReadService {
            LEFT JOIN user_roles ur ON ur.user_id = u.id
            LEFT JOIN roles r ON r.id = ur.role_id
            WHERE (? = '' OR u.username_normalized LIKE ? OR lower(COALESCE(p.display_name, '')) LIKE ?)
-           GROUP BY u.id, u.username, p.display_name, u.status, u.created_at, u.last_seen_at
+           GROUP BY u.id, u.username, p.display_name, p.avatar_asset_id, u.status, u.created_at, u.last_seen_at
            ORDER BY u.created_at DESC
            LIMIT ?`,
         )
         .bind(normalized, like, like, clampLimit(limit))
         .all<Record<string, unknown>>();
 
-      return result.results.map((row) => ({
-        id: String(row.id),
-        username: String(row.username),
-        displayName: String(row.displayName),
-        status: String(row.status),
-        createdAt: Number(row.createdAt),
-        lastSeenAt: row.lastSeenAt == null ? null : Number(row.lastSeenAt),
-        roles: splitCsv(row.roles),
-      }));
+      const profileStore = createD1ProfileStore(db);
+      return Promise.all(
+        result.results.map(async (row) => {
+          const userId = String(row.id);
+          const cosmetics = await profileStore.getEquippedCosmetics(userId).catch(() => ({}));
+          return {
+            id: userId,
+            username: String(row.username),
+            displayName: String(row.displayName),
+            ...(row.avatarAssetId
+              ? { avatarUrl: `/api/media/profile/${encodeURIComponent(String(row.avatarAssetId))}` }
+              : {}),
+            ...(Object.keys(cosmetics).length ? { cosmetics } : {}),
+            status: String(row.status),
+            createdAt: Number(row.createdAt),
+            lastSeenAt: row.lastSeenAt == null ? null : Number(row.lastSeenAt),
+            roles: splitCsv(row.roles),
+          } satisfies AdminUserRow;
+        }),
+      );
     },
 
     async roles(): Promise<AdminRoleRow[]> {

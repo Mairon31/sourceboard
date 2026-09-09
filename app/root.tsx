@@ -10,38 +10,83 @@ import {
 } from "react-router";
 import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import { readSourceBoardRequestContext } from "../shared/router-context";
+import { createD1ProfileStore } from "../worker/profile/store";
 import { readServerSession, type ServerLoaderArgs } from "./data/server-request";
 import "./styles/base.css";
+import "./styles/motion-preferences.css";
 import "./components/ui/ui.css";
 import "./components/layout/layout.css";
+import "./components/layout/notification-popover.css";
 import "./components/product/product.css";
+import "./components/product/home-redesign.css";
+import "./components/product/search-redesign.css";
+import "./components/product/settings-redesign.css";
 import "./components/product/post-media.css";
 import "./components/product/post-card-refresh.css";
 import "./components/product/product-interactions.css";
 import "./components/product/comment-actions.css";
 import "./components/product/source-resolution.css";
 import "./components/product/notifications.css";
+import "./components/product/notification-actor-stack.css";
 import "./components/product/store.css";
 import "./components/product/store-page.css";
 import "./components/product/store-responsive.css";
 import "./components/product/store-effects.css";
+import "./components/product/name-effect-extras.css";
+import "./components/product/custom-cosmetics.css";
+import "./components/product/community-cosmetic-studio.css";
 import "./components/product/cosmetic-identity.css";
 import "./components/product/profile-klipy.css";
+import "./components/product/docs-system.css";
+import "./components/product/footer-expanded.css";
 import "./components/admin/admin.css";
 import "./components/admin/store/admin-store.css";
+import "./components/product/visual-overhaul.css";
+import "./components/product/profile-summary.css";
+import "./components/product/mobile-product-polish.css";
+import "./components/product/profile-layout-polish.css";
+import "./components/product/store-mobile-polish.css";
+import "./components/product/post-layout-polish.css";
+import "./components/product/friends-page-polish.css";
 
 // fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
 export async function loader({ request, context }: ServerLoaderArgs) {
   const requestContext = readSourceBoardRequestContext(context);
-  const session = await readServerSession(request, context)
-    .then((current) => (current ? { user: current.user } : null))
-    .catch(() => null);
+  const currentSession = await readServerSession(request, context).catch(() => null);
+  const session = currentSession ? { user: currentSession.user } : null;
+  let navigationIdentity: {
+    displayName: string;
+    avatarUrl?: string;
+    cosmetics: Awaited<ReturnType<ReturnType<typeof createD1ProfileStore>["getEquippedCosmetics"]>>;
+  } | null = null;
+
+  if (currentSession && requestContext?.env.DB) {
+    try {
+      const profileStore = createD1ProfileStore(requestContext.env.DB);
+      const [profile, cosmetics] = await Promise.all([
+        profileStore.getProfileByUserId(currentSession.user.id, Date.now()),
+        profileStore.getEquippedCosmetics(currentSession.user.id),
+      ]);
+      if (profile) {
+        navigationIdentity = {
+          displayName: profile.displayName,
+          avatarUrl: profile.avatarAssetId
+            ? `/api/media/profile/${encodeURIComponent(profile.avatarAssetId)}`
+            : undefined,
+          cosmetics,
+        };
+      }
+    } catch {
+      navigationIdentity = null;
+    }
+  }
 
   return {
     cspNonce: requestContext?.cspNonce ?? null,
     origin: "https://srcboard.me",
-    // fallow-ignore-next-line unused-load-data-key -- ProductNav reads this root loader through useRouteLoaderData.
+    // fallow-ignore-next-line unused-load-data-key -- global navigation reads this root loader.
     session,
+    navigationIdentity,
   };
 }
 

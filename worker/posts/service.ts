@@ -42,6 +42,11 @@ export interface PostService {
     cursor: string | null;
     limit: number;
   }): Promise<{ posts: PostSummary[]; nextCursor: string | null }>;
+  listProfileActivity(input: {
+    authorId: string;
+    viewerId: string | null;
+    limit: number;
+  }): Promise<{ posts: PostSummary[]; acceptedSources: PostSummary[] }>;
   updatePost(
     postId: string,
     editorUserId: string,
@@ -157,6 +162,28 @@ export async function canViewPost(
   });
 }
 
+async function canListPostOnProfile(
+  viewerId: string | null,
+  post: PostRecord,
+  dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
+): Promise<boolean> {
+  const isOwner = viewerId === post.authorId;
+  if (!isOwner && (post.authorMode === "ANONYMOUS" || post.visibility === "UNLISTED")) {
+    return false;
+  }
+  return canViewPost(viewerId, post, dependencies);
+}
+
+async function canListAcceptedSourceOnProfile(
+  profileOwnerId: string,
+  viewerId: string | null,
+  post: PostRecord,
+  dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
+): Promise<boolean> {
+  if (viewerId !== profileOwnerId && post.visibility === "UNLISTED") return false;
+  return canViewPost(viewerId, post, dependencies);
+}
+
 function authorForPost(
   post: PostWithAuthor,
   profileVisible: boolean,
@@ -180,6 +207,7 @@ function authorForPost(
     profileEffect: cosmetics?.profileEffect,
     nameFont: cosmetics?.nameFont,
     nameEffect: cosmetics?.nameEffect,
+    visuals: cosmetics?.visuals,
   };
 }
 
@@ -218,6 +246,7 @@ async function toPostSummary(
     description: post.post.description || undefined,
     author: authorForPost(post, profileVisible, cosmetics),
     createdAt: new Date(post.post.createdAt).toISOString(),
+    updatedAt: new Date(post.post.updatedAt).toISOString(),
     status: post.post.status,
     visibility: post.post.visibility,
     isNsfw: post.post.isNsfw,
@@ -340,6 +369,49 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         decodedCursor = decodePostCursor(result.nextCursor);
       }
       return { posts: visible, nextCursor };
+    },
+
+    async listProfileActivity({ authorId, viewerId, limit }) {
+      const safeLimit = Math.min(Math.max(1, Math.floor(limit)), MAX_FEED_LIMIT);
+      let decodedCursor = decodePostCursor(null);
+      const visible: PostSummary[] = [];
+      for (let page = 0; page < 5 && visible.length < safeLimit; page += 1) {
+        const result = await dependencies.store.listByAuthor({
+          authorId,
+          cursor: decodedCursor,
+          limit: safeLimit * 2,
+        });
+        for (const post of result.posts) {
+          if (await canListPostOnProfile(viewerId, post.post, policyDependencies)) {
+            visible.push(await toPostSummary(post, viewerId, policyDependencies));
+            if (visible.length >= safeLimit) break;
+          }
+        }
+        if (!result.nextCursor) break;
+        decodedCursor = decodePostCursor(result.nextCursor);
+      }
+
+      let acceptedCursor = decodePostCursor(null);
+      const acceptedSources: PostSummary[] = [];
+      for (let page = 0; page < 5 && acceptedSources.length < safeLimit; page += 1) {
+        const result = await dependencies.store.listAcceptedByContributor({
+          contributorId: authorId,
+          cursor: acceptedCursor,
+          limit: safeLimit * 2,
+        });
+        for (const post of result.posts) {
+          if (
+            await canListAcceptedSourceOnProfile(authorId, viewerId, post.post, policyDependencies)
+          ) {
+            acceptedSources.push(await toPostSummary(post, viewerId, policyDependencies));
+            if (acceptedSources.length >= safeLimit) break;
+          }
+        }
+        if (!result.nextCursor) break;
+        acceptedCursor = decodePostCursor(result.nextCursor);
+      }
+
+      return { posts: visible, acceptedSources };
     },
 
     async updatePost(postId, editorUserId, input) {

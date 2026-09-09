@@ -52,13 +52,22 @@
 - Test: localhost `/login`, `/register`, `/verify-email`
 
 - [x] Verify the auth screens at desktop and narrow mobile widths with no new SourceBoard console errors; Turnstile succeeds locally.
-- [ ] Verify a stale CSRF/session request reports the actual auth response instead of an unexplained browser failure.
-- [ ] Run only the focused unit test, auth E2E/API test and typecheck before deciding whether a broader gate is warranted.
+- [x] Verify a stale CSRF/session request reports the actual auth response instead of an unexplained browser failure.
+- [x] Run only the focused unit test, auth E2E/API test and typecheck before deciding whether a broader gate is warranted.
 
-## Execution checkpoint — 2026-09-08
+## Execution checkpoint — 2026-09-09
 
-The auth request fix is committed on `master`. Local `/register` was checked
+The auth request fix and stale-session regression coverage are integrated on
+`feature/sourceboard-product-overhaul`. The focused auth gate passed the auth
+unit tests, TypeScript typecheck, local D1 migrations and `auth-api.spec.ts`,
+including the stale-session API path. Local `/register` was previously checked
 with the real Turnstile widget after the user temporarily authorized
-`localhost` in Cloudflare. A real Firebase registration and Google account
-flow still requires a configured account and remains an explicit external
-verification item; no local bypass or secret was added.
+`localhost` in Cloudflare. Production bindings and required secrets remain
+unchanged in `wrangler.jsonc`; no local bypass or secret was added to the
+repository.
+
+A live Firebase registration/Google account round trip still depends on the
+externally configured Firebase project and user account. The repository-side
+Firebase handoff, verification synchronization and hosting configuration are
+covered by their dedicated tests and remain fail-closed when required
+configuration is absent.

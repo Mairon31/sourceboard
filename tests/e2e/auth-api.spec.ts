@@ -7,6 +7,15 @@ test("auth session endpoint does not invent an anonymous identity", async ({ req
   await expect(response.json()).resolves.toEqual({ authenticated: false, user: null });
 });
 
+test("stale session cookies degrade to an anonymous session response", async ({ request }) => {
+  const response = await request.get("/api/auth/session", {
+    headers: { cookie: "__Host-sourceboard_session=stale-session-token" },
+  });
+
+  expect(response.ok()).toBe(true);
+  await expect(response.json()).resolves.toEqual({ authenticated: false, user: null });
+});
+
 test("auth mutations reject a foreign origin before processing credentials", async ({
   request,
 }) => {

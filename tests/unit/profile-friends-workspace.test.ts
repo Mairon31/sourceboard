@@ -25,12 +25,13 @@ describe("profile and friends workspace", () => {
     expect(profileHero).not.toContain("product-stat-card");
   });
 
-  it("provides Friends, Requests, Add and Discover modes with search", () => {
+  it("provides Friends, Incoming, Outgoing, Add and Discover modes with search", () => {
     expect(friendsRoute).toContain("<FriendsWorkspace");
-    expect(friendsWorkspace).toContain("Friends <span");
-    expect(friendsWorkspace).toContain("Requests <span");
-    expect(friendsWorkspace).toContain("Add");
-    expect(friendsWorkspace).toContain("Discover");
+    expect(friendsWorkspace).toContain('friends: "Friends"');
+    expect(friendsWorkspace).toContain('incoming: "Incoming"');
+    expect(friendsWorkspace).toContain('outgoing: "Outgoing"');
+    expect(friendsWorkspace).toContain('add: "Add"');
+    expect(friendsWorkspace).toContain('discover: "Discover"');
     expect(friendsWorkspace).toContain('type="search"');
     expect(friendsWorkspace).toContain("searchFriendSuggestions");
     expect(friendsWorkspace).toContain("<CosmeticIdentity");

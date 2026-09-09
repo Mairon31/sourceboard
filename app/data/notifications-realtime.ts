@@ -1,3 +1,5 @@
+import type { PublicCosmeticsDto } from "../../worker/profile/types";
+
 export interface NotificationRealtimeLocation {
   protocol: string;
   host: string;
@@ -7,6 +9,14 @@ export interface NotificationSnapshot {
   unreadCount: number;
   lastSeen: string | null;
   notifications: NotificationPreview[];
+}
+
+export interface NotificationPreviewActor {
+  id: string;
+  displayName: string;
+  username: string;
+  avatarUrl?: string;
+  cosmetics?: PublicCosmeticsDto;
 }
 
 export interface NotificationPreview {
@@ -19,10 +29,49 @@ export interface NotificationPreview {
   body: string;
   href: string;
   ctaLabel?: string;
+  actor?: NotificationPreviewActor;
+  groupActors?: NotificationPreviewActor[];
   readAt: number | null;
+  createdAt: number;
   groupedIds?: string[];
   groupCount?: number;
   unreadCount?: number;
+}
+
+function readActor(value: unknown): NotificationPreviewActor | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const actor = value as {
+    id?: unknown;
+    displayName?: unknown;
+    username?: unknown;
+    avatarUrl?: unknown;
+    cosmetics?: unknown;
+  };
+  if (
+    typeof actor.id !== "string" ||
+    typeof actor.displayName !== "string" ||
+    typeof actor.username !== "string"
+  ) {
+    return undefined;
+  }
+  return {
+    id: actor.id,
+    displayName: actor.displayName,
+    username: actor.username,
+    ...(typeof actor.avatarUrl === "string" ? { avatarUrl: actor.avatarUrl } : {}),
+    ...(actor.cosmetics && typeof actor.cosmetics === "object" && !Array.isArray(actor.cosmetics)
+      ? { cosmetics: actor.cosmetics as PublicCosmeticsDto }
+      : {}),
+  };
+}
+
+function readActors(value: unknown): NotificationPreviewActor[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const actors = value.flatMap((item) => {
+    const actor = readActor(item);
+    return actor ? [actor] : [];
+  });
+  return actors.length ? actors.slice(0, 3) : undefined;
 }
 
 export function readNotificationSnapshot(payload: unknown): NotificationSnapshot | null {
@@ -42,7 +91,10 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
       body?: unknown;
       href?: unknown;
       ctaLabel?: unknown;
+      actor?: unknown;
+      groupActors?: unknown;
       readAt?: unknown;
+      createdAt?: unknown;
       groupedIds?: unknown;
       groupCount?: unknown;
       unreadCount?: unknown;
@@ -52,10 +104,13 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
       typeof item.type !== "string" ||
       typeof item.title !== "string" ||
       typeof item.body !== "string" ||
-      typeof item.href !== "string"
+      typeof item.href !== "string" ||
+      typeof item.createdAt !== "number"
     ) {
       return [];
     }
+    const actor = readActor(item.actor);
+    const groupActors = readActors(item.groupActors);
     return [
       {
         id: item.id,
@@ -67,7 +122,10 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
         body: item.body,
         href: item.href,
         ...(typeof item.ctaLabel === "string" ? { ctaLabel: item.ctaLabel } : {}),
+        ...(actor ? { actor } : {}),
+        ...(groupActors ? { groupActors } : {}),
         readAt: typeof item.readAt === "number" ? item.readAt : null,
+        createdAt: item.createdAt,
         ...(Array.isArray(item.groupedIds)
           ? { groupedIds: item.groupedIds.filter((id): id is string => typeof id === "string") }
           : {}),
@@ -78,9 +136,7 @@ export function readNotificationSnapshot(payload: unknown): NotificationSnapshot
   });
   const latest = previews.find(
     (notification): notification is NotificationPreview =>
-      Boolean(notification) &&
-      typeof notification === "object" &&
-      typeof notification.id === "string",
+      Boolean(notification) && typeof notification.id === "string",
   );
   return {
     unreadCount: Math.max(0, Math.floor(value.unreadCount)),

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { readCsrfToken } from "../../data/csrf";
-import { Card } from "../ui";
 
 export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdmin?: boolean }) {
   const navigate = useNavigate();
@@ -30,7 +29,7 @@ export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdm
   }
 
   return (
-    <Card className="product-profile-account">
+    <section className="product-profile-account product-profile-account--plain">
       <div className="product-profile-account__heading">
         <span className="product-eyebrow">Account</span>
         <h2>Account options</h2>
@@ -43,6 +42,22 @@ export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdm
           </span>
           <span aria-hidden="true">›</span>
         </Link>
+        <Link className="product-profile-account__action" to="/settings#settings-privacy">
+          <span>
+            <strong>Privacy & data</strong>
+            <small>Friend-request privacy, blocks and your account data controls</small>
+          </span>
+          <span aria-hidden="true">›</span>
+        </Link>
+        <a className="product-profile-account__action" href="/api/profile/me/export" download>
+          <span>
+            <strong>Download my data</strong>
+            <small>
+              Export your SourceBoard profile, contributions, relationships and point ledger as JSON
+            </small>
+          </span>
+          <span aria-hidden="true">↓</span>
+        </a>
         {canAccessAdmin ? (
           <Link className="product-profile-account__action" to="/admin">
             <span>
@@ -66,6 +81,6 @@ export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdm
         </button>
       </div>
       {status ? <small role="status">{status}</small> : null}
-    </Card>
+    </section>
   );
 }

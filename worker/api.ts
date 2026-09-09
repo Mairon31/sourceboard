@@ -8,7 +8,11 @@ import { handleCommentApiRequest } from "./comments/api";
 import { handleCatalogRequest } from "./catalog/api";
 import { handleSourceRequest } from "./source/api";
 import { handleReputationRequest } from "./reputation/api";
+import { handlePublicReputationRequest } from "./reputation/public-api";
+import { withContributionRewards } from "./reputation/contribution-hooks";
 import { handleStoreRequest } from "./store/api";
+import { handleCommunityCosmeticRequest } from "./store/community-api";
+import { enforceCommunityCosmeticPublicationGate } from "./store/publication-gate";
 import { handleModerationRequest } from "./moderation/api";
 import { handleSearchRequest } from "./search/api";
 
@@ -38,56 +42,76 @@ export async function handleApiRequest(
   env?: SourceBoardEnvironment,
 ): Promise<Response | null> {
   const url = new URL(request.url);
+  const runtime = env ?? {};
 
-  const authResponse = await handleAuthRequest(request, requestId, env ?? {});
+  const authResponse = await handleAuthRequest(request, requestId, runtime);
   if (authResponse) {
     return authResponse;
   }
 
-  const notificationResponse = await handleNotificationRequest(request, requestId, env ?? {});
+  const notificationResponse = await handleNotificationRequest(request, requestId, runtime);
   if (notificationResponse) {
     return notificationResponse;
   }
 
-  const profileResponse = await handleProfileApiRequest(request, requestId, env ?? {});
+  const publicReputationResponse = await handlePublicReputationRequest(request, requestId, runtime);
+  if (publicReputationResponse) {
+    return publicReputationResponse;
+  }
+
+  const profileResponse = await handleProfileApiRequest(request, requestId, runtime);
   if (profileResponse) {
-    return profileResponse;
+    return withContributionRewards(request, profileResponse, runtime);
   }
 
-  const commentResponse = await handleCommentApiRequest(request, requestId, env ?? {});
+  const commentResponse = await handleCommentApiRequest(request, requestId, runtime);
   if (commentResponse) {
-    return commentResponse;
+    return withContributionRewards(request, commentResponse, runtime);
   }
 
-  const catalogResponse = await handleCatalogRequest(request, requestId, env ?? {});
+  const catalogResponse = await handleCatalogRequest(request, requestId, runtime);
   if (catalogResponse) {
     return catalogResponse;
   }
 
-  const sourceResponse = await handleSourceRequest(request, requestId, env ?? {});
+  const sourceResponse = await handleSourceRequest(request, requestId, runtime);
   if (sourceResponse) {
     return sourceResponse;
   }
 
-  const reputationResponse = await handleReputationRequest(request, requestId, env ?? {});
+  const reputationResponse = await handleReputationRequest(request, requestId, runtime);
   if (reputationResponse) {
     return reputationResponse;
   }
 
-  const storeResponse = await handleStoreRequest(request, requestId, env ?? {});
+  const cosmeticResponse = await handleCommunityCosmeticRequest(request, requestId, runtime);
+  if (cosmeticResponse) {
+    return cosmeticResponse;
+  }
+
+  const publicationGate = await enforceCommunityCosmeticPublicationGate(
+    request,
+    requestId,
+    runtime,
+  );
+  if (publicationGate) {
+    return publicationGate;
+  }
+
+  const storeResponse = await handleStoreRequest(request, requestId, runtime);
   if (storeResponse) {
     return storeResponse;
   }
 
-  const moderationResponse = await handleModerationRequest(request, requestId, env ?? {});
+  const moderationResponse = await handleModerationRequest(request, requestId, runtime);
   if (moderationResponse) return moderationResponse;
 
-  const searchResponse = await handleSearchRequest(request, requestId, env ?? {});
+  const searchResponse = await handleSearchRequest(request, requestId, runtime);
   if (searchResponse) return searchResponse;
 
-  const postResponse = await handlePostApiRequest(request, requestId, env ?? {});
+  const postResponse = await handlePostApiRequest(request, requestId, runtime);
   if (postResponse) {
-    return postResponse;
+    return withContributionRewards(request, postResponse, runtime);
   }
 
   if (request.method !== "GET" || url.pathname !== "/api/health") {

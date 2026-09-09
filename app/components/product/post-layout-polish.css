@@ -1,0 +1,41 @@
+.product-post__menu {
+  position: absolute !important;
+  top: 11px;
+  right: 11px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  margin: 0 !important;
+  border-radius: 10px;
+}
+
+.product-post__badges {
+  padding-right: 2px;
+}
+
+.product-post__badges .sb-badge {
+  max-width: 100%;
+}
+
+@media (max-width: 780px) {
+  .product-post__menu {
+    top: 10px;
+    right: 10px;
+  }
+
+  .product-post__header {
+    padding-right: 54px;
+  }
+
+  .product-post__badges {
+    width: auto;
+    max-width: calc(100% - 2px);
+    padding-right: 0;
+  }
+
+  .product-post__badges .sb-badge {
+    min-height: 27px;
+    padding-inline: 9px;
+    font-size: 0.7rem;
+  }
+}

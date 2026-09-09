@@ -1,0 +1,186 @@
+.product-community-studio {
+  display: grid;
+  gap: 16px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.product-community-studio__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.product-community-studio__form,
+.product-community-studio__side {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.product-community-studio__form {
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--surface-solid);
+}
+
+.product-community-studio__visual-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.product-community-studio__visual-grid label,
+.product-community-studio__range-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.product-community-studio__visual-grid input[type="color"] {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-app-secondary);
+  padding: 3px;
+}
+
+.product-community-studio__range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.product-community-studio__range-grid input[type="range"] {
+  width: 100%;
+}
+
+.product-community-studio__motion-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.product-community-studio__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.product-community-studio__actions small,
+.product-community-studio__form > p[role="status"] {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.product-community-studio__preview {
+  display: grid;
+  min-height: 190px;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  overflow: hidden;
+  border: var(--sb-cosmetic-border-width, 1px) solid var(--sb-cosmetic-border, var(--border-subtle));
+  border-radius: var(--sb-cosmetic-radius, 18px);
+  background: var(--sb-cosmetic-bg, var(--surface-solid));
+  color: var(--sb-cosmetic-fg, var(--text-primary));
+  box-shadow: 0 0 var(--sb-cosmetic-glow-size, 0) var(--sb-cosmetic-glow, transparent);
+  opacity: var(--sb-cosmetic-opacity, 1);
+  text-align: center;
+}
+
+.product-community-studio__preview > span,
+.product-community-studio__preview > small {
+  color: color-mix(in srgb, currentColor 70%, transparent);
+  font-size: 0.72rem;
+  text-transform: capitalize;
+}
+
+.product-community-studio__preview strong {
+  max-width: 90%;
+  font-size: 1.35rem;
+  font-style: var(--sb-cosmetic-font-style, normal);
+  font-weight: var(--sb-cosmetic-font-weight, 750);
+  letter-spacing: var(--sb-cosmetic-letter-spacing, normal);
+  text-transform: var(--sb-cosmetic-text-transform, none);
+}
+
+.product-community-studio__submissions {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.product-community-studio__submissions > div:first-child,
+.product-community-studio__submission {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.product-community-studio__submissions > div:first-child span,
+.product-community-studio__submission span,
+.product-community-studio__submission small,
+.product-community-studio__submissions p {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.product-community-studio__submission {
+  flex-wrap: wrap;
+  padding: 9px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.product-community-studio__submission > div {
+  display: grid;
+  gap: 2px;
+}
+
+.product-community-studio__submission > span[data-state="APPROVED"] {
+  color: var(--success);
+}
+
+.product-community-studio__submission > span[data-state="REJECTED"] {
+  color: var(--danger);
+}
+
+.product-community-studio__submission small {
+  width: 100%;
+}
+
+@media (max-width: 820px) {
+  .product-community-studio__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-community-studio__side {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .product-community-studio__form {
+    padding: 13px;
+  }
+
+  .product-community-studio__visual-grid,
+  .product-community-studio__range-grid,
+  .product-community-studio__motion-row,
+  .product-community-studio__side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-community-studio__preview {
+    min-height: 150px;
+  }
+}

@@ -3,30 +3,72 @@ import { createManualAdjustment, processReputationEvent } from "../../worker/rep
 
 function createDb(options: { duplicate?: boolean; batchChanges?: boolean } = {}) {
   const statements: string[] = [];
+  const bindings: Array<{ query: string; values: unknown[] }> = [];
   const db = {
     prepare: vi.fn((query: string) => {
       statements.push(query);
+      let values: unknown[] = [];
       const statement = {
-        bind: vi.fn(() => statement),
+        bind: vi.fn((...nextValues: unknown[]) => {
+          values = nextValues;
+          bindings.push({ query, values: nextValues });
+          return statement;
+        }),
         first: vi.fn(async <T>() => {
-          if (query.includes("FROM posts p"))
+          if (query.includes("FROM posts p")) {
             return { post_author_id: "author", comment_author_id: "contributor" } as T;
-          if (query.includes("SUM(CASE WHEN reward_type = 'VERIFIED_SOURCE'"))
+          }
+          if (query.includes("FROM reputation_reward_rules")) {
+            const rewardType =
+              values[0] === "ACCEPTED_SOURCE" ? "ACCEPTED_SOURCE" : "VERIFIED_SOURCE";
+            return {
+              id: rewardType === "ACCEPTED_SOURCE" ? "accepted-v1" : "verified-v1",
+              reward_type: rewardType,
+              version: 1,
+              amount: rewardType === "ACCEPTED_SOURCE" ? 10 : 100,
+              provisional: rewardType === "ACCEPTED_SOURCE" ? 1 : 0,
+            } as T;
+          }
+          if (query.includes("AS count") && query.includes("FROM point_ledger WHERE user_id")) {
             return { count: 1 } as T;
-          if (query.includes("FROM point_ledger WHERE reward_type"))
-            return { user_id: "contributor" } as T;
+          }
+          if (query.includes("FROM point_ledger") && query.includes("entry_type = 'AWARD'")) {
+            return {
+              id: "original-ledger",
+              user_id: "contributor",
+              amount: 100,
+              metadata_json: "{}",
+            } as T;
+          }
           if (query.includes("COUNT(*) AS count")) return { count: 0 } as T;
           return null;
         }),
+        all: vi.fn(async <T>() => ({
+          results: query.includes("FROM achievement_catalog")
+            ? ([
+                {
+                  id: "achievement-first-verified-source-v1",
+                  slug: "first-verified-source",
+                  version: 1,
+                  name: "First verified source",
+                  description: "Verify your first source for the community.",
+                  icon: "◎",
+                  verified_source_threshold: 1,
+                },
+              ] as T[])
+            : [],
+          success: true as const,
+          meta: {},
+        })),
         run: vi.fn(async () => ({ meta: { changes: options.duplicate ? 0 : 1 } })),
       };
       return statement as unknown as D1PreparedStatement;
     }),
-    batch: vi.fn(async (statements: unknown[]) =>
-      options.batchChanges ? statements.map(() => ({ meta: { changes: 1 } })) : [],
+    batch: vi.fn(async (items: unknown[]) =>
+      options.batchChanges ? items.map(() => ({ meta: { changes: 1 } })) : [],
     ),
   } as unknown as D1Database;
-  return { db, statements };
+  return { db, statements, bindings };
 }
 
 describe("reputation ledger", () => {
@@ -67,7 +109,7 @@ describe("reputation ledger", () => {
   });
 
   it("creates an exact inverse for a revoked verified source", async () => {
-    const { db, statements } = createDb();
+    const { db, statements, bindings } = createDb();
     await processReputationEvent(
       db,
       { type: "source.verification.revoked", postId: "post", commentId: "comment" },
@@ -76,6 +118,10 @@ describe("reputation ledger", () => {
     expect(statements.some((query) => query.includes("INSERT OR IGNORE INTO point_ledger"))).toBe(
       true,
     );
+    const inserted = bindings.find((entry) =>
+      entry.query.includes("INSERT OR IGNORE INTO point_ledger"),
+    );
+    expect(inserted?.values[2]).toBe(-100);
   });
 
   it("emits each newly earned achievement only after its D1 insert", async () => {

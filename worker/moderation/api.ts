@@ -1,3 +1,4 @@
+import { createAdminUserControlService } from "../admin/user-control";
 import { createAuthContext, createAuthService } from "../auth/service";
 import { hasCapability, type Capability } from "../auth/rbac";
 import { assertCsrfToken, assertSameOrigin } from "../auth/security";
@@ -61,6 +62,149 @@ async function requireCapability(
   return { auth, userId: current.user.id, authorization, security: authContext.security };
 }
 
+async function assertCanModerateUser(
+  db: D1Database,
+  actorAuthorization: Awaited<ReturnType<typeof requireCapability>>["authorization"],
+  targetUserId: string,
+) {
+  const targetUser = await db
+    .prepare("SELECT id FROM users WHERE id = ?")
+    .bind(targetUserId)
+    .first<{ id: string }>();
+  if (!targetUser) {
+    throw Object.assign(new Error("The moderation target was not found."), { status: 404 });
+  }
+  const targetRoles = await db
+    .prepare(
+      "SELECT r.slug, r.rank FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = ?",
+    )
+    .bind(targetUserId)
+    .all<{ slug: string; rank: number }>();
+  if (
+    !canActOnTarget(actorAuthorization, {
+      roles: targetRoles.results.map((role) => ({ slug: role.slug as never, rank: role.rank })),
+      capabilities: new Set(),
+    })
+  ) {
+    throw Object.assign(new Error("The target role is protected."), { status: 403 });
+  }
+}
+
+function userControlMatch(pathname: string) {
+  return {
+    sanctions: pathname.match(/^\/api\/admin\/moderation\/users\/([^/]+)\/sanctions$/),
+    revokeSanction: pathname.match(
+      /^\/api\/admin\/moderation\/users\/([^/]+)\/sanctions\/([^/]+)\/revoke$/,
+    ),
+    note: pathname.match(/^\/api\/admin\/moderation\/users\/([^/]+)\/note$/),
+    sessions: pathname.match(/^\/api\/admin\/moderation\/users\/([^/]+)\/sessions\/revoke$/),
+    anonymize: pathname.match(/^\/api\/admin\/moderation\/users\/([^/]+)\/anonymize$/),
+  };
+}
+
+async function handleAdminUserControl(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+  url: URL,
+): Promise<Response | null> {
+  const matches = userControlMatch(url.pathname);
+  if (!Object.values(matches).some(Boolean)) return null;
+  const db = database(env);
+  const control = createAdminUserControlService(db);
+
+  if (request.method === "GET" && matches.sanctions) {
+    const targetUserId = decodeURIComponent(matches.sanctions[1] ?? "");
+    const authorized = await requireCapability(request, requestId, env, "admin.access");
+    await assertCanModerateUser(db, authorized.authorization, targetUserId);
+    return json({ sanctions: await control.listSanctions(targetUserId) }, requestId);
+  }
+
+  if (request.method !== "POST") return null;
+  assertSameOrigin(request);
+  assertCsrfToken(request);
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const reason = assertReason(String(body.reason ?? ""));
+
+  if (matches.note) {
+    const targetUserId = decodeURIComponent(matches.note[1] ?? "");
+    const authorized = await requireCapability(request, requestId, env, "user.suspend");
+    await assertCanModerateUser(db, authorized.authorization, targetUserId);
+    return json(
+      {
+        note: await control.addNote({
+          actorUserId: authorized.userId,
+          userId: targetUserId,
+          reason,
+          requestId,
+          ipPrefixHash: authorized.security.ipPrefixHash,
+        }),
+      },
+      requestId,
+      201,
+    );
+  }
+
+  if (matches.sessions) {
+    const targetUserId = decodeURIComponent(matches.sessions[1] ?? "");
+    const authorized = await requireCapability(request, requestId, env, "user.suspend");
+    await assertCanModerateUser(db, authorized.authorization, targetUserId);
+    return json(
+      await control.invalidateSessions({
+        actorUserId: authorized.userId,
+        userId: targetUserId,
+        reason,
+        requestId,
+        ipPrefixHash: authorized.security.ipPrefixHash,
+      }),
+      requestId,
+    );
+  }
+
+  if (matches.revokeSanction) {
+    const targetUserId = decodeURIComponent(matches.revokeSanction[1] ?? "");
+    const sanctionId = decodeURIComponent(matches.revokeSanction[2] ?? "");
+    const sanction = (await control.listSanctions(targetUserId, 100)).find(
+      (item) => item.id === sanctionId && item.revokedAt === null,
+    );
+    if (!sanction) {
+      throw new ModerationError(404, "SANCTION_NOT_FOUND", "The active sanction was not found.");
+    }
+    const capability: Capability = sanction.kind === "BAN" ? "user.ban" : "user.suspend";
+    const authorized = await requireCapability(request, requestId, env, capability);
+    await assertCanModerateUser(db, authorized.authorization, targetUserId);
+    return json(
+      await control.revokeSanction({
+        actorUserId: authorized.userId,
+        userId: targetUserId,
+        sanctionId,
+        reason,
+        requestId,
+        ipPrefixHash: authorized.security.ipPrefixHash,
+      }),
+      requestId,
+    );
+  }
+
+  if (matches.anonymize) {
+    const targetUserId = decodeURIComponent(matches.anonymize[1] ?? "");
+    const authorized = await requireCapability(request, requestId, env, "user.delete");
+    await assertCanModerateUser(db, authorized.authorization, targetUserId);
+    return json(
+      await control.anonymizeUser({
+        actorUserId: authorized.userId,
+        userId: targetUserId,
+        reason,
+        requestId,
+        ipPrefixHash: authorized.security.ipPrefixHash,
+      }),
+      requestId,
+    );
+  }
+
+  return null;
+}
+
 export function isModerationRoute(pathname: string): boolean {
   return (
     pathname === "/api/reports" ||
@@ -77,6 +221,9 @@ export async function handleModerationRequest(
   const url = new URL(request.url);
   if (!isModerationRoute(url.pathname)) return null;
   try {
+    const userControlResponse = await handleAdminUserControl(request, requestId, env, url);
+    if (userControlResponse) return userControlResponse;
+
     const service = createModerationService(database(env), { events: env.EVENTS });
     if (request.method === "POST" && url.pathname === "/api/reports") {
       assertSameOrigin(request);
@@ -127,6 +274,34 @@ export async function handleModerationRequest(
         requestId,
       );
     }
+
+    const reportStatusMatch = url.pathname.match(
+      /^\/api\/admin\/moderation\/reports\/([^/]+)\/status$/,
+    );
+    if (request.method === "POST" && reportStatusMatch) {
+      assertSameOrigin(request);
+      assertCsrfToken(request);
+      const authorized = await requireCapability(request, requestId, env, "report.review");
+      const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+      const status = String(body.status ?? "");
+      if (status !== "IN_REVIEW" && status !== "DISMISSED") {
+        throw new ModerationError(
+          400,
+          "INVALID_REPORT_STATUS",
+          "Report status must be IN_REVIEW or DISMISSED.",
+        );
+      }
+      const result = await service.reviewReport({
+        reportId: decodeURIComponent(reportStatusMatch[1] ?? ""),
+        actorUserId: authorized.userId,
+        status,
+        reason: assertReason(String(body.reason ?? "")),
+        requestId,
+        ipPrefixHash: authorized.security.ipPrefixHash,
+      });
+      return json({ report: result }, requestId);
+    }
+
     if (request.method === "POST" && url.pathname === "/api/admin/moderation/action") {
       assertSameOrigin(request);
       assertCsrfToken(request);
@@ -159,46 +334,25 @@ export async function handleModerationRequest(
             : "comment.moderate";
       const authorized = await requireCapability(request, requestId, env, capability);
       if (targetType === "USER") {
-        const targetUser = await database(env)
-          .prepare("SELECT id FROM users WHERE id = ?")
-          .bind(String(body.targetId))
-          .first<{ id: string }>();
-        if (!targetUser)
-          throw Object.assign(new Error("The moderation target was not found."), { status: 404 });
-        const targetRoles = await database(env)
-          .prepare(
-            "SELECT r.slug, r.rank FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = ?",
-          )
-          .bind(String(body.targetId))
-          .all<{ slug: string; rank: number }>();
-        if (
-          !canActOnTarget(authorized.authorization, {
-            roles: targetRoles.results.map((role) => ({
-              slug: role.slug as never,
-              rank: role.rank,
-            })),
-            capabilities: new Set(),
-          })
-        ) {
-          throw Object.assign(new Error("The target role is protected."), { status: 403 });
-        }
+        await assertCanModerateUser(database(env), authorized.authorization, String(body.targetId));
       }
-      return json(
-        {
-          action: await service.apply({
-            actorUserId: authorized.userId,
-            targetType,
-            targetId: String(body.targetId),
-            action,
-            reason: assertReason(String(body.reason)),
-            durationMs: typeof body.durationMs === "number" ? body.durationMs : null,
-            requestId,
-            ipPrefixHash: authorized.security.ipPrefixHash,
-          }),
-        },
+      const result = await service.apply({
+        actorUserId: authorized.userId,
+        targetType,
+        targetId: String(body.targetId),
+        action,
+        reason: assertReason(String(body.reason)),
+        durationMs: typeof body.durationMs === "number" ? body.durationMs : null,
         requestId,
-        201,
-      );
+        ipPrefixHash: authorized.security.ipPrefixHash,
+      });
+      if (targetType === "USER" && (action === "SUSPEND" || action === "BAN")) {
+        await createAdminUserControlService(database(env)).applyAccountSanctionState({
+          userId: String(body.targetId),
+          action: action as "SUSPEND" | "BAN",
+        });
+      }
+      return json({ action: result }, requestId, 201);
     }
     return null;
   } catch (error) {

@@ -3,7 +3,7 @@ import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { FriendsWorkspace } from "../components/product/FriendsWorkspace";
-import { PageHeader, ProductShell } from "../components/product/ProductShell";
+import { ProductShell } from "../components/product/ProductShell";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
@@ -31,11 +31,13 @@ export default function FriendsRoute() {
   const data = useLoaderData<LoaderData>();
   return (
     <ProductShell>
-      <PageHeader
-        eyebrow="Social"
-        title="Friends"
-        description="Manage friends, requests and public account discovery without weakening profile privacy."
-      />
+      <header className="product-friends-lead">
+        <span className="product-eyebrow">Social</span>
+        <div>
+          <h1>Friends</h1>
+          <p>Connections, requests and account discovery in one place.</p>
+        </div>
+      </header>
       {data.authenticated ? (
         <FriendsWorkspace initialFriends={data.friends} />
       ) : data.unavailable ? (

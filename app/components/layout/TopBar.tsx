@@ -1,21 +1,34 @@
 import { Link, useNavigate } from "react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { BellIcon, SearchIcon } from "../ui";
+import { NotificationActorStack } from "../product/NotificationActorStack";
 import {
   notificationWebSocketUrl,
   readNotificationSnapshot,
   reconnectDelay,
   type NotificationPreview,
 } from "../../data/notifications-realtime";
+import { notificationDisplayTitle, notificationGroupMeta } from "../../data/notification-display";
 import { markNavigationStart } from "../../data/performance-metrics";
 import { readCsrfToken } from "../../data/csrf";
 import { ThemeControl } from "./ThemeControl";
+
+function notificationTime(timestamp: number): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return days < 7 ? `${days}d` : new Date(timestamp).toLocaleDateString();
+}
 
 export function TopBar() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifications, setRecentNotifications] = useState<NotificationPreview[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
   const notificationMenuRef = useRef<HTMLDivElement>(null);
 
   function submitSearch(event: FormEvent<HTMLFormElement>): void {
@@ -35,21 +48,40 @@ export function TopBar() {
     async function refresh(): Promise<{ authenticated: boolean; lastSeen: string | null }> {
       try {
         const sessionResponse = await fetch("/api/auth/session");
-        if (!sessionResponse.ok) return { authenticated: false, lastSeen: null };
-        const session = (await sessionResponse.json()) as { authenticated?: unknown };
-        if (session.authenticated !== true) return { authenticated: false, lastSeen: null };
-
-        const response = await fetch("/api/notifications");
-        if (response.status === 401 || response.status === 403)
+        if (!sessionResponse.ok) {
+          if (!disposed) setNotificationsLoading(false);
           return { authenticated: false, lastSeen: null };
-        if (!response.ok) return { authenticated: false, lastSeen: null };
+        }
+        const session = (await sessionResponse.json()) as { authenticated?: unknown };
+        if (session.authenticated !== true) {
+          if (!disposed) {
+            setNotificationsLoading(false);
+            setUnreadCount(0);
+            setRecentNotifications([]);
+          }
+          return { authenticated: false, lastSeen: null };
+        }
+
+        const response = await fetch("/api/notifications", { cache: "no-store" });
+        if (response.status === 401 || response.status === 403) {
+          if (!disposed) setNotificationsLoading(false);
+          return { authenticated: false, lastSeen: null };
+        }
+        if (!response.ok) {
+          if (!disposed) setNotificationsLoading(false);
+          return { authenticated: true, lastSeen: null };
+        }
         const snapshot = readNotificationSnapshot(await response.json());
-        if (!disposed && snapshot) {
-          setUnreadCount(snapshot.unreadCount);
-          setRecentNotifications(snapshot.notifications);
+        if (!disposed) {
+          if (snapshot) {
+            setUnreadCount(snapshot.unreadCount);
+            setRecentNotifications(snapshot.notifications);
+          }
+          setNotificationsLoading(false);
         }
         return { authenticated: true, lastSeen: snapshot?.lastSeen ?? null };
       } catch {
+        if (!disposed) setNotificationsLoading(false);
         return { authenticated: true, lastSeen: null };
       }
     }
@@ -104,16 +136,28 @@ export function TopBar() {
   }, [notificationsOpen]);
 
   function markNotificationGroupLocally(notification: NotificationPreview): void {
-    const ids = new Set(notification.groupedIds ?? [notification.id]);
+    const unreadInGroup = notification.unreadCount ?? (notification.readAt ? 0 : 1);
     const now = Date.now();
-    const unreadIds = new Set(
-      recentNotifications.filter((item) => ids.has(item.id) && !item.readAt).map((item) => item.id),
-    );
-    const unreadInGroup = notification.unreadCount ?? unreadIds.size;
     setRecentNotifications((items) =>
-      items.map((item) => (ids.has(item.id) ? { ...item, readAt: item.readAt ?? now } : item)),
+      items.map((item) =>
+        item.id === notification.id ? { ...item, readAt: now, unreadCount: 0 } : item,
+      ),
     );
     setUnreadCount((count) => Math.max(0, count - unreadInGroup));
+  }
+
+  async function markAllRead(): Promise<void> {
+    if (!unreadCount) return;
+    const response = await fetch("/api/notifications/read-all", {
+      method: "POST",
+      headers: { "x-csrf-token": readCsrfToken() },
+    }).catch(() => null);
+    if (!response?.ok) return;
+    const now = Date.now();
+    setUnreadCount(0);
+    setRecentNotifications((items) =>
+      items.map((item) => ({ ...item, readAt: item.readAt ?? now, unreadCount: 0 })),
+    );
   }
 
   return (
@@ -178,51 +222,92 @@ export function TopBar() {
           {notificationsOpen ? (
             <div
               id="sourceboard-notification-menu"
-              className="sb-topbar-notification-menu glass-panel glass-panel--strong"
+              className="sb-topbar-notification-menu"
               role="dialog"
               aria-label="Recent notifications"
             >
               <div className="sb-topbar-notification-menu__header">
-                <strong>Notifications</strong>
-                <Link
-                  className="sb-topbar-notification-menu__all focus-ring"
-                  to="/notifications"
-                  onClick={() => markNavigationStart("/notifications")}
-                >
-                  View all
-                </Link>
+                <div>
+                  <strong>Notifications</strong>
+                  <span>{unreadCount ? `${unreadCount} unread` : "You're caught up"}</span>
+                </div>
+                <div className="sb-topbar-notification-menu__header-actions">
+                  {unreadCount ? (
+                    <button type="button" onClick={() => void markAllRead()}>
+                      Mark read
+                    </button>
+                  ) : null}
+                  <Link
+                    className="sb-topbar-notification-menu__all focus-ring"
+                    to="/notifications"
+                    onClick={() => {
+                      markNavigationStart("/notifications");
+                      setNotificationsOpen(false);
+                    }}
+                  >
+                    View all
+                  </Link>
+                </div>
               </div>
-              {recentNotifications.length ? (
+              {notificationsLoading ? (
+                <div className="sb-topbar-notification-menu__empty" role="status">
+                  <strong>Loading notifications…</strong>
+                  <span>Checking your latest SourceBoard activity.</span>
+                </div>
+              ) : recentNotifications.length ? (
                 <div className="sb-topbar-notification-menu__list">
-                  {recentNotifications.slice(0, 5).map((notification) => (
-                    <Link
-                      key={notification.id}
-                      className={`sb-topbar-notification-menu__item focus-ring${notification.readAt ? "" : " is-unread"}`}
-                      to={notification.href}
-                      onClick={() => {
-                        markNavigationStart(notification.href);
-                        markNotificationGroupLocally(notification);
-                        for (const id of notification.groupedIds ?? [notification.id]) {
-                          void fetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
-                            method: "POST",
-                            headers: { "x-csrf-token": readCsrfToken() },
-                          });
-                        }
-                        setNotificationsOpen(false);
-                      }}
-                    >
-                      <strong>{notification.title}</strong>
-                      <span>
-                        {notification.body}
-                        {notification.groupCount && notification.groupCount > 1
-                          ? ` (${notification.groupCount})`
-                          : ""}
-                      </span>
-                    </Link>
-                  ))}
+                  {recentNotifications.slice(0, 7).map((notification) => {
+                    const groupMeta = notificationGroupMeta(notification);
+                    return (
+                      <Link
+                        key={notification.id}
+                        className={`sb-topbar-notification-menu__item focus-ring${notification.readAt && !notification.unreadCount ? "" : " is-unread"}`}
+                        to={notification.href}
+                        onClick={() => {
+                          markNavigationStart(notification.href);
+                          markNotificationGroupLocally(notification);
+                          for (const id of notification.groupedIds ?? [notification.id]) {
+                            void fetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
+                              method: "POST",
+                              headers: { "x-csrf-token": readCsrfToken() },
+                            });
+                          }
+                          setNotificationsOpen(false);
+                        }}
+                      >
+                        <div
+                          className="sb-topbar-notification-menu__identity"
+                          aria-hidden={!notification.actor && !notification.groupActors?.length}
+                        >
+                          {notification.actor || notification.groupActors?.length ? (
+                            <NotificationActorStack
+                              actor={notification.actor}
+                              actors={notification.groupActors}
+                              total={notification.groupCount}
+                            />
+                          ) : (
+                            <span className="sb-topbar-notification-menu__system-mark">S</span>
+                          )}
+                        </div>
+                        <div className="sb-topbar-notification-menu__copy">
+                          <div className="sb-topbar-notification-menu__title-row">
+                            <strong>{notificationDisplayTitle(notification)}</strong>
+                            <time dateTime={new Date(notification.createdAt).toISOString()}>
+                              {notificationTime(notification.createdAt)}
+                            </time>
+                          </div>
+                          <span>{notification.body}</span>
+                          {groupMeta ? <small>{groupMeta}</small> : null}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="sb-topbar-notification-menu__empty">No notifications yet.</p>
+                <div className="sb-topbar-notification-menu__empty">
+                  <strong>No notifications yet</strong>
+                  <span>New activity will appear here.</span>
+                </div>
               )}
             </div>
           ) : null}

@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { useLoaderData, useRouteLoaderData, type MetaFunction } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
+import { createD1PostStore } from "../../worker/posts/store";
+import { createPostService } from "../../worker/posts/service";
 import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
 import { loadAdminAccess } from "../data/admin-access";
-import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
+import { ProfileActivity } from "../components/product/ProfileActivity";
 import { ProfileEditor } from "../components/product/ProfileEditor";
 import { ProfileHero } from "../components/product/ProfileHero";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
@@ -17,17 +21,40 @@ interface LoaderArgs extends ServerLoaderArgs {
 
 export async function loader({ params, request, context }: LoaderArgs) {
   const [profileResult, adminAccess] = await Promise.all([
-    withServerSession(
+    withOptionalServerSession(
       request,
       context,
-      (unavailable) => ({ profile: null, unavailable }),
-      async (runtime, userId) => ({
-        profile: await createProfileService({
-          store: createD1ProfileStore(runtime.db),
-          reputation: createReputationReader(runtime.db),
-        }).getPublicProfile(params.username ?? "", userId),
-        unavailable: false,
+      (unavailable) => ({
+        profile: null,
+        activityPosts: [],
+        acceptedSourcePosts: [],
+        unavailable,
       }),
+      async (runtime, userId) => {
+        const profileStore = createD1ProfileStore(runtime.db);
+        const profile = await createProfileService({
+          store: profileStore,
+          reputation: createReputationReader(runtime.db),
+        }).getPublicProfile(params.username ?? "", userId);
+        if (!profile) {
+          return {
+            profile: null,
+            activityPosts: [],
+            acceptedSourcePosts: [],
+            unavailable: false,
+          };
+        }
+        const activity = await createPostService({
+          store: createD1PostStore(runtime.db),
+          profileStore,
+        }).listProfileActivity({ authorId: profile.id, viewerId: userId, limit: 24 });
+        return {
+          profile,
+          activityPosts: activity.posts,
+          acceptedSourcePosts: activity.acceptedSources,
+          unavailable: false,
+        };
+      },
     ),
     loadAdminAccess(request, context),
   ]);
@@ -104,13 +131,13 @@ function UnavailableProfile({ unavailable }: { unavailable: boolean }) {
 
 function ContributionHistory({ profile }: { profile: PublicProfile }) {
   return (
-    <Card className="product-profile-contributions">
+    <section className="product-profile-contributions">
       <div className="product-profile-contributions__header">
         <div>
           <span className="product-eyebrow">Contribution</span>
-          <h2>What this contributor has earned</h2>
+          <h2>SourceBoard activity</h2>
         </div>
-        <p>Updated from SourceBoard activity</p>
+        <p>Earned from useful source-finding activity</p>
       </div>
       <div className="product-profile-contributions__metrics" aria-label="Contribution metrics">
         {profile.reputation !== undefined ? (
@@ -144,23 +171,35 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
           ))}
         </div>
       ) : (
-        <p className="product-store-preview-status">No achievements have been earned yet.</p>
+        <p className="product-store-preview-status">No achievements earned yet.</p>
       )}
-    </Card>
+    </section>
   );
 }
 
 export default function ProfileRoute() {
-  const { profile, unavailable, canAccessAdmin } = useLoaderData<LoaderData>();
+  const { profile, activityPosts, acceptedSourcePosts, unavailable, canAccessAdmin } =
+    useLoaderData<LoaderData>();
   const rootData = useRouteLoaderData<RootLoaderData>("root");
+  const [editingProfile, setEditingProfile] = useState(false);
   const isOwnProfile = Boolean(profile && rootData?.session?.user.id === profile.id);
   if (!profile) return <UnavailableProfile unavailable={unavailable} />;
   return (
     <ProductShell wide>
-      <ProfileHero profile={profile} isOwnProfile={isOwnProfile} />
-      {isOwnProfile ? <ProfileEditor /> : null}
-      <ContributionHistory profile={profile} />
-      {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
+      {isOwnProfile ? (
+        <ProfileEditor profile={profile} onEditingChange={setEditingProfile} />
+      ) : (
+        <ProfileHero profile={profile} isOwnProfile={false} />
+      )}
+      {!editingProfile ? (
+        <>
+          <div className="product-profile-secondary">
+            <ContributionHistory profile={profile} />
+            {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
+          </div>
+          <ProfileActivity posts={activityPosts} acceptedSources={acceptedSourcePosts} />
+        </>
+      ) : null}
     </ProductShell>
   );
 }

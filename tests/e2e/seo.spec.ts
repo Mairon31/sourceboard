@@ -1,12 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-test("robots exposes only the public sitemap entry point", async ({ request }) => {
+test("robots exposes the canonical public sitemap and excludes private product routes", async ({
+  request,
+}) => {
   const response = await request.get("/robots.txt");
 
   expect(response.status()).toBe(200);
   const body = await response.text();
-  expect(body).toContain("Disallow: /api/");
-  expect(body).toContain("Sitemap: http://localhost:5173/sitemap.xml");
+  expect(body).toContain("Disallow: /admin/");
+  expect(body).toContain("Disallow: /settings");
+  expect(body).toContain("Disallow: /notifications");
+  expect(body).toContain("Sitemap: https://srcboard.me/sitemap.xml");
+  expect(body).not.toContain("Disallow: /api/");
 });
 
 test("home exposes the SourceBoard brand asset in the document and as a public image", async ({

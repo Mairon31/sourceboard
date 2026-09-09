@@ -22,7 +22,13 @@ export function createReputationReader(db: D1Database) {
         db
           .prepare(
             `SELECT COALESCE(SUM(amount), 0) AS points,
-                    COALESCE(SUM(CASE WHEN reward_type = 'VERIFIED_SOURCE' AND amount > 0 THEN 1 ELSE 0 END), 0) AS verified_sources
+                    COALESCE(SUM(
+                      CASE
+                        WHEN reward_type = 'VERIFIED_SOURCE' AND entry_type = 'AWARD' THEN 1
+                        WHEN reward_type = 'VERIFIED_SOURCE' AND entry_type = 'REVERSAL' THEN -1
+                        ELSE 0
+                      END
+                    ), 0) AS verified_sources
              FROM point_ledger WHERE user_id = ?`,
           )
           .bind(userId)
@@ -36,10 +42,11 @@ export function createReputationReader(db: D1Database) {
           .bind(userId)
           .all<AchievementRow>(),
       ]);
+      const points = Number(balance?.points ?? 0);
       return {
-        points: Number(balance?.points ?? 0),
-        reputation: Number(balance?.points ?? 0),
-        verifiedSources: Number(balance?.verified_sources ?? 0),
+        points,
+        reputation: points,
+        verifiedSources: Math.max(0, Number(balance?.verified_sources ?? 0)),
         achievements: achievements.results.map((achievement) => ({
           id: achievement.id,
           name: achievement.name,

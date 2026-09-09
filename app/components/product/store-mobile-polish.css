@@ -1,0 +1,121 @@
+/* Keep Store navigation and pack previews readable on narrow screens. */
+
+.product-store-filter-bar {
+  isolation: isolate;
+}
+
+@media (max-width: 680px) {
+  .product-store-page {
+    gap: 18px;
+  }
+
+  .product-store-filter-bar {
+    position: static !important;
+    top: auto !important;
+    z-index: 1;
+    gap: 4px;
+    margin: 0;
+    padding: 5px;
+    border-radius: 15px;
+    background: var(--surface-solid);
+    backdrop-filter: none;
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--shadow-color) 12%, transparent);
+  }
+
+  .product-store-filter {
+    min-height: 36px;
+    padding-inline: 11px;
+    border-radius: 11px;
+    white-space: nowrap;
+    font-size: 0.8rem;
+  }
+
+  .product-store-filter--active {
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface-solid));
+  }
+
+  .product-store-section {
+    gap: 12px;
+    padding-top: 0;
+  }
+
+  .product-store-section + .product-store-section {
+    padding-top: 16px;
+  }
+
+  .product-store-section__header {
+    gap: 8px;
+    padding-inline: 2px;
+  }
+
+  .product-store-section__header h2 {
+    font-size: 1.08rem;
+  }
+
+  .product-store-section__header p {
+    font-size: 0.78rem;
+  }
+
+  .product-store-grid {
+    gap: 12px;
+  }
+
+  .product-store-item {
+    gap: 10px;
+    padding: 12px;
+    border-radius: 19px;
+  }
+
+  .product-store-preview {
+    min-height: 150px;
+    border-radius: 15px;
+  }
+
+  .product-store-preview--pack {
+    min-height: 0;
+    padding: 10px;
+  }
+
+  .product-store-preview--pack .product-store-preview__media {
+    width: 100%;
+    max-height: 94px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .product-store-preview--pack .product-store-preview__media img {
+    width: 100%;
+    min-width: 0;
+    aspect-ratio: 1;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+    object-fit: contain;
+  }
+
+  .product-store-item > p {
+    min-height: 0;
+  }
+
+  .product-store-item__footer {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 430px) {
+  .product-store-filter {
+    padding-inline: 10px;
+    font-size: 0.76rem;
+  }
+
+  .product-store-preview {
+    min-height: 138px;
+  }
+
+  .product-store-preview--pack {
+    min-height: 0;
+  }
+
+  .product-store-preview--pack .product-store-preview__media {
+    max-height: 84px;
+  }
+}

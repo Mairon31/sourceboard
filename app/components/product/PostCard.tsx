@@ -55,7 +55,9 @@ export function PostCard({
   const [showNsfw, setShowNsfw] = useState(post.nsfwPresentation === "VISIBLE");
   const [liked, setLiked] = useState(post.reaction.viewerReacted);
   const [likes, setLikes] = useState(post.reaction.count);
+  const [commentsClosed, setCommentsClosedState] = useState(Boolean(post.commentsClosed));
   const [reactionStatus, setReactionStatus] = useState<string | null>(null);
+  const [reactionBusy, setReactionBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title);
   const [editDescription, setEditDescription] = useState(post.description ?? "");
@@ -67,10 +69,45 @@ export function PostCard({
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const mediaRef = useRef<HTMLImageElement>(null);
+  const editingRef = useRef(editing);
+  const reactionInFlightRef = useRef(false);
+  const reactionVersionRef = useRef(0);
+  const authoritativeReactionRef = useRef({
+    liked: post.reaction.viewerReacted,
+    count: post.reaction.count,
+  });
+  editingRef.current = editing;
   const detailHref = postDetailHref(post);
+
   useEffect(() => {
     setMediaFailed(false);
   }, [post.imageUrl]);
+
+  useEffect(() => {
+    setCommentsClosedState(Boolean(post.commentsClosed));
+  }, [post.commentsClosed]);
+
+  useEffect(() => {
+    setDisplayTitle(post.title);
+    setDisplayDescription(post.description ?? "");
+    if (!editingRef.current) {
+      setEditTitle(post.title);
+      setEditDescription(post.description ?? "");
+    }
+  }, [post.description, post.title]);
+
+  useEffect(() => {
+    authoritativeReactionRef.current = {
+      liked: post.reaction.viewerReacted,
+      count: post.reaction.count,
+    };
+    reactionVersionRef.current += 1;
+    if (!reactionInFlightRef.current) {
+      setLiked(post.reaction.viewerReacted);
+      setLikes(post.reaction.count);
+    }
+  }, [post.reaction.count, post.reaction.viewerReacted]);
+
   useEffect(() => {
     const image = mediaRef.current;
     if (!image || !post.imageUrl || mediaFailed) return;
@@ -79,11 +116,15 @@ export function PostCard({
     image.addEventListener("error", markFailed);
     return () => image.removeEventListener("error", markFailed);
   }, [mediaFailed, post.imageUrl]);
+
   const mediaClass =
     post.imageUrl && !mediaFailed
       ? "product-post__media product-post__media--image"
       : "product-post__media";
   const permissions = "permissions" in post ? post.permissions : undefined;
+  const canManageComments = Boolean(
+    permissions?.canCloseComments || permissions?.canReopenComments,
+  );
 
   function openPostDetail() {
     if (!editing) {
@@ -98,7 +139,11 @@ export function PostCard({
   }
 
   async function toggleLike() {
+    if (reactionInFlightRef.current) return;
+    reactionInFlightRef.current = true;
+    setReactionBusy(true);
     setReactionStatus(null);
+    const versionAtStart = reactionVersionRef.current;
     const previousLiked = liked;
     const previousLikes = likes;
     const nextLiked = !previousLiked;
@@ -125,6 +170,13 @@ export function PostCard({
       setLiked(previousLiked);
       setLikes(previousLikes);
       setReactionStatus("Like unavailable.");
+    } finally {
+      reactionInFlightRef.current = false;
+      setReactionBusy(false);
+      if (reactionVersionRef.current !== versionAtStart) {
+        setLiked(authoritativeReactionRef.current.liked);
+        setLikes(authoritativeReactionRef.current.count);
+      }
     }
   }
 
@@ -180,6 +232,8 @@ export function PostCard({
 
   async function setCommentsClosed(closed: boolean) {
     setManageStatus(null);
+    const previous = commentsClosed;
+    setCommentsClosedState(closed);
     try {
       const response = await fetch(
         `/api/posts/${encodeURIComponent(post.id)}/${closed ? "close-comments" : "reopen-comments"}`,
@@ -194,6 +248,7 @@ export function PostCard({
       setManageStatus(closed ? "Comments closed." : "Comments reopened.");
       onChanged?.();
     } catch (error) {
+      setCommentsClosedState(previous);
       setManageStatus(error instanceof Error ? error.message : "Could not update comments.");
     }
   }
@@ -217,10 +272,10 @@ export function PostCard({
               },
             ]
           : []),
-        ...(permissions?.canCloseComments
+        ...(canManageComments && !commentsClosed
           ? [{ label: "Close comments", onSelect: () => void setCommentsClosed(true) }]
           : []),
-        ...(permissions?.canReopenComments
+        ...(canManageComments && commentsClosed
           ? [{ label: "Reopen comments", onSelect: () => void setCommentsClosed(false) }]
           : []),
         ...(permissions?.canDelete
@@ -261,6 +316,7 @@ export function PostCard({
               profileEffect={post.author.profileEffect}
               nameFont={post.author.nameFont}
               nameEffect={post.author.nameEffect}
+              visuals={post.author.visuals}
               mode="compact"
               nameAs="strong"
             />
@@ -286,6 +342,7 @@ export function PostCard({
               ariaLabel="More post actions"
               triggerIcon={<MoreIcon width="18" height="18" />}
               iconOnly
+              className="product-post__menu"
               items={menuItems}
             />
           ) : null}
@@ -402,9 +459,7 @@ export function PostCard({
             <span className="product-meta-success">Source accepted</span>
           ) : null}
           {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
-          {post.commentsClosed ? (
-            <span className="product-meta-success">Comments closed</span>
-          ) : null}
+          {commentsClosed ? <span className="product-meta-success">Comments closed</span> : null}
         </div>
 
         <footer className="product-post__actions">
@@ -413,6 +468,7 @@ export function PostCard({
             className={`product-post__action${liked ? " product-post__action--liked" : ""}`}
             aria-pressed={liked}
             aria-label={liked ? "Unlike post" : "Like post"}
+            disabled={reactionBusy}
             onClick={() => void toggleLike()}
           >
             <HeartIcon />

@@ -96,6 +96,17 @@ function actionCodeInfo(body: FirebaseActionResponse): FirebaseActionCodeInfo {
   };
 }
 
+function verificationContinueUrl(continueUrl?: string): string | undefined {
+  if (!continueUrl) return undefined;
+  try {
+    const url = new URL(continueUrl);
+    url.searchParams.set("firebase", "verified");
+    return url.toString();
+  } catch {
+    return continueUrl;
+  }
+}
+
 export function createFirebaseAuthClient({ apiKey, fetcher = fetch }: FirebaseAuthClientOptions) {
   const normalizedApiKey = apiKey.trim();
   if (!normalizedApiKey) {
@@ -177,10 +188,11 @@ export function createFirebaseAuthClient({ apiKey, fetcher = fetch }: FirebaseAu
     },
 
     async sendEmailVerification(idToken, continueUrl) {
+      const resolvedContinueUrl = verificationContinueUrl(continueUrl);
       await request("accounts:sendOobCode", {
         requestType: "VERIFY_EMAIL",
         idToken,
-        ...(continueUrl ? { continueUrl } : {}),
+        ...(resolvedContinueUrl ? { continueUrl: resolvedContinueUrl } : {}),
       });
     },
 

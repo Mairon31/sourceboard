@@ -1,7 +1,10 @@
 import {
   createD1ProfileStore as createCoreProfileStore,
+  type EquippedCosmetics as CoreEquippedCosmetics,
   type ProfileStore as CoreProfileStore,
 } from "./store-core";
+import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
+import { extractCosmeticVisualDefinition } from "../../shared/store/custom-cosmetics";
 import type {
   FriendshipRecord,
   FriendshipStatus,
@@ -13,17 +16,21 @@ import type {
 export {
   toFriendsListDto,
   type CreateMediaAssetInput,
-  type EquippedCosmetics,
   type MediaAssetRecord,
   type PreferencesUpdateInput,
   type ProfileUpdateInput,
   type SocialLinkInput,
 } from "./store-core";
 
+export interface EquippedCosmetics extends CoreEquippedCosmetics {
+  visuals?: CosmeticIdentityVisuals;
+}
+
 const MAX_SOCIAL_USERS = 100;
 const MAX_FRIEND_SUGGESTIONS = 20;
 
-export type ProfileStore = Omit<CoreProfileStore, "listSocialUsers"> & {
+export type ProfileStore = Omit<CoreProfileStore, "listSocialUsers" | "getEquippedCosmetics"> & {
+  getEquippedCosmetics(userId: string): Promise<EquippedCosmetics>;
   listSocialUsers(viewerId: string, limit?: number): Promise<SocialUserRecord[]>;
   searchFriendSuggestions(
     viewerId: string,
@@ -149,6 +156,37 @@ function toSuggestion(row: SuggestionRow): SocialUserRecord {
 export function createD1ProfileStore(db: D1Database): ProfileStore {
   const core = createCoreProfileStore(db);
 
+  async function getEquippedCosmetics(userId: string): Promise<EquippedCosmetics> {
+    const cosmetics: EquippedCosmetics = { ...(await core.getEquippedCosmetics(userId)) };
+    const result = await db
+      .prepare(
+        `SELECT s.type, s.config_json AS configJson
+         FROM user_cosmetics c
+         JOIN store_items s ON s.id = c.store_item_id
+         WHERE c.user_id = ?`,
+      )
+      .bind(userId)
+      .all<{ type: string; configJson: string }>();
+    const visuals: CosmeticIdentityVisuals = {};
+    for (const row of result.results) {
+      let config: unknown;
+      try {
+        config = JSON.parse(row.configJson) as unknown;
+      } catch {
+        continue;
+      }
+      const visual = extractCosmeticVisualDefinition(config);
+      if (!visual) continue;
+      if (row.type === "AVATAR_FRAME") visuals.avatarFrame = visual;
+      if (row.type === "PROFILE_BANNER") visuals.profileBanner = visual;
+      if (row.type === "PROFILE_EFFECT") visuals.profileEffect = visual;
+      if (row.type === "NAME_FONT") visuals.nameFont = visual;
+      if (row.type === "NAME_EFFECT") visuals.nameEffect = visual;
+    }
+    if (Object.keys(visuals).length) cosmetics.visuals = visuals;
+    return cosmetics;
+  }
+
   async function listSocialUsers(viewerId: string, limit = MAX_SOCIAL_USERS) {
     const result = await db
       .prepare(
@@ -235,6 +273,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
 
   return {
     ...core,
+    getEquippedCosmetics,
     listSocialUsers,
     searchFriendSuggestions,
   };

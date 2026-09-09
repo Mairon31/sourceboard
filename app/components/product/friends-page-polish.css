@@ -1,0 +1,49 @@
+.product-friends-lead {
+  display: grid;
+  gap: 8px;
+  padding: 4px 2px 0;
+}
+
+.product-friends-lead > div {
+  display: grid;
+  gap: 5px;
+}
+
+.product-friends-lead h1,
+.product-friends-lead p {
+  margin: 0;
+}
+
+.product-friends-lead h1 {
+  font-size: clamp(2rem, 5vw, 2.55rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.product-friends-lead p {
+  max-width: 58ch;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 620px) {
+  .product-friends-lead {
+    gap: 6px;
+    padding-top: 0;
+  }
+
+  .product-friends-lead h1 {
+    font-size: 1.9rem;
+  }
+
+  .product-friends-lead p {
+    max-width: 38ch;
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .product-friends-workspace {
+    margin-top: 2px;
+  }
+}

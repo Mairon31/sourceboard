@@ -286,6 +286,17 @@ export function createStoreAdminService(db: D1Database) {
         },
       };
 
+      if (
+        existing.lifecycleState === "ARCHIVED" &&
+        (action === "PUBLISH" || action === "ENABLE" || action === "FEATURE")
+      ) {
+        throw new StoreError(
+          409,
+          "STORE_ITEM_ARCHIVED",
+          "Restore this item to draft before publishing, enabling or featuring it.",
+        );
+      }
+
       if (action === "DELETE") {
         const references = await db
           .prepare(

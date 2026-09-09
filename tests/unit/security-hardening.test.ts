@@ -82,6 +82,7 @@ describe("production security boundaries", () => {
             void values;
             return prepared;
           },
+          run: vi.fn(async () => ({ meta: { changes: 1 } })),
         };
         return prepared;
       },
@@ -100,5 +101,6 @@ describe("production security boundaries", () => {
     });
     expect(sql.join("\n")).toContain("DELETE FROM sessions");
     expect(sql.join("\n")).toContain("DELETE FROM password_reset_tokens");
+    expect(sql.join("\n")).toContain("UPDATE users");
   });
 });

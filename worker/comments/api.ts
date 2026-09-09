@@ -230,6 +230,59 @@ function service(env: SourceBoardEnvironment) {
   });
 }
 
+async function reactionNotificationTarget(
+  db: D1Database,
+  targetType: "POST" | "COMMENT",
+  targetId: string,
+): Promise<{ userId: string; postId: string } | null> {
+  if (targetType === "POST") {
+    const row = await db
+      .prepare("SELECT author_id AS userId, id AS postId FROM posts WHERE id = ?")
+      .bind(targetId)
+      .first<{ userId: string; postId: string }>();
+    return row ?? null;
+  }
+  const row = await db
+    .prepare("SELECT author_id AS userId, post_id AS postId FROM comments WHERE id = ?")
+    .bind(targetId)
+    .first<{ userId: string; postId: string }>();
+  return row ?? null;
+}
+
+async function emitLikeNotification(
+  env: SourceBoardEnvironment,
+  targetType: "POST" | "COMMENT",
+  targetId: string,
+  actorUserId: string,
+): Promise<void> {
+  if (!env.EVENTS) return;
+  const db = database(env);
+  const [target, reaction] = await Promise.all([
+    reactionNotificationTarget(db, targetType, targetId),
+    db
+      .prepare(
+        "SELECT id, created_at AS createdAt FROM reactions WHERE user_id = ? AND target_type = ? AND target_id = ? AND reaction_type = 'LIKE'",
+      )
+      .bind(actorUserId, targetType, targetId)
+      .first<{ id: string; createdAt: number }>(),
+  ]);
+  if (!target || target.userId === actorUserId || !reaction) return;
+  const type = targetType === "POST" ? "post.liked" : "comment.liked";
+  const notificationId = `like-${reaction.id}`;
+  await env.EVENTS.send({
+    notification: {
+      type,
+      eventId: `${type}:${reaction.id}`,
+      notificationId,
+      recipientUserId: target.userId,
+      actorUserId,
+      entityType: targetType,
+      entityId: targetId,
+      payload: { postId: target.postId, reactionId: reaction.id, reactedAt: reaction.createdAt },
+    },
+  });
+}
+
 export async function handleCommentApiRequest(
   request: Request,
   requestId: string,
@@ -361,12 +414,27 @@ export async function handleCommentApiRequest(
             }),
         },
       );
+      const targetType = reactionMatch[1] as "POST" | "COMMENT";
+      const targetId = decodeURIComponent(reactionMatch[2] ?? "");
+      const databaseRef = database(env);
+      const existing =
+        request.method === "POST"
+          ? await databaseRef
+              .prepare(
+                "SELECT id FROM reactions WHERE user_id = ? AND target_type = ? AND target_id = ? AND reaction_type = 'LIKE'",
+              )
+              .bind(userId, targetType, targetId)
+              .first<{ id: string }>()
+          : null;
       const liked = await commentService.setLike(
-        reactionMatch[1] as "POST" | "COMMENT",
-        decodeURIComponent(reactionMatch[2] ?? ""),
+        targetType,
+        targetId,
         userId,
         request.method === "POST",
       );
+      if (request.method === "POST" && liked && !existing) {
+        await emitLikeNotification(env, targetType, targetId, userId);
+      }
       return json({ liked }, requestId);
     }
     return json(

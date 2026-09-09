@@ -1,4 +1,4 @@
-const BUILTIN_STORE_VERSION = "2026-09-06-store-v1";
+const BUILTIN_STORE_VERSION = "2026-09-08-store-v2";
 const BUILTIN_STORE_VERSION_KEY = "store.catalog.version";
 
 const STORE_SEED_SQL = `
@@ -38,7 +38,15 @@ VALUES
 ('store-font-infernal', 'NAME_FONT', 'Infernal Red', 'A curated display-name typography style.', 900, '{"family":"Arial Black"}', 1, 400, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-font-lavender', 'NAME_FONT', 'Lavanda Soft', 'A curated display-name typography style.', 550, '{"family":"system-ui"}', 1, 410, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-font-royal', 'NAME_FONT', 'Royal Blue', 'A curated display-name typography style.', 800, '{"family":"AtkinsonHyperlegible"}', 1, 420, unixepoch('now') * 1000, unixepoch('now') * 1000),
-('store-font-terminal', 'NAME_FONT', 'Terminal Glitch', 'A curated display-name typography style.', 1100, '{"family":"Courier New"}', 1, 430, unixepoch('now') * 1000, unixepoch('now') * 1000);
+('store-font-terminal', 'NAME_FONT', 'Terminal Glitch', 'A curated display-name typography style.', 1100, '{"family":"Courier New"}', 1, 430, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-banner-nebula', 'PROFILE_BANNER', 'Nebula Drift', 'Deep-space violet clouds with a bright focal glow.', 1800, '{"preset":"nebula"}', 1, 540, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-banner-aurora', 'PROFILE_BANNER', 'Aurora Ribbon', 'Cool aurora ribbons for a luminous profile header.', 2200, '{"preset":"aurora"}', 1, 550, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-banner-ember', 'PROFILE_BANNER', 'Ember Field', 'A warm ember gradient with restrained contrast.', 2200, '{"preset":"ember"}', 1, 560, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-banner-ocean-glass', 'PROFILE_BANNER', 'Ocean Glass', 'Layered cyan glass and deep-ocean contrast.', 3200, '{"preset":"ocean-glass"}', 1, 570, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-banner-sunset-noir', 'PROFILE_BANNER', 'Sunset Noir', 'Dark plum shadows cut by a warm sunset glow.', 3600, '{"preset":"sunset-noir"}', 1, 580, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-banner-prism-grid', 'PROFILE_BANNER', 'Prism Grid', 'A geometric grid over a prismatic cyber gradient.', 5200, '{"preset":"prism-grid"}', 1, 590, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-banner-forest-ink', 'PROFILE_BANNER', 'Forest Ink', 'Dark botanical greens with an ink-like finish.', 3000, '{"preset":"forest-ink"}', 1, 600, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-banner-silver-wave', 'PROFILE_BANNER', 'Silver Wave', 'Metallic silver layers with a polished light sweep.', 6800, '{"preset":"silver-wave"}', 1, 610, unixepoch('now') * 1000, unixepoch('now') * 1000);
 `;
 
 export async function ensureBuiltInStoreCatalog(db: D1Database): Promise<void> {

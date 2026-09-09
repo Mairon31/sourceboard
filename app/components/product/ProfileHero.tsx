@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { PublicProfileDto, Relationship } from "../../../worker/profile/types";
+import {
+  canonicalSocialPlatform,
+  SOCIAL_PLATFORM_CATALOG,
+  socialHandleFromUrl,
+} from "../../../shared/profile/social-links";
 import { Badge, Card } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ConfirmAction } from "./ConfirmAction";
 import { ShareAction } from "./ShareAction";
 import { SocialActionButton } from "./SocialActionButton";
+import { SocialIcon } from "./SocialIcon";
+import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 import { readCsrfToken } from "../../data/csrf";
 
 const relationshipLabel = {
@@ -18,29 +25,56 @@ const relationshipLabel = {
 interface ProfileHeroProps {
   profile: PublicProfileDto;
   isOwnProfile: boolean;
+  editControl?: ReactNode;
 }
 
 function ProfileBanner({ profile }: { profile: PublicProfileDto }) {
+  const visual = profile.cosmetics?.visuals?.profileBanner;
+  const style: CSSProperties = {
+    ...(cosmeticVisualStyle(visual) ?? {}),
+    ...(profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : {}),
+  };
   return (
     <div
-      className={`product-profile-banner${profile.cosmetics?.profileBanner ? ` product-profile-banner--${profile.cosmetics.profileBanner}` : ""}`}
+      className={`product-profile-banner${profile.cosmetics?.profileBanner ? ` product-profile-banner--${profile.cosmetics.profileBanner}` : ""}${cosmeticVisualClass(visual)}`}
       aria-label={`${profile.displayName} profile banner`}
-      style={profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : undefined}
+      style={style}
     />
   );
 }
 
 function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
-  if (!profile.socialLinks.length) {
-    return <p className="product-store-preview-status">No public social links.</p>;
+  const links = profile.socialLinks
+    .map((link) => {
+      const platform = canonicalSocialPlatform(link.platform);
+      return platform ? { ...link, platform } : null;
+    })
+    .filter((link): link is NonNullable<typeof link> => Boolean(link));
+  if (!links.length) {
+    return <small className="product-profile-social-empty">No public social profiles added.</small>;
   }
   return (
-    <div className="product-social-links">
-      {profile.socialLinks.map((link) => (
-        <a key={`${link.platform}-${link.url}`} href={link.url} target="_blank" rel="noreferrer">
-          {link.platform}
-        </a>
-      ))}
+    <div className="product-social-links" aria-label="Social links">
+      {links.map((link) => {
+        const definition = SOCIAL_PLATFORM_CATALOG[link.platform];
+        return (
+          <a
+            key={`${link.platform}-${link.url}`}
+            className="product-social-link"
+            href={link.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span className="product-social-link__icon">
+              <SocialIcon platform={link.platform} />
+            </span>
+            <span className="product-social-link__copy">
+              <strong>{definition.label}</strong>
+              <small>{socialHandleFromUrl(link.platform, link.url)}</small>
+            </span>
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -148,7 +182,7 @@ function BlockAction({
   );
 }
 
-export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
+export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroProps) {
   const [relationship, setRelationship] = useState<Relationship>(profile.relationship);
   useEffect(() => {
     setRelationship(profile.relationship);
@@ -158,25 +192,24 @@ export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
       <ProfileBanner profile={profile} />
       <div className="product-profile-content">
         <div className="product-profile-identity">
-          <div className="product-list-row__identity">
-            <div className="product-profile-name">
-              <span className="product-eyebrow">
-                {isOwnProfile ? "Your profile" : "Public profile"}
-              </span>
-              <CosmeticIdentity
-                displayName={profile.displayName}
-                avatarUrl={profile.avatarUrl}
-                avatarFrame={profile.cosmetics?.avatarFrame}
-                profileEffect={profile.cosmetics?.profileEffect}
-                nameFont={profile.cosmetics?.nameFont}
-                nameEffect={profile.cosmetics?.nameEffect}
-                mode="profile"
-                nameAs="h1"
-              />
-              <p>@{profile.username}</p>
-            </div>
+          <div className="product-profile-name">
+            <span className="product-eyebrow">
+              {isOwnProfile ? "Your profile" : "Public profile"}
+            </span>
+            <CosmeticIdentity
+              displayName={profile.displayName}
+              avatarUrl={profile.avatarUrl}
+              avatarFrame={profile.cosmetics?.avatarFrame}
+              profileEffect={profile.cosmetics?.profileEffect}
+              nameFont={profile.cosmetics?.nameFont}
+              nameEffect={profile.cosmetics?.nameEffect}
+              visuals={profile.cosmetics?.visuals}
+              mode="profile"
+              nameAs="h1"
+            />
+            <p>@{profile.username}</p>
           </div>
-          <div className="product-chip-row">
+          <div className="product-chip-row product-profile-actions">
             {!isOwnProfile ? (
               <Badge tone={relationship === "BLOCKED" ? "warning" : "neutral"}>
                 {relationshipLabelFor(relationship)}
@@ -193,6 +226,7 @@ export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
               relationship={relationship}
               onRelationshipChange={setRelationship}
             />
+            {editControl}
             <ShareAction
               url={`/u/${encodeURIComponent(profile.username)}`}
               title={`${profile.displayName} on SourceBoard`}
@@ -200,30 +234,18 @@ export function ProfileHero({ profile, isOwnProfile }: ProfileHeroProps) {
           </div>
         </div>
 
-        <p>{profile.bio || "This contributor has not added a bio yet."}</p>
+        {profile.bio ? <p className="product-profile-bio">{profile.bio}</p> : null}
 
-        <dl className="product-profile-stats product-profile-stats--compact">
-          <div className="product-stat">
-            <dt>Friends</dt>
-            <dd>{profile.friendCount}</dd>
-          </div>
-          {profile.points !== undefined ? (
-            <div className="product-stat">
-              <dt>Points</dt>
-              <dd>{profile.points}</dd>
-            </div>
-          ) : null}
-          {profile.verifiedSources !== undefined ? (
-            <div className="product-stat">
-              <dt>Verified</dt>
-              <dd>{profile.verifiedSources}</dd>
-            </div>
-          ) : null}
-          <div className="product-stat">
-            <dt>Visibility</dt>
-            <dd>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends"}</dd>
-          </div>
-        </dl>
+        <div
+          className="product-profile-summary product-profile-stats--compact"
+          aria-label="Profile summary"
+        >
+          <span>
+            <strong>{profile.friendCount}</strong>{" "}
+            {profile.friendCount === 1 ? "friend" : "friends"}
+          </span>
+          <span>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends only"}</span>
+        </div>
 
         <ProfileSocialLinks profile={profile} />
       </div>

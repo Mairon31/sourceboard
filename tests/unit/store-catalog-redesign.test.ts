@@ -21,6 +21,7 @@ const storeCard = read("../../app/components/product/StoreItemCard.tsx");
 const adminStoreRoute = read("../../app/routes/admin-store.tsx");
 const adminCosmetics = read("../../app/components/admin/store/AdminCosmeticCatalog.tsx");
 const adminPacks = read("../../app/components/admin/store/AdminEmotePackManager.tsx");
+const adminTypes = read("../../app/components/admin/store/types.ts");
 const adminEditor = read("../../app/components/admin/store/AdminStoreEditor.tsx");
 
 describe("store catalog lifecycle", () => {
@@ -73,10 +74,13 @@ describe("store catalog lifecycle", () => {
     expect(catalogApi).toContain("audit_logs");
   });
 
-  it("structures the public Store into Featured New Owned and catalog sections", () => {
-    expect(storeRoute).toContain("featuredItems");
-    expect(storeRoute).toContain("newItems");
-    expect(storeRoute).toContain("ownedItems");
+  it("structures the public Store into Featured New Owned and a complete catalog", () => {
+    expect(storeRoute).toContain("partitionStoreItems");
+    expect(storeRoute).toContain("sections.featured");
+    expect(storeRoute).toContain("sections.newest");
+    expect(storeRoute).toContain("sections.owned");
+    expect(storeRoute).toContain("const browse = items;");
+    expect(storeRoute).toContain('title="All items"');
     expect(storeSection).toContain("product-store-section");
     expect(storeCard).toContain("StorePreview");
   });
@@ -110,5 +114,24 @@ describe("store catalog lifecycle", () => {
     expect(adminPacks).toContain("moderationState");
     expect(adminPacks).toContain("toggleEmoteEnabled");
     expect(adminPacks).toContain("isEnabled: !truthy(emote.isEnabled)");
+  });
+
+  it("shows decision-useful pack summaries before an admin opens a pack", () => {
+    expect(adminTypes).toContain("previewEmoteId");
+    expect(catalogApi).toContain("AS previewEmoteId");
+    expect(adminPacks).toContain("pack.previewEmoteId");
+    expect(adminPacks).toContain("pack.description");
+    expect(adminPacks).toContain("pack.pricePoints");
+    expect(adminPacks).toContain("Store visibility");
+  });
+
+  it("keeps archived catalog state server-enforced and exposes pack Store controls", () => {
+    expect(storeAdmin).toContain("STORE_ITEM_ARCHIVED");
+    expect(catalogApi).toContain("PACK_ARCHIVED");
+    expect(catalogApi).toContain("EMOTE_ARCHIVED");
+    expect(catalogApi).toContain("EMOTE_MODERATION_BLOCKED");
+    expect(adminPacks).toContain("Feature Store offering");
+    expect(adminPacks).toContain("Unfeature Store offering");
+    expect(adminPacks).toContain("Store archived");
   });
 });

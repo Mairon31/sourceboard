@@ -75,6 +75,25 @@ async function cleanAuthState(
   };
 }
 
+async function restoreExpiredUserStatuses(db: D1Database, now: number): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE users
+       SET status = 'ACTIVE', updated_at = ?
+       WHERE status IN ('SUSPENDED', 'BANNED')
+         AND email_verified_at IS NOT NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM user_sanctions s
+           WHERE s.user_id = users.id
+             AND s.kind IN ('SUSPENSION', 'BAN')
+             AND s.revoked_at IS NULL
+             AND (s.expires_at IS NULL OR s.expires_at > ?)
+         )`,
+    )
+    .bind(now, now)
+    .run();
+}
+
 async function cleanMarkedMedia(
   db: D1Database,
   media: R2Bucket | undefined,
@@ -162,6 +181,7 @@ export async function runMaintenance(
 ): Promise<MaintenanceResult> {
   const now = dependencies.now?.() ?? Date.now();
   const auth = await cleanAuthState(dependencies.db, now);
+  await restoreExpiredUserStatuses(dependencies.db, now);
   const deletedMarkedMedia = await cleanMarkedMedia(dependencies.db, dependencies.media, now);
   const deletedOrphanMedia = await cleanOrphanMedia(dependencies.db, dependencies.media, now);
   return { ...auth, deletedMarkedMedia, deletedOrphanMedia };

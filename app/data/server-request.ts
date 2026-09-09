@@ -1,5 +1,6 @@
 import type { RouterContextProvider } from "react-router";
 import { createAuthService, type AuthenticatedSession } from "../../worker/auth/service";
+import { getSessionToken } from "../../worker/auth/security";
 import { createD1AuthStore } from "../../worker/auth/store";
 import type { SourceBoardEnvironment } from "../../worker/environment";
 import { readSourceBoardRequestContext } from "../../shared/router-context";
@@ -24,6 +25,10 @@ export type AuthenticatedServerRequestRuntime = AvailableServerRequestRuntime & 
   authenticatedRequest: true;
 };
 
+function hasSourceBoardSession(request: Request): boolean {
+  return Boolean(getSessionToken(request));
+}
+
 function readServerRequestRuntime(
   request: Request,
   context: Readonly<RouterContextProvider>,
@@ -35,7 +40,7 @@ function readServerRequestRuntime(
   return {
     env,
     db,
-    authenticatedRequest: Boolean(db) && Boolean(request.headers.get("cookie")),
+    authenticatedRequest: Boolean(db) && hasSourceBoardSession(request),
   };
 }
 
@@ -56,7 +61,7 @@ export async function readServerSession(
   context: Readonly<RouterContextProvider>,
 ): Promise<AuthenticatedSession | null> {
   const requestContext = readSourceBoardRequestContext(context);
-  if (!requestContext?.env.DB || !request.headers.get("cookie")) return null;
+  if (!requestContext?.env.DB || !hasSourceBoardSession(request)) return null;
   if (!requestContext.sessionPromise) {
     requestContext.sessionPromise = createAuthService({
       store: createD1AuthStore(requestContext.env.DB),

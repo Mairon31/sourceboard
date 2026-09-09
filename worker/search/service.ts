@@ -1,6 +1,6 @@
 import { decodePostCursor, encodePostCursor } from "../posts/pagination";
 import { isPostError } from "../posts/errors";
-import type { ProfileStore } from "../profile/store";
+import type { EquippedCosmetics, ProfileStore } from "../profile/store";
 import type {
   AcceptedSourceView,
   PostSummary,
@@ -8,8 +8,8 @@ import type {
 } from "../../shared/ui/contracts";
 import { SearchError } from "./errors";
 
-export type SearchKind = "posts" | "profiles" | "all";
-export type SearchFilter = "recent" | "open" | "answered" | "verified";
+export type SearchKind = "posts" | "profiles" | "sources" | "all";
+export type SearchFilter = "recent" | "relevant" | "open" | "unanswered" | "answered" | "verified";
 
 export interface SearchInput {
   viewerId: string | null;
@@ -27,6 +27,7 @@ export interface ProfileSearchResult {
   displayName: string;
   bio: string;
   avatarUrl?: string;
+  cosmetics?: EquippedCosmetics;
 }
 
 export interface SearchResult {
@@ -45,7 +46,7 @@ export interface SearchService {
 
 export interface SearchServiceDependencies {
   db: D1Database;
-  profileStore: Pick<ProfileStore, "getPreferences">;
+  profileStore: Pick<ProfileStore, "getPreferences" | "getEquippedCosmetics">;
   now?: () => number;
 }
 
@@ -66,6 +67,7 @@ interface PostSearchRow {
   comment_count: number;
   like_count: number;
   created_at: number;
+  updated_at: number;
   media_id: string;
   media_width: number | null;
   media_height: number | null;
@@ -92,10 +94,6 @@ const MAX_QUERY_LENGTH = 120;
 const MAX_SEARCH_LIMIT = 30;
 const MAX_FTS_TOKENS = 8;
 
-/**
- * Converts user text into a deliberately small FTS5 prefix query. Operators,
- * quotes and column selectors are never passed through to SQLite.
- */
 export function sanitizeSearchQuery(value: string): { display: string; fts: string | null } {
   const display = value.normalize("NFKC").trim().slice(0, MAX_QUERY_LENGTH);
   const tokens = display.match(/[\p{L}\p{N}_-]+/gu)?.slice(0, MAX_FTS_TOKENS) ?? [];
@@ -157,7 +155,11 @@ function verifiedSource(row: PostSearchRow): VerifiedSourceView | undefined {
   };
 }
 
-function toPostSummary(row: PostSearchRow, blurNsfw: boolean): PostSummary {
+function toPostSummary(
+  row: PostSearchRow,
+  blurNsfw: boolean,
+  cosmetics?: EquippedCosmetics,
+): PostSummary {
   const anonymous = row.author_mode === "ANONYMOUS";
   const profileVisible = !anonymous && row.author_profile_visible === 1;
   const author = anonymous
@@ -172,6 +174,11 @@ function toPostSummary(row: PostSearchRow, blurNsfw: boolean): PostSummary {
             ? `/api/media/profile/${encodeURIComponent(row.author_avatar_asset_id)}`
             : undefined,
           profileUrl: `/u/${encodeURIComponent(row.author_username)}`,
+          avatarFrame: cosmetics?.avatarFrame,
+          profileEffect: cosmetics?.profileEffect,
+          nameFont: cosmetics?.nameFont,
+          nameEffect: cosmetics?.nameEffect,
+          visuals: cosmetics?.visuals,
         };
   const nsfwPresentation = row.is_nsfw === 1 && blurNsfw ? "BLURRED" : "VISIBLE";
   return {
@@ -181,6 +188,7 @@ function toPostSummary(row: PostSearchRow, blurNsfw: boolean): PostSummary {
     description: row.description || undefined,
     author,
     createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.updated_at).toISOString(),
     status: postStatus(row.status),
     visibility: postVisibility(row.visibility),
     isNsfw: row.is_nsfw === 1,
@@ -212,6 +220,7 @@ function sourceJoins(): string {
 function postSearchQuery(
   ftsQuery: string,
   viewerId: string | null,
+  kind: SearchKind,
   filter: SearchFilter,
   cursor: ReturnType<typeof decodeCursor>,
   limit: number,
@@ -240,7 +249,8 @@ function postSearchQuery(
     "u.status NOT IN ('DELETED', 'BANNED')",
   ];
   const bindings: unknown[] = viewerId ? [viewerId, viewerId, viewerId, ftsQuery] : [ftsQuery];
-  if (filter === "open") conditions.push("p.status = 'OPEN'");
+  if (kind === "sources") conditions.push("accepted_source.comment_id IS NOT NULL");
+  if (filter === "open" || filter === "unanswered") conditions.push("p.status = 'OPEN'");
   if (filter === "answered") conditions.push("p.status IN ('ANSWERED', 'VERIFIED')");
   if (filter === "verified") conditions.push("p.status = 'VERIFIED'");
   if (hideNsfw) conditions.push("p.is_nsfw = 0");
@@ -252,11 +262,15 @@ function postSearchQuery(
     )`);
     bindings.push(viewerId, viewerId);
   }
-  if (cursor) {
+  if (cursor && filter !== "relevant") {
     conditions.push("(p.created_at < ? OR (p.created_at = ? AND p.id < ?))");
     bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
   }
   bindings.push(limit + 1);
+  const orderBy =
+    filter === "relevant"
+      ? "bm25(public_post_search) ASC, p.created_at DESC, p.id DESC"
+      : "p.created_at DESC, p.id DESC";
   return {
     sql: `SELECT
       p.id,
@@ -275,6 +289,7 @@ function postSearchQuery(
       p.comment_count,
       p.like_count,
       p.created_at,
+      p.updated_at,
       m.id AS media_id,
       m.width AS media_width,
       m.height AS media_height,
@@ -293,7 +308,7 @@ function postSearchQuery(
     JOIN media_assets m ON m.id = p.image_asset_id
     ${sourceJoins()}
     WHERE ${conditions.join(" AND ")}
-    ORDER BY p.created_at DESC, p.id DESC
+    ORDER BY ${orderBy}
     LIMIT ?`,
     bindings,
   };
@@ -304,6 +319,7 @@ function profileSearchQuery(
   viewerId: string | null,
   cursor: ReturnType<typeof decodeCursor>,
   limit: number,
+  relevant: boolean,
 ): { sql: string; bindings: unknown[] } {
   const conditions = [
     "public_profile_search MATCH ?",
@@ -319,11 +335,14 @@ function profileSearchQuery(
     )`);
     bindings.push(viewerId, viewerId);
   }
-  if (cursor) {
+  if (cursor && !relevant) {
     conditions.push("(p.updated_at < ? OR (p.updated_at = ? AND u.id < ?))");
     bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
   }
   bindings.push(limit + 1);
+  const orderBy = relevant
+    ? "bm25(public_profile_search) ASC, p.updated_at DESC, u.id DESC"
+    : "p.updated_at DESC, u.id DESC";
   return {
     sql: `SELECT
       u.id,
@@ -341,10 +360,25 @@ function profileSearchQuery(
      AND a.status = 'ACTIVE'
      AND a.deleted_at IS NULL
     WHERE ${conditions.join(" AND ")}
-    ORDER BY p.updated_at DESC, u.id DESC
+    ORDER BY ${orderBy}
     LIMIT ?`,
     bindings,
   };
+}
+
+async function cosmeticsForUsers(
+  store: Pick<ProfileStore, "getEquippedCosmetics">,
+  userIds: string[],
+): Promise<Map<string, EquippedCosmetics>> {
+  const uniqueIds = [...new Set(userIds)];
+  return new Map(
+    await Promise.all(
+      uniqueIds.map(
+        async (userId) =>
+          [userId, await store.getEquippedCosmetics(userId).catch(() => ({}))] as const,
+      ),
+    ),
+  );
 }
 
 export function createSearchService(dependencies: SearchServiceDependencies): SearchService {
@@ -377,12 +411,19 @@ export function createSearchService(dependencies: SearchServiceDependencies): Se
       const postQuery = postSearchQuery(
         fts,
         input.viewerId,
+        input.kind,
         input.filter,
         postCursor,
         limit,
         hideNsfw,
       );
-      const profileQuery = profileSearchQuery(fts, input.viewerId, profileCursor, limit);
+      const profileQuery = profileSearchQuery(
+        fts,
+        input.viewerId,
+        profileCursor,
+        limit,
+        input.filter === "relevant",
+      );
 
       const postPromise =
         input.kind === "profiles"
@@ -392,20 +433,28 @@ export function createSearchService(dependencies: SearchServiceDependencies): Se
               .bind(...postQuery.bindings)
               .all<PostSearchRow>();
       const profilePromise =
-        input.kind === "posts"
+        input.kind === "posts" || input.kind === "sources"
           ? Promise.resolve({ results: [] as ProfileSearchRow[] })
           : dependencies.db
               .prepare(profileQuery.sql)
               .bind(...profileQuery.bindings)
               .all<ProfileSearchRow>();
       const [postRows, profileRows] = await Promise.all([postPromise, profilePromise]);
+      const cosmetics = await cosmeticsForUsers(dependencies.profileStore, [
+        ...postRows.results
+          .filter((row) => row.author_mode !== "ANONYMOUS" && row.author_profile_visible === 1)
+          .map((row) => row.author_id),
+        ...profileRows.results.map((row) => row.id),
+      ]);
 
       const postHasNext = postRows.results.length > limit;
       const visiblePostRows = postHasNext ? postRows.results.slice(0, limit) : postRows.results;
       const lastPost = visiblePostRows.at(-1);
-      result.posts = visiblePostRows.map((row) => toPostSummary(row, blurNsfw));
+      result.posts = visiblePostRows.map((row) =>
+        toPostSummary(row, blurNsfw, cosmetics.get(row.author_id)),
+      );
       result.nextPostCursor =
-        postHasNext && lastPost
+        input.filter !== "relevant" && postHasNext && lastPost
           ? encodePostCursor({ createdAt: lastPost.created_at, id: lastPost.id })
           : null;
 
@@ -422,9 +471,12 @@ export function createSearchService(dependencies: SearchServiceDependencies): Se
         avatarUrl: row.avatar_asset_id
           ? `/api/media/profile/${encodeURIComponent(row.avatar_asset_id)}`
           : undefined,
+        ...(Object.keys(cosmetics.get(row.id) ?? {}).length
+          ? { cosmetics: cosmetics.get(row.id) }
+          : {}),
       }));
       result.nextProfileCursor =
-        profileHasNext && lastProfile
+        input.filter !== "relevant" && profileHasNext && lastProfile
           ? encodePostCursor({ createdAt: lastProfile.profile_updated_at, id: lastProfile.id })
           : null;
       return result;

@@ -23,6 +23,16 @@ export interface PostStore {
     cursor: PostCursor | null;
     limit: number;
   }): Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }>;
+  listByAuthor(input: {
+    authorId: string;
+    cursor: PostCursor | null;
+    limit: number;
+  }): Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }>;
+  listAcceptedByContributor(input: {
+    contributorId: string;
+    cursor: PostCursor | null;
+    limit: number;
+  }): Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }>;
   updatePost(input: {
     postId: string;
     editorUserId: string;
@@ -373,6 +383,75 @@ export function createD1PostStore(db: D1Database): PostStore {
         bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
       }
 
+      const result = await db
+        .prepare(
+          `${postQuery(conditions.join(" AND "))} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
+        )
+        .bind(...bindings, limit + 1)
+        .all<PostWithAuthorRow>();
+      const hasNextPage = result.results.length > limit;
+      const rows = hasNextPage ? result.results.slice(0, limit) : result.results;
+      const last = rows.at(-1);
+      return {
+        posts: rows.map(toPost),
+        nextCursor:
+          hasNextPage && last
+            ? encodePostCursor({ createdAt: last.created_at, id: last.id })
+            : null,
+      };
+    },
+
+    async listByAuthor({ authorId, cursor, limit }) {
+      const conditions = [
+        "p.author_id = ?",
+        "p.deleted_at IS NULL",
+        "p.hidden_at IS NULL",
+        "m.status = 'ACTIVE'",
+        "m.purpose = 'POST_IMAGE'",
+      ];
+      const bindings: unknown[] = [authorId];
+      if (cursor) {
+        conditions.push("(p.created_at < ? OR (p.created_at = ? AND p.id < ?))");
+        bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
+      }
+      const result = await db
+        .prepare(
+          `${postQuery(conditions.join(" AND "))} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
+        )
+        .bind(...bindings, limit + 1)
+        .all<PostWithAuthorRow>();
+      const hasNextPage = result.results.length > limit;
+      const rows = hasNextPage ? result.results.slice(0, limit) : result.results;
+      const last = rows.at(-1);
+      return {
+        posts: rows.map(toPost),
+        nextCursor:
+          hasNextPage && last
+            ? encodePostCursor({ createdAt: last.created_at, id: last.id })
+            : null,
+      };
+    },
+
+    async listAcceptedByContributor({ contributorId, cursor, limit }) {
+      const conditions = [
+        "p.accepted_comment_id IS NOT NULL",
+        "p.deleted_at IS NULL",
+        "p.hidden_at IS NULL",
+        "m.status = 'ACTIVE'",
+        "m.purpose = 'POST_IMAGE'",
+        `EXISTS (
+          SELECT 1 FROM comments c
+          WHERE c.id = p.accepted_comment_id
+            AND c.post_id = p.id
+            AND c.author_id = ?
+            AND c.state = 'VISIBLE'
+        )`,
+      ];
+      const bindings: unknown[] = [contributorId];
+      if (cursor) {
+        conditions.push("(p.created_at < ? OR (p.created_at = ? AND p.id < ?))");
+        bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
+      }
       const result = await db
         .prepare(
           `${postQuery(conditions.join(" AND "))} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,

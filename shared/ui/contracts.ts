@@ -5,6 +5,7 @@ import type {
   ProfileBannerPreset,
   ProfileEffectPreset,
 } from "../store/cosmetics";
+import type { CosmeticIdentityVisuals, CosmeticVisualDefinition } from "../store/custom-cosmetics";
 import type { RichTextMarks } from "../richtext/markdown";
 
 export type AuthorMode = "IDENTIFIED" | "ANONYMOUS";
@@ -41,6 +42,7 @@ export interface PublicPostAuthor {
   profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
+  visuals?: CosmeticIdentityVisuals;
 }
 
 export interface ReactionSummary {
@@ -126,6 +128,7 @@ export interface PostSummary {
   description?: string;
   author: PublicPostAuthor;
   createdAt: string;
+  updatedAt: string;
   status: PostStatus;
   visibility: PostVisibility;
   isNsfw: boolean;
@@ -224,8 +227,10 @@ export interface StoreItemView {
   adminUnlocked?: boolean;
   preview: {
     config: {
+      namespace?: string;
       preset?: AvatarFramePreset | ProfileBannerPreset | ProfileEffectPreset | NameEffectPreset;
       family?: NameFontFamily;
+      visual?: CosmeticVisualDefinition;
     };
     media: Array<{ id: string; label: string; url: string }>;
   };

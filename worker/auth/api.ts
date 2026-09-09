@@ -2,6 +2,7 @@ import { z } from "zod";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import type { SourceBoardEnvironment } from "../environment";
+import { requireTurnstile } from "./bindings";
 import { AuthError, isAuthError } from "./errors";
 import {
   authCookiesToHeaders,
@@ -29,6 +30,7 @@ const loginSchema = z.object({
 
 const firebaseTokenSchema = z.object({
   idToken: z.string().min(1).max(8192),
+  turnstileToken: z.string().optional(),
 });
 
 const forgotPasswordSchema = z.object({
@@ -56,6 +58,16 @@ const roleChangeSchema = z.object({
 });
 
 type InputRecord = Record<string, unknown>;
+type InputRequest = Pick<Request, "headers" | "json" | "formData" | "text">;
+
+const PUBLIC_AUTH_MUTATIONS = new Set([
+  "POST /api/auth/register",
+  "POST /api/auth/login",
+  "POST /api/auth/google",
+  "POST /api/auth/email/verify",
+  "POST /api/auth/password/forgot",
+  "POST /api/auth/password/reset",
+]);
 
 function firebasePublicConfig(env: SourceBoardEnvironment) {
   const apiKey = env.FIREBASE_API_KEY?.trim();
@@ -76,7 +88,7 @@ function firebasePublicConfig(env: SourceBoardEnvironment) {
   };
 }
 
-async function parseInput(request: Request): Promise<InputRecord> {
+async function parseInput(request: InputRequest): Promise<InputRecord> {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     const value: unknown = await request.json();
@@ -145,9 +157,10 @@ function requireDatabase(env: SourceBoardEnvironment): D1Database {
   return env.DB;
 }
 
-function requireSameOriginAndCsrf(request: Request): void {
+function requireRequestSecurity(request: Request, url: URL): void {
   assertSameOrigin(request);
-  if (getSessionToken(request)) {
+  const routeKey = `${request.method} ${url.pathname}`;
+  if (!PUBLIC_AUTH_MUTATIONS.has(routeKey) && getSessionToken(request)) {
     assertCsrfToken(request);
   }
 }
@@ -158,6 +171,32 @@ function isAuthRoute(pathname: string): boolean {
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/api/admin/users/")
   );
+}
+
+function createRequestTurnstileVerifier(env: SourceBoardEnvironment) {
+  let verifiedToken: string | null = null;
+  return async (token: string | undefined): Promise<void> => {
+    if (token && token === verifiedToken) return;
+    await requireTurnstile(env, token);
+    verifiedToken = token ?? null;
+  };
+}
+
+async function preflightPublicTurnstile(
+  request: Request,
+  url: URL,
+  verifyTurnstile: (token: string | undefined) => Promise<void>,
+): Promise<void> {
+  const routeKey = `${request.method} ${url.pathname}`;
+  if (routeKey === "POST /api/auth/login") {
+    const input = parseSchema(loginSchema, await parseInput(request.clone()));
+    await verifyTurnstile(input.turnstileToken);
+    return;
+  }
+  if (routeKey === "POST /api/auth/google") {
+    const input = parseSchema(firebaseTokenSchema, await parseInput(request.clone()));
+    await verifyTurnstile(input.turnstileToken);
+  }
 }
 
 interface AuthRouteContext {
@@ -313,10 +352,16 @@ export async function handleAuthRequest(
     }
 
     if (request.method !== "GET") {
-      requireSameOriginAndCsrf(request);
+      requireRequestSecurity(request, url);
     }
 
-    const service = createAuthService({ store: createD1AuthStore(requireDatabase(env)), env });
+    const verifyTurnstile = createRequestTurnstileVerifier(env);
+    await preflightPublicTurnstile(request, url, verifyTurnstile);
+    const service = createAuthService({
+      store: createD1AuthStore(requireDatabase(env)),
+      env,
+      verifyTurnstile,
+    });
     const context = createAuthContext(request, requestId);
 
     const route: AuthRouteContext = { request, requestId, service, context };
