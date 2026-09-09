@@ -1,37 +1,41 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { createAuthService } from "../../worker/auth/service";
-import { SESSION_COOKIE_NAME } from "../../worker/auth/security";
-import type { AuthStore, SessionRecord } from "../../worker/auth/store";
-import type { SourceBoardEnvironment } from "../../worker/environment";
+import type { AuthStore } from "../../worker/auth/store";
+import type { AuthSessionRecord } from "../../worker/auth/types";
+import type { SourceBoardEnvironment } from "../../worker/types";
+import { readFileSync } from "node:fs";
 
-const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
-
-function session(lastUsedAt: number): SessionRecord & {
-  username: string;
-  status: "ACTIVE";
-  emailVerifiedAt: number;
-} {
+function session(lastUsedAt: number): AuthSessionRecord {
   return {
     id: "session-1",
     userId: "user-1",
     tokenHash: "hash",
-    createdAt: 1_000,
+    expiresAt: lastUsedAt + 60 * 60_000,
+    createdAt: lastUsedAt - 1_000,
     lastUsedAt,
-    expiresAt: 10_000_000,
     revokedAt: null,
-    ipPrefixHash: null,
+    ipHash: null,
     userAgentHash: null,
-    username: "aurora",
-    status: "ACTIVE",
-    emailVerifiedAt: 1_000,
+    user: {
+      id: "user-1",
+      username: "aurora",
+      email: "aurora@example.test",
+      emailVerifiedAt: lastUsedAt - 10_000,
+      status: "ACTIVE",
+      createdAt: lastUsedAt - 20_000,
+      updatedAt: lastUsedAt - 10_000,
+    },
   };
 }
 
 function request() {
-  return new Request("https://srcboard.me/store", {
-    headers: { cookie: `${SESSION_COOKIE_NAME}=opaque-session-token` },
+  return new Request("https://sourceboard.test/", {
+    headers: { cookie: "__Host-sourceboard_session=test-token" },
   });
+}
+
+function read(path: string) {
+  return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
 describe("navigation session performance", () => {
@@ -39,7 +43,7 @@ describe("navigation session performance", () => {
     const now = 1_000_000;
     const touchSession = vi.fn(async () => undefined);
     const store = {
-      findActiveSessionByTokenHash: vi.fn(async () => session(now - 5_000)),
+      findActiveSessionByTokenHash: vi.fn(async () => session(now - 30_000)),
       touchSession,
     } as unknown as AuthStore;
     const service = createAuthService({
@@ -79,11 +83,12 @@ describe("navigation session performance", () => {
     expect(root).toContain("readServerSession");
   });
 
-  it("prefetches visible mobile nav destinations without prefetching every feed post", () => {
+  it("prefetches nav destinations on intent without prefetching every feed post", () => {
     const productNav = read("../../app/components/product/ProductNav.tsx");
     const postCard = read("../../app/components/product/PostCard.tsx");
 
-    expect(productNav).toContain('prefetch="viewport"');
+    expect(productNav).toContain('prefetch="intent"');
+    expect(productNav).not.toContain('prefetch="viewport"');
     expect(productNav).toContain('to="/store"');
     expect(postCard).not.toContain('prefetch="viewport"');
   });
