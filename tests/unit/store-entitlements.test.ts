@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createEntitlementChecker } from "../../worker/store/entitlements";
 
 describe("store entitlements", () => {
-  it("checks pack ownership for custom emotes", async () => {
+  it("checks pack ownership for custom emotes using the normalized shortcode", async () => {
     const statement = {
       bind: vi.fn(() => statement),
       first: vi.fn(async () => null),
@@ -15,7 +15,7 @@ describe("store entitlements", () => {
         attachment: null,
       }),
     ).rejects.toMatchObject({ code: "EMOTE_NOT_ENTITLED", status: 403 });
-    expect(statement.bind).toHaveBeenCalledWith(":private_pack:", "user");
+    expect(statement.bind).toHaveBeenCalledWith("private_pack", "user");
   });
 
   it("falls back to the legacy catalog schema when lifecycle columns are absent", async () => {
