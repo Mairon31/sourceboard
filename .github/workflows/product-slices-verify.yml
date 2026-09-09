@@ -25,8 +25,8 @@ jobs:
         run: npm test -- tests/unit/reputation-rules.test.ts tests/unit/reputation-service.test.ts tests/unit/reputation-admin.test.ts tests/unit/reputation-admin-wiring.test.ts
       - name: Verify public resources
         run: npm test -- tests/unit/public-seo-resources.test.ts
-      - name: Verify settings and motion
-        run: npm test -- tests/unit/settings-redesign.test.ts tests/unit/profile-account-klipy-picker.test.ts
+      - name: Verify settings, iconography and motion
+        run: npm test -- tests/unit/settings-redesign.test.ts tests/unit/profile-account-klipy-picker.test.ts tests/unit/iconography-motion.test.ts
       - name: Verify search
         run: npm test -- tests/unit/search-index.test.ts tests/unit/search-service.test.ts
       - name: Typecheck
