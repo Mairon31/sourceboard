@@ -16,6 +16,10 @@ describe("Phase 5 comment rich text", () => {
 
   it("preserves canonical colon-delimited emote shortcodes across normalization and legacy reads", () => {
     const normalized = normalizeCommentBody({ markdown: "Hello :wave: and :party_cat:" });
+    const legacy = parseStoredCommentBody(
+      JSON.stringify([{ type: "emote", shortcode: "wave" }]),
+      null,
+    );
 
     expect(normalized.richtext).toEqual([
       { type: "text", text: "Hello " },
@@ -24,11 +28,7 @@ describe("Phase 5 comment rich text", () => {
       { type: "emote", shortcode: ":party_cat:" },
     ]);
     expect(normalized.plaintext).toBe("Hello :wave: and :party_cat:");
-
-    expect(
-      parseStoredCommentBody(JSON.stringify([{ type: "emote", shortcode: "wave" }]), null)
-        .richtext,
-    ).toEqual([{ type: "emote", shortcode: ":wave:" }]);
+    expect(legacy.richtext).toEqual([{ type: "emote", shortcode: ":wave:" }]);
   });
 
   it("reconstructs Markdown marks for legacy comments stored as plain text nodes", () => {
