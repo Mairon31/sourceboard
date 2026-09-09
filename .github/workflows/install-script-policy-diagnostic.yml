@@ -1,0 +1,100 @@
+name: Install script policy diagnostic
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Inspect pending install scripts
+        shell: bash
+        run: |
+          npm ci
+          npm install-scripts ls --json || true
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const wanted = new Set(['esbuild', '@firebase/util', 'protobufjs', 'workerd']);
+          const seen = new Set();
+          function walk(dir) {
+            if (!fs.existsSync(dir)) return;
+            for (const ent of fs.readdirSync(dir, {withFileTypes:true})) {
+              if (ent.name === '.bin') continue;
+              const full = path.join(dir, ent.name);
+              if (ent.isDirectory() && ent.name.startsWith('@')) {
+                walk(full);
+                continue;
+              }
+              if (!ent.isDirectory()) continue;
+              const pkgPath = path.join(full, 'package.json');
+              if (fs.existsSync(pkgPath)) {
+                try {
+                  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                  if (wanted.has(pkg.name) && !seen.has(`${pkg.name}@${pkg.version}:${full}`)) {
+                    seen.add(`${pkg.name}@${pkg.version}:${full}`);
+                    console.log('SCRIPT_PACKAGE='+JSON.stringify({name:pkg.name,version:pkg.version,scripts:pkg.scripts||{},path:full}));
+                  }
+                } catch {}
+                walk(path.join(full, 'node_modules'));
+              } else {
+                walk(full);
+              }
+            }
+          }
+          walk('node_modules');
+          NODE
+      - name: Write candidate pinned policy
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('package.json','utf8'));
+          p.allowScripts = {
+            'esbuild@0.18.20': true,
+            'esbuild@0.25.12': true,
+            'esbuild@0.28.1': true,
+            'workerd@1.20260831.1': true,
+            'workerd@1.20260903.1': true,
+            '@firebase/util': false,
+            'protobufjs': false
+          };
+          fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+          NODE
+          printf 'strict-allow-scripts=true\n' > .npmrc
+      - name: Verify strict policy with npm 11
+        shell: bash
+        run: |
+          rm -rf node_modules
+          npm ci
+          npm install-scripts ls --json
+          npm run audit:prod
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+          npm run deploy:dry-run
+      - name: Verify policy with npm 12 opt-in behavior
+        shell: bash
+        run: |
+          npm install -g npm@12.0.2
+          npm --version
+          rm -rf node_modules
+          npm ci
+          npm install-scripts ls --json
+          npm run audit:prod
+          npm run typecheck
+          npm test
+          npm run build
+          npm run deploy:dry-run
