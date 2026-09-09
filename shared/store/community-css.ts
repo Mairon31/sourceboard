@@ -170,7 +170,8 @@ function validateTransform(value: string): void {
   let matched = false;
   for (const match of value.matchAll(pattern)) {
     const index = match.index ?? 0;
-    if (value.slice(cursor, index).trim()) invalid("Only bounded translate, scale and rotate transforms are allowed.");
+    if (value.slice(cursor, index).trim())
+      invalid("Only bounded translate, scale and rotate transforms are allowed.");
     matched = true;
     const name = (match[1] ?? "").toLowerCase();
     const args = splitTransformArgs(match[2] ?? "");
@@ -261,11 +262,13 @@ function sanitizeDeclarations(
       if (!Number.isFinite(numeric) || numeric < 0.15 || numeric > 1)
         invalid("Opacity must stay between 0.15 and 1.");
     }
-    if (property === "border-width") validateBoundedLengths(value, 8, property, { inspectPercent: true });
+    if (property === "border-width")
+      validateBoundedLengths(value, 8, property, { inspectPercent: true });
     if (property === "border-radius")
       validateBoundedLengths(value, 64, property, { allowPercent: true, inspectPercent: true });
     if (property === "box-shadow") validateBoundedLengths(value, 64, property);
-    if (property === "letter-spacing") validateBoundedLengths(value, 8, property, { inspectPercent: true });
+    if (property === "letter-spacing")
+      validateBoundedLengths(value, 8, property, { inspectPercent: true });
     if (property === "transform") validateTransform(value);
     if (property === "filter") validateFilter(value);
     if (property === "overflow" && !/^(hidden|clip)$/i.test(value))
