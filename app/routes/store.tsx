@@ -11,11 +11,11 @@ import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server
 
 const STORE_FILTERS = [
   { key: "ALL", label: "All" },
-  { key: "AVATAR_FRAME", label: "Frame" },
   { key: "PROFILE_BANNER", label: "Profile Themes" },
-  { key: "PROFILE_EFFECT", label: "Profile effects" },
-  { key: "NAME_EFFECT", label: "Name effects" },
-  { key: "NAME_FONT", label: "Font" },
+  { key: "AVATAR_FRAME", label: "Avatar Frames" },
+  { key: "PROFILE_EFFECT", label: "Profile Effects" },
+  { key: "NAME_EFFECT", label: "Name Effects" },
+  { key: "NAME_FONT", label: "Fonts" },
   { key: "EMOTE_PACK", label: "Emotes" },
   { key: "STICKER_PACK", label: "Stickers" },
   { key: "COMMUNITY", label: "Community" },
@@ -385,15 +385,15 @@ export default function StoreRoute() {
           </StoreSection>
         ) : null}
 
-        {sections.owned.length ? (
-          <StoreSection title="Owned" description="Your unlocked and currently equipped items.">
-            {renderItems(sections.owned)}
-          </StoreSection>
-        ) : null}
-
         {sections.newest.length ? (
           <StoreSection title="New" description="Recent additions in the selected category.">
             {renderItems(sections.newest)}
+          </StoreSection>
+        ) : null}
+
+        {sections.owned.length ? (
+          <StoreSection title="Owned" description="Your unlocked and currently equipped items.">
+            {renderItems(sections.owned)}
           </StoreSection>
         ) : null}
 

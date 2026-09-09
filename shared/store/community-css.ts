@@ -7,7 +7,7 @@ export interface SanitizedCommunityCss {
   scopedCss: string;
 }
 
-const ALLOWED_SELECTORS = new Set([
+export const COMMUNITY_CSS_ALLOWED_SELECTORS = [
   ".cosmetic-root",
   ".cosmetic-root .profile-card",
   ".cosmetic-root .profile-card::before",
@@ -21,9 +21,9 @@ const ALLOWED_SELECTORS = new Set([
   ".cosmetic-root .profile-name-area",
   ".cosmetic-root .profile-name-area::before",
   ".cosmetic-root .profile-name-area::after",
-]);
+] as const;
 
-const ALLOWED_PROPERTIES = new Set([
+export const COMMUNITY_CSS_ALLOWED_PROPERTIES = [
   "color",
   "background",
   "background-color",
@@ -47,7 +47,10 @@ const ALLOWED_PROPERTIES = new Set([
   "animation-iteration-count",
   "animation-direction",
   "animation-fill-mode",
-]);
+] as const;
+
+const ALLOWED_SELECTORS = new Set<string>(COMMUNITY_CSS_ALLOWED_SELECTORS);
+const ALLOWED_PROPERTIES = new Set<string>(COMMUNITY_CSS_ALLOWED_PROPERTIES);
 
 const KEYFRAME_PROPERTIES = new Set(["opacity", "transform", "filter"]);
 
