@@ -23,6 +23,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "audit:prod": "npm audit --omit=dev",
     "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run deploy:dry-run"
   },
   "dependencies": {
