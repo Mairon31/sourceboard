@@ -148,6 +148,13 @@ function CommentItem({
   const [showReplies, setShowReplies] = useState(depth === 0);
   const [liked, setLiked] = useState(comment.reaction.viewerReacted);
   const [likes, setLikes] = useState(comment.reaction.count);
+  const [likeBusy, setLikeBusy] = useState(false);
+  const likeInFlightRef = useRef(false);
+  const likeReactionVersionRef = useRef(0);
+  const authoritativeLikeRef = useRef({
+    liked: comment.reaction.viewerReacted,
+    count: comment.reaction.count,
+  });
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
   const [previewingEdit, setPreviewingEdit] = useState(false);
@@ -159,15 +166,31 @@ function CommentItem({
   const hidden = comment.state !== "VISIBLE";
 
   useEffect(() => {
-    setLiked(comment.reaction.viewerReacted);
-    setLikes(comment.reaction.count);
+    authoritativeLikeRef.current = {
+      liked: comment.reaction.viewerReacted,
+      count: comment.reaction.count,
+    };
+    likeReactionVersionRef.current += 1;
+    if (!likeInFlightRef.current) {
+      setLiked(comment.reaction.viewerReacted);
+      setLikes(comment.reaction.count);
+    }
+  }, [comment.reaction.count, comment.reaction.viewerReacted]);
+
+  useEffect(() => {
     if (!editing) setEditBody(comment.body);
-  }, [comment.body, comment.reaction.count, comment.reaction.viewerReacted, editing]);
+  }, [comment.body, editing]);
 
   async function toggleLike() {
-    const nextLiked = !liked;
+    if (likeInFlightRef.current) return;
+    likeInFlightRef.current = true;
+    setLikeBusy(true);
+    const versionAtStart = likeReactionVersionRef.current;
+    const previousLiked = liked;
+    const previousLikes = likes;
+    const nextLiked = !previousLiked;
     setLiked(nextLiked);
-    setLikes((value) => Math.max(0, value + (nextLiked ? 1 : -1)));
+    setLikes(Math.max(0, previousLikes + (nextLiked ? 1 : -1)));
     try {
       const response = await fetch(`/api/reactions/COMMENT/${encodeURIComponent(comment.id)}`, {
         method: nextLiked ? "POST" : "DELETE",
@@ -175,11 +198,21 @@ function CommentItem({
       });
       if (!response.ok) throw new Error();
       const result = (await response.json()) as { liked: boolean };
-      setLiked(result.liked);
+      if (result.liked !== nextLiked) {
+        setLiked(result.liked);
+        setLikes(Math.max(0, previousLikes + (result.liked ? 1 : 0) - (previousLiked ? 1 : 0)));
+      }
     } catch {
-      setLiked(!nextLiked);
-      setLikes((value) => Math.max(0, value + (nextLiked ? -1 : 1)));
+      setLiked(previousLiked);
+      setLikes(previousLikes);
       setStatus("Like unavailable.");
+    } finally {
+      likeInFlightRef.current = false;
+      setLikeBusy(false);
+      if (likeReactionVersionRef.current !== versionAtStart) {
+        setLiked(authoritativeLikeRef.current.liked);
+        setLikes(authoritativeLikeRef.current.count);
+      }
     }
   }
 
@@ -387,6 +420,7 @@ function CommentItem({
             className={`product-comment__action${liked ? " is-active" : ""}`}
             type="button"
             aria-pressed={liked}
+            disabled={likeBusy}
             onClick={() => void toggleLike()}
           >
             <HeartIcon width="15" height="15" fill={liked ? "currentColor" : "none"} />

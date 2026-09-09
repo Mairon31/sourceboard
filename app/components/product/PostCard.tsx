@@ -57,6 +57,7 @@ export function PostCard({
   const [likes, setLikes] = useState(post.reaction.count);
   const [commentsClosed, setCommentsClosedState] = useState(Boolean(post.commentsClosed));
   const [reactionStatus, setReactionStatus] = useState<string | null>(null);
+  const [reactionBusy, setReactionBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title);
   const [editDescription, setEditDescription] = useState(post.description ?? "");
@@ -68,6 +69,14 @@ export function PostCard({
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const mediaRef = useRef<HTMLImageElement>(null);
+  const editingRef = useRef(editing);
+  const reactionInFlightRef = useRef(false);
+  const reactionVersionRef = useRef(0);
+  const authoritativeReactionRef = useRef({
+    liked: post.reaction.viewerReacted,
+    count: post.reaction.count,
+  });
+  editingRef.current = editing;
   const detailHref = postDetailHref(post);
 
   useEffect(() => {
@@ -77,6 +86,27 @@ export function PostCard({
   useEffect(() => {
     setCommentsClosedState(Boolean(post.commentsClosed));
   }, [post.commentsClosed]);
+
+  useEffect(() => {
+    setDisplayTitle(post.title);
+    setDisplayDescription(post.description ?? "");
+    if (!editingRef.current) {
+      setEditTitle(post.title);
+      setEditDescription(post.description ?? "");
+    }
+  }, [post.description, post.title]);
+
+  useEffect(() => {
+    authoritativeReactionRef.current = {
+      liked: post.reaction.viewerReacted,
+      count: post.reaction.count,
+    };
+    reactionVersionRef.current += 1;
+    if (!reactionInFlightRef.current) {
+      setLiked(post.reaction.viewerReacted);
+      setLikes(post.reaction.count);
+    }
+  }, [post.reaction.count, post.reaction.viewerReacted]);
 
   useEffect(() => {
     const image = mediaRef.current;
@@ -109,7 +139,11 @@ export function PostCard({
   }
 
   async function toggleLike() {
+    if (reactionInFlightRef.current) return;
+    reactionInFlightRef.current = true;
+    setReactionBusy(true);
     setReactionStatus(null);
+    const versionAtStart = reactionVersionRef.current;
     const previousLiked = liked;
     const previousLikes = likes;
     const nextLiked = !previousLiked;
@@ -136,6 +170,13 @@ export function PostCard({
       setLiked(previousLiked);
       setLikes(previousLikes);
       setReactionStatus("Like unavailable.");
+    } finally {
+      reactionInFlightRef.current = false;
+      setReactionBusy(false);
+      if (reactionVersionRef.current !== versionAtStart) {
+        setLiked(authoritativeReactionRef.current.liked);
+        setLikes(authoritativeReactionRef.current.count);
+      }
     }
   }
 
@@ -427,6 +468,7 @@ export function PostCard({
             className={`product-post__action${liked ? " product-post__action--liked" : ""}`}
             aria-pressed={liked}
             aria-label={liked ? "Unlike post" : "Like post"}
+            disabled={reactionBusy}
             onClick={() => void toggleLike()}
           >
             <HeartIcon />
