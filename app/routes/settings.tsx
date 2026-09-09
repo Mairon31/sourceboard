@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
+import {
+  createD1UsernamePolicyStore,
+  createUsernamePolicyService,
+} from "../../worker/profile/username-policy";
 import { AnimationControl } from "../components/layout/AnimationControl";
 import { ThemeControl } from "../components/layout/ThemeControl";
 import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
@@ -23,12 +27,20 @@ export async function loader({ request, context }: ServerLoaderArgs) {
   return withServerSession(
     request,
     context,
-    (unavailable) => ({ authenticated: false, unavailable, preferences: null }),
+    (unavailable) => ({ authenticated: false, unavailable, preferences: null, username: null }),
     async (runtime, userId) => {
-      const preferences = (
-        await createProfileService({ store: createD1ProfileStore(runtime.db) }).getMyProfile(userId)
-      ).preferences;
-      return { authenticated: true, unavailable: false, preferences };
+      const [profile, username] = await Promise.all([
+        createProfileService({ store: createD1ProfileStore(runtime.db) }).getMyProfile(userId),
+        createUsernamePolicyService({ store: createD1UsernamePolicyStore(runtime.db) }).getStatus(
+          userId,
+        ),
+      ]);
+      return {
+        authenticated: true,
+        unavailable: false,
+        preferences: profile.preferences,
+        username,
+      };
     },
   );
 }
@@ -263,6 +275,95 @@ function SettingsNotice({ data }: { data: SettingsData }) {
       title="Sign in to save your preferences"
       description="Your privacy and social settings are private account data. Sign in or create an account to manage them."
     />
+  );
+}
+
+function formatUsernameAvailability(value: number | null): string {
+  if (!value) return "Available now";
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function UsernamePanel({ data }: { data: SettingsData }) {
+  const initial = data.username;
+  const [value, setValue] = useState(initial?.username ?? "");
+  const [quota, setQuota] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setValue(data.username?.username ?? "");
+    setQuota(data.username);
+  }, [data.username]);
+
+  async function changeUsername() {
+    if (!data.authenticated || !quota?.canChange || busy) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const response = await fetch("/api/profile/me/username", {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({ username: value }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        username?: NonNullable<SettingsData["username"]>;
+        error?: { message?: string };
+      } | null;
+      if (!response.ok || !payload?.username) {
+        setStatus(payload?.error?.message ?? "The username could not be changed.");
+        return;
+      }
+      setQuota(payload.username);
+      setValue(payload.username.username);
+      setStatus("Username updated.");
+    } catch {
+      setStatus("The username could not be changed. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="product-settings-section">
+      <div className="product-settings-control-block">
+        <strong>Username</strong>
+        <span>
+          Usernames are unique. You can change yours up to 3 times in a rolling 15-day window, with
+          at least 24 hours between changes.
+        </span>
+        <Input
+          label="Username"
+          value={value}
+          minLength={3}
+          maxLength={32}
+          disabled={!data.authenticated || busy}
+          onChange={(event) => setValue(event.target.value)}
+        />
+        {quota ? (
+          <div className="product-settings-inline-actions">
+            <span>
+              {quota.remainingChanges} of {quota.maxChanges} changes available
+            </span>
+            <span>Next change: {formatUsernameAvailability(quota.nextChangeAt)}</span>
+          </div>
+        ) : null}
+        <div className="product-settings-inline-actions">
+          <Button
+            size="sm"
+            loading={busy}
+            disabled={!data.authenticated || !quota?.canChange || value.trim() === quota.username}
+            onClick={() => void changeUsername()}
+          >
+            Change username
+          </Button>
+          {status ? <span role="status">{status}</span> : null}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -533,6 +634,7 @@ export default function SettingsRoute() {
               title="Account access"
               description="Manage credentials with server-enforced session invalidation. SourceBoard does not expose private account identifiers on public profile surfaces."
             />
+            <UsernamePanel data={data} />
             <PasswordPanel authenticated={data.authenticated} />
           </section>
 
