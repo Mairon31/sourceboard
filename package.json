@@ -53,5 +53,14 @@
     "vite": "8.2.2",
     "vitest": "5.0.0",
     "wrangler": "4.129.0"
+  },
+  "allowScripts": {
+    "@firebase/util": false,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "protobufjs": false,
+    "workerd@1.20260831.1": true,
+    "workerd@1.20260903.1": true
   }
 }
