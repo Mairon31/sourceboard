@@ -20,22 +20,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Apply profile activity implementation
-        if: "${{ github.event.head_commit.message == 'chore(profile): apply activity implementation' }}"
-        run: python .github/scripts/apply-profile-activity.py
-      - name: Format changed files
-        if: "${{ github.event.head_commit.message == 'chore(profile): apply activity implementation' }}"
-        run: npx prettier --write worker/posts/store.ts worker/posts/service.ts app/routes/profile.tsx app/components/product/profile-layout-polish.css tests/unit/post-policy.test.ts
-      - name: Lint changed TypeScript
-        if: "${{ github.event.head_commit.message == 'chore(profile): apply activity implementation' }}"
-        run: npx eslint worker/posts/store.ts worker/posts/service.ts app/routes/profile.tsx tests/unit/post-policy.test.ts
-      - name: Run profile activity policy tests
-        run: npm test -- tests/unit/post-policy.test.ts
-      - name: Commit implementation
-        if: "${{ github.event.head_commit.message == 'chore(profile): apply activity implementation' && success() }}"
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add worker/posts/store.ts worker/posts/service.ts app/routes/profile.tsx app/components/product/profile-layout-polish.css tests/unit/post-policy.test.ts
-          git commit -m "feat(profile): wire privacy-safe activity"
-          git push origin HEAD:feature/sourceboard-product-overhaul
+      - name: Run profile activity regressions
+        run: npm test -- tests/unit/post-policy.test.ts tests/unit/product-mobile-ux.test.ts
