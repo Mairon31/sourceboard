@@ -23,5 +23,5 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Apply local D1 migrations
         run: npm run db:migrations:apply
-      - name: Run Admin browser suite
-        run: npx playwright test tests/e2e/admin.spec.ts --project=chromium
+      - name: Run Store responsive browser checks
+        run: npx playwright test tests/e2e/responsive.spec.ts --project=chromium --grep "/admin/store has no horizontal overflow|authorized Admin Store collapses|public Store cards and filters remain contained"
