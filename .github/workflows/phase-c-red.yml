@@ -1,0 +1,20 @@
+name: Community plan Phase C RED
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+
+jobs:
+  phase-c-red:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test -- tests/unit/community-plan-phase-c.test.ts
