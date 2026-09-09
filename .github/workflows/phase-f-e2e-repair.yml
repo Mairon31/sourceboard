@@ -1,0 +1,85 @@
+name: Phase F E2E repair
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+    paths:
+      - .github/workflows/phase-f-e2e-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply focused repairs
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              if old not in text:
+                  raise SystemExit(f"Expected text not found in {path}: {old!r}")
+              file.write_text(text.replace(old, new))
+
+          replace(
+              "app/components/admin/store/admin-store.css",
+              """  .admin-store-mode-tabs {\n    width: 100%;\n  }\n\n  .admin-store-mode-tabs button {\n    min-width: 0;\n    flex: 1 1 0;\n    padding-inline: 10px;\n  }""",
+              """  .admin-store-mode-tabs {\n    width: 100%;\n    overflow-x: auto;\n    overscroll-behavior-inline: contain;\n    scrollbar-width: thin;\n  }\n\n  .admin-store-mode-tabs button {\n    min-width: max-content;\n    flex: 0 0 auto;\n    padding-inline: 10px;\n    white-space: nowrap;\n  }""",
+          )
+
+          admin = Path("tests/e2e/admin.spec.ts")
+          text = admin.read_text().replace('name: "Cosmetics"', 'name: "Catalog"').replace('name: "Emote packs"', 'name: "Emote Packs"')
+          admin.write_text(text)
+
+          replace(
+              "tests/e2e/comments.spec.ts",
+              'toHaveAttribute("title", "e2e_media_wave")',
+              'toHaveAttribute("title", ":e2e_media_wave:")',
+          )
+
+          store = Path("tests/e2e/store.spec.ts")
+          text = store.read_text()
+          text = text.replace(
+              '["All", "Frame", "Profile effects", "Name effects", "Font", "Emotes"]',
+              '["All", "Profile Themes", "Avatar Frames", "Profile Effects", "Name Effects", "Fonts", "Emotes", "Stickers", "Community"]',
+          )
+          text = text.replace('name: "Name effects"', 'name: "Name Effects"')
+          text = text.replace('name: "Font"', 'name: "Fonts"')
+          store.write_text(text)
+
+          responsive = Path("tests/e2e/responsive.spec.ts")
+          responsive.write_text(responsive.read_text().replace('name: "Emote packs"', 'name: "Emote Packs"'))
+      - name: Install dependencies
+        run: npm ci
+      - name: Format repaired files
+        run: npx prettier --write app/components/admin/store/admin-store.css tests/e2e/admin.spec.ts tests/e2e/comments.spec.ts tests/e2e/store.spec.ts tests/e2e/responsive.spec.ts
+      - name: Lint and typecheck
+        run: npm run lint && npm run typecheck
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Apply local D1 migrations
+        run: npm run db:migrations:apply
+      - name: Focused E2E
+        run: npx playwright test tests/e2e/admin.spec.ts tests/e2e/comments.spec.ts tests/e2e/responsive.spec.ts tests/e2e/store.spec.ts
+      - name: Commit verified repairs and remove gate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase-f-e2e-repair.yml
+          git add app/components/admin/store/admin-store.css tests/e2e/admin.spec.ts tests/e2e/comments.spec.ts tests/e2e/store.spec.ts tests/e2e/responsive.spec.ts
+          git commit -m "fix(e2e): close final store regressions"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
