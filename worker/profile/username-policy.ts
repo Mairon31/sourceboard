@@ -159,9 +159,7 @@ export function createUsernamePolicyService(dependencies: {
       const nextChangeAt = availability.nextChangeAt ?? at + USERNAME_CHANGE_COOLDOWN_MS;
       throw new ProfileError(
         429,
-        availability.remainingChanges === 0
-          ? "USERNAME_CHANGE_LIMIT"
-          : "USERNAME_CHANGE_COOLDOWN",
+        availability.remainingChanges === 0 ? "USERNAME_CHANGE_LIMIT" : "USERNAME_CHANGE_COOLDOWN",
         availability.remainingChanges === 0
           ? "You've used all 3 username changes in the current 15-day window."
           : "Username changes require a 24-hour cooldown.",
@@ -268,13 +266,7 @@ export function createD1UsernamePolicyStore(db: D1Database): UsernamePolicyStore
                (id, user_id, old_username, new_username, changed_at)
                VALUES (?, ?, ?, ?, ?)`,
             )
-            .bind(
-              input.id,
-              input.userId,
-              input.oldUsername,
-              input.newUsername,
-              input.changedAt,
-            ),
+            .bind(input.id, input.userId, input.oldUsername, input.newUsername, input.changedAt),
           db
             .prepare(
               `INSERT INTO audit_logs

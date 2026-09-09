@@ -46,12 +46,18 @@ describe("community plan phase E1", () => {
   });
 
   it("enforces max 3 username changes in a sliding 15 day window", () => {
-    const blocked = evaluateUsernameChangePolicy([NOW - 14 * DAY, NOW - 5 * DAY, NOW - 2 * DAY], NOW);
+    const blocked = evaluateUsernameChangePolicy(
+      [NOW - 14 * DAY, NOW - 5 * DAY, NOW - 2 * DAY],
+      NOW,
+    );
     expect(blocked.canChange).toBe(false);
     expect(blocked.remainingChanges).toBe(0);
     expect(blocked.nextChangeAt).toBe(NOW + DAY);
 
-    const sliding = evaluateUsernameChangePolicy([NOW - 16 * DAY, NOW - 5 * DAY, NOW - 2 * DAY], NOW);
+    const sliding = evaluateUsernameChangePolicy(
+      [NOW - 16 * DAY, NOW - 5 * DAY, NOW - 2 * DAY],
+      NOW,
+    );
     expect(sliding.canChange).toBe(true);
     expect(sliding.remainingChanges).toBe(1);
     expect(sliding.nextChangeAt).toBeNull();
@@ -61,7 +67,10 @@ describe("community plan phase E1", () => {
     const taken = fakeStore({ usernameOwnerId: "user-2" });
     const takenService = createUsernamePolicyService({ store: taken, now: () => NOW });
     await expect(
-      takenService.changeUsername("user-1", "Taken", { requestId: "request-1", ipPrefixHash: "ip" }),
+      takenService.changeUsername("user-1", "Taken", {
+        requestId: "request-1",
+        ipPrefixHash: "ip",
+      }),
     ).rejects.toMatchObject({ code: "USERNAME_TAKEN" });
 
     const available = fakeStore();

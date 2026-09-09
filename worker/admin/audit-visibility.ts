@@ -7,12 +7,7 @@ const ADMIN_AUDIT_EXACT = new Set([
   "post.nsfw.unmark",
 ]);
 
-const ADMIN_AUDIT_UPPERCASE_PREFIXES = [
-  "STORE_ITEM_",
-  "EMOTE_",
-  "STICKER_",
-  "CATALOG_",
-] as const;
+const ADMIN_AUDIT_UPPERCASE_PREFIXES = ["STORE_ITEM_", "EMOTE_", "STICKER_", "CATALOG_"] as const;
 
 const USER_ONLY_UPPERCASE_ACTIONS = new Set([
   "COSMETIC_SUBMISSION_CREATED",

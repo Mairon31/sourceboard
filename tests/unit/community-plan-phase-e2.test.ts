@@ -54,7 +54,14 @@ describe("community plan phase E2", () => {
       'label: "Stickers"',
       'label: "Emotes"',
     ]);
-    for (const copy of ["Preset ID", "Configuration", "Lifecycle", "Edit", "Duplicate", "Archive"]) {
+    for (const copy of [
+      "Preset ID",
+      "Configuration",
+      "Lifecycle",
+      "Edit",
+      "Duplicate",
+      "Archive",
+    ]) {
       expect(lab).toContain(copy);
     }
     expect(lab).toContain("/api/admin/store");

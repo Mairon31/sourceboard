@@ -31,10 +31,27 @@ describe("community plan phase C profile cosmetics", () => {
 
   it("expands frames and fonts into the requested style families", () => {
     const cosmetics = read("../../shared/store/cosmetics.ts");
-    for (const preset of ["holographic", "fire", "ice", "electric", "sakura", "cat-ears", "wings"]) {
+    for (const preset of [
+      "holographic",
+      "fire",
+      "ice",
+      "electric",
+      "sakura",
+      "cat-ears",
+      "wings",
+    ]) {
       expect(cosmetics).toContain(`"${preset}"`);
     }
-    for (const font of ["Manrope", "DM Sans", "Urbanist", "Anton", "League Spartan", "Fredoka", "Playfair Display", "Cormorant Garamond"]) {
+    for (const font of [
+      "Manrope",
+      "DM Sans",
+      "Urbanist",
+      "Anton",
+      "League Spartan",
+      "Fredoka",
+      "Playfair Display",
+      "Cormorant Garamond",
+    ]) {
       expect(cosmetics).toContain(`"${font}"`);
     }
   });
