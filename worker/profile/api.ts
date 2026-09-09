@@ -217,7 +217,8 @@ async function handleDataExport(
           metadata = null;
         }
       }
-      const { metadataJson: _metadataJson, ...rest } = item;
+      const rest = { ...item };
+      delete rest.metadataJson;
       return { ...rest, metadata };
     }),
     achievements: achievements.results,
