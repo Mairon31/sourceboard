@@ -33,7 +33,11 @@ export function NotificationActorStack({
       }
     >
       {visible.map((entry) => (
-        <span className="product-notification-actor-stack__item" key={entry.id} title={entry.displayName}>
+        <span
+          className="product-notification-actor-stack__item"
+          key={entry.id}
+          title={entry.displayName}
+        >
           <CosmeticIdentity
             displayName={entry.displayName}
             avatarUrl={entry.avatarUrl}
@@ -48,7 +52,9 @@ export function NotificationActorStack({
           />
         </span>
       ))}
-      {hiddenCount ? <span className="product-notification-actor-stack__more">+{hiddenCount}</span> : null}
+      {hiddenCount ? (
+        <span className="product-notification-actor-stack__more">+{hiddenCount}</span>
+      ) : null}
     </div>
   );
 }

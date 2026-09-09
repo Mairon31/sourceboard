@@ -52,7 +52,9 @@ export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdm
         <a className="product-profile-account__action" href="/api/profile/me/export" download>
           <span>
             <strong>Download my data</strong>
-            <small>Export your SourceBoard profile, contributions, relationships and point ledger as JSON</small>
+            <small>
+              Export your SourceBoard profile, contributions, relationships and point ledger as JSON
+            </small>
           </span>
           <span aria-hidden="true">↓</span>
         </a>

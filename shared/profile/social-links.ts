@@ -157,7 +157,8 @@ export function normalizeSocialUrl(platform: SocialPlatform, rawValue: string): 
     if (platform === "github") return `https://github.com/${encodeURIComponent(handle)}`;
     if (platform === "bluesky") return `https://bsky.app/profile/${encodeURIComponent(handle)}`;
     if (platform === "reddit") return `https://www.reddit.com/user/${encodeURIComponent(handle)}`;
-    if (platform === "discord" && /^\d{5,32}$/.test(handle)) return `https://discord.com/users/${handle}`;
+    if (platform === "discord" && /^\d{5,32}$/.test(handle))
+      return `https://discord.com/users/${handle}`;
     return null;
   }
 
@@ -187,12 +188,17 @@ export function normalizeSocialUrl(platform: SocialPlatform, rawValue: string): 
   if (platform === "bluesky" && hostIs(url, "bsky.app")) {
     const parts = url.pathname.split("/").filter(Boolean);
     const handle = parts[0] === "profile" ? parts[1] : null;
-    return handle ? `https://bsky.app/profile/${encodeURIComponent(decodeURIComponent(handle))}` : null;
+    return handle
+      ? `https://bsky.app/profile/${encodeURIComponent(decodeURIComponent(handle))}`
+      : null;
   }
   if (platform === "reddit" && hostIs(url, "reddit.com")) {
     const parts = url.pathname.split("/").filter(Boolean);
-    const handle = parts[0]?.toLowerCase() === "user" || parts[0]?.toLowerCase() === "u" ? parts[1] : null;
-    return handle ? `https://www.reddit.com/user/${encodeURIComponent(decodeURIComponent(handle))}` : null;
+    const handle =
+      parts[0]?.toLowerCase() === "user" || parts[0]?.toLowerCase() === "u" ? parts[1] : null;
+    return handle
+      ? `https://www.reddit.com/user/${encodeURIComponent(decodeURIComponent(handle))}`
+      : null;
   }
   if (platform === "discord" && hostIs(url, "discord.com", "discord.gg")) return url.toString();
   return null;

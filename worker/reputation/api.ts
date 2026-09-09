@@ -6,10 +6,7 @@ import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { PublicHttpError } from "../http/error";
-import {
-  createAchievementVersion,
-  createRewardRuleVersion,
-} from "./admin";
+import { createAchievementVersion, createRewardRuleVersion } from "./admin";
 import { createManualAdjustment } from "./service";
 
 function response(body: unknown, requestId: string, status = 200): Response {

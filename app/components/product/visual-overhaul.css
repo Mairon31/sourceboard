@@ -22,7 +22,11 @@
       color-mix(in srgb, var(--accent) 16%, transparent),
       transparent 42%
     ),
-    linear-gradient(145deg, color-mix(in srgb, var(--surface-solid) 96%, transparent), var(--surface-solid));
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--surface-solid) 96%, transparent),
+      var(--surface-solid)
+    );
 }
 
 .product-home-compact-lead__copy {

@@ -335,17 +335,42 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
         </div>
 
         <div className="product-friends-tabs" role="tablist" aria-label="Friend views">
-          <WorkspaceTab mode="friends" activeMode={mode} count={friends.length} onSelect={selectMode} />
-          <WorkspaceTab mode="incoming" activeMode={mode} count={incoming.length} onSelect={selectMode} />
-          <WorkspaceTab mode="outgoing" activeMode={mode} count={outgoing.length} onSelect={selectMode} />
+          <WorkspaceTab
+            mode="friends"
+            activeMode={mode}
+            count={friends.length}
+            onSelect={selectMode}
+          />
+          <WorkspaceTab
+            mode="incoming"
+            activeMode={mode}
+            count={incoming.length}
+            onSelect={selectMode}
+          />
+          <WorkspaceTab
+            mode="outgoing"
+            activeMode={mode}
+            count={outgoing.length}
+            onSelect={selectMode}
+          />
           <WorkspaceTab mode="add" activeMode={mode} onSelect={selectMode} />
           <WorkspaceTab mode="discover" activeMode={mode} onSelect={selectMode} />
-          <WorkspaceTab mode="blocked" activeMode={mode} count={blocked.length} onSelect={selectMode} />
+          <WorkspaceTab
+            mode="blocked"
+            activeMode={mode}
+            count={blocked.length}
+            onSelect={selectMode}
+          />
         </div>
       </div>
 
       {mode === "friends" ? (
-        <div id="friends-panel" role="tabpanel" aria-label="Your friends" className="product-friends-panel">
+        <div
+          id="friends-panel"
+          role="tabpanel"
+          aria-label="Your friends"
+          className="product-friends-panel"
+        >
           <FriendList
             items={friends}
             emptyTitle="No friends yet"
@@ -356,7 +381,12 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
       ) : null}
 
       {mode === "incoming" ? (
-        <div id="incoming-panel" role="tabpanel" aria-label="Incoming friend requests" className="product-friends-panel">
+        <div
+          id="incoming-panel"
+          role="tabpanel"
+          aria-label="Incoming friend requests"
+          className="product-friends-panel"
+        >
           <FriendList
             items={incoming}
             emptyTitle="No incoming requests"
@@ -367,7 +397,12 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
       ) : null}
 
       {mode === "outgoing" ? (
-        <div id="outgoing-panel" role="tabpanel" aria-label="Outgoing friend requests" className="product-friends-panel">
+        <div
+          id="outgoing-panel"
+          role="tabpanel"
+          aria-label="Outgoing friend requests"
+          className="product-friends-panel"
+        >
           <FriendList
             items={outgoing}
             emptyTitle="No sent requests"
@@ -378,7 +413,12 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
       ) : null}
 
       {mode === "blocked" ? (
-        <div id="blocked-panel" role="tabpanel" aria-label="Blocked accounts" className="product-friends-panel">
+        <div
+          id="blocked-panel"
+          role="tabpanel"
+          aria-label="Blocked accounts"
+          className="product-friends-panel"
+        >
           <FriendList
             items={blocked}
             emptyTitle="No blocked accounts"
@@ -418,7 +458,10 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
           <div className="product-list product-friends-list">
             {suggestions.map((friend) => (
               <article key={friend.id} className="product-list-row product-friend-row">
-                <Link className="product-list-row__identity" to={`/u/${encodeURIComponent(friend.username)}`}>
+                <Link
+                  className="product-list-row__identity"
+                  to={`/u/${encodeURIComponent(friend.username)}`}
+                >
                   <FriendIdentity friend={friend} />
                   <span className="product-list-row__copy">@{friend.username}</span>
                 </Link>

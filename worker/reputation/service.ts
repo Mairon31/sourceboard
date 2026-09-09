@@ -9,10 +9,7 @@ class ReputationError extends PublicHttpError {
 }
 
 export type SourceReputationEvent =
-  | "source.accepted"
-  | "source.accepted.revoked"
-  | "source.verified"
-  | "source.verification.revoked";
+  "source.accepted" | "source.accepted.revoked" | "source.verified" | "source.verification.revoked";
 
 export type ReputationRewardType = "ACCEPTED_SOURCE" | "VERIFIED_SOURCE";
 

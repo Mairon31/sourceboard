@@ -161,11 +161,7 @@ export async function reverseContribution(
     now?: number;
   },
 ): Promise<boolean> {
-  const originalIdempotencyKey = contributionKey(
-    input.rewardType,
-    input.userId,
-    input.subjectKey,
-  );
+  const originalIdempotencyKey = contributionKey(input.rewardType, input.userId, input.subjectKey);
   const idempotencyKey = reversalKey(input.rewardType, input.userId, input.subjectKey);
   const now = input.now ?? Date.now();
   const result = await db

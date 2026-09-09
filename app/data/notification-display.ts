@@ -20,7 +20,9 @@ export function notificationDisplayTitle(notification: GroupedNotificationDispla
   return notification.title;
 }
 
-export function notificationGroupMeta(notification: GroupedNotificationDisplayInput): string | null {
+export function notificationGroupMeta(
+  notification: GroupedNotificationDisplayInput,
+): string | null {
   const count = notification.groupCount ?? 1;
   if (count <= 1) return null;
   const unread = Math.max(0, notification.unreadCount ?? 0);

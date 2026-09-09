@@ -4,18 +4,18 @@ SourceBoard points reward useful participation. The point ledger is server-autho
 
 ## Contribution rewards
 
-| Action | Points | Daily award cap | Anti-abuse identity |
-| --- | ---: | ---: | --- |
-| Create a source request | 3 | 5 | One award per post ID |
-| Create a comment or source lead | 2 | 15 | One award per comment ID |
-| Like another member's post | 1 | 20 | One award per user + post |
-| Like another member's comment | 1 | 20 | One award per user + comment |
-| Send a friend request | 1 | 5 | One award per unordered user pair |
-| Accept a friend request | 2 | 5 | One award per unordered user pair |
-| Add an avatar | 5 | one-time | One lifetime profile-completion award |
-| Add a bio | 5 | one-time | One lifetime profile-completion award |
-| Add a public social link | 5 | one-time | One lifetime profile-completion award |
-| Use SourceBoard's share action on public content | 1 | 3 | One award per user + public target |
+| Action                                           | Points | Daily award cap | Anti-abuse identity                   |
+| ------------------------------------------------ | -----: | --------------: | ------------------------------------- |
+| Create a source request                          |      3 |               5 | One award per post ID                 |
+| Create a comment or source lead                  |      2 |              15 | One award per comment ID              |
+| Like another member's post                       |      1 |              20 | One award per user + post             |
+| Like another member's comment                    |      1 |              20 | One award per user + comment          |
+| Send a friend request                            |      1 |               5 | One award per unordered user pair     |
+| Accept a friend request                          |      2 |               5 | One award per unordered user pair     |
+| Add an avatar                                    |      5 |        one-time | One lifetime profile-completion award |
+| Add a bio                                        |      5 |        one-time | One lifetime profile-completion award |
+| Add a public social link                         |      5 |        one-time | One lifetime profile-completion award |
+| Use SourceBoard's share action on public content |      1 |               3 | One award per user + public target    |
 
 Accepted Source and Verified Source rewards continue to use the versioned reputation-rule system and are separate from the interaction rewards above.
 

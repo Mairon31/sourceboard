@@ -275,7 +275,9 @@ export async function handleModerationRequest(
       );
     }
 
-    const reportStatusMatch = url.pathname.match(/^\/api\/admin\/moderation\/reports\/([^/]+)\/status$/);
+    const reportStatusMatch = url.pathname.match(
+      /^\/api\/admin\/moderation\/reports\/([^/]+)\/status$/,
+    );
     if (request.method === "POST" && reportStatusMatch) {
       assertSameOrigin(request);
       assertCsrfToken(request);

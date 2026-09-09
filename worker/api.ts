@@ -89,7 +89,11 @@ export async function handleApiRequest(
     return cosmeticResponse;
   }
 
-  const publicationGate = await enforceCommunityCosmeticPublicationGate(request, requestId, runtime);
+  const publicationGate = await enforceCommunityCosmeticPublicationGate(
+    request,
+    requestId,
+    runtime,
+  );
   if (publicationGate) {
     return publicationGate;
   }

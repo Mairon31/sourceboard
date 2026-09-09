@@ -2,13 +2,7 @@ import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { DOCS_GROUPS, docsByGroup, type DocsArticle } from "../../data/docs-content";
 
-export function DocsShell({
-  article,
-  children,
-}: {
-  article?: DocsArticle;
-  children: ReactNode;
-}) {
+export function DocsShell({ article, children }: { article?: DocsArticle; children: ReactNode }) {
   return (
     <div className="product-docs-shell">
       <aside className="product-docs-sidebar" aria-label="Documentation navigation">

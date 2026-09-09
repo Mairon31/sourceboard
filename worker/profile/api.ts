@@ -59,7 +59,9 @@ async function requireViewerId(request: Request, env: SourceBoardEnvironment): P
     throw new ProfileError(401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
   }
   const db = requireDatabase(env);
-  const session = await createAuthService({ store: createD1AuthStore(db), env }).getSession(request);
+  const session = await createAuthService({ store: createD1AuthStore(db), env }).getSession(
+    request,
+  );
   if (!session) {
     throw new ProfileError(401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
   }

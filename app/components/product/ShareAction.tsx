@@ -13,7 +13,10 @@ type ShareRewardTarget = { targetType: "POST" | "COMMENT" | "PROFILE"; targetId:
 
 function shareRewardTarget(value: string): ShareRewardTarget | null {
   try {
-    const url = new URL(value, typeof window === "undefined" ? "https://srcboard.me" : window.location.href);
+    const url = new URL(
+      value,
+      typeof window === "undefined" ? "https://srcboard.me" : window.location.href,
+    );
     const comment = url.hash.match(/^#comment-(.+)$/);
     if (comment?.[1]) {
       return { targetType: "COMMENT", targetId: decodeURIComponent(comment[1]) };

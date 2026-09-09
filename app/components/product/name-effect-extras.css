@@ -43,7 +43,15 @@
 }
 
 .sb-name-effect--hologram {
-  background-image: linear-gradient(100deg, #eaffff 0%, #53e5ff 20%, #8c7cff 44%, #f0a8ff 63%, #67f4ff 82%, #eaffff 100%);
+  background-image: linear-gradient(
+    100deg,
+    #eaffff 0%,
+    #53e5ff 20%,
+    #8c7cff 44%,
+    #f0a8ff 63%,
+    #67f4ff 82%,
+    #eaffff 100%
+  );
   text-shadow: 0 0 0.5em #78dfff55;
 }
 
@@ -66,7 +74,14 @@
 }
 
 .sb-name-effect--candy {
-  background-image: repeating-linear-gradient(115deg, #ff7fc8 0 13%, #ffd4ec 13% 24%, #68ddff 24% 38%, #b79cff 38% 52%, #ff7fc8 52% 65%);
+  background-image: repeating-linear-gradient(
+    115deg,
+    #ff7fc8 0 13%,
+    #ffd4ec 13% 24%,
+    #68ddff 24% 38%,
+    #b79cff 38% 52%,
+    #ff7fc8 52% 65%
+  );
   text-shadow: 0 0 0.42em #d98bff44;
 }
 
@@ -82,7 +97,16 @@
 }
 
 .sb-name-effect--chrome {
-  background-image: linear-gradient(105deg, #76859a 0%, #f8fbff 18%, #9db6d1 34%, #ffffff 48%, #71869f 62%, #dbe9f8 80%, #78879a 100%);
+  background-image: linear-gradient(
+    105deg,
+    #76859a 0%,
+    #f8fbff 18%,
+    #9db6d1 34%,
+    #ffffff 48%,
+    #71869f 62%,
+    #dbe9f8 80%,
+    #78879a 100%
+  );
   text-shadow: 0 0 0.34em #a9c7e655;
 }
 

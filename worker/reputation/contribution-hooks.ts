@@ -12,7 +12,10 @@ import {
 async function viewerId(request: Request, env: SourceBoardEnvironment): Promise<string | null> {
   if (!env.DB || !getSessionToken(request)) return null;
   try {
-    return (await createAuthService({ store: createD1AuthStore(env.DB), env }).getSession(request))?.user.id ?? null;
+    return (
+      (await createAuthService({ store: createD1AuthStore(env.DB), env }).getSession(request))?.user
+        .id ?? null
+    );
   } catch {
     return null;
   }
@@ -102,13 +105,13 @@ async function reverseFriendshipRewards(
 async function rewardProfileCompletion(db: D1Database, userId: string): Promise<void> {
   const [profile, social] = await Promise.all([
     db
-      .prepare(
-        "SELECT avatar_asset_id AS avatarAssetId, bio FROM user_profiles WHERE user_id = ?",
-      )
+      .prepare("SELECT avatar_asset_id AS avatarAssetId, bio FROM user_profiles WHERE user_id = ?")
       .bind(userId)
       .first<{ avatarAssetId: string | null; bio: string }>(),
     db
-      .prepare("SELECT COUNT(*) AS total FROM user_social_links WHERE user_id = ? AND is_visible = 1")
+      .prepare(
+        "SELECT COUNT(*) AS total FROM user_social_links WHERE user_id = ? AND is_visible = 1",
+      )
       .bind(userId)
       .first<{ total: number }>(),
   ]);
@@ -194,8 +197,7 @@ async function rewardReactionMutation(
   const targetId = decodeURIComponent(reaction[2] ?? "");
   const ownerId = await ownerForReaction(env.DB!, targetType, targetId);
   if (!ownerId || ownerId === userId) return;
-  const rewardType: ContributionRewardType =
-    targetType === "POST" ? "POST_LIKED" : "COMMENT_LIKED";
+  const rewardType: ContributionRewardType = targetType === "POST" ? "POST_LIKED" : "COMMENT_LIKED";
   const subjectKey = `${targetType}:${targetId}`;
   if (request.method === "POST") {
     await awardContribution(env.DB!, {

@@ -16,11 +16,7 @@ import { Button, Card, Input, Textarea } from "../ui";
 import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 
 type CosmeticType =
-  | "AVATAR_FRAME"
-  | "PROFILE_BANNER"
-  | "PROFILE_EFFECT"
-  | "NAME_EFFECT"
-  | "NAME_FONT";
+  "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_EFFECT" | "NAME_FONT";
 
 type Submission = {
   id: string;
@@ -128,7 +124,8 @@ export function CommunityCosmeticStudio() {
       const payload = (await response.json().catch(() => null)) as {
         submissions?: Submission[];
       } | null;
-      if (response.ok) setSubmissions(Array.isArray(payload?.submissions) ? payload.submissions : []);
+      if (response.ok)
+        setSubmissions(Array.isArray(payload?.submissions) ? payload.submissions : []);
     } finally {
       setLoading(false);
     }
@@ -182,8 +179,8 @@ export function CommunityCosmeticStudio() {
           <span className="product-eyebrow">Community Studio</span>
           <h2 id="community-cosmetic-heading">Design a safe cosmetic preset</h2>
           <p>
-            Build inside SourceBoard's restricted visual system. Submissions start disabled as Draft /
-            Pending review and cannot publish themselves.
+            Build inside SourceBoard's restricted visual system. Submissions start disabled as Draft
+            / Pending review and cannot publish themselves.
           </p>
         </div>
       </div>
@@ -192,7 +189,10 @@ export function CommunityCosmeticStudio() {
         <form className="product-community-studio__form" onSubmit={(event) => void submit(event)}>
           <label className="product-field-native">
             <span>Cosmetic type</span>
-            <select value={type} onChange={(event) => changeType(event.target.value as CosmeticType)}>
+            <select
+              value={type}
+              onChange={(event) => changeType(event.target.value as CosmeticType)}
+            >
               {Object.entries(TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -231,53 +231,114 @@ export function CommunityCosmeticStudio() {
           <div className="product-community-studio__visual-grid">
             <label>
               <span>Foreground</span>
-              <input type="color" value={foregroundColor} onChange={(event) => setForegroundColor(event.target.value)} />
+              <input
+                type="color"
+                value={foregroundColor}
+                onChange={(event) => setForegroundColor(event.target.value)}
+              />
             </label>
             <label>
               <span>Background</span>
-              <input type="color" value={backgroundColor} onChange={(event) => setBackgroundColor(event.target.value)} />
+              <input
+                type="color"
+                value={backgroundColor}
+                onChange={(event) => setBackgroundColor(event.target.value)}
+              />
             </label>
             <label>
               <span>Border</span>
-              <input type="color" value={borderColor} onChange={(event) => setBorderColor(event.target.value)} />
+              <input
+                type="color"
+                value={borderColor}
+                onChange={(event) => setBorderColor(event.target.value)}
+              />
             </label>
             <label>
               <span>Glow</span>
-              <input type="color" value={glowColor} onChange={(event) => setGlowColor(event.target.value)} />
+              <input
+                type="color"
+                value={glowColor}
+                onChange={(event) => setGlowColor(event.target.value)}
+              />
             </label>
           </div>
 
           <div className="product-community-studio__range-grid">
             <label>
               <span>Border width · {borderWidth}px</span>
-              <input type="range" min="0" max="8" step="1" value={borderWidth} onChange={(event) => setBorderWidth(Number(event.target.value))} />
+              <input
+                type="range"
+                min="0"
+                max="8"
+                step="1"
+                value={borderWidth}
+                onChange={(event) => setBorderWidth(Number(event.target.value))}
+              />
             </label>
             <label>
               <span>Radius · {borderRadius}px</span>
-              <input type="range" min="0" max="64" step="1" value={borderRadius} onChange={(event) => setBorderRadius(Number(event.target.value))} />
+              <input
+                type="range"
+                min="0"
+                max="64"
+                step="1"
+                value={borderRadius}
+                onChange={(event) => setBorderRadius(Number(event.target.value))}
+              />
             </label>
             <label>
               <span>Glow · {glowSize}px</span>
-              <input type="range" min="0" max="48" step="1" value={glowSize} onChange={(event) => setGlowSize(Number(event.target.value))} />
+              <input
+                type="range"
+                min="0"
+                max="48"
+                step="1"
+                value={glowSize}
+                onChange={(event) => setGlowSize(Number(event.target.value))}
+              />
             </label>
             <label>
               <span>Opacity · {opacity.toFixed(2)}</span>
-              <input type="range" min="0.2" max="1" step="0.05" value={opacity} onChange={(event) => setOpacity(Number(event.target.value))} />
+              <input
+                type="range"
+                min="0.2"
+                max="1"
+                step="0.05"
+                value={opacity}
+                onChange={(event) => setOpacity(Number(event.target.value))}
+              />
             </label>
             <label>
               <span>Weight · {fontWeight}</span>
-              <input type="range" min="300" max="900" step="50" value={fontWeight} onChange={(event) => setFontWeight(Number(event.target.value))} />
+              <input
+                type="range"
+                min="300"
+                max="900"
+                step="50"
+                value={fontWeight}
+                onChange={(event) => setFontWeight(Number(event.target.value))}
+              />
             </label>
             <label>
               <span>Tracking · {letterSpacing}px</span>
-              <input type="range" min="-1" max="6" step="0.25" value={letterSpacing} onChange={(event) => setLetterSpacing(Number(event.target.value))} />
+              <input
+                type="range"
+                min="-1"
+                max="6"
+                step="0.25"
+                value={letterSpacing}
+                onChange={(event) => setLetterSpacing(Number(event.target.value))}
+              />
             </label>
           </div>
 
           <div className="product-community-studio__motion-row">
             <label className="product-field-native">
               <span>Animation</span>
-              <select value={animation} onChange={(event) => setAnimation(event.target.value as CosmeticVisualAnimation)}>
+              <select
+                value={animation}
+                onChange={(event) => setAnimation(event.target.value as CosmeticVisualAnimation)}
+              >
                 {ANIMATIONS.map((value) => (
                   <option key={value} value={value}>
                     {value}
@@ -287,7 +348,10 @@ export function CommunityCosmeticStudio() {
             </label>
             <label className="product-field-native">
               <span>Duration</span>
-              <select value={animationDurationMs} onChange={(event) => setAnimationDurationMs(Number(event.target.value))}>
+              <select
+                value={animationDurationMs}
+                onChange={(event) => setAnimationDurationMs(Number(event.target.value))}
+              >
                 <option value={1200}>1.2s</option>
                 <option value={2400}>2.4s</option>
                 <option value={4000}>4s</option>
@@ -300,7 +364,9 @@ export function CommunityCosmeticStudio() {
             <Button type="submit" loading={busy} disabled={!name.trim() || !description.trim()}>
               Submit for review
             </Button>
-            <small>External URLs, arbitrary selectors, scripts, imports and raw CSS are never accepted.</small>
+            <small>
+              External URLs, arbitrary selectors, scripts, imports and raw CSS are never accepted.
+            </small>
           </div>
           {status ? <p role="status">{status}</p> : null}
         </form>
@@ -328,7 +394,9 @@ export function CommunityCosmeticStudio() {
                   <strong>{submission.name}</strong>
                   <span>{TYPE_LABELS[submission.type]}</span>
                 </div>
-                <span data-state={submission.reviewState}>{submission.reviewState.replaceAll("_", " ")}</span>
+                <span data-state={submission.reviewState}>
+                  {submission.reviewState.replaceAll("_", " ")}
+                </span>
                 {submission.reviewNote ? <small>{submission.reviewNote}</small> : null}
               </div>
             ))}

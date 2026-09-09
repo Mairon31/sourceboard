@@ -62,7 +62,9 @@
 }
 
 .sb-topbar-notification-menu__identity .product-notification-actor-stack__item .cosmetic-identity,
-.sb-topbar-notification-menu__identity .product-notification-actor-stack__item .cosmetic-identity__avatar-shell,
+.sb-topbar-notification-menu__identity
+  .product-notification-actor-stack__item
+  .cosmetic-identity__avatar-shell,
 .sb-topbar-notification-menu__identity .product-notification-actor-stack__item .sb-avatar {
   width: 26px;
   height: 26px;

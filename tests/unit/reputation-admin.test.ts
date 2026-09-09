@@ -1,9 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import {
-  createAchievementVersion,
-  createRewardRuleVersion,
-} from "../../worker/reputation/admin";
+import { createAchievementVersion, createRewardRuleVersion } from "../../worker/reputation/admin";
 
 function createAdminDb(latestVersion = 2) {
   const queries: string[] = [];
@@ -17,7 +14,7 @@ function createAdminDb(latestVersion = 2) {
           bound.push({ query, values });
           return statement;
         }),
-        first: vi.fn(async <T>() => ({ version: latestVersion } as T)),
+        first: vi.fn(async <T>() => ({ version: latestVersion }) as T),
         run: vi.fn(async () => ({ meta: { changes: 1 } })),
       };
       return statement as unknown as D1PreparedStatement;
@@ -44,9 +41,16 @@ describe("reputation administration", () => {
       123,
     );
 
-    expect(rule).toMatchObject({ rewardType: "VERIFIED_SOURCE", version: 4, amount: 175, status: "ACTIVE" });
+    expect(rule).toMatchObject({
+      rewardType: "VERIFIED_SOURCE",
+      version: 4,
+      amount: 175,
+      status: "ACTIVE",
+    });
     expect(queries.some((query) => query.includes("SET status = 'DISABLED'"))).toBe(true);
-    expect(bound.some((entry) => entry.query.includes("INSERT INTO reputation_reward_rules"))).toBe(true);
+    expect(bound.some((entry) => entry.query.includes("INSERT INTO reputation_reward_rules"))).toBe(
+      true,
+    );
     expect(vi.mocked(db.batch)).toHaveBeenCalledTimes(1);
   });
 
@@ -65,7 +69,12 @@ describe("reputation administration", () => {
       456,
     );
 
-    expect(achievement).toMatchObject({ slug: "trusted-researcher", version: 5, verifiedSourceThreshold: 50, status: "ACTIVE" });
+    expect(achievement).toMatchObject({
+      slug: "trusted-researcher",
+      version: 5,
+      verifiedSourceThreshold: 50,
+      status: "ACTIVE",
+    });
     expect(queries.some((query) => query.includes("UPDATE achievement_catalog"))).toBe(true);
     expect(queries.some((query) => query.includes("INSERT INTO achievement_catalog"))).toBe(true);
   });

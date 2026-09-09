@@ -432,7 +432,8 @@ export const DOCS_ARTICLES: DocsArticle[] = [
   {
     slug: "ai-public-content",
     title: "AI and public content",
-    summary: "How public SourceBoard pages are made understandable to crawlers and automated systems.",
+    summary:
+      "How public SourceBoard pages are made understandable to crawlers and automated systems.",
     kind: "policy",
     group: "Policies",
     reviewRequired: true,

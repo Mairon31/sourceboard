@@ -204,7 +204,9 @@ function NotificationPreferences({
           description="Friend requests, accepts and related account activity."
           checked={controller.values.notifyFriendships}
           disabled={disabled}
-          onCheckedChange={(checked) => void controller.changePreference("notifyFriendships", checked)}
+          onCheckedChange={(checked) =>
+            void controller.changePreference("notifyFriendships", checked)
+          }
         />
       </Card>
       <PreferenceSaveStatus controller={controller} />
@@ -233,7 +235,9 @@ function PrivacyDataPreferences({
           description="When disabled, your account is excluded from friend discovery and new requests are rejected server-side."
           checked={controller.values.allowFriendRequests}
           disabled={disabled}
-          onCheckedChange={(checked) => void controller.changePreference("allowFriendRequests", checked)}
+          onCheckedChange={(checked) =>
+            void controller.changePreference("allowFriendRequests", checked)
+          }
         />
         <div className="product-settings-link-row">
           <div>
@@ -542,7 +546,9 @@ export default function SettingsRoute() {
               <div className="product-settings-link-row">
                 <div>
                   <strong>Edit profile</strong>
-                  <span>Open the Discord-style inline profile editor and preview changes in place.</span>
+                  <span>
+                    Open the Discord-style inline profile editor and preview changes in place.
+                  </span>
                 </div>
                 <Link className="sb-button sb-button--secondary sb-button--sm" to="/profile">
                   Open profile

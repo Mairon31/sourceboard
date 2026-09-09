@@ -32,7 +32,12 @@ export async function loader({ request, context }: LoaderArgs) {
         store: createD1PostStore(runtime.db),
         profileStore: createD1ProfileStore(runtime.db),
       });
-      const recent = await service.listFeed({ viewerId: userId, kind: "recent", cursor: null, limit: 20 });
+      const recent = await service.listFeed({
+        viewerId: userId,
+        kind: "recent",
+        cursor: null,
+        limit: 20,
+      });
       const likedIds = await readViewerLikedPostIds(
         runtime.db,
         userId,
@@ -180,7 +185,10 @@ export default function HomeRoute() {
             <p>{active.description}</p>
           </div>
         </div>
-        <nav className="product-store-filter-bar product-feed-filter-tabs" aria-label="Feed filters">
+        <nav
+          className="product-store-filter-bar product-feed-filter-tabs"
+          aria-label="Feed filters"
+        >
           {feedOptions.map((option) => {
             const loaded = loadedFeeds.has(option.value);
             return (
@@ -192,7 +200,12 @@ export default function HomeRoute() {
                 onClick={() => selectFeed(option.value)}
               >
                 <span className="product-feed-filter-tabs__label">{option.label}</span>
-                <span className="product-feed-filter-tabs__count" aria-label={loaded ? `${feeds[option.value].length} loaded posts` : "Loads on demand"}>
+                <span
+                  className="product-feed-filter-tabs__count"
+                  aria-label={
+                    loaded ? `${feeds[option.value].length} loaded posts` : "Loads on demand"
+                  }
+                >
                   {loaded ? feeds[option.value].length : "·"}
                 </span>
               </button>

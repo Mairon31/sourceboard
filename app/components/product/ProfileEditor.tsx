@@ -193,7 +193,7 @@ export function ProfileEditor({
   const bannerPreview = useObjectUrl(bannerFile);
   const dirty = Boolean(
     draft &&
-      (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
+    (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
   );
 
   useEffect(() => {
@@ -202,7 +202,8 @@ export function ProfileEditor({
     setStatus(null);
     void fetch("/api/profile/me", { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error(await readErrorMessage(response, "Could not load your profile."));
+        if (!response.ok)
+          throw new Error(await readErrorMessage(response, "Could not load your profile."));
         return (await response.json()) as MyProfileResponse;
       })
       .then((data) => {
@@ -213,7 +214,8 @@ export function ProfileEditor({
         setInitialFingerprint(draftFingerprint(nextDraft));
       })
       .catch((error: unknown) => {
-        if (!cancelled) setStatus(error instanceof Error ? error.message : "Could not load your profile.");
+        if (!cancelled)
+          setStatus(error instanceof Error ? error.message : "Could not load your profile.");
       });
     return () => {
       cancelled = true;
@@ -305,7 +307,8 @@ export function ProfileEditor({
           socialLinks: normalizeSocialLinks(draft.socialLinks),
         }),
       });
-      if (!response.ok) throw new Error(await readErrorMessage(response, "Could not save your profile."));
+      if (!response.ok)
+        throw new Error(await readErrorMessage(response, "Could not save your profile."));
       setEditing(false);
       onEditingChange?.(false);
       setSource(null);
@@ -334,7 +337,11 @@ export function ProfileEditor({
             </Button>
           }
         />
-        {status ? <div className="product-profile-edit-status" role="status">{status}</div> : null}
+        {status ? (
+          <div className="product-profile-edit-status" role="status">
+            {status}
+          </div>
+        ) : null}
       </>
     );
   }
@@ -346,7 +353,9 @@ export function ProfileEditor({
           <span className="product-eyebrow">Edit profile</span>
           <strong>Loading your profile…</strong>
           {status ? <span role="alert">{status}</span> : null}
-          <Button variant="ghost" size="sm" onClick={cancelEditing}>Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={cancelEditing}>
+            Cancel
+          </Button>
         </div>
       </Card>
     );
@@ -379,7 +388,10 @@ export function ProfileEditor({
         </label>
       </div>
 
-      <form className="product-profile-content product-profile-editor-inline__form" onSubmit={(event) => void saveProfile(event)}>
+      <form
+        className="product-profile-content product-profile-editor-inline__form"
+        onSubmit={(event) => void saveProfile(event)}
+      >
         <div className="product-profile-editor-inline__identity">
           <label className="product-profile-avatar-edit" title="Change avatar">
             <CosmeticIdentity
@@ -413,8 +425,12 @@ export function ProfileEditor({
             <strong>{dirty ? "Unsaved changes" : "Profile preview"}</strong>
           </div>
           <div className="product-chip-row">
-            <Button type="submit" size="sm" loading={busy} disabled={!dirty}>Save</Button>
-            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={cancelEditing}>Cancel</Button>
+            <Button type="submit" size="sm" loading={busy} disabled={!dirty}>
+              Save
+            </Button>
+            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={cancelEditing}>
+              Cancel
+            </Button>
           </div>
         </div>
 
@@ -423,20 +439,32 @@ export function ProfileEditor({
             label="Display name"
             value={draft.displayName}
             maxLength={80}
-            onChange={(event) => setDraft((current) => current ? { ...current, displayName: event.target.value } : current)}
+            onChange={(event) =>
+              setDraft((current) =>
+                current ? { ...current, displayName: event.target.value } : current,
+              )
+            }
           />
           <Textarea
             label="Bio"
             value={draft.bio}
             maxLength={5000}
             rows={4}
-            onChange={(event) => setDraft((current) => current ? { ...current, bio: event.target.value } : current)}
+            onChange={(event) =>
+              setDraft((current) => (current ? { ...current, bio: event.target.value } : current))
+            }
           />
           <label className="product-field-native">
             <span>Profile visibility</span>
             <select
               value={draft.profileVisibility}
-              onChange={(event) => setDraft((current) => current ? { ...current, profileVisibility: event.target.value as ProfileVisibility } : current)}
+              onChange={(event) =>
+                setDraft((current) =>
+                  current
+                    ? { ...current, profileVisibility: event.target.value as ProfileVisibility }
+                    : current,
+                )
+              }
             >
               <option value="PUBLIC">Public</option>
               <option value="FRIENDS_ONLY">Friends only</option>
@@ -485,10 +513,16 @@ export function ProfileEditor({
                     <span>Platform</span>
                     <select
                       value={link.platform}
-                      onChange={(event) => updateLink(link.key, { platform: event.target.value as SocialPlatform })}
+                      onChange={(event) =>
+                        updateLink(link.key, { platform: event.target.value as SocialPlatform })
+                      }
                     >
-                      {SOCIAL_PLATFORMS.filter((platform) => platform === link.platform || !otherSelected.has(platform)).map((platform) => (
-                        <option key={platform} value={platform}>{SOCIAL_PLATFORM_CATALOG[platform].label}</option>
+                      {SOCIAL_PLATFORMS.filter(
+                        (platform) => platform === link.platform || !otherSelected.has(platform),
+                      ).map((platform) => (
+                        <option key={platform} value={platform}>
+                          {SOCIAL_PLATFORM_CATALOG[platform].label}
+                        </option>
                       ))}
                     </select>
                   </label>
@@ -503,22 +537,38 @@ export function ProfileEditor({
                     <Checkbox
                       label="Visible"
                       checked={link.isVisible}
-                      onCheckedChange={(checked) => updateLink(link.key, { isVisible: checked === true })}
+                      onCheckedChange={(checked) =>
+                        updateLink(link.key, { isVisible: checked === true })
+                      }
                     />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => removeLink(link.key)}>Remove</Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeLink(link.key)}
+                    >
+                      Remove
+                    </Button>
                   </div>
                 </div>
               );
             })}
             {!draft.socialLinks.length ? (
               <div className="product-empty-state product-empty-state--compact">
-                <p>No social profiles added yet. Add one to show a recognizable handle on your public profile.</p>
+                <p>
+                  No social profiles added yet. Add one to show a recognizable handle on your public
+                  profile.
+                </p>
               </div>
             ) : null}
           </div>
         </section>
 
-        {status ? <div className="product-profile-edit-status" role="alert">{status}</div> : null}
+        {status ? (
+          <div className="product-profile-edit-status" role="alert">
+            {status}
+          </div>
+        ) : null}
       </form>
     </Card>
   );

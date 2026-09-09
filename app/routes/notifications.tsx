@@ -193,7 +193,11 @@ export default function NotificationsRoute() {
                   {notification.ctaLabel ?? "View"}
                 </Link>
                 {!notification.readAt || notification.unreadCount ? (
-                  <Button size="sm" variant="ghost" onClick={() => void markGroupRead(notification)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void markGroupRead(notification)}
+                  >
                     Mark read
                   </Button>
                 ) : null}

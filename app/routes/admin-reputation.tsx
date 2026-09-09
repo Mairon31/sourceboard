@@ -192,11 +192,14 @@ export default function AdminReputationRoute() {
     setStatus(null);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/points/${encodeURIComponent(ledger.user.id)}/adjust`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({ amount: Number(data.get("amount")), reason: data.get("reason") }),
-      });
+      const response = await fetch(
+        `/api/admin/points/${encodeURIComponent(ledger.user.id)}/adjust`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+          body: JSON.stringify({ amount: Number(data.get("amount")), reason: data.get("reason") }),
+        },
+      );
       const message = await mutationError(response, "The point adjustment could not be saved.");
       if (message) {
         setError(message);
@@ -218,8 +221,16 @@ export default function AdminReputationRoute() {
         description="Version reward policy, manage achievement milestones and inspect the append-only point ledger without mutating history."
       />
 
-      {status ? <div className="product-presentation-notice" role="status">{status}</div> : null}
-      {error ? <div className="product-presentation-notice" role="alert">{error}</div> : null}
+      {status ? (
+        <div className="product-presentation-notice" role="status">
+          {status}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="product-presentation-notice" role="alert">
+          {error}
+        </div>
+      ) : null}
 
       <section className="admin-section">
         <div className="admin-section__heading">
@@ -231,7 +242,11 @@ export default function AdminReputationRoute() {
         </div>
         <div className="admin-table admin-desktop-table" role="table">
           <div className="admin-table__row admin-table__row--header" role="row">
-            <span>Reward</span><span>Version</span><span>Points</span><span>Status</span><span>Created</span>
+            <span>Reward</span>
+            <span>Version</span>
+            <span>Points</span>
+            <span>Status</span>
+            <span>Created</span>
           </div>
           {rules.map((rule) => (
             <div className="admin-table__row" role="row" key={rule.id}>
@@ -259,10 +274,27 @@ export default function AdminReputationRoute() {
                 </label>
                 <Input name="amount" type="number" min={1} max={100000} label="Points" required />
               </div>
-              <label className="sb-field"><span className="sb-field__label"><input name="provisional" type="checkbox" /> Provisional reward</span></label>
-              <label className="sb-field"><span className="sb-field__label"><input name="enabled" type="checkbox" defaultChecked /> Make this version active</span></label>
-              <Textarea name="reason" label="Reason" minLength={10} maxLength={500} required placeholder="Explain why the reward policy is changing." />
-              <Button type="submit" loading={busy === "rule"}>Create rule version</Button>
+              <label className="sb-field">
+                <span className="sb-field__label">
+                  <input name="provisional" type="checkbox" /> Provisional reward
+                </span>
+              </label>
+              <label className="sb-field">
+                <span className="sb-field__label">
+                  <input name="enabled" type="checkbox" defaultChecked /> Make this version active
+                </span>
+              </label>
+              <Textarea
+                name="reason"
+                label="Reason"
+                minLength={10}
+                maxLength={500}
+                required
+                placeholder="Explain why the reward policy is changing."
+              />
+              <Button type="submit" loading={busy === "rule"}>
+                Create rule version
+              </Button>
             </form>
           </Card>
         ) : null}
@@ -270,17 +302,26 @@ export default function AdminReputationRoute() {
 
       <section className="admin-section">
         <div className="admin-section__heading">
-          <div><span className="product-eyebrow">Milestones</span><h2>Achievements</h2></div>
+          <div>
+            <span className="product-eyebrow">Milestones</span>
+            <h2>Achievements</h2>
+          </div>
           <span className="product-search-count">{achievements.length} versions</span>
         </div>
         <div className="admin-mobile-card-list">
           {achievements.map((achievement) => (
             <Card className="admin-mobile-review-card admin-surface" key={achievement.id}>
               <div className="admin-mobile-review-card__row">
-                <strong>{achievement.icon} {achievement.name}</strong>
-                <Badge tone={achievement.status === "ACTIVE" ? "success" : "neutral"}>{achievement.status}</Badge>
+                <strong>
+                  {achievement.icon} {achievement.name}
+                </strong>
+                <Badge tone={achievement.status === "ACTIVE" ? "success" : "neutral"}>
+                  {achievement.status}
+                </Badge>
               </div>
-              <span>{achievement.slug} · v{achievement.version}</span>
+              <span>
+                {achievement.slug} · v{achievement.version}
+              </span>
               <p>{achievement.description}</p>
               <small>{achievement.verifiedSourceThreshold} verified sources</small>
             </Card>
@@ -293,12 +334,38 @@ export default function AdminReputationRoute() {
                 <Input name="slug" label="Slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required />
                 <Input name="name" label="Name" required />
                 <Input name="icon" label="Icon" maxLength={16} required />
-                <Input name="threshold" type="number" min={1} max={100000} label="Verified source threshold" required />
+                <Input
+                  name="threshold"
+                  type="number"
+                  min={1}
+                  max={100000}
+                  label="Verified source threshold"
+                  required
+                />
               </div>
-              <Textarea name="description" label="Description" minLength={5} maxLength={300} required />
-              <label className="sb-field"><span className="sb-field__label"><input name="enabled" type="checkbox" defaultChecked /> Make this version active</span></label>
-              <Textarea name="reason" label="Reason" minLength={10} maxLength={500} required placeholder="Explain why this milestone is changing." />
-              <Button type="submit" loading={busy === "achievement"}>Create achievement version</Button>
+              <Textarea
+                name="description"
+                label="Description"
+                minLength={5}
+                maxLength={300}
+                required
+              />
+              <label className="sb-field">
+                <span className="sb-field__label">
+                  <input name="enabled" type="checkbox" defaultChecked /> Make this version active
+                </span>
+              </label>
+              <Textarea
+                name="reason"
+                label="Reason"
+                minLength={10}
+                maxLength={500}
+                required
+                placeholder="Explain why this milestone is changing."
+              />
+              <Button type="submit" loading={busy === "achievement"}>
+                Create achievement version
+              </Button>
             </form>
           </Card>
         ) : null}
@@ -306,29 +373,59 @@ export default function AdminReputationRoute() {
 
       <section className="admin-section">
         <div className="admin-section__heading">
-          <div><span className="product-eyebrow">Ledger</span><h2>User point history</h2></div>
+          <div>
+            <span className="product-eyebrow">Ledger</span>
+            <h2>User point history</h2>
+          </div>
         </div>
         <form className="admin-filter-bar" method="get">
-          <Input name="user" label="User ID or username" defaultValue={userQuery} placeholder="@username" />
+          <Input
+            name="user"
+            label="User ID or username"
+            defaultValue={userQuery}
+            placeholder="@username"
+          />
           <Button type="submit">Open ledger</Button>
         </form>
-        {userQuery && !ledger ? <Card className="product-empty-state admin-surface">No matching user was found.</Card> : null}
+        {userQuery && !ledger ? (
+          <Card className="product-empty-state admin-surface">No matching user was found.</Card>
+        ) : null}
         {ledger ? (
           <>
             <Card className="admin-surface">
-              <strong>{ledger.user.displayName} (@{ledger.user.username})</strong>
-              <p>Current ledger balance: <strong>{ledger.balance}</strong> points</p>
+              <strong>
+                {ledger.user.displayName} (@{ledger.user.username})
+              </strong>
+              <p>
+                Current ledger balance: <strong>{ledger.balance}</strong> points
+              </p>
               {canAdjustPoints ? (
-                <form className="product-form-card" onSubmit={(event) => void submitAdjustment(event)}>
-                  <Input name="amount" type="number" min={-100000} max={100000} label="Manual adjustment" required />
+                <form
+                  className="product-form-card"
+                  onSubmit={(event) => void submitAdjustment(event)}
+                >
+                  <Input
+                    name="amount"
+                    type="number"
+                    min={-100000}
+                    max={100000}
+                    label="Manual adjustment"
+                    required
+                  />
                   <Textarea name="reason" label="Reason" minLength={10} maxLength={500} required />
-                  <Button type="submit" loading={busy === "adjustment"}>Record adjustment</Button>
+                  <Button type="submit" loading={busy === "adjustment"}>
+                    Record adjustment
+                  </Button>
                 </form>
               ) : null}
             </Card>
             <div className="admin-table admin-desktop-table" role="table">
               <div className="admin-table__row admin-table__row--header" role="row">
-                <span>Entry</span><span>Amount</span><span>Reward</span><span>Event</span><span>Created</span>
+                <span>Entry</span>
+                <span>Amount</span>
+                <span>Reward</span>
+                <span>Event</span>
+                <span>Created</span>
               </div>
               {ledger.entries.map((entry) => (
                 <div className="admin-table__row" role="row" key={entry.id}>

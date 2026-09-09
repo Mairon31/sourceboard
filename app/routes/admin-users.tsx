@@ -107,7 +107,13 @@ function RoleBadges({ roles }: { roles: string[] }) {
   );
 }
 
-function AdminUserIdentity({ user, showJoined = false }: { user: AdminUserRow; showJoined?: boolean }) {
+function AdminUserIdentity({
+  user,
+  showJoined = false,
+}: {
+  user: AdminUserRow;
+  showJoined?: boolean;
+}) {
   return (
     <div className="admin-table__copy admin-user-identity">
       <CosmeticIdentity

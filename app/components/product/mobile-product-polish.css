@@ -43,7 +43,11 @@
   border: 1px solid var(--border-subtle);
   border-radius: 22px;
   background:
-    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 44%),
+    radial-gradient(
+      circle at 12% 0%,
+      color-mix(in srgb, var(--accent) 14%, transparent),
+      transparent 44%
+    ),
     var(--surface-solid);
   box-shadow: 0 14px 36px color-mix(in srgb, var(--shadow-color) 10%, transparent);
 }

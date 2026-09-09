@@ -73,7 +73,8 @@ export async function handlePublicReputationRequest(
   const url = new URL(request.url);
   if (url.pathname !== "/api/reputation/share-intent") return null;
   if (request.method !== "POST") return failure("NOT_FOUND", "Endpoint not found.", requestId, 404);
-  if (!env.DB) return failure("POINTS_UNAVAILABLE", "Points are temporarily unavailable.", requestId, 503);
+  if (!env.DB)
+    return failure("POINTS_UNAVAILABLE", "Points are temporarily unavailable.", requestId, 503);
 
   try {
     assertSameOrigin(request);
@@ -100,7 +101,12 @@ export async function handlePublicReputationRequest(
 
     const subjectKey = await canonicalPublicTarget(env.DB, targetType, targetId);
     if (!subjectKey) {
-      return failure("SHARE_TARGET_UNAVAILABLE", "This content is not publicly shareable.", requestId, 404);
+      return failure(
+        "SHARE_TARGET_UNAVAILABLE",
+        "This content is not publicly shareable.",
+        requestId,
+        404,
+      );
     }
     const awarded = await awardContribution(env.DB, {
       userId: session.user.id,
@@ -110,7 +116,8 @@ export async function handlePublicReputationRequest(
     });
     return json({ recorded: true, awarded }, requestId, 201);
   } catch (error) {
-    if (isAuthError(error)) return failure(error.code, error.publicMessage, requestId, error.status);
+    if (isAuthError(error))
+      return failure(error.code, error.publicMessage, requestId, error.status);
     return failure("SHARE_INTENT_FAILED", "Share activity could not be recorded.", requestId, 500);
   }
 }

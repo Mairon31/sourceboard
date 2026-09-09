@@ -6,7 +6,8 @@ export const meta: MetaFunction = () => [
   { title: "Policies · SourceBoard" },
   {
     name: "description",
-    content: "SourceBoard terms, privacy, community, attribution, data and public-content policies.",
+    content:
+      "SourceBoard terms, privacy, community, attribution, data and public-content policies.",
   },
   { tagName: "link", rel: "canonical", href: "https://srcboard.me/legal" },
 ];

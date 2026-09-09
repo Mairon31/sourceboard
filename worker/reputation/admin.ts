@@ -323,7 +323,9 @@ export async function createAchievementVersion(
   if (input.enabled) {
     statements.push(
       db
-        .prepare(`UPDATE achievement_catalog SET status = 'DISABLED' WHERE slug = ? AND status = 'ACTIVE'`)
+        .prepare(
+          `UPDATE achievement_catalog SET status = 'DISABLED' WHERE slug = ? AND status = 'ACTIVE'`,
+        )
         .bind(slug),
     );
   }

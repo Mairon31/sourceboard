@@ -33,7 +33,8 @@ function createDb(options: MockDbOptions = {}) {
             return { post_author_id: "post-author", comment_author_id: "contributor" } as T;
           }
           if (query.includes("FROM reputation_reward_rules")) {
-            const rewardType = values[0] === "VERIFIED_SOURCE" ? "VERIFIED_SOURCE" : "ACCEPTED_SOURCE";
+            const rewardType =
+              values[0] === "VERIFIED_SOURCE" ? "VERIFIED_SOURCE" : "ACCEPTED_SOURCE";
             return {
               id: `${rewardType.toLowerCase()}-v3`,
               reward_type: rewardType,
@@ -79,9 +80,8 @@ function createDb(options: MockDbOptions = {}) {
 }
 
 function ledgerAmount(bindings: Array<{ query: string; values: unknown[] }>): number | undefined {
-  return bindings.find((entry) => entry.query.includes("INSERT OR IGNORE INTO point_ledger"))?.values[
-    2
-  ] as number | undefined;
+  return bindings.find((entry) => entry.query.includes("INSERT OR IGNORE INTO point_ledger"))
+    ?.values[2] as number | undefined;
 }
 
 describe("versioned reputation rules", () => {

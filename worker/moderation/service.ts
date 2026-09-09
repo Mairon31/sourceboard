@@ -227,7 +227,9 @@ export function createModerationService(db: D1Database, options: { events?: Queu
         .bind(
           createIdentifier(),
           input.actorUserId,
-          input.status === "IN_REVIEW" ? "moderation.report.review_started" : "moderation.report.dismissed",
+          input.status === "IN_REVIEW"
+            ? "moderation.report.review_started"
+            : "moderation.report.dismissed",
           input.reportId,
           reason,
           JSON.stringify({

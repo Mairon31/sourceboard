@@ -19,7 +19,8 @@ function createDb(options: { duplicate?: boolean; batchChanges?: boolean } = {})
             return { post_author_id: "author", comment_author_id: "contributor" } as T;
           }
           if (query.includes("FROM reputation_reward_rules")) {
-            const rewardType = values[0] === "ACCEPTED_SOURCE" ? "ACCEPTED_SOURCE" : "VERIFIED_SOURCE";
+            const rewardType =
+              values[0] === "ACCEPTED_SOURCE" ? "ACCEPTED_SOURCE" : "VERIFIED_SOURCE";
             return {
               id: rewardType === "ACCEPTED_SOURCE" ? "accepted-v1" : "verified-v1",
               reward_type: rewardType,
