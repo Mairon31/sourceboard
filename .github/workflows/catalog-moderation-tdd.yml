@@ -8,10 +8,11 @@ on:
       - tests/unit/catalog-moderation-policy.test.ts
       - worker/catalog/api.ts
       - app/components/admin/store/AdminEmotePackManager.tsx
+      - .github/scripts/apply-catalog-moderation-green.py
       - .github/workflows/catalog-moderation-tdd.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   catalog-moderation-policy:
@@ -23,4 +24,23 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm test -- tests/unit/catalog-moderation-policy.test.ts
+      - name: Apply implementation
+        run: python .github/scripts/apply-catalog-moderation-green.py
+      - name: Format touched files
+        run: npx prettier --write worker/catalog/api.ts app/components/admin/store/AdminEmotePackManager.tsx
+      - name: Targeted policy tests
+        run: npm test -- tests/unit/catalog-moderation-policy.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Validate diff
+        run: git diff --check
+      - name: Commit implementation
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git add worker/catalog/api.ts app/components/admin/store/AdminEmotePackManager.tsx
+          git commit -m "fix(catalog): restore removed emotes safely"
+          git push
