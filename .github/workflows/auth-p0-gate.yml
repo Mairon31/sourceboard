@@ -1,0 +1,30 @@
+name: Auth P0 gate
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/sourceboard-product-overhaul
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Focused auth unit tests
+        run: npm test -- tests/unit/auth-form-requests.test.ts tests/unit/auth-stale-session.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Apply local D1 migrations
+        run: npm run db:migrations:apply
+      - name: Auth API E2E
+        run: npx playwright test tests/e2e/auth-api.spec.ts
