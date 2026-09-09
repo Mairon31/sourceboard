@@ -60,6 +60,9 @@ describe("community plan phase E2", () => {
     const guide = read("../../app/components/admin/store/AdminCosmeticGuide.tsx");
     expect(sanitizer).toContain("export const COMMUNITY_CSS_ALLOWED_SELECTORS");
     expect(sanitizer).toContain("export const COMMUNITY_CSS_ALLOWED_PROPERTIES");
+    expect(sanitizer).toContain("COMMUNITY_CSS_MAX_BYTES = 12 * 1024");
+    expect(sanitizer).toContain("COMMUNITY_CSS_MAX_RULES = 24");
+    expect(sanitizer).toContain("COMMUNITY_CSS_MAX_KEYFRAMES = 4");
     expect(guide).toContain("COMMUNITY_CSS_ALLOWED_SELECTORS");
     expect(guide).toContain("COMMUNITY_CSS_ALLOWED_PROPERTIES");
     expect(guide).toContain("sanitizeCommunityCosmeticCss");
@@ -73,9 +76,9 @@ describe("community plan phase E2", () => {
       expect(guide).toContain(slot);
     }
     expect(guide).toContain("Live preview");
-    expect(guide).toContain("12 KB");
-    expect(guide).toContain("24 rules");
-    expect(guide).toContain("4 keyframes");
+    expect(guide).toContain("COMMUNITY_CSS_MAX_BYTES / 1024");
+    expect(guide).toContain("COMMUNITY_CSS_MAX_RULES");
+    expect(guide).toContain("COMMUNITY_CSS_MAX_KEYFRAMES");
     expect(guide).toContain("800ms");
     expect(guide).toContain("20s");
   });
