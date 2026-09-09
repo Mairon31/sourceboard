@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
+  createD1UsernamePolicyStore,
   createUsernamePolicyService,
   evaluateUsernameChangePolicy,
   type UsernameChangeRecord,
@@ -104,6 +105,38 @@ describe("community plan phase E1", () => {
       service.changeUsername("user-1", "not valid!", { requestId: "request", ipPrefixHash: "ip" }),
     ).rejects.toMatchObject({ code: "INVALID_USERNAME" });
     expect(store.commitChange).not.toHaveBeenCalled();
+  });
+
+  it("enforces username quota again at the D1 commit boundary", async () => {
+    const migration = read("../../migrations/0026_username_change_history.sql");
+    expect(migration).toContain("CREATE TRIGGER username_change_history_guard");
+
+    const input = {
+      id: "change-1",
+      userId: "user-1",
+      oldUsername: "Mairon",
+      newUsername: "New_User",
+      newUsernameNormalized: "new_user",
+      changedAt: NOW,
+      audit: { id: "audit-1", requestId: "request-1", ipPrefixHash: "ip-1" },
+    };
+
+    for (const [constraint, code] of [
+      ["USERNAME_CHANGE_COOLDOWN", "USERNAME_CHANGE_COOLDOWN"],
+      ["USERNAME_CHANGE_LIMIT", "USERNAME_CHANGE_LIMIT"],
+    ] as const) {
+      const statement = { bind: vi.fn(() => statement) };
+      const db = {
+        prepare: vi.fn(() => statement),
+        batch: vi.fn(async () => {
+          throw new Error(`D1_ERROR: ${constraint}`);
+        }),
+      } as unknown as D1Database;
+      await expect(createD1UsernamePolicyStore(db).commitChange(input)).rejects.toMatchObject({
+        status: 429,
+        code,
+      });
+    }
   });
 
   it("adds forward-only username history, account API and Settings quota UI", () => {
