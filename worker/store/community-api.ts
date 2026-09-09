@@ -451,6 +451,8 @@ async function reviewSubmission(
       "COSMETIC_SUBMISSION_NOT_FOUND",
       "That community cosmetic was not found.",
     );
+  const expectedCommunityState = existing.communityState;
+  const expectedModerationState = existing.moderationState;
   const now = Date.now();
   let communityState = existing.communityState;
   let moderationState = existing.moderationState;
@@ -508,12 +510,13 @@ async function reviewSubmission(
     storeLifecycle = "ARCHIVED";
   }
 
-  await db.batch([
+  const [transitionResult] = await db.batch([
     db
       .prepare(
         `UPDATE cosmetic_submission_reviews SET community_state = ?, moderation_state = ?, review_state = ?, review_note = ?,
        reviewed_by_user_id = ?, reviewed_at = ?, published_at = CASE WHEN ? = 'PUBLISHED' THEN COALESCE(published_at, ?) ELSE published_at END,
-       archived_at = CASE WHEN ? = 'ARCHIVED' THEN ? ELSE archived_at END WHERE store_item_id = ?`,
+       archived_at = CASE WHEN ? = 'ARCHIVED' THEN ? ELSE archived_at END
+       WHERE store_item_id = ? AND community_state = ? AND moderation_state = ?`,
       )
       .bind(
         communityState,
@@ -527,13 +530,36 @@ async function reviewSubmission(
         communityState,
         now,
         itemId,
+        expectedCommunityState,
+        expectedModerationState,
       ),
     db
       .prepare(
-        `UPDATE store_items SET lifecycle_state = ?, is_enabled = ?, is_active = ?, is_featured = CASE WHEN ? = 'PUBLISHED' THEN is_featured ELSE 0 END, updated_at = ? WHERE id = ?`,
+        `UPDATE store_items SET lifecycle_state = ?, is_enabled = ?, is_active = ?, is_featured = CASE WHEN ? = 'PUBLISHED' THEN is_featured ELSE 0 END, updated_at = ?
+       WHERE id = ? AND EXISTS (
+         SELECT 1 FROM cosmetic_submission_reviews
+         WHERE store_item_id = ? AND community_state = ? AND moderation_state = ? AND review_state = ?
+       )`,
       )
-      .bind(storeLifecycle, enabled ? 1 : 0, enabled ? 1 : 0, storeLifecycle, now, itemId),
+      .bind(
+        storeLifecycle,
+        enabled ? 1 : 0,
+        enabled ? 1 : 0,
+        storeLifecycle,
+        now,
+        itemId,
+        itemId,
+        communityState,
+        moderationState,
+        reviewState,
+      ),
   ]);
+  if (Number(transitionResult?.meta?.changes ?? 0) !== 1)
+    throw new CosmeticSubmissionError(
+      409,
+      "STALE_COMMUNITY_TRANSITION",
+      "This community cosmetic changed while you were reviewing it. Reload and try again.",
+    );
   await writeAudit(db, {
     actorUserId: current.session.user.id,
     action: `COSMETIC_COMMUNITY_${reviewAction}`,
