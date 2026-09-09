@@ -59,11 +59,23 @@ function post(overrides: Partial<PostWithAuthor["post"]> = {}): PostWithAuthor {
   };
 }
 
+function acceptedPost(overrides: Partial<PostWithAuthor["post"]> = {}): PostWithAuthor {
+  return {
+    ...post({ acceptedCommentId: "accepted-comment", status: "ANSWERED", ...overrides }),
+    acceptedSource: {
+      commentId: "accepted-comment",
+      canonicalUrl: "https://example.com/source",
+      acceptedAt: 2,
+    },
+  };
+}
+
 function dependencies() {
   const getRelationship = vi.fn(async (): Promise<Relationship> => "NONE");
   const getBlock = vi.fn(async () => false);
   const listFeed = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
   const listByAuthor = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
+  const listAcceptedByContributor = vi.fn(async () => ({ posts: [], nextCursor: null }));
   const getPost = vi.fn(async () => post());
   const profileStore = {
     getProfileByUserId: vi.fn(async () => ({
@@ -101,6 +113,7 @@ function dependencies() {
     })),
     listFeed,
     listByAuthor,
+    listAcceptedByContributor,
     createPost: vi.fn(async () => undefined),
     updatePost: vi.fn(async () => true),
     archivePost: vi.fn(async () => true),
@@ -109,7 +122,16 @@ function dependencies() {
     getMediaAsset: vi.fn(async () => null),
     listIndexablePosts: vi.fn(async () => []),
   } as unknown as PostStore;
-  return { profileStore, store, getRelationship, getBlock, listFeed, listByAuthor, getPost };
+  return {
+    profileStore,
+    store,
+    getRelationship,
+    getBlock,
+    listFeed,
+    listByAuthor,
+    listAcceptedByContributor,
+    getPost,
+  };
 }
 
 describe("Phase 4 post policy", () => {
@@ -224,6 +246,82 @@ describe("Phase 4 post policy", () => {
       "unlisted",
       "private",
       "anonymous",
+    ]);
+  });
+
+  it("builds Accepted Sources from the profile's accepted comments, not its resolved requests", async () => {
+    const { profileStore, store, listByAuthor, listAcceptedByContributor } = dependencies();
+    listByAuthor.mockResolvedValue({
+      posts: [acceptedPost({ id: "authored-resolved" })],
+      nextCursor: null,
+    });
+    listAcceptedByContributor.mockResolvedValue({
+      posts: [acceptedPost({ id: "contributed-source", authorId: "request-owner" })],
+      nextCursor: null,
+    });
+    const service = createPostService({ store, profileStore, now: () => 2 }) as unknown as {
+      listProfileActivity(input: {
+        authorId: string;
+        viewerId: string | null;
+        limit: number;
+      }): Promise<{
+        posts: Array<{ id: string }>;
+        acceptedSources: Array<{ id: string }>;
+      }>;
+    };
+
+    const activity = await service.listProfileActivity({
+      authorId: "author-1",
+      viewerId: "viewer-1",
+      limit: 20,
+    });
+
+    expect(activity.posts.map((item) => item.id)).toEqual(["authored-resolved"]);
+    expect(activity.acceptedSources.map((item) => item.id)).toEqual(["contributed-source"]);
+  });
+
+  it("keeps accepted contribution discovery privacy-safe without hiding anonymous requests", async () => {
+    const { profileStore, store, listAcceptedByContributor } = dependencies();
+    listAcceptedByContributor.mockResolvedValue({
+      posts: [
+        acceptedPost({ id: "accepted-public", authorId: "request-owner" }),
+        acceptedPost({
+          id: "accepted-anonymous-request",
+          authorId: "anonymous-owner",
+          authorMode: "ANONYMOUS",
+        }),
+        acceptedPost({ id: "accepted-unlisted", authorId: "request-owner", visibility: "UNLISTED" }),
+        acceptedPost({ id: "accepted-private", authorId: "request-owner", visibility: "PRIVATE" }),
+      ],
+      nextCursor: null,
+    });
+    const service = createPostService({ store, profileStore, now: () => 2 }) as unknown as {
+      listProfileActivity(input: {
+        authorId: string;
+        viewerId: string | null;
+        limit: number;
+      }): Promise<{ acceptedSources: Array<{ id: string }> }>;
+    };
+
+    const stranger = await service.listProfileActivity({
+      authorId: "author-1",
+      viewerId: "viewer-1",
+      limit: 20,
+    });
+    expect(stranger.acceptedSources.map((item) => item.id)).toEqual([
+      "accepted-public",
+      "accepted-anonymous-request",
+    ]);
+
+    const owner = await service.listProfileActivity({
+      authorId: "author-1",
+      viewerId: "author-1",
+      limit: 20,
+    });
+    expect(owner.acceptedSources.map((item) => item.id)).toEqual([
+      "accepted-public",
+      "accepted-anonymous-request",
+      "accepted-unlisted",
     ]);
   });
 
