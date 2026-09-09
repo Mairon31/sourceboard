@@ -27,12 +27,13 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           path = Path("app/components/product/ProfileEditor.tsx")
           text = path.read_text()
-          text = text.replace(
-              '              visuals={profile.cosmetics?.visuals}\n              communityStyles={profile.cosmetics?.communityStyles}\n              mode="profile"',
-              '              visuals={profile.cosmetics?.visuals}\n              mode="profile"',
-          )
+          pattern = re.compile(r'(\n\s*visuals=\{profile\.cosmetics\?\.visuals\}\n)\s*communityStyles=\{profile\.cosmetics\?\.communityStyles\}\n(?=\s*mode="profile")')
+          text, count = pattern.subn(r'\1', text)
+          if count != 1:
+              raise SystemExit(f"Expected exactly one CosmeticIdentity communityStyles cleanup, got {count}")
           path.write_text(text)
           PY
       - name: Format changed files
