@@ -1,4 +1,4 @@
-name: Community plan Phase A RED
+name: Community plan Phase A GREEN
 
 on:
   push:
@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  phase-a-red:
-    if: "${{ github.event.head_commit.message != 'chore(phase-a): format RED test' }}"
+  phase-a-green:
+    if: "${{ github.event.head_commit.message != 'feat(catalog): support animated emotes and finish phase A UI' }}"
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -21,16 +21,25 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Format RED test
-        run: npx prettier --write tests/unit/community-plan-phase-a.test.ts
-      - name: Persist RED formatting
+      - name: Apply Phase A implementation
+        run: python .github/scripts/apply-phase-a-green.py
+      - name: Format changed files
+        run: npx prettier --write worker/catalog/image.ts worker/catalog/api.ts worker/db/schema.ts app/components/admin/store/types.ts app/components/admin/store/AdminEmotePackManager.tsx app/routes/_index.tsx app/components/product/product.css app/components/product/post-card-refresh.css tests/unit/community-plan-phase-a.test.ts
+      - name: Apply all local D1 migrations
+        run: npm run db:migrations:apply
+      - name: Run focused Phase A tests
+        run: npm test -- tests/unit/community-plan-phase-a.test.ts tests/unit/store-entitlement-modes.test.ts tests/unit/store-service.test.ts tests/unit/media-picker.test.ts tests/unit/catalog-admin-lifecycle.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Verify diff
+        run: git diff --check
+      - name: Commit verified implementation
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests/unit/community-plan-phase-a.test.ts
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(phase-a): format RED test"
-            git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
+          git add worker/catalog/image.ts worker/catalog/api.ts worker/db/schema.ts migrations/0023_catalog_media_metadata.sql app/components/admin/store/types.ts app/components/admin/store/AdminEmotePackManager.tsx app/routes/_index.tsx app/components/product/product.css app/components/product/post-card-refresh.css tests/unit/community-plan-phase-a.test.ts
+          if git diff --cached --quiet; then
+            exit 0
           fi
-      - name: Run Phase A RED
-        run: npm test -- tests/unit/community-plan-phase-a.test.ts
+          git commit -m "feat(catalog): support animated emotes and finish phase A UI"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
