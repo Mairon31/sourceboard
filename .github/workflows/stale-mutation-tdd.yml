@@ -1,0 +1,23 @@
+name: Stale mutation TDD
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+
+permissions:
+  contents: read
+
+jobs:
+  stale-mutation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Stale mutation contract
+        run: npm test -- tests/unit/stale-mutation-ui.test.ts
