@@ -22,12 +22,12 @@ describe("community plan phase E2", () => {
     expect(route).toContain('"PRESETS"');
     expect(route).toContain('"GUIDE"');
     expectOrdered(route, [
-      ">Catalog<",
-      ">Emote Packs<",
-      ">Sticker Packs<",
-      ">Community<",
-      ">Presets<",
-      ">Cosmetic Guide<",
+      'label: "Catalog"',
+      'label: "Emote Packs"',
+      'label: "Sticker Packs"',
+      'label: "Community"',
+      'label: "Presets"',
+      'label: "Cosmetic Guide"',
     ]);
     expect(route).toContain("<AdminPresetLaboratory");
     expect(route).toContain("<AdminCosmeticGuide");
