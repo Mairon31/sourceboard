@@ -215,6 +215,15 @@ function usernameConflict(error: unknown): boolean {
   return normalized.includes("unique") && normalized.includes("username");
 }
 
+function usernamePolicyConstraint(
+  error: unknown,
+): "USERNAME_CHANGE_COOLDOWN" | "USERNAME_CHANGE_LIMIT" | null {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("USERNAME_CHANGE_COOLDOWN")) return "USERNAME_CHANGE_COOLDOWN";
+  if (message.includes("USERNAME_CHANGE_LIMIT")) return "USERNAME_CHANGE_LIMIT";
+  return null;
+}
+
 export function createD1UsernamePolicyStore(db: D1Database): UsernamePolicyStore {
   return {
     async getIdentity(userId) {
@@ -285,6 +294,16 @@ export function createD1UsernamePolicyStore(db: D1Database): UsernamePolicyStore
             ),
         ]);
       } catch (error) {
+        const policyConstraint = usernamePolicyConstraint(error);
+        if (policyConstraint) {
+          throw new ProfileError(
+            429,
+            policyConstraint,
+            policyConstraint === "USERNAME_CHANGE_LIMIT"
+              ? "You've used all 3 username changes in the current 15-day window."
+              : "Username changes require a 24-hour cooldown.",
+          );
+        }
         if (usernameConflict(error)) {
           throw new ProfileError(409, "USERNAME_TAKEN", "That username is already in use.");
         }
