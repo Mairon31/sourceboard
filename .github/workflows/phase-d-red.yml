@@ -24,7 +24,7 @@ jobs:
       - name: Apply Phase D implementation
         run: python .github/scripts/apply-phase-d-green.py
       - name: Format changed files
-        run: npx prettier --write shared/store/community-css.ts migrations/0025_community_cosmetic_lifecycle.sql worker/store/community-api.ts app/routes/store-create.tsx app/components/product/CommunityCosmeticStudio.tsx app/components/product/community-cosmetics.css app/routes.ts app/routes/store.tsx shared/ui/contracts.ts worker/store/service.ts app/components/product/StoreItemCard.tsx worker/profile/types.ts worker/profile/store.ts app/components/product/ProfileIdentityCard.tsx app/components/product/ProfileHero.tsx app/components/product/ProfileEditor.tsx app/components/product/CosmeticIdentity.tsx app/components/admin/store/AdminCommunityCosmeticReviews.tsx tests/unit/community-plan-phase-d.test.ts
+        run: npx prettier --write shared/store/community-css.ts worker/store/community-api.ts app/routes/store-create.tsx app/components/product/CommunityCosmeticStudio.tsx app/components/product/community-cosmetics.css app/routes.ts app/routes/store.tsx shared/ui/contracts.ts worker/store/service.ts app/components/product/StoreItemCard.tsx worker/profile/types.ts worker/profile/store.ts app/components/product/ProfileIdentityCard.tsx app/components/product/ProfileHero.tsx app/components/product/ProfileEditor.tsx app/components/product/CosmeticIdentity.tsx app/components/admin/store/AdminCommunityCosmeticReviews.tsx tests/unit/community-plan-phase-d.test.ts
       - name: Apply all local D1 migrations
         run: npm run db:migrations:apply
       - name: Run Phase D and regression tests
