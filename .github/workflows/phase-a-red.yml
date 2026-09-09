@@ -1,0 +1,36 @@
+name: Community plan Phase A RED
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+
+permissions:
+  contents: write
+
+jobs:
+  phase-a-red:
+    if: "${{ github.event.head_commit.message != 'chore(phase-a): format RED test' }}"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Format RED test
+        run: npx prettier --write tests/unit/community-plan-phase-a.test.ts
+      - name: Persist RED formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/unit/community-plan-phase-a.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(phase-a): format RED test"
+            git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
+          fi
+      - name: Run Phase A RED
+        run: npm test -- tests/unit/community-plan-phase-a.test.ts
