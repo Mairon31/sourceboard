@@ -19,6 +19,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Fix accepted-source test typing
+        if: "${{ github.event.head_commit.message == 'chore(profile): apply accepted-source activity' }}"
+        run: python .github/scripts/fix-profile-accepted-source-test-typing.py
       - name: Apply implementation
         if: "${{ github.event.head_commit.message == 'chore(profile): apply accepted-source activity' }}"
         run: python .github/scripts/apply-profile-accepted-sources.py
