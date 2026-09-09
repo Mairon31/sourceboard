@@ -73,11 +73,13 @@ describe("store catalog lifecycle", () => {
     expect(catalogApi).toContain("audit_logs");
   });
 
-  it("structures the public Store into Featured New Owned and catalog sections", () => {
+  it("structures the public Store into Featured New Owned and a complete catalog", () => {
     expect(storeRoute).toContain("partitionStoreItems");
     expect(storeRoute).toContain("sections.featured");
     expect(storeRoute).toContain("sections.newest");
     expect(storeRoute).toContain("sections.owned");
+    expect(storeRoute).toContain("const browse = items;");
+    expect(storeRoute).toContain('title="All items"');
     expect(storeSection).toContain("product-store-section");
     expect(storeCard).toContain("StorePreview");
   });
