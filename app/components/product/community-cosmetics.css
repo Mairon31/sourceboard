@@ -1,0 +1,73 @@
+.product-store-create-page {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+.product-store-create-link {
+  align-self: center;
+  color: var(--accent);
+  font-weight: 750;
+  text-decoration: none;
+}
+.product-community-live-preview {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-app-secondary);
+  overflow: hidden;
+}
+.product-community-live-preview .profile-card {
+  display: grid;
+  gap: var(--space-4);
+  min-height: 240px;
+  padding: clamp(18px, 4vw, 32px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  background: var(--surface-solid);
+}
+.product-community-live-preview .profile-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.product-community-live-preview .profile-avatar-area {
+  display: grid;
+  width: 70px;
+  height: 70px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-app-secondary);
+  font-weight: 850;
+}
+.product-community-live-preview .profile-name-area {
+  display: grid;
+  gap: 3px;
+}
+.product-community-studio__css-error {
+  color: var(--danger, #c52b42);
+}
+.product-community-store-preview {
+  position: relative;
+}
+.product-community-store-preview > .profile-card {
+  min-width: 0;
+}
+.product-store-item__creator {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+@media (max-width: 720px) {
+  .product-community-live-preview .profile-card {
+    min-height: 190px;
+    padding: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-community-live-preview *,
+  .product-community-store-preview * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

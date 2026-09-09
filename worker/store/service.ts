@@ -1,6 +1,7 @@
 import { createIdentifier } from "../auth/crypto";
 import { PublicHttpError } from "../http/error";
 import { ensureBuiltInStoreCatalog } from "./builtin-catalog";
+import { sanitizeCommunityCosmeticCss } from "../../shared/store/community-css";
 import {
   isAvatarFramePreset,
   isNameEffectPreset,
@@ -35,7 +36,18 @@ interface StorePreviewAsset {
   assetKey: string;
 }
 
-type StoreCatalogRow = StoreItemInput & { previewAssets: StorePreviewAsset[]; isGlobal: boolean };
+interface CommunityStoreMetadata {
+  cosmeticId: string;
+  creatorUsername: string;
+  creatorDisplayName: string;
+  css: string;
+}
+
+type StoreCatalogRow = StoreItemInput & {
+  previewAssets: StorePreviewAsset[];
+  isGlobal: boolean;
+  community: CommunityStoreMetadata | null;
+};
 
 export interface StoreItemInput {
   id: string;
@@ -110,6 +122,51 @@ async function listStoreCatalog(db: D1Database, now: number): Promise<StoreItemI
   }
 }
 
+type CommunityLookup = { isSubmission: boolean; metadata: CommunityStoreMetadata | null };
+
+async function communityStoreMetadata(
+  db: D1Database,
+  item: StoreItemInput,
+): Promise<CommunityLookup> {
+  const exists = await db
+    .prepare("SELECT 1 AS present FROM cosmetic_submission_reviews WHERE store_item_id = ?")
+    .bind(item.id)
+    .first<{ present: number }>();
+  if (!exists) return { isSubmission: false, metadata: null };
+  try {
+    const row = await db
+      .prepare(
+        `SELECT r.store_item_id AS cosmeticId, u.username AS creatorUsername,
+              COALESCE(p.display_name, u.username) AS creatorDisplayName
+       FROM cosmetic_submission_reviews r
+       JOIN users u ON u.id = r.submitted_by_user_id
+       LEFT JOIN user_profiles p ON p.user_id = u.id
+       WHERE r.store_item_id = ? AND r.community_state = 'PUBLISHED'
+         AND r.moderation_state = 'CLEAR' AND r.review_state = 'APPROVED'`,
+      )
+      .bind(item.id)
+      .first<{ cosmeticId: string; creatorUsername: string; creatorDisplayName: string }>();
+    if (!row) return { isSubmission: true, metadata: null };
+    let config: Record<string, unknown> = {};
+    try {
+      config = JSON.parse(item.configJson) as Record<string, unknown>;
+    } catch {
+      return { isSubmission: true, metadata: null };
+    }
+    const css = typeof config.communityCss === "string" ? config.communityCss : "";
+    return { isSubmission: true, metadata: { ...row, css } };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    if (
+      message.includes("no such column") &&
+      (message.includes("community_state") || message.includes("moderation_state"))
+    )
+      return { isSubmission: true, metadata: null };
+    throw error;
+  }
+}
+
 async function listEmotePreviewAssets(db: D1Database, packId: string) {
   try {
     return await db
@@ -151,8 +208,14 @@ export function createStoreService(db: D1Database) {
     async list(now = Date.now()): Promise<StoreCatalogRow[]> {
       await ensureBuiltInStoreCatalog(db);
       const result = await listStoreCatalog(db, now);
+      const checked = await Promise.all(
+        result.map(async (item) => ({ item, community: await communityStoreMetadata(db, item) })),
+      );
+      const publicItems = checked.filter(
+        ({ community }) => !community.isSubmission || Boolean(community.metadata),
+      );
       return Promise.all(
-        result.map(async (item): Promise<StoreCatalogRow> => {
+        publicItems.map(async ({ item, community }): Promise<StoreCatalogRow> => {
           let config: { packId?: unknown } = {};
           try {
             config = JSON.parse(String(item.configJson)) as { packId?: unknown };
@@ -162,7 +225,12 @@ export function createStoreService(db: D1Database) {
           const type = String(item.type);
           const packId = typeof config.packId === "string" ? config.packId : null;
           if (!packId || (type !== "EMOTE_PACK" && type !== "STICKER_PACK"))
-            return { ...item, previewAssets: [] as StorePreviewAsset[], isGlobal: false };
+            return {
+              ...item,
+              previewAssets: [] as StorePreviewAsset[],
+              isGlobal: false,
+              community: community.metadata,
+            };
           const rows =
             type === "EMOTE_PACK"
               ? await listEmotePreviewAssets(db, packId)
@@ -182,7 +250,12 @@ export function createStoreService(db: D1Database) {
                   .bind(packId)
                   .first<{ isGlobal: number }>()
               : null;
-          return { ...item, previewAssets: rows.results, isGlobal: Boolean(globalRow?.isGlobal) };
+          return {
+            ...item,
+            previewAssets: rows.results,
+            isGlobal: Boolean(globalRow?.isGlobal),
+            community: community.metadata,
+          };
         }),
       );
     },
@@ -443,7 +516,7 @@ export function assertSafeStoreConfig(config: unknown): string {
   if (Object.keys(value).some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(key)))
     throw new StoreError(400, "INVALID_STORE_CONFIG", "The config contains an invalid key.");
   const serialized = JSON.stringify(value);
-  if (serialized.length > 4_000 || /<|javascript:|url\s*\(/i.test(serialized))
+  if (serialized.length > 20_000 || /<|javascript:|url\s*\(/i.test(serialized))
     throw new StoreError(400, "UNSAFE_STORE_CONFIG", "The config contains unsafe content.");
   return serialized;
 }
@@ -451,6 +524,26 @@ export function assertSafeStoreConfig(config: unknown): string {
 export function validateStoreConfig(type: StoreType, config: unknown): string {
   const serialized = assertSafeStoreConfig(config);
   const value = config as Record<string, unknown>;
+  if ("communityCss" in value || "communityCssSource" in value || "communityCosmeticId" in value) {
+    if (
+      typeof value.communityCosmeticId !== "string" ||
+      typeof value.communityCssSource !== "string" ||
+      typeof value.communityCss !== "string"
+    )
+      throw new StoreError(400, "UNSAFE_STORE_CONFIG", "Community CSS metadata is incomplete.");
+    let sanitized;
+    try {
+      sanitized = sanitizeCommunityCosmeticCss(value.communityCssSource, value.communityCosmeticId);
+    } catch {
+      throw new StoreError(400, "UNSAFE_STORE_CONFIG", "Community CSS is not safe.");
+    }
+    if (sanitized.scopedCss !== value.communityCss)
+      throw new StoreError(
+        400,
+        "UNSAFE_STORE_CONFIG",
+        "Community CSS must match the server-scoped version.",
+      );
+  }
   if (type === "NAME_FONT" && !isNameFontFamily(value.family))
     throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "NAME_FONT family is not allowlisted.");
   if (type === "NAME_EFFECT" && !isNameEffectPreset(value.preset))

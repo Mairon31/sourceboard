@@ -3,7 +3,6 @@ import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "r
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
-import { CommunityCosmeticStudio } from "../components/product/CommunityCosmeticStudio";
 import { ProductShell, PresentationNotice } from "../components/product/ProductShell";
 import { StoreItemCard } from "../components/product/StoreItemCard";
 import { StoreSection } from "../components/product/StoreSection";
@@ -19,6 +18,7 @@ const STORE_FILTERS = [
   { key: "NAME_FONT", label: "Font" },
   { key: "EMOTE_PACK", label: "Emotes" },
   { key: "STICKER_PACK", label: "Stickers" },
+  { key: "COMMUNITY", label: "Community" },
 ] as const;
 
 type StoreFilter = (typeof STORE_FILTERS)[number]["key"];
@@ -131,6 +131,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           packSize: assets.length || undefined,
           adminUnlocked,
           preview: { config: parseConfig(item.configJson), media: assets },
+          community: item.community ?? undefined,
         } satisfies StoreItemView;
       });
       return {
@@ -186,7 +187,9 @@ export default function StoreRoute() {
   const visibleItems =
     activeFilter === "ALL"
       ? catalogItems
-      : catalogItems.filter((item) => item.type === activeFilter);
+      : activeFilter === "COMMUNITY"
+        ? catalogItems.filter((item) => Boolean(item.community))
+        : catalogItems.filter((item) => item.type === activeFilter);
   const sections = partitionStoreItems(visibleItems, authenticated);
 
   function markOwned(item: StoreItemView) {
@@ -339,6 +342,9 @@ export default function StoreRoute() {
             <h1>Make SourceBoard yours</h1>
             <p>Unlock profile frames, effects, fonts and community emote packs with points.</p>
           </div>
+          <a className="product-store-create-link" href="/store/create">
+            Create cosmetic
+          </a>
           <div className="product-store-wallet">
             <span>{adminUnlocked ? "Admin access" : "Balance"}</span>
             <strong>{adminUnlocked ? "Admin unlocked" : `${currentPoints ?? 0} pts`}</strong>
@@ -396,8 +402,6 @@ export default function StoreRoute() {
             {renderItems(sections.browse)}
           </StoreSection>
         ) : null}
-
-        {authenticated ? <CommunityCosmeticStudio /> : null}
       </div>
     </ProductShell>
   );

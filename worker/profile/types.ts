@@ -87,6 +87,7 @@ export interface PublicCosmeticsDto {
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
   visuals?: CosmeticIdentityVisuals;
+  communityStyles?: Array<{ id: string; css: string }>;
 }
 
 export interface PublicProfileDto {

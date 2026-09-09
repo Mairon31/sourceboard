@@ -21,11 +21,20 @@ describe("community plan phase D", () => {
   it("rejects selectors and resource or layout escapes outside the sandbox", () => {
     expect(() => sanitizeCommunityCosmeticCss("body { color: red; }", "demo")).toThrow();
     expect(() =>
-      sanitizeCommunityCosmeticCss('.cosmetic-root { background: url("https://evil.test/a.png"); }', "demo"),
+      sanitizeCommunityCosmeticCss(
+        '.cosmetic-root { background: url("https://evil.test/a.png"); }',
+        "demo",
+      ),
     ).toThrow();
-    expect(() => sanitizeCommunityCosmeticCss('@import "https://evil.test/x.css";', "demo")).toThrow();
-    expect(() => sanitizeCommunityCosmeticCss(".cosmetic-root { position: fixed; }", "demo")).toThrow();
-    expect(() => sanitizeCommunityCosmeticCss(".cosmetic-root { z-index: 999999; }", "demo")).toThrow();
+    expect(() =>
+      sanitizeCommunityCosmeticCss('@import "https://evil.test/x.css";', "demo"),
+    ).toThrow();
+    expect(() =>
+      sanitizeCommunityCosmeticCss(".cosmetic-root { position: fixed; }", "demo"),
+    ).toThrow();
+    expect(() =>
+      sanitizeCommunityCosmeticCss(".cosmetic-root { z-index: 999999; }", "demo"),
+    ).toThrow();
   });
 
   it("provides a dedicated authenticated Store creator with live CSS preview", () => {

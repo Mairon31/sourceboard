@@ -1,6 +1,7 @@
 import type { StoreItemType, StoreItemView } from "../../../shared/ui/contracts";
 import { Avatar, Card } from "../ui";
 import "./profile-identity-card.css";
+import "./community-cosmetics.css";
 
 function categoryLabel(type: StoreItemType): string {
   if (type === "AVATAR_FRAME") return "Frame";
@@ -137,10 +138,27 @@ export function StoreItemCard({
 
   return (
     <Card className="product-store-item">
-      <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
+      {item.community ? (
+        <div
+          className="product-community-store-preview cosmetic-root"
+          data-community-cosmetic={item.community.cosmeticId}
+        >
+          {item.community.css ? <style>{item.community.css}</style> : null}
+          <div className="profile-card">
+            <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
+          </div>
+        </div>
+      ) : (
+        <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
+      )}
       <span className="product-store-item__category">{categoryLabel(item.type)}</span>
       <h3>{item.name}</h3>
       <p>{item.description}</p>
+      {item.community ? (
+        <span className="product-store-item__creator">
+          Created by @{item.community.creatorUsername}
+        </span>
+      ) : null}
       {item.featured ? <span className="product-store-featured-badge">Featured</span> : null}
       {adminUnlocked ? <span className="product-store-admin-badge">Admin unlocked</span> : null}
       <div className="product-store-item__footer">

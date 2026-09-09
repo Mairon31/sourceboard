@@ -368,6 +368,7 @@ export function ProfileEditor({
       profileEffect={profile.cosmetics?.profileEffect}
       bannerUrl={bannerPreview ?? profile.bannerUrl}
       visuals={profile.cosmetics?.visuals}
+      communityStyles={profile.cosmetics?.communityStyles}
       className="product-profile-editor-inline"
     >
       <label className="product-profile-theme-edit" title="Change profile background">
@@ -380,7 +381,7 @@ export function ProfileEditor({
       </label>
 
       <form
-        className="product-profile-content product-profile-editor-inline__form"
+        className="product-profile-content product-profile-editor-inline__form profile-header"
         onSubmit={(event) => void saveProfile(event)}
       >
         <div className="product-profile-editor-inline__identity">

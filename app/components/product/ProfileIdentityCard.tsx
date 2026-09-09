@@ -17,6 +17,7 @@ export interface ProfileIdentityCardProps {
   profileEffect?: ProfileEffectPreset;
   bannerUrl?: string;
   visuals?: CosmeticIdentityVisuals;
+  communityStyles?: Array<{ id: string; css: string }>;
 }
 
 export function ProfileIdentityCard({
@@ -27,6 +28,7 @@ export function ProfileIdentityCard({
   profileEffect,
   bannerUrl,
   visuals,
+  communityStyles,
 }: ProfileIdentityCardProps) {
   const theme = profileTheme ?? legacyProfileBanner;
   const themeVisual = visuals?.profileBanner;
@@ -35,9 +37,13 @@ export function ProfileIdentityCard({
 
   return (
     <Card
-      className={`product-profile-hero product-profile-identity-card${className ? ` ${className}` : ""}`}
+      className={`product-profile-hero product-profile-identity-card cosmetic-root${className ? ` ${className}` : ""}`}
       data-profile-theme={theme ?? "default"}
+      data-community-cosmetic={communityStyles?.map((style) => style.id).join(" ") || undefined}
     >
+      {communityStyles?.map((communityStyle) => (
+        <style key={communityStyle.id}>{communityStyle.css}</style>
+      ))}
       <div
         className={`product-profile-theme-layer${cosmeticVisualClass(themeVisual)}`}
         style={cosmeticVisualStyle(themeVisual)}
@@ -57,7 +63,7 @@ export function ProfileIdentityCard({
           aria-hidden="true"
         />
       ) : null}
-      <div className="product-profile-card-surface">{children}</div>
+      <div className="product-profile-card-surface profile-card">{children}</div>
     </Card>
   );
 }

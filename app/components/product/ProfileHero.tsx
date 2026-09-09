@@ -179,8 +179,9 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
       profileEffect={profile.cosmetics?.profileEffect}
       bannerUrl={profile.bannerUrl}
       visuals={profile.cosmetics?.visuals}
+      communityStyles={profile.cosmetics?.communityStyles}
     >
-      <div className="product-profile-content">
+      <div className="product-profile-content profile-header">
         <div className="product-profile-identity">
           <div className="product-profile-name">
             <span className="product-eyebrow">

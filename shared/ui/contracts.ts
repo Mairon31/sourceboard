@@ -226,6 +226,12 @@ export interface StoreItemView {
   previewLabel: string;
   packSize?: number;
   adminUnlocked?: boolean;
+  community?: {
+    cosmeticId: string;
+    creatorUsername: string;
+    creatorDisplayName: string;
+    css: string;
+  };
   preview: {
     config: {
       namespace?: string;

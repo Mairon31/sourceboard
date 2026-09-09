@@ -16,6 +16,7 @@ export default [
   route("friends", "routes/friends.tsx"),
   route("notifications", "routes/notifications.tsx"),
   route("store", "routes/store.tsx"),
+  route("store/create", "routes/store-create.tsx"),
   route("settings", "routes/settings.tsx"),
   route("docs", "routes/docs.tsx"),
   route("docs/:slug", "routes/docs-article.tsx"),

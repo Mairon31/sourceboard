@@ -24,6 +24,7 @@ export {
 
 export interface EquippedCosmetics extends CoreEquippedCosmetics {
   visuals?: CosmeticIdentityVisuals;
+  communityStyles?: Array<{ id: string; css: string }>;
 }
 
 const MAX_SOCIAL_USERS = 100;
@@ -168,12 +169,23 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       .bind(userId)
       .all<{ type: string; configJson: string }>();
     const visuals: CosmeticIdentityVisuals = {};
+    const communityStyles: Array<{ id: string; css: string }> = [];
     for (const row of result.results) {
       let config: unknown;
       try {
         config = JSON.parse(row.configJson) as unknown;
       } catch {
         continue;
+      }
+      const record =
+        config && typeof config === "object" && !Array.isArray(config)
+          ? (config as Record<string, unknown>)
+          : {};
+      if (
+        typeof record.communityCosmeticId === "string" &&
+        typeof record.communityCss === "string"
+      ) {
+        communityStyles.push({ id: record.communityCosmeticId, css: record.communityCss });
       }
       const visual = extractCosmeticVisualDefinition(config);
       if (!visual) continue;
@@ -184,6 +196,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       if (row.type === "NAME_EFFECT") visuals.nameEffect = visual;
     }
     if (Object.keys(visuals).length) cosmetics.visuals = visuals;
+    if (communityStyles.length) cosmetics.communityStyles = communityStyles;
     return cosmetics;
   }
 

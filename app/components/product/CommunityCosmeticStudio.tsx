@@ -3,120 +3,104 @@ import {
   AVATAR_FRAME_PRESETS,
   NAME_EFFECT_PRESETS,
   NAME_FONT_FAMILIES,
-  PROFILE_BANNER_PRESETS,
   PROFILE_EFFECT_PRESETS,
+  PROFILE_THEME_PRESETS,
 } from "../../../shared/store/cosmetics";
+import { sanitizeCommunityCosmeticCss } from "../../../shared/store/community-css";
 import {
   COSMETIC_VISUAL_NAMESPACE,
-  type CosmeticVisualAnimation,
   type CosmeticVisualDefinition,
 } from "../../../shared/store/custom-cosmetics";
 import { readCsrfToken } from "../../data/csrf";
 import { Button, Card, Input, Textarea } from "../ui";
-import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
+import { cosmeticVisualStyle } from "./cosmetic-visual";
+import "./community-cosmetics.css";
 
 type CosmeticType =
   "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_EFFECT" | "NAME_FONT";
-
+type CommunityState = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
 type Submission = {
   id: string;
   type: CosmeticType;
   name: string;
   description: string;
-  lifecycleState: string;
-  isEnabled: number | boolean;
-  reviewState: "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+  pricePoints: number;
+  configJson: string;
+  communityState: CommunityState;
+  moderationState: "CLEAR" | "HIDDEN" | "REMOVED";
   reviewNote: string | null;
   createdAt: number;
-  reviewedAt: number | null;
 };
 
 const TYPE_LABELS: Record<CosmeticType, string> = {
-  AVATAR_FRAME: "Avatar frame",
-  PROFILE_BANNER: "Profile banner",
-  PROFILE_EFFECT: "Profile effect",
-  NAME_EFFECT: "Name effect",
-  NAME_FONT: "Name font",
+  AVATAR_FRAME: "Avatar Frame",
+  PROFILE_BANNER: "Profile Theme",
+  PROFILE_EFFECT: "Profile Effect",
+  NAME_EFFECT: "Name Effect",
+  NAME_FONT: "Font",
 };
-
-const ANIMATIONS: CosmeticVisualAnimation[] = ["none", "pulse", "shimmer", "float", "spin"];
 
 function optionsForType(type: CosmeticType): readonly string[] {
   if (type === "AVATAR_FRAME") return AVATAR_FRAME_PRESETS;
-  if (type === "PROFILE_BANNER") return PROFILE_BANNER_PRESETS;
+  if (type === "PROFILE_BANNER") return PROFILE_THEME_PRESETS;
   if (type === "PROFILE_EFFECT") return PROFILE_EFFECT_PRESETS;
   if (type === "NAME_EFFECT") return NAME_EFFECT_PRESETS;
   return NAME_FONT_FAMILIES;
 }
-
 function defaultBase(type: CosmeticType): string {
-  if (type === "AVATAR_FRAME") return "nebula";
-  if (type === "PROFILE_BANNER") return "nebula";
   if (type === "PROFILE_EFFECT") return "none";
   if (type === "NAME_EFFECT") return "red";
-  return "InterVariable";
+  if (type === "NAME_FONT") return "InterVariable";
+  return "nebula";
 }
-
 function errorMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== "object") return fallback;
-  const error = (payload as { error?: unknown }).error;
-  if (!error || typeof error !== "object") return fallback;
-  const message = (error as { message?: unknown }).message;
-  return typeof message === "string" && message ? message : fallback;
+  const error = (payload as { error?: { message?: unknown } }).error;
+  return typeof error?.message === "string" ? error.message : fallback;
 }
 
 export function CommunityCosmeticStudio() {
-  const [type, setType] = useState<CosmeticType>("AVATAR_FRAME");
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [type, setType] = useState<CosmeticType>("PROFILE_BANNER");
   const [base, setBase] = useState("nebula");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [foregroundColor, setForegroundColor] = useState("#dbeafe");
+  const [pricePoints, setPricePoints] = useState(0);
   const [backgroundColor, setBackgroundColor] = useState("#172033");
   const [borderColor, setBorderColor] = useState("#7c8cff");
   const [glowColor, setGlowColor] = useState("#647dff");
-  const [borderWidth, setBorderWidth] = useState(2);
-  const [borderRadius, setBorderRadius] = useState(18);
-  const [glowSize, setGlowSize] = useState(16);
-  const [opacity, setOpacity] = useState(1);
-  const [fontWeight, setFontWeight] = useState(750);
-  const [letterSpacing, setLetterSpacing] = useState(0);
-  const [animation, setAnimation] = useState<CosmeticVisualAnimation>("none");
-  const [animationDurationMs, setAnimationDurationMs] = useState(2400);
+  const [customCss, setCustomCss] = useState(
+    `.cosmetic-root .profile-card {\n  border-radius: 20px;\n}\n`,
+  );
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"draft" | "submit" | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
   const visual = useMemo<CosmeticVisualDefinition>(
     () => ({
-      foregroundColor,
       backgroundColor,
       borderColor,
       glowColor,
-      borderWidth,
-      borderRadius,
-      glowSize,
-      opacity,
-      fontWeight,
-      letterSpacing,
-      animation,
-      animationDurationMs,
+      borderWidth: 2,
+      borderRadius: 20,
+      glowSize: 16,
+      opacity: 1,
+      animation: "none",
     }),
-    [
-      animation,
-      animationDurationMs,
-      backgroundColor,
-      borderColor,
-      borderRadius,
-      borderWidth,
-      fontWeight,
-      foregroundColor,
-      glowColor,
-      glowSize,
-      letterSpacing,
-      opacity,
-    ],
+    [backgroundColor, borderColor, glowColor],
   );
+
+  const cssPreview = useMemo(() => {
+    try {
+      return {
+        css: sanitizeCommunityCosmeticCss(customCss, "preview").scopedCss,
+        error: null as string | null,
+      };
+    } catch (cause) {
+      return { css: "", error: cause instanceof Error ? cause.message : "Custom CSS is invalid." };
+    }
+  }, [customCss]);
 
   async function loadSubmissions() {
     try {
@@ -130,45 +114,93 @@ export function CommunityCosmeticStudio() {
       setLoading(false);
     }
   }
-
   useEffect(() => {
     void loadSubmissions();
   }, []);
 
-  function changeType(nextType: CosmeticType) {
-    setType(nextType);
-    setBase(defaultBase(nextType));
+  function changeType(next: CosmeticType) {
+    setType(next);
+    setBase(defaultBase(next));
   }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setStatus(null);
+  function editSubmission(submission: Submission) {
+    let config: Record<string, unknown> = {};
     try {
-      const config: Record<string, unknown> = {
-        namespace: COSMETIC_VISUAL_NAMESPACE,
-        visual,
-        ...(type === "NAME_FONT" ? { family: base } : { preset: base }),
-      };
-      const response = await fetch("/api/cosmetics/submissions", {
-        method: "POST",
+      config = JSON.parse(submission.configJson) as Record<string, unknown>;
+    } catch {
+      /* keep defaults */
+    }
+    const storedVisual = config.visual as CosmeticVisualDefinition | undefined;
+    setDraftId(submission.id);
+    setType(submission.type);
+    setBase(
+      String(
+        submission.type === "NAME_FONT"
+          ? (config.family ?? "InterVariable")
+          : (config.preset ?? defaultBase(submission.type)),
+      ),
+    );
+    setName(submission.name);
+    setDescription(submission.description);
+    setPricePoints(Number(submission.pricePoints ?? 0));
+    if (storedVisual?.backgroundColor) setBackgroundColor(storedVisual.backgroundColor);
+    if (storedVisual?.borderColor) setBorderColor(storedVisual.borderColor);
+    if (storedVisual?.glowColor) setGlowColor(storedVisual.glowColor);
+    setCustomCss(typeof config.communityCssSource === "string" ? config.communityCssSource : "");
+    setStatus(`Editing ${submission.name}.`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function persist(submitForReview: boolean) {
+    if (!name.trim() || !description.trim() || cssPreview.error || busy) return;
+    setBusy(submitForReview ? "submit" : "draft");
+    setStatus(null);
+    const config: Record<string, unknown> = {
+      namespace: COSMETIC_VISUAL_NAMESPACE,
+      visual,
+      customCss,
+      ...(type === "NAME_FONT" ? { family: base } : { preset: base }),
+    };
+    const endpoint = draftId
+      ? `/api/cosmetics/submissions/${encodeURIComponent(draftId)}`
+      : "/api/cosmetics/submissions";
+    try {
+      const response = await fetch(endpoint, {
+        method: draftId ? "PATCH" : "POST",
         headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({ type, name: name.trim(), description: description.trim(), config }),
+        body: JSON.stringify({
+          type,
+          name: name.trim(),
+          description: description.trim(),
+          pricePoints,
+          config,
+          submitForReview,
+        }),
       });
-      const payload = await response.json().catch(() => null);
+      const payload = (await response.json().catch(() => null)) as {
+        submission?: { id?: string; communityState?: CommunityState };
+        error?: { message?: string };
+      } | null;
       if (!response.ok) {
-        setStatus(errorMessage(payload, "This preset could not be submitted."));
+        setStatus(errorMessage(payload, "This community cosmetic could not be saved."));
         return;
       }
-      setName("");
-      setDescription("");
-      setStatus("Preset submitted as Draft / Pending review.");
+      const nextId = payload?.submission?.id ?? draftId;
+      setDraftId(submitForReview ? null : (nextId ?? null));
+      setStatus(
+        submitForReview
+          ? "Submitted for review. It will not appear publicly until staff approval."
+          : "Draft saved.",
+      );
+      if (submitForReview) {
+        setName("");
+        setDescription("");
+      }
       await loadSubmissions();
     } catch {
-      setStatus("This preset could not be submitted. Check your connection and try again.");
+      setStatus("This community cosmetic could not be saved. Check your connection and try again.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -176,17 +208,16 @@ export function CommunityCosmeticStudio() {
     <section className="product-community-studio" aria-labelledby="community-cosmetic-heading">
       <div className="product-store-section__header">
         <div>
-          <span className="product-eyebrow">Community Studio</span>
-          <h2 id="community-cosmetic-heading">Design a safe cosmetic preset</h2>
+          <span className="product-eyebrow">Cosmetic Builder</span>
+          <h2 id="community-cosmetic-heading">Build inside the SourceBoard sandbox</h2>
           <p>
-            Build inside SourceBoard's restricted visual system. Submissions start disabled as Draft
-            / Pending review and cannot publish themselves.
+            Choose a base preset, tune safe visual properties, then optionally add CSS scoped to the
+            profile cosmetic root.
           </p>
         </div>
       </div>
-
       <div className="product-community-studio__layout">
-        <form className="product-community-studio__form" onSubmit={(event) => void submit(event)}>
+        <div className="product-community-studio__form">
           <label className="product-field-native">
             <span>Cosmetic type</span>
             <select
@@ -211,7 +242,7 @@ export function CommunityCosmeticStudio() {
             </select>
           </label>
           <Input
-            label="Preset name"
+            label="Cosmetic name"
             value={name}
             minLength={2}
             maxLength={120}
@@ -227,16 +258,15 @@ export function CommunityCosmeticStudio() {
             required
             onChange={(event) => setDescription(event.target.value)}
           />
-
+          <Input
+            label="Price in points (0 = free)"
+            type="number"
+            min={0}
+            max={5000}
+            value={pricePoints}
+            onChange={(event) => setPricePoints(Number(event.target.value))}
+          />
           <div className="product-community-studio__visual-grid">
-            <label>
-              <span>Foreground</span>
-              <input
-                type="color"
-                value={foregroundColor}
-                onChange={(event) => setForegroundColor(event.target.value)}
-              />
-            </label>
             <label>
               <span>Background</span>
               <input
@@ -262,142 +292,92 @@ export function CommunityCosmeticStudio() {
               />
             </label>
           </div>
-
-          <div className="product-community-studio__range-grid">
-            <label>
-              <span>Border width · {borderWidth}px</span>
-              <input
-                type="range"
-                min="0"
-                max="8"
-                step="1"
-                value={borderWidth}
-                onChange={(event) => setBorderWidth(Number(event.target.value))}
-              />
-            </label>
-            <label>
-              <span>Radius · {borderRadius}px</span>
-              <input
-                type="range"
-                min="0"
-                max="64"
-                step="1"
-                value={borderRadius}
-                onChange={(event) => setBorderRadius(Number(event.target.value))}
-              />
-            </label>
-            <label>
-              <span>Glow · {glowSize}px</span>
-              <input
-                type="range"
-                min="0"
-                max="48"
-                step="1"
-                value={glowSize}
-                onChange={(event) => setGlowSize(Number(event.target.value))}
-              />
-            </label>
-            <label>
-              <span>Opacity · {opacity.toFixed(2)}</span>
-              <input
-                type="range"
-                min="0.2"
-                max="1"
-                step="0.05"
-                value={opacity}
-                onChange={(event) => setOpacity(Number(event.target.value))}
-              />
-            </label>
-            <label>
-              <span>Weight · {fontWeight}</span>
-              <input
-                type="range"
-                min="300"
-                max="900"
-                step="50"
-                value={fontWeight}
-                onChange={(event) => setFontWeight(Number(event.target.value))}
-              />
-            </label>
-            <label>
-              <span>Tracking · {letterSpacing}px</span>
-              <input
-                type="range"
-                min="-1"
-                max="6"
-                step="0.25"
-                value={letterSpacing}
-                onChange={(event) => setLetterSpacing(Number(event.target.value))}
-              />
-            </label>
-          </div>
-
-          <div className="product-community-studio__motion-row">
-            <label className="product-field-native">
-              <span>Animation</span>
-              <select
-                value={animation}
-                onChange={(event) => setAnimation(event.target.value as CosmeticVisualAnimation)}
-              >
-                {ANIMATIONS.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="product-field-native">
-              <span>Duration</span>
-              <select
-                value={animationDurationMs}
-                onChange={(event) => setAnimationDurationMs(Number(event.target.value))}
-              >
-                <option value={1200}>1.2s</option>
-                <option value={2400}>2.4s</option>
-                <option value={4000}>4s</option>
-                <option value={8000}>8s</option>
-              </select>
-            </label>
-          </div>
-
+          <Textarea
+            label="Custom CSS"
+            value={customCss}
+            maxLength={12 * 1024}
+            rows={10}
+            onChange={(event) => setCustomCss(event.target.value)}
+          />
+          <small>
+            Allowed roots: .cosmetic-root, .profile-card, .profile-header, .profile-avatar-area and
+            .profile-name-area. External URLs, arbitrary selectors, fixed positioning and extreme
+            effects are rejected server-side.
+          </small>
+          {cssPreview.error ? (
+            <p className="product-community-studio__css-error" role="alert">
+              {cssPreview.error}
+            </p>
+          ) : null}
           <div className="product-community-studio__actions">
-            <Button type="submit" loading={busy} disabled={!name.trim() || !description.trim()}>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={busy === "draft"}
+              disabled={!name.trim() || !description.trim() || Boolean(cssPreview.error)}
+              onClick={() => void persist(false)}
+            >
+              Save draft
+            </Button>
+            <Button
+              type="button"
+              loading={busy === "submit"}
+              disabled={!name.trim() || !description.trim() || Boolean(cssPreview.error)}
+              onClick={() => void persist(true)}
+            >
               Submit for review
             </Button>
-            <small>
-              External URLs, arbitrary selectors, scripts, imports and raw CSS are never accepted.
-            </small>
           </div>
           {status ? <p role="status">{status}</p> : null}
-        </form>
+        </div>
 
         <div className="product-community-studio__side">
           <div
-            className={`product-community-studio__preview${cosmeticVisualClass(visual)}`}
-            style={cosmeticVisualStyle(visual)}
+            className="product-community-live-preview cosmetic-root"
+            data-community-cosmetic="preview"
           >
-            <span>{TYPE_LABELS[type]}</span>
-            <strong>{name.trim() || "Community preset"}</strong>
-            <small>{base.replaceAll("-", " ")}</small>
+            {cssPreview.css ? <style>{cssPreview.css}</style> : null}
+            <div className="profile-card" style={cosmeticVisualStyle(visual)}>
+              <div className="profile-header">
+                <div className="profile-avatar-area" aria-hidden="true">
+                  SB
+                </div>
+                <div className="profile-name-area">
+                  <strong>{name.trim() || "Community cosmetic"}</strong>
+                  <span>@creator</span>
+                </div>
+              </div>
+              <p>
+                {description.trim() ||
+                  "Your public profile preview uses the same sandbox slots that will be available after publication."}
+              </p>
+              <small>
+                {TYPE_LABELS[type]} · {base.replaceAll("-", " ")}
+              </small>
+            </div>
           </div>
           <Card className="product-community-studio__submissions">
             <div>
               <strong>Your submissions</strong>
               <span>{loading ? "Loading…" : `${submissions.length} total`}</span>
             </div>
-            {!loading && submissions.length === 0 ? (
-              <p>No community presets submitted yet.</p>
-            ) : null}
-            {submissions.slice(0, 6).map((submission) => (
+            {!loading && submissions.length === 0 ? <p>No community cosmetics yet.</p> : null}
+            {submissions.slice(0, 8).map((submission) => (
               <div className="product-community-studio__submission" key={submission.id}>
                 <div>
                   <strong>{submission.name}</strong>
                   <span>{TYPE_LABELS[submission.type]}</span>
                 </div>
-                <span data-state={submission.reviewState}>
-                  {submission.reviewState.replaceAll("_", " ")}
+                <span data-state={submission.communityState}>
+                  {submission.communityState.replaceAll("_", " ")}
                 </span>
                 {submission.reviewNote ? <small>{submission.reviewNote}</small> : null}
+                {submission.communityState === "DRAFT" ||
+                submission.communityState === "REJECTED" ? (
+                  <button type="button" onClick={() => editSubmission(submission)}>
+                    Edit
+                  </button>
+                ) : null}
               </div>
             ))}
           </Card>

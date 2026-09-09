@@ -50,7 +50,7 @@ export function CosmeticIdentity({
       style={cosmeticVisualStyle(visuals?.profileEffect)}
     >
       <span
-        className={`cosmetic-identity__avatar-shell${decorativeFrame ? " product-avatar-frame--decorative" : ""}${cosmeticVisualClass(visuals?.avatarFrame)}`}
+        className={`cosmetic-identity__avatar-shell profile-avatar-area${decorativeFrame ? " product-avatar-frame--decorative" : ""}${cosmeticVisualClass(visuals?.avatarFrame)}`}
         style={cosmeticVisualStyle(visuals?.avatarFrame)}
         data-avatar-frame={avatarFrame}
       >
@@ -62,7 +62,7 @@ export function CosmeticIdentity({
         />
       </span>
       <NameTag
-        className={`cosmetic-identity__name${nameEffect ? ` sb-name-effect--${nameEffect}` : ""}${cosmeticVisualClass(nameVisual)}`}
+        className={`cosmetic-identity__name profile-name-area${nameEffect ? ` sb-name-effect--${nameEffect}` : ""}${cosmeticVisualClass(nameVisual)}`}
         style={nameStyle}
       >
         {displayName}
