@@ -73,6 +73,13 @@ describe("community plan phase D", () => {
     expect(service).toContain("creatorDisplayName");
   });
 
+  it("uses compare-and-set writes so stale concurrent moderation decisions cannot overwrite a newer state", () => {
+    const api = read("../../worker/store/community-api.ts");
+    expect(api).toContain("AND community_state = ? AND moderation_state = ?");
+    expect(api).toContain("transitionResult");
+    expect(api).toContain("STALE_COMMUNITY_TRANSITION");
+  });
+
   it("shows Community after Stickers and attributes public cards by username", () => {
     const store = read("../../app/routes/store.tsx");
     const card = read("../../app/components/product/StoreItemCard.tsx");
