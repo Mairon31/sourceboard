@@ -6,7 +6,7 @@ on:
       - feature/sourceboard-product-overhaul
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   profile-social:
@@ -19,7 +19,24 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Apply contract cleanup
+        if: "${{ github.event.head_commit.message == 'chore(profile): apply social contract cleanup' }}"
+        run: python .github/scripts/apply-profile-social-contract.py
+      - name: Format changed files
+        if: "${{ github.event.head_commit.message == 'chore(profile): apply social contract cleanup' }}"
+        run: npx prettier --write app/components/product/ProfileHero.tsx tests/unit/profile-friends-workspace.test.ts
+      - name: Lint changed files
+        if: "${{ github.event.head_commit.message == 'chore(profile): apply social contract cleanup' }}"
+        run: npx eslint app/components/product/ProfileHero.tsx tests/unit/profile-friends-workspace.test.ts
       - name: Run profile and social unit tests
         run: npm test -- tests/unit/profile-friends-workspace.test.ts tests/unit/post-policy.test.ts
       - name: Typecheck
         run: npm run typecheck
+      - name: Commit implementation
+        if: "${{ github.event.head_commit.message == 'chore(profile): apply social contract cleanup' && success() }}"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/components/product/ProfileHero.tsx tests/unit/profile-friends-workspace.test.ts
+          git commit -m "fix(profile): align social workspace contract"
+          git push origin HEAD:feature/sourceboard-product-overhaul
