@@ -24,19 +24,36 @@ export async function loader({ params, request, context }: LoaderArgs) {
     withOptionalServerSession(
       request,
       context,
-      (unavailable) => ({ profile: null, activityPosts: [], unavailable }),
+      (unavailable) => ({
+        profile: null,
+        activityPosts: [],
+        acceptedSourcePosts: [],
+        unavailable,
+      }),
       async (runtime, userId) => {
         const profileStore = createD1ProfileStore(runtime.db);
         const profile = await createProfileService({
           store: profileStore,
           reputation: createReputationReader(runtime.db),
         }).getPublicProfile(params.username ?? "", userId);
-        if (!profile) return { profile: null, activityPosts: [], unavailable: false };
+        if (!profile) {
+          return {
+            profile: null,
+            activityPosts: [],
+            acceptedSourcePosts: [],
+            unavailable: false,
+          };
+        }
         const activity = await createPostService({
           store: createD1PostStore(runtime.db),
           profileStore,
         }).listProfileActivity({ authorId: profile.id, viewerId: userId, limit: 24 });
-        return { profile, activityPosts: activity.posts, unavailable: false };
+        return {
+          profile,
+          activityPosts: activity.posts,
+          acceptedSourcePosts: activity.acceptedSources,
+          unavailable: false,
+        };
       },
     ),
     loadAdminAccess(request, context),
@@ -161,7 +178,8 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
 }
 
 export default function ProfileRoute() {
-  const { profile, activityPosts, unavailable, canAccessAdmin } = useLoaderData<LoaderData>();
+  const { profile, activityPosts, acceptedSourcePosts, unavailable, canAccessAdmin } =
+    useLoaderData<LoaderData>();
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const [editingProfile, setEditingProfile] = useState(false);
   const isOwnProfile = Boolean(profile && rootData?.session?.user.id === profile.id);
@@ -179,7 +197,7 @@ export default function ProfileRoute() {
             <ContributionHistory profile={profile} />
             {isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null}
           </div>
-          <ProfileActivity posts={activityPosts} />
+          <ProfileActivity posts={activityPosts} acceptedSources={acceptedSourcePosts} />
         </>
       ) : null}
     </ProductShell>

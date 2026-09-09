@@ -1,13 +1,18 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { PostSummary } from "../../../shared/ui/contracts";
 import { PostCard } from "./PostCard";
 
 type ActivityMode = "posts" | "sources";
 
-export function ProfileActivity({ posts }: { posts: PostSummary[] }) {
+export function ProfileActivity({
+  posts,
+  acceptedSources,
+}: {
+  posts: PostSummary[];
+  acceptedSources: PostSummary[];
+}) {
   const [mode, setMode] = useState<ActivityMode>("posts");
-  const accepted = useMemo(() => posts.filter((post) => Boolean(post.acceptedSource)), [posts]);
-  const visible = mode === "sources" ? accepted : posts;
+  const visible = mode === "sources" ? acceptedSources : posts;
 
   return (
     <section className="product-profile-activity" aria-labelledby="profile-activity-heading">
@@ -19,7 +24,7 @@ export function ProfileActivity({ posts }: { posts: PostSummary[] }) {
           </h2>
           <p>
             {mode === "sources"
-              ? "Requests where this contributor has an Accepted Source recorded."
+              ? "Requests where this contributor's comment was accepted as the source."
               : "Recent source requests visible to you."}
           </p>
         </div>
@@ -38,7 +43,7 @@ export function ProfileActivity({ posts }: { posts: PostSummary[] }) {
             aria-pressed={mode === "sources"}
             onClick={() => setMode("sources")}
           >
-            Accepted <span>{accepted.length}</span>
+            Accepted <span>{acceptedSources.length}</span>
           </button>
         </nav>
       </header>
@@ -54,7 +59,7 @@ export function ProfileActivity({ posts }: { posts: PostSummary[] }) {
           <strong>{mode === "sources" ? "No Accepted Sources yet" : "No visible posts yet"}</strong>
           <p>
             {mode === "sources"
-              ? "Accepted source resolutions will appear here when available."
+              ? "Accepted source contributions will appear here when available."
               : "Public source requests and posts visible to you will appear here."}
           </p>
         </div>

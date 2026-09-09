@@ -75,7 +75,12 @@ function dependencies() {
   const getBlock = vi.fn(async () => false);
   const listFeed = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
   const listByAuthor = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
-  const listAcceptedByContributor = vi.fn(async () => ({ posts: [], nextCursor: null }));
+  const listAcceptedByContributor = vi.fn(
+    async (): Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }> => ({
+      posts: [],
+      nextCursor: null,
+    }),
+  );
   const getPost = vi.fn(async () => post());
   const profileStore = {
     getProfileByUserId: vi.fn(async () => ({
@@ -290,7 +295,11 @@ describe("Phase 4 post policy", () => {
           authorId: "anonymous-owner",
           authorMode: "ANONYMOUS",
         }),
-        acceptedPost({ id: "accepted-unlisted", authorId: "request-owner", visibility: "UNLISTED" }),
+        acceptedPost({
+          id: "accepted-unlisted",
+          authorId: "request-owner",
+          visibility: "UNLISTED",
+        }),
         acceptedPost({ id: "accepted-private", authorId: "request-owner", visibility: "PRIVATE" }),
       ],
       nextCursor: null,

@@ -46,7 +46,7 @@ export interface PostService {
     authorId: string;
     viewerId: string | null;
     limit: number;
-  }): Promise<{ posts: PostSummary[] }>;
+  }): Promise<{ posts: PostSummary[]; acceptedSources: PostSummary[] }>;
   updatePost(
     postId: string,
     editorUserId: string,
@@ -171,6 +171,16 @@ async function canListPostOnProfile(
   if (!isOwner && (post.authorMode === "ANONYMOUS" || post.visibility === "UNLISTED")) {
     return false;
   }
+  return canViewPost(viewerId, post, dependencies);
+}
+
+async function canListAcceptedSourceOnProfile(
+  profileOwnerId: string,
+  viewerId: string | null,
+  post: PostRecord,
+  dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
+): Promise<boolean> {
+  if (viewerId !== profileOwnerId && post.visibility === "UNLISTED") return false;
   return canViewPost(viewerId, post, dependencies);
 }
 
@@ -380,7 +390,28 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         if (!result.nextCursor) break;
         decodedCursor = decodePostCursor(result.nextCursor);
       }
-      return { posts: visible };
+
+      let acceptedCursor = decodePostCursor(null);
+      const acceptedSources: PostSummary[] = [];
+      for (let page = 0; page < 5 && acceptedSources.length < safeLimit; page += 1) {
+        const result = await dependencies.store.listAcceptedByContributor({
+          contributorId: authorId,
+          cursor: acceptedCursor,
+          limit: safeLimit * 2,
+        });
+        for (const post of result.posts) {
+          if (
+            await canListAcceptedSourceOnProfile(authorId, viewerId, post.post, policyDependencies)
+          ) {
+            acceptedSources.push(await toPostSummary(post, viewerId, policyDependencies));
+            if (acceptedSources.length >= safeLimit) break;
+          }
+        }
+        if (!result.nextCursor) break;
+        acceptedCursor = decodePostCursor(result.nextCursor);
+      }
+
+      return { posts: visible, acceptedSources };
     },
 
     async updatePost(postId, editorUserId, input) {
