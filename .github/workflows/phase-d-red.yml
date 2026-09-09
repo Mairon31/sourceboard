@@ -1,12 +1,16 @@
-name: Community plan Phase D RED
+name: Community plan Phase D GREEN
 
 on:
   push:
     branches:
       - feature/community-cosmetics-profile-identity-emotes
 
+permissions:
+  contents: write
+
 jobs:
-  phase-d-red:
+  phase-d-green:
+    if: "${{ github.event.head_commit.message != 'feat(community): add safe builder and publishing lifecycle' }}"
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -17,4 +21,25 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm test -- tests/unit/community-plan-phase-d.test.ts
+      - name: Apply Phase D implementation
+        run: python .github/scripts/apply-phase-d-green.py
+      - name: Format changed files
+        run: npx prettier --write shared/store/community-css.ts migrations/0025_community_cosmetic_lifecycle.sql worker/store/community-api.ts app/routes/store-create.tsx app/components/product/CommunityCosmeticStudio.tsx app/components/product/community-cosmetics.css app/routes.ts app/routes/store.tsx shared/ui/contracts.ts worker/store/service.ts app/components/product/StoreItemCard.tsx worker/profile/types.ts worker/profile/store.ts app/components/product/ProfileIdentityCard.tsx app/components/product/ProfileHero.tsx app/components/product/ProfileEditor.tsx app/components/product/CosmeticIdentity.tsx app/components/admin/store/AdminCommunityCosmeticReviews.tsx tests/unit/community-plan-phase-d.test.ts
+      - name: Apply all local D1 migrations
+        run: npm run db:migrations:apply
+      - name: Run Phase D and regression tests
+        run: npm test -- tests/unit/community-plan-phase-d.test.ts tests/unit/community-plan-phase-c.test.ts tests/unit/community-plan-phase-b.test.ts tests/unit/community-plan-phase-a.test.ts tests/unit/global-cosmetic-visuals.test.ts tests/unit/store-service.test.ts tests/unit/store-effects.test.ts tests/unit/store-catalog-redesign.test.ts tests/unit/cosmetic-identity-navigation.test.ts tests/unit/profile-service.test.ts tests/unit/product-mobile-ux.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Verify diff
+        run: git diff --check
+      - name: Commit verified implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add shared/store/community-css.ts migrations/0025_community_cosmetic_lifecycle.sql worker/store/community-api.ts app/routes/store-create.tsx app/components/product/CommunityCosmeticStudio.tsx app/components/product/community-cosmetics.css app/routes.ts app/routes/store.tsx shared/ui/contracts.ts worker/store/service.ts app/components/product/StoreItemCard.tsx worker/profile/types.ts worker/profile/store.ts app/components/product/ProfileIdentityCard.tsx app/components/product/ProfileHero.tsx app/components/product/ProfileEditor.tsx app/components/product/CosmeticIdentity.tsx app/components/admin/store/AdminCommunityCosmeticReviews.tsx tests/unit/community-plan-phase-d.test.ts
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "feat(community): add safe builder and publishing lifecycle"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
