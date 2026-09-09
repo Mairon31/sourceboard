@@ -35,7 +35,7 @@ describe("SourceBoard iconography and motion preferences", () => {
   it("persists the animation toggle and applies it before hydration", () => {
     expect(settings).toContain("<AnimationControl />");
     expect(animationControl).toContain("ANIMATIONS_STORAGE_KEY");
-    expect(animationControl).toContain('dataset.animations = value');
+    expect(animationControl).toContain("dataset.animations = value");
     expect(theme).toContain('localStorage.getItem(animationsKey) === "off"');
     expect(theme).toContain('matchMedia("(prefers-reduced-motion: reduce)")');
     expect(theme).toContain("document.documentElement.dataset.animations = animations");
