@@ -174,9 +174,10 @@ function sanitizeDeclarations(
     let value = declaration.slice(colon + 1).trim();
     if (!value || /!important/i.test(value) || /[{}<>]/.test(value))
       invalid("That CSS declaration is not allowed.");
+    if (/\bvar\s*\(/i.test(value)) invalid("var() is not allowed in community cosmetics.");
     if (property.startsWith("--")) {
-      if (keyframe || !/^--(?:accent|cosmetic-[a-z0-9-]+)$/.test(property))
-        invalid("Only --accent and --cosmetic-* custom properties are allowed.");
+      if (keyframe || property !== "--accent")
+        invalid("Only --accent may be defined by community cosmetics.");
       output.push(`${property}: ${value}`);
       continue;
     }
