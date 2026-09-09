@@ -18,33 +18,39 @@ function executeLocalSql(sql: string) {
   );
 }
 
-function seedStaleMutationPost() {
+function seedStaleMutationPost(postId: string, mediaId: string, slug: string) {
   const now = Date.now();
   executeLocalSql(`
-    INSERT OR REPLACE INTO media_assets
+    INSERT INTO media_assets
       (id, owner_user_id, purpose, r2_key, content_type, byte_size, checksum_sha256,
        status, created_at, deleted_at, width, height)
     VALUES
-      ('e2e-stale-media', 'e2e-admin-user', 'POST_IMAGE', 'e2e/stale.webp', 'image/webp',
-       1, 'e2e-stale-checksum', 'ACTIVE', ${now}, NULL, 640, 480);
+      ('${mediaId}', 'e2e-admin-user', 'POST_IMAGE', 'e2e/${mediaId}.webp', 'image/webp',
+       1, '${mediaId}-checksum', 'ACTIVE', ${now}, NULL, 640, 480);
 
-    INSERT OR REPLACE INTO posts
+    INSERT INTO posts
       (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
        title, slug, description, image_asset_id, visibility, status, comment_count, like_count,
        accepted_comment_id, verified_source_id, created_at, updated_at, edit_deadline_at,
        archived_at, deleted_at, hidden_at, locked_at)
     VALUES
-      ('e2e-stale-post', 'e2e-admin-user', 'IDENTIFIED', 0, NULL, NULL,
-       'E2E stale title', 'e2e-stale-post', 'Stale mutation browser regression.',
-       'e2e-stale-media', 'PUBLIC', 'OPEN', 0, 0, NULL, NULL,
+      ('${postId}', 'e2e-admin-user', 'IDENTIFIED', 0, NULL, NULL,
+       'E2E stale title', '${slug}', 'Stale mutation browser regression.',
+       '${mediaId}', 'PUBLIC', 'OPEN', 0, 0, NULL, NULL,
        ${now}, ${now}, ${now + 7 * 24 * 60 * 60 * 1000}, NULL, NULL, NULL, NULL);
   `);
 }
 
-test("post mutations reconcile authoritative D1 state without a reload", async ({ page }) => {
+test("post mutations reconcile authoritative D1 state without a reload", async ({ page }, testInfo) => {
   await installAdminStoreFixture(page);
-  seedStaleMutationPost();
-  await page.goto("/posts/e2e-stale-post/e2e-stale-post");
+  const fixtureSuffix = `${Date.now()}-${testInfo.retry}`;
+  const postId = `e2e-stale-post-${fixtureSuffix}`;
+  const mediaId = `e2e-stale-media-${fixtureSuffix}`;
+  const slug = `e2e-stale-${fixtureSuffix}`;
+  seedStaleMutationPost(postId, mediaId, slug);
+
+  const response = await page.goto(`/posts/${postId}/${slug}`);
+  expect(response?.status()).toBeLessThan(400);
   await waitForUiReady(page);
 
   const title = page.locator(".product-post__title");
@@ -54,7 +60,7 @@ test("post mutations reconcile authoritative D1 state without a reload", async (
   executeLocalSql(`
     UPDATE posts
     SET title = 'Authoritative D1 title', updated_at = ${Date.now()}
-    WHERE id = 'e2e-stale-post';
+    WHERE id = '${postId}';
   `);
 
   await page.getByRole("button", { name: "More post actions" }).click();
@@ -69,7 +75,7 @@ test("post mutations reconcile authoritative D1 state without a reload", async (
     releaseReaction = resolveRelease;
   });
   let reactionRequests = 0;
-  await page.route("**/api/reactions/POST/e2e-stale-post", async (route) => {
+  await page.route(`**/api/reactions/POST/${postId}`, async (route) => {
     reactionRequests += 1;
     await reactionRelease;
     await route.fulfill({
