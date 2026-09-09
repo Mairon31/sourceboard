@@ -1,11 +1,10 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { createAuthService } from "../../worker/auth/service";
-import type { AuthStore } from "../../worker/auth/store";
-import type { AuthSessionRecord } from "../../worker/auth/types";
-import type { SourceBoardEnvironment } from "../../worker/types";
-import { readFileSync } from "node:fs";
+import type { ActiveSessionRecord, AuthStore } from "../../worker/auth/store";
+import type { SourceBoardEnvironment } from "../../worker/environment";
 
-function session(lastUsedAt: number): AuthSessionRecord {
+function session(lastUsedAt: number): ActiveSessionRecord {
   return {
     id: "session-1",
     userId: "user-1",
@@ -14,17 +13,11 @@ function session(lastUsedAt: number): AuthSessionRecord {
     createdAt: lastUsedAt - 1_000,
     lastUsedAt,
     revokedAt: null,
-    ipHash: null,
+    ipPrefixHash: null,
     userAgentHash: null,
-    user: {
-      id: "user-1",
-      username: "aurora",
-      email: "aurora@example.test",
-      emailVerifiedAt: lastUsedAt - 10_000,
-      status: "ACTIVE",
-      createdAt: lastUsedAt - 20_000,
-      updatedAt: lastUsedAt - 10_000,
-    },
+    username: "aurora",
+    emailVerifiedAt: lastUsedAt - 10_000,
+    status: "ACTIVE",
   };
 }
 
