@@ -49,23 +49,14 @@ describe("community plan phase D", () => {
     ).toThrow();
   });
 
-  it(
-    "rejects custom-property indirection that bypasses visual bounds or shadows product variables",
-    () => {
-      expect(() =>
-        sanitizeCommunityCosmeticCss(
-          ".cosmetic-root { --accent: 9999px; border-radius: var(--accent); }",
-          "demo",
-        ),
-      ).toThrow();
-      expect(() =>
-        sanitizeCommunityCosmeticCss(
-          ".cosmetic-root { --cosmetic-fx-size: 9999px; }",
-          "demo",
-        ),
-      ).toThrow();
-    },
-  );
+  it("rejects custom-property sandbox escapes", () => {
+    for (const css of [
+      ".cosmetic-root { --accent: 9999px; border-radius: var(--accent); }",
+      ".cosmetic-root { --cosmetic-fx-size: 9999px; }",
+    ]) {
+      expect(() => sanitizeCommunityCosmeticCss(css, "demo")).toThrow();
+    }
+  });
 
   it("provides a dedicated authenticated Store creator with live CSS preview", () => {
     const routes = read("../../app/routes.ts");
