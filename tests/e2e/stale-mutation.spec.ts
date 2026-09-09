@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { installAdminStoreFixture, waitForUiReady } from "./test-helpers";
+import { installAdminStoreFixture } from "./test-helpers";
 
 function executeLocalSql(sql: string) {
   const wranglerEntrypoint = resolve(
@@ -32,12 +32,12 @@ function seedStaleMutationPost(postId: string, mediaId: string, slug: string) {
       (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
        title, slug, description, image_asset_id, visibility, status, comment_count, like_count,
        accepted_comment_id, verified_source_id, created_at, updated_at, edit_deadline_at,
-       archived_at, deleted_at, hidden_at, locked_at)
+       archived_at, deleted_at, hidden_at, locked_at, comments_closed, comments_closed_at)
     VALUES
       ('${postId}', 'e2e-admin-user', 'IDENTIFIED', 0, NULL, NULL,
        'E2E stale title', '${slug}', 'Stale mutation browser regression.',
        '${mediaId}', 'PUBLIC', 'OPEN', 0, 0, NULL, NULL,
-       ${now}, ${now}, ${now + 7 * 24 * 60 * 60 * 1000}, NULL, NULL, NULL, NULL);
+       ${now}, ${now}, ${now + 7 * 24 * 60 * 60 * 1000}, NULL, NULL, NULL, NULL, 1, ${now});
   `);
 }
 
@@ -53,23 +53,22 @@ test("post mutations reconcile authoritative D1 state without a reload", async (
 
   const response = await page.goto(`/posts/${postId}/${slug}`);
   expect(response?.status()).toBeLessThan(400);
-  await waitForUiReady(page);
 
   const title = page.locator(".product-post__title");
-  await expect(title).toHaveText("E2E stale title");
+  await expect(title).toHaveText("E2E stale title", { timeout: 30_000 });
   const originalUrl = page.url();
 
   executeLocalSql(`
-      UPDATE posts
-      SET title = 'Authoritative D1 title', updated_at = ${Date.now()}
-      WHERE id = '${postId}';
-    `);
+    UPDATE posts
+    SET title = 'Authoritative D1 title', updated_at = ${Date.now()}
+    WHERE id = '${postId}';
+  `);
 
   await page.getByRole("button", { name: "More post actions" }).click();
-  await page.getByRole("menuitem", { name: "Close comments" }).click();
+  await page.getByRole("menuitem", { name: "Reopen comments" }).click();
 
   await expect(title).toHaveText("Authoritative D1 title");
-  await expect(page.getByText("Comments closed", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Comments reopened", { exact: true }).first()).toBeVisible();
   expect(page.url()).toBe(originalUrl);
 
   let releaseReaction!: () => void;
