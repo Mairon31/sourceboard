@@ -147,17 +147,11 @@ type LoaderData = Awaited<ReturnType<typeof loader>>;
 
 function partitionStoreItems(items: StoreItemView[], authenticated: boolean) {
   const featured = items.filter((item) => item.featured);
-  const used = new Set(featured.map((item) => item.id));
-  const owned = authenticated
-    ? items.filter((item) => (item.owned || item.equipped) && !used.has(item.id))
-    : [];
-  owned.forEach((item) => used.add(item.id));
+  const owned = authenticated ? items.filter((item) => item.owned || item.equipped) : [];
   const newest = [...items]
-    .filter((item) => !used.has(item.id))
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .slice(0, 8);
-  newest.forEach((item) => used.add(item.id));
-  const browse = items.filter((item) => !used.has(item.id));
+  const browse = items;
   return { featured, owned, newest, browse };
 }
 
@@ -360,8 +354,14 @@ export default function StoreRoute() {
           ))}
         </div>
 
-        {unavailable ? <PresentationNotice>Store data is temporarily unavailable.</PresentationNotice> : null}
-        {feedback ? <div className="product-store-feedback" role="status">{feedback}</div> : null}
+        {unavailable ? (
+          <PresentationNotice>Store data is temporarily unavailable.</PresentationNotice>
+        ) : null}
+        {feedback ? (
+          <div className="product-store-feedback" role="status">
+            {feedback}
+          </div>
+        ) : null}
 
         {sections.featured.length ? (
           <StoreSection
@@ -380,13 +380,13 @@ export default function StoreRoute() {
         ) : null}
 
         {sections.newest.length ? (
-          <StoreSection title="New" description="Recent additions you have not seen above.">
+          <StoreSection title="New" description="Recent additions in the selected category.">
             {renderItems(sections.newest)}
           </StoreSection>
         ) : null}
 
         {sections.browse.length ? (
-          <StoreSection title="Browse" description="More items in the selected category.">
+          <StoreSection title="All items" description="Full catalog in the selected category.">
             {renderItems(sections.browse)}
           </StoreSection>
         ) : null}
