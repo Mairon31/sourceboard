@@ -1,0 +1,21 @@
+name: Community plan Phase E2 RED
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+
+jobs:
+  phase-e2-red:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run Phase E2 contract
+        run: npm test -- tests/unit/community-plan-phase-e2.test.ts
