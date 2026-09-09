@@ -57,7 +57,9 @@ test("post mutations reconcile authoritative D1 state without a reload", async (
 
   const title = page.locator(".product-post__title");
   await expect(title).toHaveText("E2E stale title", { timeout: 30_000 });
-  await expect(page.locator('.sb-app-shell[data-ui-ready="true"]')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.sb-app-shell[data-ui-ready="true"]')).toBeVisible({
+    timeout: 30_000,
+  });
   const originalUrl = page.url();
 
   executeLocalSql(`
