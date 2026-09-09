@@ -53,6 +53,11 @@ const ALLOWED_SELECTORS = new Set<string>(COMMUNITY_CSS_ALLOWED_SELECTORS);
 const ALLOWED_PROPERTIES = new Set<string>(COMMUNITY_CSS_ALLOWED_PROPERTIES);
 
 const KEYFRAME_PROPERTIES = new Set(["opacity", "transform", "filter"]);
+const CSS_LENGTH_TOKEN =
+  /([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*(px|rem|em|ex|ch|cap|ic|lh|rlh|vw|vh|vi|vb|vmin|vmax|svw|svh|svi|svb|svmin|svmax|lvw|lvh|lvi|lvb|lvmin|lvmax|dvw|dvh|dvi|dvb|dvmin|dvmax|cm|mm|q|in|pt|pc)\b/gi;
+const CSS_NUMBER = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/;
+const CSS_PIXEL = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+))px$/i;
+const CSS_DEGREE = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+))deg$/i;
 
 function invalid(message: string): never {
   throw new Error(message);
@@ -102,27 +107,95 @@ function parseRules(source: string): RawRule[] {
   return rules;
 }
 
-function validatePixelMagnitude(value: string, maximum: number, property: string): void {
-  for (const match of value.matchAll(/(-?\d+(?:\.\d+)?)px\b/gi)) {
-    if (Math.abs(Number(match[1])) > maximum)
-      invalid(`${property} exceeds the allowed visual bounds.`);
+function validateBoundedLengths(
+  value: string,
+  maximum: number,
+  property: string,
+  options: { allowPercent?: boolean; inspectPercent?: boolean } = {},
+): void {
+  if (/\b(?:calc|min|max|clamp)\s*\(/i.test(value))
+    invalid(`${property} may not use CSS math functions.`);
+  for (const match of value.matchAll(CSS_LENGTH_TOKEN)) {
+    const amount = Math.abs(Number(match[1]));
+    const unit = match[2]?.toLowerCase();
+    if (unit !== "px") invalid(`${property} must use bounded pixel values.`);
+    if (amount > maximum) invalid(`${property} exceeds the allowed visual bounds.`);
+  }
+  if (options.inspectPercent) {
+    for (const match of value.matchAll(/([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*%/g)) {
+      if (!options.allowPercent) invalid(`${property} may not use percentages.`);
+      if (Math.abs(Number(match[1])) > 100)
+        invalid(`${property} percentage exceeds the allowed visual bounds.`);
+    }
   }
 }
 
+function splitTransformArgs(raw: string): string[] {
+  const normalized = raw.trim();
+  if (!normalized) return [];
+  return normalized.split(/\s*,\s*|\s+/).filter(Boolean);
+}
+
+function validatePixelTransformArg(raw: string): void {
+  const value = raw.trim();
+  if (/^[+-]?0(?:\.0+)?$/.test(value)) return;
+  const match = value.match(CSS_PIXEL);
+  if (!match || Math.abs(Number(match[1])) > 18)
+    invalid("Transform translation must stay within 18px.");
+}
+
+function validateScaleTransformArg(raw: string): void {
+  const value = raw.trim();
+  if (!CSS_NUMBER.test(value)) invalid("Transform scale must be a plain number.");
+  const scale = Number(value);
+  if (scale < 0.75 || scale > 1.25) invalid("Transform scale must stay between 0.75 and 1.25.");
+}
+
+function validateRotateTransformArg(raw: string): void {
+  const value = raw.trim();
+  if (/^[+-]?0(?:\.0+)?$/.test(value)) return;
+  const match = value.match(CSS_DEGREE);
+  if (!match || Math.abs(Number(match[1])) > 360)
+    invalid("Transform rotation must stay within 360deg.");
+}
+
 function validateTransform(value: string): void {
-  if (/matrix|perspective|translate3d|scale3d/i.test(value))
+  if (/\b(?:matrix|perspective|translate3d|scale3d|rotate3d)\s*\(/i.test(value))
     invalid("That transform is not allowed.");
-  validatePixelMagnitude(value, 18, "transform");
-  for (const match of value.matchAll(/scale(?:X|Y)?\(\s*(-?\d+(?:\.\d+)?)\s*\)/gi)) {
-    const scale = Number(match[1]);
-    if (scale < 0.75 || scale > 1.25) invalid("Transform scale must stay between 0.75 and 1.25.");
+  if (/\b(?:calc|min|max|clamp)\s*\(/i.test(value))
+    invalid("Transform math functions are not allowed.");
+
+  const pattern = /(translate(?:X|Y)?|scale(?:X|Y)?|rotate)\(([^()]*)\)/gi;
+  let cursor = 0;
+  let matched = false;
+  for (const match of value.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    if (value.slice(cursor, index).trim()) invalid("Only bounded translate, scale and rotate transforms are allowed.");
+    matched = true;
+    const name = (match[1] ?? "").toLowerCase();
+    const args = splitTransformArgs(match[2] ?? "");
+    if (name === "translate") {
+      if (args.length < 1 || args.length > 2)
+        invalid("translate() accepts one or two bounded pixel values.");
+      for (const arg of args) validatePixelTransformArg(arg);
+    } else if (name === "translatex" || name === "translatey") {
+      if (args.length !== 1) invalid(`${name}() accepts one bounded pixel value.`);
+      validatePixelTransformArg(args[0] ?? "");
+    } else if (name === "scale") {
+      if (args.length < 1 || args.length > 2)
+        invalid("scale() accepts one or two bounded numeric values.");
+      for (const arg of args) validateScaleTransformArg(arg);
+    } else if (name === "scalex" || name === "scaley") {
+      if (args.length !== 1) invalid(`${name}() accepts one bounded numeric value.`);
+      validateScaleTransformArg(args[0] ?? "");
+    } else {
+      if (args.length !== 1) invalid("rotate() accepts one bounded angle.");
+      validateRotateTransformArg(args[0] ?? "");
+    }
+    cursor = index + match[0].length;
   }
-  if (
-    !/^(?:\s*(?:translate(?:X|Y)?\([^)]*\)|scale(?:X|Y)?\([^)]*\)|rotate\([^)]*\))\s*)+$/i.test(
-      value,
-    )
-  )
-    invalid("Only translate, scale and rotate transforms are allowed.");
+  if (!matched || value.slice(cursor).trim())
+    invalid("Only bounded translate, scale and rotate transforms are allowed.");
 }
 
 function validateFilter(value: string): void {
@@ -188,10 +261,11 @@ function sanitizeDeclarations(
       if (!Number.isFinite(numeric) || numeric < 0.15 || numeric > 1)
         invalid("Opacity must stay between 0.15 and 1.");
     }
-    if (property === "border-width") validatePixelMagnitude(value, 8, property);
-    if (property === "border-radius") validatePixelMagnitude(value, 64, property);
-    if (property === "box-shadow") validatePixelMagnitude(value, 64, property);
-    if (property === "letter-spacing") validatePixelMagnitude(value, 8, property);
+    if (property === "border-width") validateBoundedLengths(value, 8, property, { inspectPercent: true });
+    if (property === "border-radius")
+      validateBoundedLengths(value, 64, property, { allowPercent: true, inspectPercent: true });
+    if (property === "box-shadow") validateBoundedLengths(value, 64, property);
+    if (property === "letter-spacing") validateBoundedLengths(value, 8, property, { inspectPercent: true });
     if (property === "transform") validateTransform(value);
     if (property === "filter") validateFilter(value);
     if (property === "overflow" && !/^(hidden|clip)$/i.test(value))
