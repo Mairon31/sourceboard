@@ -63,7 +63,7 @@ describe("admin control center", () => {
     expect(verificationsRoute).toContain("admin-verification-card__context");
     expect(verificationsRoute).toContain("admin-verification-card__decision");
     expect(verificationsRoute).toContain("Open post");
-    expect(verificationsRoute).toContain("Verify source");
+    expect(verificationsRoute).toContain("Verify accepted source");
     expect(verificationsRoute).toContain("readCsrfToken()");
     expect(verificationsRoute).toContain("revalidator.revalidate()");
   });
