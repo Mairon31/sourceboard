@@ -1,0 +1,29 @@
+name: Dependency audit diagnostic
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: npm audit evidence
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit.json
+          status=$?
+          node -e 'const fs=require("fs"); const a=JSON.parse(fs.readFileSync("npm-audit.json","utf8")); console.log("AUDIT_METADATA="+JSON.stringify(a.metadata)); console.log("AUDIT_VULNERABILITIES="+JSON.stringify(a.vulnerabilities));'
+          echo "npm audit exit code: $status"
+          exit 0
