@@ -1,0 +1,34 @@
+name: Task 1 format RED
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+
+permissions:
+  contents: write
+
+jobs:
+  format-red:
+    if: github.event.head_commit.message != 'chore(task1): format RED test'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prettier --write tests/unit/comment-richtext.test.ts
+      - name: Commit canonical formatting
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/unit/comment-richtext.test.ts
+          git commit -m "chore(task1): format RED test"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
