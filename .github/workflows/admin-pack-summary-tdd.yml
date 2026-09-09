@@ -1,0 +1,28 @@
+name: Admin pack summary TDD
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+    paths:
+      - tests/unit/store-catalog-redesign.test.ts
+      - worker/catalog/api.ts
+      - app/components/admin/store/types.ts
+      - app/components/admin/store/AdminEmotePackManager.tsx
+      - app/components/admin/store/admin-store.css
+      - .github/workflows/admin-pack-summary-tdd.yml
+
+permissions:
+  contents: read
+
+jobs:
+  admin-pack-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test -- tests/unit/store-catalog-redesign.test.ts
