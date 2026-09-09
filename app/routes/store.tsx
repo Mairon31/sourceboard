@@ -13,7 +13,7 @@ import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server
 const STORE_FILTERS = [
   { key: "ALL", label: "All" },
   { key: "AVATAR_FRAME", label: "Frame" },
-  { key: "PROFILE_BANNER", label: "Banner" },
+  { key: "PROFILE_BANNER", label: "Profile Themes" },
   { key: "PROFILE_EFFECT", label: "Profile effects" },
   { key: "NAME_EFFECT", label: "Name effects" },
   { key: "NAME_FONT", label: "Font" },

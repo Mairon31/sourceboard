@@ -42,6 +42,7 @@ export function CosmeticIdentity({
     ...(nameFont ? { fontFamily: nameFont } : {}),
     ...(cosmeticVisualStyle(nameVisual) ?? {}),
   };
+  const decorativeFrame = avatarFrame === "cat-ears" || avatarFrame === "wings";
 
   return (
     <div
@@ -49,8 +50,9 @@ export function CosmeticIdentity({
       style={cosmeticVisualStyle(visuals?.profileEffect)}
     >
       <span
-        className={`cosmetic-identity__avatar-shell${cosmeticVisualClass(visuals?.avatarFrame)}`}
+        className={`cosmetic-identity__avatar-shell${decorativeFrame ? " product-avatar-frame--decorative" : ""}${cosmeticVisualClass(visuals?.avatarFrame)}`}
         style={cosmeticVisualStyle(visuals?.avatarFrame)}
+        data-avatar-frame={avatarFrame}
       >
         <Avatar
           name={displayName}

@@ -1,5 +1,6 @@
 import type { StoreItemType, StoreItemView } from "../../../shared/ui/contracts";
 import { Avatar, Card } from "../ui";
+import "./profile-identity-card.css";
 
 function categoryLabel(type: StoreItemType): string {
   if (type === "AVATAR_FRAME") return "Frame";
@@ -7,7 +8,7 @@ function categoryLabel(type: StoreItemType): string {
   if (type === "NAME_EFFECT") return "Name effect";
   if (type === "NAME_FONT") return "Font";
   if (type === "EMOTE_PACK") return "Emote pack";
-  if (type === "PROFILE_BANNER") return "Banner";
+  if (type === "PROFILE_BANNER") return "Profile theme";
   return "Sticker pack";
 }
 
@@ -49,7 +50,21 @@ export function StorePreview({
       </div>
     );
   }
-  if (item.type === "PROFILE_EFFECT" || item.type === "PROFILE_BANNER") {
+  if (item.type === "PROFILE_BANNER") {
+    return (
+      <div
+        className="product-store-preview product-store-preview--theme product-profile-identity-card"
+        data-profile-theme={config.preset ?? "default"}
+      >
+        <div className="product-profile-theme-layer" aria-hidden="true" />
+        <div className="product-store-preview__profile">
+          <Avatar name={name} src={avatarUrl} size="xl" />
+          <strong>{name}</strong>
+        </div>
+      </div>
+    );
+  }
+  if (item.type === "PROFILE_EFFECT") {
     return (
       <div
         className={`product-store-preview product-store-preview--effect product-store-preview--${config.preset ?? "none"}`}
