@@ -10,10 +10,11 @@ on:
       - app/components/admin/store/types.ts
       - app/components/admin/store/AdminEmotePackManager.tsx
       - app/components/admin/store/admin-store.css
+      - .github/scripts/apply-admin-pack-summary-green.py
       - .github/workflows/admin-pack-summary-tdd.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   admin-pack-summary:
@@ -25,4 +26,23 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm test -- tests/unit/store-catalog-redesign.test.ts
+      - name: Apply implementation
+        run: python .github/scripts/apply-admin-pack-summary-green.py
+      - name: Format touched files
+        run: npx prettier --write worker/catalog/api.ts app/components/admin/store/types.ts app/components/admin/store/AdminEmotePackManager.tsx app/components/admin/store/admin-store.css
+      - name: Targeted Store catalog tests
+        run: npm test -- tests/unit/store-catalog-redesign.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Validate diff
+        run: git diff --check
+      - name: Commit implementation
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git add worker/catalog/api.ts app/components/admin/store/types.ts app/components/admin/store/AdminEmotePackManager.tsx app/components/admin/store/admin-store.css
+          git commit -m "feat(admin): enrich emote pack catalog summaries"
+          git push
