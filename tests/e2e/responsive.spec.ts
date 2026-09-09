@@ -92,13 +92,15 @@ test("authorized Admin Store collapses to mobile cards without document overflow
   expect(geometry.cardRight).toBeLessThanOrEqual(391);
 });
 
-test("friends workspace keeps requests and discovery contained on mobile", async ({ page }) => {
+test("friends workspace keeps incoming requests and discovery contained on mobile", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await installFriendsFixture(page);
   await page.goto("/friends");
   await waitForUiReady(page);
 
-  await page.getByRole("tab", { name: /Requests/ }).click();
+  await page.getByRole("tab", { name: "Incoming" }).click();
   await expect(page.getByText(`@${friendsFixture.incoming}`)).toBeVisible();
   await expect(page.getByRole("button", { name: "Accept" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Decline" })).toBeVisible();
