@@ -1,0 +1,25 @@
+name: Profile social verification
+
+on:
+  push:
+    branches:
+      - feature/sourceboard-product-overhaul
+
+permissions:
+  contents: read
+
+jobs:
+  profile-social:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run profile and social unit tests
+        run: npm test -- tests/unit/profile-friends-workspace.test.ts tests/unit/post-policy.test.ts
+      - name: Typecheck
+        run: npm run typecheck
