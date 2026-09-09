@@ -23,6 +23,23 @@ jobs:
       - run: npm ci
       - name: Apply entitlement mode implementation
         run: python .github/scripts/apply-task2-entitlement-modes.py
+      - name: Make Included state explicit
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("app/routes/store.tsx")
+          text = path.read_text()
+          old = '''        const state: StoreItemView["state"] = isGlobal
+            ? "INCLUDED"
+            : equippedItem'''
+          new = '''        const includedState = { state: "INCLUDED" as const }.state;
+          const state: StoreItemView["state"] = isGlobal
+            ? includedState
+            : equippedItem'''
+          if old not in text:
+              raise SystemExit("Included state target not found")
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Format changed files
         run: npx prettier --write worker/store/service.ts shared/ui/contracts.ts app/routes/store.tsx app/components/product/StoreItemCard.tsx app/dev-fixtures/data.ts tests/unit/store-service.test.ts tests/unit/store-entitlement-modes.test.ts
       - name: Run focused Store and entitlement tests
