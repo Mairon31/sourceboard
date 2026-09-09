@@ -224,8 +224,7 @@ function validateHueFilterArg(raw: string): void {
   const value = raw.trim();
   if (/^[+-]?0(?:\.0+)?$/.test(value)) return;
   const match = value.match(CSS_DEGREE);
-  if (!match || Math.abs(Number(match[1])) > 360)
-    invalid("Hue rotation must stay within 360deg.");
+  if (!match || Math.abs(Number(match[1])) > 360) invalid("Hue rotation must stay within 360deg.");
 }
 
 function validateFilter(value: string): void {
