@@ -44,14 +44,18 @@ The permanent responsive E2E coverage opens an authorized draft emote pack at 39
 
 ## Verification checkpoint
 
-Before this documentation commit, the focused repair gate passed:
+The final hardened candidate is commit `f37f31497c3363aad9633218deadf0c3c7b9b627`. Standard CI run #1018 (`34380802087`) passed the complete PR merge-ref gate with:
 
-- Prettier;
-- ESLint and strict TypeScript;
+- production dependency audit: zero vulnerabilities in the production dependency graph;
+- ESLint and Prettier;
+- strict TypeScript;
+- 73 unit test files / 300 tests;
+- production build;
+- Cloudflare Worker deploy dry-run;
 - Playwright Chromium installation;
-- the complete local D1 migration chain through the username-history migration;
-- the four E2E specs that previously contained the remaining failures: Admin Store, comments/emotes, responsive layouts and public Store filters.
+- all 27 local D1 migrations (`0000` through `0026`);
+- all 148 Playwright E2E tests.
 
-That focused run also verified the mobile Admin Store overflow regression after changing the mode selector to contained horizontal scrolling. The temporary repair workflow removed itself after the successful run; the repository retains only the standard `ci.yml` workflow.
+The earlier focused repair gate verified the mobile Admin Store overflow regression after changing the mode selector to contained horizontal scrolling. Temporary repair and dependency-diagnostic workflows were removed after successful verification; the repository retains only the standard `ci.yml` workflow.
 
-The standard CI workflow on the final normal commit is the authoritative merge gate for the production dependency audit, lint/format, typecheck, the full unit suite, production build, Worker dry-run, local migrations and the complete Playwright suite.
+The standard CI workflow is the authoritative merge gate for the production dependency audit, lint/format, typecheck, the full unit suite, production build, Worker dry-run, local migrations and the complete Playwright suite.
