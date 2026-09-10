@@ -88,8 +88,7 @@ test("inline Edit profile changes username through the existing username policy 
 }) => {
   await installProfileEditorFixture(page);
   const usernamePatch = page.waitForRequest(
-    (request) =>
-      request.url().endsWith("/api/profile/me/username") && request.method() === "PATCH",
+    (request) => request.url().endsWith("/api/profile/me/username") && request.method() === "PATCH",
   );
 
   await page.goto(`/u/${ORIGINAL_USERNAME}`);
