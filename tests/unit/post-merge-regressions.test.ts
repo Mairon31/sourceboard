@@ -8,7 +8,7 @@ const commentThread = read("../../app/components/product/CommentThread.tsx");
 const commentCss = read("../../app/components/product/comment-actions.css");
 const profileKlipyCss = read("../../app/components/product/profile-klipy.css");
 const profileCard = read("../../app/components/product/ProfileIdentityCard.tsx");
-const profileCardCss = read("../../app/components/product/profile-identity-card.css");
+const profileCoverCss = read("../../app/components/product/profile-cover.css");
 const commentService = read("../../worker/comments/service.ts");
 const sourceApi = read("../../worker/source/api.ts");
 const postCard = read("../../app/components/product/PostCard.tsx");
@@ -48,7 +48,8 @@ describe("post-merge production regressions", () => {
 
   it("renders the profile banner as a dedicated Discord-style top cover", () => {
     expect(profileCard).toContain("product-profile-cover");
-    expect(profileCardCss).toContain(".product-profile-cover");
-    expect(profileCardCss).toContain("min-height:");
+    expect(profileCard).toContain('import "./profile-cover.css"');
+    expect(profileCoverCss).toContain(".product-profile-identity-card .product-profile-cover");
+    expect(profileCoverCss).toContain("min-height: 136px");
   });
 });
