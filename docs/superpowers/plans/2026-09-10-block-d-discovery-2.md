@@ -30,13 +30,13 @@
 
 **Files:**
 - Modify: `worker/search/service.ts`
-- Modify: `shared/ui/contracts.ts` only if Block C has not already added `PostSummary.categorySlug`; otherwise consume the Block C field.
 - Create: `tests/unit/search-discovery-v2.test.ts`
 
 **Interfaces:**
+- Consumes: `PostCategorySlug` and `PostSummary.categorySlug` introduced by Block C.
 - `SearchInput` gains `categorySlug: PostCategorySlug | null`.
 - `SearchResult` gains `categorySlug: PostCategorySlug | null` so route helpers render canonical state.
-- `PostSearchRow` gains `category_slug`.
+- `PostSearchRow` gains `category_slug: PostCategorySlug`.
 
 - [ ] **Step 1: Write failing service/source tests**
 
@@ -51,7 +51,7 @@ const service = readFileSync(new URL("../../worker/search/service.ts", import.me
 it("filters posts by category as a structured predicate", () => {
   expect(service).toContain('conditions.push("p.category_slug = ?")');
   expect(service).toContain("categorySlug");
-  expect(service).not.toContain('ftsQuery +=');
+  expect(service).not.toContain("ftsQuery +=");
 });
 
 it("projects category slug with post results", () => {
@@ -65,6 +65,8 @@ it("projects category slug with post results", () => {
 ```bash
 npx vitest run tests/unit/search-discovery-v2.test.ts
 ```
+
+Expected: FAIL because search has no category input/projection yet.
 
 - [ ] **Step 3: Add typed category input/result state**
 
@@ -92,10 +94,12 @@ npx vitest run tests/unit/search-discovery-v2.test.ts
 npm run typecheck
 ```
 
+Expected: PASS.
+
 - [ ] **Step 7: Commit**
 
 ```bash
-git add worker/search/service.ts shared/ui/contracts.ts tests/unit/search-discovery-v2.test.ts
+git add worker/search/service.ts tests/unit/search-discovery-v2.test.ts
 git commit -m "feat(search): filter discovery by post category"
 ```
 
@@ -105,10 +109,11 @@ git commit -m "feat(search): filter discovery by post category"
 
 **Files:**
 - Create: `app/data/search-state.ts`
-- Test: `tests/unit/search-discovery-v2.test.ts`
+- Modify: `tests/unit/search-discovery-v2.test.ts`
 
 **Interfaces:**
 - Produces: `type SearchView = "list" | "gallery" | "grid"`.
+- Produces: `type SearchRouteState` with `query`, `kind`, `filter`, `categorySlug`, `view`, `hasExplicitView`.
 - Produces: `parseSearchState(url: URL): SearchRouteState`.
 - Produces: `buildSearchHref(current, patch): string`.
 - Produces: `readSearchViewPreference(storage): SearchView | null` and `writeSearchViewPreference(storage, view)`.
@@ -116,14 +121,23 @@ git commit -m "feat(search): filter discovery by post category"
 - [ ] **Step 1: Add failing URL-helper tests**
 
 ```ts
-const state = parseSearchState(new URL("https://srcboard.me/search?q=cat&kind=posts&filter=verified&category=anime&view=gallery"));
-expect(state).toMatchObject({ query: "cat", kind: "posts", filter: "verified", categorySlug: "anime", view: "gallery" });
+const state = parseSearchState(
+  new URL("https://srcboard.me/search?q=cat&kind=posts&filter=verified&category=anime&view=gallery"),
+);
+expect(state).toMatchObject({
+  query: "cat",
+  kind: "posts",
+  filter: "verified",
+  categorySlug: "anime",
+  view: "gallery",
+  hasExplicitView: true,
+});
 expect(buildSearchHref(state, { filter: "recent" })).toContain("q=cat");
 expect(buildSearchHref(state, { filter: "recent" })).toContain("category=anime");
 expect(buildSearchHref(state, { kind: "profiles" })).not.toContain("category=");
 ```
 
-Also verify invalid `view` becomes `list`, invalid category becomes null, and an explicit URL view has priority over local storage.
+Also verify invalid `view` becomes `list`, invalid category becomes null, and `hasExplicitView` is false when the URL omitted `view`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -131,13 +145,15 @@ Also verify invalid `view` becomes `list`, invalid category becomes null, and an
 npx vitest run tests/unit/search-discovery-v2.test.ts
 ```
 
+Expected: FAIL because the helper module does not exist.
+
 - [ ] **Step 3: Implement route-state parsing**
 
-Use existing kind/filter values and `parsePostCategorySlug`. Keep query text untouched except existing search-service sanitization. `view` parser accepts only list/gallery/grid.
+Use existing kind/filter values and `parsePostCategorySlug`. Keep query text untouched except existing search-service sanitization. `view` accepts only list/gallery/grid. Record whether the original URL contained a valid explicit `view` in `hasExplicitView`.
 
 - [ ] **Step 4: Implement a patch-based href builder**
 
-`buildSearchHref` starts from the complete state, applies a partial patch, then serializes only applicable values. If `kind === "profiles"`, omit category. Preserve `q`, filter and explicit view when applicable.
+`buildSearchHref` starts from the complete state, applies a partial patch, then serializes only applicable values. If `kind === "profiles"`, omit category. Preserve `q`, filter and view when applicable.
 
 - [ ] **Step 5: Implement local view preference**
 
@@ -162,16 +178,23 @@ git commit -m "feat(search): centralize discovery URL state"
 - Modify: `app/components/product/search-redesign.css`
 - Modify: `app/components/ui/icons.tsx`
 - Modify: `app/components/ui/index.ts`
-- Test: `tests/unit/search-discovery-v2.test.ts`
+- Modify: `tests/unit/search-discovery-v2.test.ts`
 - Create: `tests/e2e/discovery-v2.spec.ts`
 
 **Interfaces:**
-- `SearchDiscoveryControls` consumes parsed route state and emits React Router links/hrefs for kind, status, category and view.
-- Produces icons `ListIcon`, `GalleryIcon`, `GridIcon` if equivalents do not already exist.
+- `SearchDiscoveryControls` consumes `SearchRouteState` and emits React Router links/hrefs for kind, status, category and view.
+- Produces shared `ListIcon`, `GalleryIcon`, `GridIcon` exports from `app/components/ui`.
 
 - [ ] **Step 1: Write failing route-structure assertions**
 
-Assert `search.tsx` uses `parseSearchState`, passes `categorySlug` into the service, renders `SearchDiscoveryControls`, and no longer places multiple oversized card containers before results.
+Add to `tests/unit/search-discovery-v2.test.ts`:
+
+```ts
+expect(searchRoute).toContain("parseSearchState");
+expect(searchRoute).toContain("categorySlug: state.categorySlug");
+expect(searchRoute).toContain("<SearchDiscoveryControls");
+expect(searchRoute).toContain("<SearchPostResults");
+```
 
 - [ ] **Step 2: Verify RED**
 
@@ -191,26 +214,21 @@ Call search with `query`, `kind`, `filter`, `categorySlug`, cursors and limit. R
 
 - [ ] **Step 4: Reorganize Search page hierarchy**
 
-Render in this exact order: compact Discovery heading → prominent search field → kind controls → structured filter row → result count/active filters → results. The search form must preserve hidden `kind`, `filter`, `category`, and `view` inputs that are applicable.
+Render in this exact order: compact Discovery heading → prominent search field → kind controls → structured filter row → result count/active filters → results. The search form preserves hidden `kind`, `filter`, `category`, and `view` inputs that are applicable.
 
 - [ ] **Step 5: Implement compact structured controls**
 
-`SearchDiscoveryControls` renders:
+`SearchDiscoveryControls` renders All / Posts / Users / Accepted Sources, the existing status/order choices, a category picker using Block C catalog, and List / Gallery / Detailed Grid icon controls for post-bearing modes.
 
-- All / Posts / Users / Accepted Sources;
-- status/order control;
-- searchable/compact category control using Block C catalog;
-- List / Gallery / Detailed Grid icon controls for post-bearing modes.
+Switching to Users deliberately strips category and leaves profile rendering independent from view.
 
-Switching to Users deliberately strips category and does not change profile rendering based on view.
+- [ ] **Step 6: Add exact shared view icons**
 
-- [ ] **Step 6: Add accessible view icons**
-
-Add shared line icons following existing SVG conventions. Every icon-only control has `aria-label` and `aria-current` or `aria-pressed` state.
+Implement and export `ListIcon`, `GalleryIcon`, `GridIcon` following existing 24×24 line-SVG conventions. Every icon-only view control has `aria-label` and `aria-current` or `aria-pressed` state.
 
 - [ ] **Step 7: Add initial E2E URL-state coverage**
 
-In `tests/e2e/discovery-v2.spec.ts`, navigate with `q`, `kind`, `filter`, `category`, `view`; change one control and assert the other applicable parameters remain in the URL.
+In `tests/e2e/discovery-v2.spec.ts`, navigate with `q`, `kind`, `filter`, `category`, `view`; change one control and assert the other applicable parameters remain in the URL. Switch to Users and assert category is removed.
 
 - [ ] **Step 8: Run tests and commit**
 
@@ -218,7 +236,7 @@ In `tests/e2e/discovery-v2.spec.ts`, navigate with `q`, `kind`, `filter`, `categ
 npx vitest run tests/unit/search-discovery-v2.test.ts
 npx playwright test tests/e2e/discovery-v2.spec.ts
 npm run typecheck
-git add app/routes/search.tsx app/components/product/SearchDiscoveryControls.tsx app/components/product/search-redesign.css app/components/ui tests/unit/search-discovery-v2.test.ts tests/e2e/discovery-v2.spec.ts
+git add app/routes/search.tsx app/components/product/SearchDiscoveryControls.tsx app/components/product/search-redesign.css app/components/ui/icons.tsx app/components/ui/index.ts tests/unit/search-discovery-v2.test.ts tests/e2e/discovery-v2.spec.ts
 git commit -m "feat(search): redesign Discovery controls"
 ```
 
@@ -232,7 +250,7 @@ git commit -m "feat(search): redesign Discovery controls"
 - Create: `app/components/product/SearchPostGrid.tsx`
 - Modify: `app/routes/search.tsx`
 - Modify: `app/components/product/search-redesign.css`
-- Test: `tests/unit/search-discovery-v2.test.ts`
+- Modify: `tests/unit/search-discovery-v2.test.ts`
 - Modify: `tests/e2e/discovery-v2.spec.ts`
 
 **Interfaces:**
@@ -261,26 +279,21 @@ npx vitest run tests/unit/search-discovery-v2.test.ts
 
 - [ ] **Step 4: Implement Gallery cells**
 
-Each gallery item is one focusable post link containing a square image wrapper. Use `aspect-ratio: 1`, `object-fit: cover`, lazy loading and available intrinsic width/height. The overlay exposes:
-
-- category label from shared catalog;
-- status;
-- HeartIcon + like count;
-- MessageIcon + comment count.
+Each gallery item is one focusable post link containing a square image wrapper. Use `aspect-ratio: 1`, `object-fit: cover`, lazy loading and available intrinsic width/height. The overlay exposes category label from the shared catalog, status, `HeartIcon` + like count, and `MessageIcon` + comment count.
 
 Desktop: overlay becomes prominent on `:hover` and `:focus-visible`. Touch/narrow layouts retain a compact always-visible lower overlay so essential metadata never depends on hover.
 
 - [ ] **Step 5: Implement Detailed Grid cards**
 
-Each card shows image, author identity, truncated title, category badge, status, likes and comments. Keep cards aligned with CSS grid and avoid nesting the full PostCard component inside another card.
+Each card shows image, author identity, truncated title, category badge, status, likes and comments. Keep cards aligned with CSS grid and do not nest the full PostCard component inside another card.
 
 - [ ] **Step 6: Preserve accessible title/navigation**
 
-Gallery links use `aria-label` containing the post title and status; image alt remains the post's existing `imageAlt`. Category/status is text, not color-only.
+Gallery links use `aria-label` containing the post title and status; image alt remains the post's existing `imageAlt`. Category/status are text, not color-only.
 
 - [ ] **Step 7: Add E2E view assertions**
 
-Verify each view switches without changing result ids, Gallery cells are square by computed bounds within tolerance, focused Gallery cells expose category/status/metrics, and Detailed Grid visibly includes title/author.
+Verify each view switches without changing result ids, Gallery cells are square by computed bounds within 2 CSS px, focused Gallery cells expose category/status/metrics, and Detailed Grid visibly includes title/author.
 
 - [ ] **Step 8: Run tests and commit**
 
@@ -304,16 +317,16 @@ git commit -m "feat(search): add gallery and detailed grid views"
 - Modify: `tests/e2e/responsive.spec.ts`
 
 **Interfaces:**
-- Consumes `readSearchViewPreference`/`writeSearchViewPreference` from Task 2.
+- Consumes: `readSearchViewPreference`/`writeSearchViewPreference` from Task 2.
 - Explicit `view` URL remains canonical and wins over stored preference.
 
 - [ ] **Step 1: Add failing preference/accessibility E2E tests**
 
-Cover: choosing Gallery stores `sourceboard.search.view=gallery`; a new search without `view` may use that stored choice; `/search?...&view=list` overrides stored Gallery; keyboard focus reveals Gallery overlay; narrow viewport has two columns and no horizontal overflow.
+Cover: choosing Gallery stores `sourceboard.search.view=gallery`; a new search without `view` is replaced after hydration with `view=gallery`; `/search?...&view=list` overrides stored Gallery; keyboard focus reveals Gallery overlay; a 390px viewport has two Gallery columns and no horizontal overflow.
 
 - [ ] **Step 2: Implement client preference initialization without hydration mismatch**
 
-SSR renders the parsed/default URL view. After hydration, if the URL had no explicit `view`, read local storage and replace/navigate to a URL containing the stored valid view. Do not render server Gallery and client List for the same initial HTML.
+SSR renders the parsed/default URL view. After hydration, when `state.hasExplicitView` is false, read local storage and replace/navigate to a URL containing the stored valid view. Do not render server Gallery and client List for the same initial HTML.
 
 - [ ] **Step 3: Persist deliberate view changes**
 
@@ -321,17 +334,19 @@ On view-control activation, write the selected view to local storage before navi
 
 - [ ] **Step 4: Finish responsive CSS**
 
-Use two Gallery columns at narrow phone widths, progressively 3/4/5 as container width permits. Detailed Grid may use one column on very narrow screens and 2+ later. Controls wrap/collapse without causing document horizontal scrolling.
+At 390px, Gallery has two columns. Progressively allow 3/4/5 columns through container-responsive or media-query breakpoints as space permits. Detailed Grid uses one column on very narrow screens and 2+ later. Controls wrap/collapse without document horizontal scrolling.
 
 - [ ] **Step 5: Respect reduced motion**
 
-Any overlay animation/transition added by this block must be disabled or shortened under `@media (prefers-reduced-motion: reduce)`; no critical content depends on animation.
+Any overlay transition added by this block is removed or reduced under `@media (prefers-reduced-motion: reduce)`; no critical content depends on animation.
 
 - [ ] **Step 6: Run responsive and discovery E2E**
 
 ```bash
 npx playwright test tests/e2e/discovery-v2.spec.ts tests/e2e/responsive.spec.ts
 ```
+
+Expected: PASS.
 
 - [ ] **Step 7: Commit**
 
@@ -345,8 +360,8 @@ git commit -m "feat(search): persist and polish Discovery views"
 ### Task 6: Block D and expansion-wide regression gate
 
 **Files:**
-- Modify only when verification exposes a defect in Blocks A–D.
-- Modify: `docs/IMPLEMENTATION_PROGRESS.md` after, and only after, fresh verification succeeds.
+- Modify only files implicated by a failing Blocks A–D verification check.
+- Modify: `docs/IMPLEMENTATION_PROGRESS.md` after fresh verification succeeds.
 
 - [ ] **Step 1: Run focused Discovery tests**
 
@@ -389,4 +404,4 @@ git add docs/IMPLEMENTATION_PROGRESS.md shared app worker migrations tests
 git commit -m "docs: record profile comments categories and Discovery expansion"
 ```
 
-If only the documentation changed, include only that file in the commit.
+If only `docs/IMPLEMENTATION_PROGRESS.md` changed, stage only that file.
