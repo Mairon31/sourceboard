@@ -4,6 +4,7 @@ import type {
   NameFontFamily,
   ProfileBannerPreset,
   ProfileEffectPreset,
+  ProfileThemePreset,
 } from "../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
 
@@ -79,11 +80,14 @@ export interface NotificationRecord {
 
 export interface PublicCosmeticsDto {
   avatarFrame?: AvatarFramePreset;
+  profileTheme?: ProfileThemePreset;
+  /** @deprecated Persisted legacy alias. Prefer profileTheme. */
   profileBanner?: ProfileBannerPreset;
   profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
   visuals?: CosmeticIdentityVisuals;
+  communityStyles?: Array<{ id: string; css: string }>;
 }
 
 export interface PublicProfileDto {

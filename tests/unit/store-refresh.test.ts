@@ -20,8 +20,18 @@ const cosmetics = read("../../shared/store/cosmetics.ts");
 const migration = read("../../migrations/0014_store_refresh.sql");
 
 describe("refreshed store experience", () => {
-  it("filters the catalog by All, Frame, Profile effects, Name effects, Font and Emotes", () => {
-    for (const label of ["All", "Frame", "Profile effects", "Name effects", "Font", "Emotes"]) {
+  it("filters the catalog across the current Store families", () => {
+    for (const label of [
+      "All",
+      "Profile Themes",
+      "Avatar Frames",
+      "Profile Effects",
+      "Name Effects",
+      "Fonts",
+      "Emotes",
+      "Stickers",
+      "Community",
+    ]) {
       expect(storeRoute).toContain(`label: "${label}"`);
     }
     expect(storeRoute).toContain("activeFilter");

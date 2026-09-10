@@ -8,6 +8,7 @@ import { decodePostCursor } from "../posts/pagination";
 import { normalizeCommentBody } from "./richtext";
 import type { CommentEmoteAsset, CommentStore } from "./store";
 import type { CommentCursor, CommentWithAuthor } from "./types";
+import { normalizeEmoteShortcode } from "../../shared/richtext/markdown";
 import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
 
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -111,7 +112,8 @@ async function toView(
         ? undefined
         : record.comment.richtext.map((node) => {
             if (node.type !== "emote") return node;
-            const asset = emoteAssets.get(node.shortcode);
+            const lookupShortcode = normalizeEmoteShortcode(node.shortcode);
+            const asset = lookupShortcode ? emoteAssets.get(lookupShortcode) : undefined;
             return asset ? { ...node, id: asset.id, label: asset.label, url: asset.url } : node;
           }),
     createdAt: new Date(record.comment.createdAt).toISOString(),
@@ -206,7 +208,8 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           page.comments.flatMap((record) =>
             record.comment.richtext
               .filter((node) => node.type === "emote")
-              .map((node) => node.shortcode),
+              .map((node) => normalizeEmoteShortcode(node.shortcode))
+              .filter((shortcode): shortcode is string => Boolean(shortcode)),
           ),
         ),
       ];
@@ -269,7 +272,10 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
       });
       const createdEmoteAssets = dependencies.store.getEmoteAssets
         ? await dependencies.store.getEmoteAssets(
-            body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode),
+            body.richtext
+              .filter((node) => node.type === "emote")
+              .map((node) => normalizeEmoteShortcode(node.shortcode))
+              .filter((shortcode): shortcode is string => Boolean(shortcode)),
           )
         : new Map<string, CommentEmoteAsset>();
       return toView(
@@ -336,7 +342,10 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
       }
       const updatedEmoteAssets = dependencies.store.getEmoteAssets
         ? await dependencies.store.getEmoteAssets(
-            body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode),
+            body.richtext
+              .filter((node) => node.type === "emote")
+              .map((node) => normalizeEmoteShortcode(node.shortcode))
+              .filter((shortcode): shortcode is string => Boolean(shortcode)),
           )
         : new Map<string, CommentEmoteAsset>();
       return toView(

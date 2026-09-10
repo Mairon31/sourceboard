@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as markdown from "../../shared/richtext/markdown";
 import { parseMarkdown, renderMarkdownPreview } from "../../shared/richtext/markdown";
 import { normalizeCommentBody } from "../../worker/comments/richtext";
 
@@ -24,6 +25,27 @@ describe("safe Markdown rich text", () => {
     const input = "**Found** [the source](https://example.com)";
     expect(renderMarkdownPreview(input)).toEqual(parseMarkdown(input));
     expect(normalizeCommentBody({ markdown: input }).plaintext).toContain("Found the source");
+  });
+
+  it("serializes stored inline nodes back to editable Markdown without losing emotes or marks", () => {
+    const serializer = (
+      markdown as unknown as {
+        serializeInlineRichTextMarkdown?: (nodes: Array<Record<string, unknown>>) => string;
+      }
+    ).serializeInlineRichTextMarkdown;
+
+    expect(serializer).toBeTypeOf("function");
+    if (!serializer) throw new Error("serializeInlineRichTextMarkdown is required");
+    expect(
+      serializer([
+        { type: "text", text: "Hello " },
+        { type: "text", text: "bold", marks: { bold: true } },
+        { type: "text", text: " " },
+        { type: "emote", shortcode: ":wave:" },
+        { type: "text", text: " " },
+        { type: "link", label: "source", url: "https://example.com/" },
+      ]),
+    ).toBe("Hello **bold** :wave: [source](https://example.com/)");
   });
 
   it("rejects HTML, image Markdown and unsafe links", () => {

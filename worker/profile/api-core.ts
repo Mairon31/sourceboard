@@ -16,6 +16,7 @@ import { createMediaService } from "../media/r2";
 import { ProfileError, isProfileError } from "./errors";
 import { createD1ProfileStore, type ProfileStore, type SocialLinkInput } from "./store";
 import { createProfileService } from "./service";
+import { createD1UsernamePolicyStore, createUsernamePolicyService } from "./username-policy";
 import { createReputationReader } from "../reputation/read";
 import { enforceRateLimit } from "../security/rate-limit";
 
@@ -45,6 +46,8 @@ const preferencesSchema = z.object({
   notifyActivity: z.boolean().default(true),
   notifyFriendships: z.boolean().default(true),
 });
+
+const usernameChangeSchema = z.object({ username: z.string() });
 
 type InputRecord = Record<string, unknown>;
 
@@ -227,6 +230,34 @@ async function handlePreferencesPatch(ctx: ProfileRouteContext): Promise<Respons
   );
 }
 
+function usernamePolicyService(env: SourceBoardEnvironment) {
+  return createUsernamePolicyService({ store: createD1UsernamePolicyStore(requireDatabase(env)) });
+}
+
+async function handleUsernameGet(ctx: ProfileRouteContext): Promise<Response> {
+  const viewerId = await requireViewerId(ctx.request, ctx.env);
+  return jsonResponse(
+    { username: await usernamePolicyService(ctx.env).getStatus(viewerId) },
+    ctx.requestId,
+  );
+}
+
+async function handleUsernamePatch(ctx: ProfileRouteContext): Promise<Response> {
+  requireSameOriginAndCsrf(ctx.request);
+  const viewerId = await requireViewerId(ctx.request, ctx.env);
+  const input = parseSchema(usernameChangeSchema, await parseJson(ctx.request));
+  const security = getRequestSecurityContext(ctx.request);
+  return jsonResponse(
+    {
+      username: await usernamePolicyService(ctx.env).changeUsername(viewerId, input.username, {
+        requestId: ctx.requestId,
+        ipPrefixHash: security.ipPrefixHash,
+      }),
+    },
+    ctx.requestId,
+  );
+}
+
 async function handleNotificationMutation(ctx: ProfileRouteContext, url: URL): Promise<Response> {
   requireSameOriginAndCsrf(ctx.request);
   const viewerId = await requireViewerId(ctx.request, ctx.env);
@@ -390,6 +421,8 @@ async function handleProfileRequest(
     "GET /api/profile/me": () => handleProfileGet(ctx),
     "PATCH /api/profile/me": () => handleProfilePatch(ctx),
     "PATCH /api/profile/me/preferences": () => handlePreferencesPatch(ctx),
+    "GET /api/profile/me/username": () => handleUsernameGet(ctx),
+    "PATCH /api/profile/me/username": () => handleUsernamePatch(ctx),
     "GET /api/friends": async () => {
       const viewerId = await requireViewerId(request, env);
       return jsonResponse(await service.listFriends(viewerId), requestId);

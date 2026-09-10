@@ -50,6 +50,30 @@ export function formatEmoteMarkdown(value: string): string {
   return `:${normalized}:`;
 }
 
+function applyMarkdownMarks(value: string, marks?: RichTextMarks): string {
+  if (!marks) return value;
+  let result = value;
+  if (marks.code) result = `\`${result}\``;
+  if (marks.strike) result = `~~${result}~~`;
+  if (marks.italic) result = `*${result}*`;
+  if (marks.bold) result = `**${result}**`;
+  return result;
+}
+
+export function serializeInlineRichTextMarkdown(nodes: SafeInlineRichTextNode[]): string {
+  return nodes
+    .map((node) => {
+      const value =
+        node.type === "text"
+          ? node.text
+          : node.type === "emote"
+            ? formatEmoteMarkdown(node.shortcode)
+            : `[${node.label}](${node.url})`;
+      return applyMarkdownMarks(value, node.marks);
+    })
+    .join("");
+}
+
 function safeUrl(value: string): string {
   let url: URL;
   try {
@@ -144,7 +168,7 @@ function parseInline(source: string, depth: number): SafeInlineRichTextNode[] {
         const shortcode = normalizeEmoteShortcode(match[0]);
         if (shortcode) {
           flush();
-          nodes.push({ type: "emote", shortcode });
+          nodes.push({ type: "emote", shortcode: formatEmoteMarkdown(shortcode) });
           index += match[0].length - 1;
           continue;
         }

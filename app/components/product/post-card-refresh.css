@@ -113,3 +113,21 @@
     height: 18px;
   }
 }
+
+.product-post__actions .product-share-action {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.product-post__actions .product-share-action > button {
+  width: 100%;
+  min-height: 42px;
+  justify-content: center;
+}
+
+@media (max-width: 760px) {
+  .product-post__actions .product-share-action > button {
+    min-height: 38px;
+  }
+}

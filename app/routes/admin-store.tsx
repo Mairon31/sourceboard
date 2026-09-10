@@ -5,14 +5,26 @@ import { createD1AuthStore } from "../../worker/auth/store";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { AdminCommunityCosmeticReviews } from "../components/admin/store/AdminCommunityCosmeticReviews";
 import { AdminCosmeticCatalog } from "../components/admin/store/AdminCosmeticCatalog";
+import { AdminCosmeticGuide } from "../components/admin/store/AdminCosmeticGuide";
 import { AdminEmotePackManager } from "../components/admin/store/AdminEmotePackManager";
-import { AdminPackStoreCatalog } from "../components/admin/store/AdminPackStoreCatalog";
+import { AdminPresetLaboratory } from "../components/admin/store/AdminPresetLaboratory";
+import { AdminStickerPackManager } from "../components/admin/store/AdminStickerPackManager";
 import type { AdminStoreItem, EmotePackSummary } from "../components/admin/store/types";
 import { Button, Card, Input, Textarea } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
-type AdminStoreMode = "COSMETICS" | "COMMUNITY" | "EMOTE_PACKS" | "STICKER_PACKS";
+type AdminStoreMode =
+  "COSMETICS" | "EMOTE_PACKS" | "STICKER_PACKS" | "COMMUNITY" | "PRESETS" | "GUIDE";
+
+const ADMIN_STORE_TABS: Array<{ mode: AdminStoreMode; label: string }> = [
+  { mode: "COSMETICS", label: "Catalog" },
+  { mode: "EMOTE_PACKS", label: "Emote Packs" },
+  { mode: "STICKER_PACKS", label: "Sticker Packs" },
+  { mode: "COMMUNITY", label: "Community" },
+  { mode: "PRESETS", label: "Presets" },
+  { mode: "GUIDE", label: "Cosmetic Guide" },
+];
 
 export async function loader({ request, context }: ServerLoaderArgs) {
   return withOptionalServerSession(
@@ -24,6 +36,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
       storeManage: false,
       emoteManage: false,
       catalogModerate: false,
+      stickerManage: false,
     }),
     async (runtime, userId) => {
       if (!userId) {
@@ -33,16 +46,19 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           storeManage: false,
           emoteManage: false,
           catalogModerate: false,
+          stickerManage: false,
         };
       }
       const authorization = await createD1AuthStore(runtime.db).getAuthorization(userId);
       const storeManage = hasCapability(authorization, "store.manage");
       const emoteManage = hasCapability(authorization, "emote.manage");
+      const stickerManage = hasCapability(authorization, "sticker.manage");
       return {
-        authorized: storeManage || emoteManage,
+        authorized: storeManage || emoteManage || stickerManage,
         unavailable: false,
         storeManage,
         emoteManage,
+        stickerManage,
         catalogModerate: hasCapability(authorization, "catalog.moderate"),
       };
     },
@@ -60,7 +76,7 @@ function errorMessage(payload: unknown, fallback: string): string {
 export default function AdminStoreRoute() {
   const access = useLoaderData<typeof loader>();
   const [mode, setMode] = useState<AdminStoreMode>(
-    access.storeManage ? "COSMETICS" : "EMOTE_PACKS",
+    access.storeManage ? "COSMETICS" : access.emoteManage ? "EMOTE_PACKS" : "STICKER_PACKS",
   );
   const [items, setItems] = useState<AdminStoreItem[]>([]);
   const [packs, setPacks] = useState<EmotePackSummary[]>([]);
@@ -183,6 +199,11 @@ export default function AdminStoreRoute() {
   }
 
   const stickerPacks = items.filter((item) => item.type === "STICKER_PACK");
+  const visibleTabs = ADMIN_STORE_TABS.filter((tab) => {
+    if (tab.mode === "EMOTE_PACKS") return access.emoteManage;
+    if (tab.mode === "STICKER_PACKS") return access.stickerManage || access.storeManage;
+    return access.storeManage;
+  });
 
   return (
     <AdminShell>
@@ -225,48 +246,18 @@ export default function AdminStoreRoute() {
       </div>
 
       <div className="admin-store-mode-tabs" role="tablist" aria-label="Store catalog mode">
-        {access.storeManage ? (
-          <>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "COSMETICS"}
-              className={mode === "COSMETICS" ? "admin-store-mode-tab--active" : undefined}
-              onClick={() => setMode("COSMETICS")}
-            >
-              Cosmetics
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "COMMUNITY"}
-              className={mode === "COMMUNITY" ? "admin-store-mode-tab--active" : undefined}
-              onClick={() => setMode("COMMUNITY")}
-            >
-              Community review
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "STICKER_PACKS"}
-              className={mode === "STICKER_PACKS" ? "admin-store-mode-tab--active" : undefined}
-              onClick={() => setMode("STICKER_PACKS")}
-            >
-              Sticker packs
-            </button>
-          </>
-        ) : null}
-        {access.emoteManage ? (
+        {visibleTabs.map((tab) => (
           <button
+            key={tab.mode}
             type="button"
             role="tab"
-            aria-selected={mode === "EMOTE_PACKS"}
-            className={mode === "EMOTE_PACKS" ? "admin-store-mode-tab--active" : undefined}
-            onClick={() => setMode("EMOTE_PACKS")}
+            aria-selected={mode === tab.mode}
+            className={mode === tab.mode ? "admin-store-mode-tab--active" : undefined}
+            onClick={() => setMode(tab.mode)}
           >
-            Emote packs
+            {tab.label}
           </button>
-        ) : null}
+        ))}
       </div>
 
       {status ? (
@@ -288,7 +279,7 @@ export default function AdminStoreRoute() {
                   <select name="type" defaultValue="AVATAR_FRAME">
                     <option value="AVATAR_FRAME">Avatar frame</option>
                     <option value="PROFILE_EFFECT">Profile effect</option>
-                    <option value="PROFILE_BANNER">Profile banner</option>
+                    <option value="PROFILE_BANNER">Profile theme</option>
                     <option value="NAME_EFFECT">Name effect</option>
                     <option value="NAME_FONT">Name font</option>
                   </select>
@@ -324,15 +315,19 @@ export default function AdminStoreRoute() {
         <AdminCommunityCosmeticReviews onStatus={setStatus} onCatalogRefresh={loadStoreCatalog} />
       ) : null}
 
-      {!loading && mode === "STICKER_PACKS" && access.storeManage ? (
-        <AdminPackStoreCatalog
+      {!loading && mode === "PRESETS" && access.storeManage ? (
+        <AdminPresetLaboratory
           items={items}
-          type="STICKER_PACK"
-          title="Sticker packs"
-          description="Manage sticker pack pricing, publication, lifecycle and availability separately from cosmetics and emotes."
+          packs={packs}
           onRefresh={loadStoreCatalog}
           onStatus={setStatus}
         />
+      ) : null}
+
+      {!loading && mode === "GUIDE" && access.storeManage ? <AdminCosmeticGuide /> : null}
+
+      {!loading && mode === "STICKER_PACKS" && (access.stickerManage || access.storeManage) ? (
+        <AdminStickerPackManager onStatus={setStatus} />
       ) : null}
 
       {!loading && mode === "EMOTE_PACKS" && access.emoteManage ? (

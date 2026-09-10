@@ -1,3 +1,4 @@
+import { normalizeEmoteShortcode } from "../../shared/richtext/markdown";
 import { PostError } from "../posts/errors";
 import type { NormalizedCommentBody } from "../comments/richtext";
 import { isStoreAdmin, isStoreLifecycleSchemaError } from "./service";
@@ -86,6 +87,98 @@ export async function listEntitledEmotePacks(
   }
 }
 
+export interface EntitledStickerView {
+  id: string;
+  label: string;
+  url: string;
+  preview: string;
+  type: "STICKER";
+  provider: "sourceboard";
+  packId: string;
+  isAnimated: boolean;
+}
+
+export interface EntitledStickerPackView {
+  id: string;
+  label: string;
+  stickers: EntitledStickerView[];
+}
+
+interface EntitledStickerRow {
+  id: string;
+  label: string;
+  packId: string;
+  packLabel: string;
+  isAnimated: number;
+}
+
+function groupStickers(rows: EntitledStickerRow[]): EntitledStickerPackView[] {
+  const packs = new Map<string, EntitledStickerPackView>();
+  for (const row of rows) {
+    const pack = packs.get(row.packId) ?? { id: row.packId, label: row.packLabel, stickers: [] };
+    const url = `/api/media/catalog/sticker/${encodeURIComponent(row.id)}`;
+    pack.stickers.push({
+      id: row.id,
+      label: row.label,
+      url,
+      preview: url,
+      type: "STICKER",
+      provider: "sourceboard",
+      packId: row.packId,
+      isAnimated: Boolean(row.isAnimated),
+    });
+    packs.set(row.packId, pack);
+  }
+  return [...packs.values()];
+}
+
+export async function listEntitledStickerPacks(
+  db: D1Database,
+  userId: string,
+): Promise<EntitledStickerPackView[]> {
+  const adminUnlocked = await isStoreAdmin(db, userId);
+  try {
+    const rows = await db
+      .prepare(
+        `SELECT DISTINCT st.id, st.label, st.pack_id AS packId, p.label AS packLabel,
+                COALESCE(st.is_animated, 0) AS isAnimated
+         FROM sticker_catalog st
+         JOIN sticker_packs p ON p.id = st.pack_id
+         JOIN store_items s ON s.type = 'STICKER_PACK'
+           AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
+           AND json_extract(s.config_json, '$.packId') = st.pack_id
+         LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+         WHERE st.lifecycle_state = 'PUBLISHED' AND st.is_enabled = 1
+           AND st.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+           AND p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
+           AND p.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+           AND (p.is_global = 1 OR ? = 1 OR i.user_id IS NOT NULL)
+         ORDER BY p.label ASC, st.sort_order ASC, st.created_at ASC`,
+      )
+      .bind(userId, adminUnlocked ? 1 : 0)
+      .all<EntitledStickerRow>();
+    return groupStickers(rows.results);
+  } catch (error) {
+    if (!isStoreLifecycleSchemaError(error)) throw error;
+    const rows = await db
+      .prepare(
+        `SELECT DISTINCT st.id, st.label, st.pack_id AS packId, p.label AS packLabel,
+                COALESCE(st.is_animated, 0) AS isAnimated
+         FROM sticker_catalog st
+         JOIN sticker_packs p ON p.id = st.pack_id
+         JOIN store_items s ON s.type = 'STICKER_PACK' AND s.is_active = 1
+           AND json_extract(s.config_json, '$.packId') = st.pack_id
+         LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+         WHERE st.status = 'ACTIVE' AND p.status = 'ACTIVE'
+           AND (? = 1 OR i.user_id IS NOT NULL)
+         ORDER BY p.label ASC, st.sort_order ASC, st.created_at ASC`,
+      )
+      .bind(userId, adminUnlocked ? 1 : 0)
+      .all<EntitledStickerRow>();
+    return groupStickers(rows.results);
+  }
+}
+
 export function createEntitlementChecker(db: D1Database) {
   return async function assertEntitlements(
     userId: string,
@@ -93,7 +186,10 @@ export function createEntitlementChecker(db: D1Database) {
   ): Promise<void> {
     const shortcodes = [
       ...new Set(
-        body.richtext.filter((node) => node.type === "emote").map((node) => node.shortcode),
+        body.richtext
+          .filter((node) => node.type === "emote")
+          .map((node) => normalizeEmoteShortcode(node.shortcode))
+          .filter((shortcode): shortcode is string => Boolean(shortcode)),
       ),
     ];
     let adminUnlocked: boolean | null = null;
@@ -190,12 +286,19 @@ export function createEntitlementChecker(db: D1Database) {
       available = await db
         .prepare(
           `SELECT 1 FROM sticker_catalog s
-           WHERE (s.id = ? OR s.slug = ?) AND s.status = 'ACTIVE'
-             AND (s.pack_id IS NULL OR EXISTS (
-               SELECT 1 FROM user_inventory i JOIN store_items item ON item.id = i.store_item_id
-               WHERE i.user_id = ? AND item.type = 'STICKER_PACK'
-                 AND item.lifecycle_state = 'PUBLISHED' AND item.is_enabled = 1
-                 AND json_extract(item.config_json, '$.packId') = s.pack_id
+           LEFT JOIN sticker_packs p ON p.id = s.pack_id
+           WHERE (s.id = ? OR s.slug = ?)
+             AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
+             AND s.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+             AND (s.pack_id IS NULL OR (
+               p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
+               AND p.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+               AND (p.is_global = 1 OR EXISTS (
+                 SELECT 1 FROM user_inventory i JOIN store_items item ON item.id = i.store_item_id
+                 WHERE i.user_id = ? AND item.type = 'STICKER_PACK'
+                   AND item.lifecycle_state = 'PUBLISHED' AND item.is_enabled = 1
+                   AND json_extract(item.config_json, '$.packId') = s.pack_id
+               ))
              ))`,
         )
         .bind(body.attachment.id, body.attachment.id, userId)

@@ -1,17 +1,17 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { PublicProfileDto, Relationship } from "../../../worker/profile/types";
 import {
   canonicalSocialPlatform,
   SOCIAL_PLATFORM_CATALOG,
   socialHandleFromUrl,
 } from "../../../shared/profile/social-links";
-import { Badge, Card } from "../ui";
+import { Badge } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
+import { ProfileIdentityCard } from "./ProfileIdentityCard";
 import { ConfirmAction } from "./ConfirmAction";
 import { ShareAction } from "./ShareAction";
 import { SocialActionButton } from "./SocialActionButton";
 import { SocialIcon } from "./SocialIcon";
-import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 import { readCsrfToken } from "../../data/csrf";
 
 const relationshipLabel = {
@@ -26,21 +26,6 @@ interface ProfileHeroProps {
   profile: PublicProfileDto;
   isOwnProfile: boolean;
   editControl?: ReactNode;
-}
-
-function ProfileBanner({ profile }: { profile: PublicProfileDto }) {
-  const visual = profile.cosmetics?.visuals?.profileBanner;
-  const style: CSSProperties = {
-    ...(cosmeticVisualStyle(visual) ?? {}),
-    ...(profile.bannerUrl ? { backgroundImage: `url("${profile.bannerUrl}")` } : {}),
-  };
-  return (
-    <div
-      className={`product-profile-banner${profile.cosmetics?.profileBanner ? ` product-profile-banner--${profile.cosmetics.profileBanner}` : ""}${cosmeticVisualClass(visual)}`}
-      aria-label={`${profile.displayName} profile banner`}
-      style={style}
-    />
-  );
 }
 
 function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
@@ -188,9 +173,15 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
     setRelationship(profile.relationship);
   }, [profile.relationship]);
   return (
-    <Card className="product-profile-hero">
-      <ProfileBanner profile={profile} />
-      <div className="product-profile-content">
+    <ProfileIdentityCard
+      profileTheme={profile.cosmetics?.profileTheme}
+      legacyProfileBanner={profile.cosmetics?.profileBanner}
+      profileEffect={profile.cosmetics?.profileEffect}
+      bannerUrl={profile.bannerUrl}
+      visuals={profile.cosmetics?.visuals}
+      communityStyles={profile.cosmetics?.communityStyles}
+    >
+      <div className="product-profile-content profile-header">
         <div className="product-profile-identity">
           <div className="product-profile-name">
             <span className="product-eyebrow">
@@ -200,7 +191,6 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
               displayName={profile.displayName}
               avatarUrl={profile.avatarUrl}
               avatarFrame={profile.cosmetics?.avatarFrame}
-              profileEffect={profile.cosmetics?.profileEffect}
               nameFont={profile.cosmetics?.nameFont}
               nameEffect={profile.cosmetics?.nameEffect}
               visuals={profile.cosmetics?.visuals}
@@ -249,6 +239,6 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
 
         <ProfileSocialLinks profile={profile} />
       </div>
-    </Card>
+    </ProfileIdentityCard>
   );
 }

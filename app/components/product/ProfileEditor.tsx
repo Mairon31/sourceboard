@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRevalidator } from "react-router";
 import type { PublicProfileDto } from "../../../worker/profile/types";
 import {
@@ -12,8 +12,8 @@ import {
 import { Button, Card, Checkbox, Input, Textarea } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ProfileHero } from "./ProfileHero";
+import { ProfileIdentityCard } from "./ProfileIdentityCard";
 import { SocialIcon } from "./SocialIcon";
-import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 
 type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY";
 
@@ -361,35 +361,27 @@ export function ProfileEditor({
     );
   }
 
-  const bannerVisual = profile.cosmetics?.visuals?.profileBanner;
-  const bannerStyle: CSSProperties = {
-    ...(cosmeticVisualStyle(bannerVisual) ?? {}),
-    backgroundImage: bannerPreview
-      ? `url("${bannerPreview}")`
-      : profile.bannerUrl
-        ? `url("${profile.bannerUrl}")`
-        : undefined,
-  };
-
   return (
-    <Card className="product-profile-hero product-profile-editor-inline">
-      <div
-        className={`product-profile-banner${profile.cosmetics?.profileBanner ? ` product-profile-banner--${profile.cosmetics.profileBanner}` : ""}${cosmeticVisualClass(bannerVisual)}`}
-        style={bannerStyle}
-        aria-label="Profile banner preview"
-      >
-        <label className="product-profile-media-edit" title="Change banner">
-          <span>Change banner</span>
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            onChange={(event) => setBannerFile(event.target.files?.[0] ?? null)}
-          />
-        </label>
-      </div>
+    <ProfileIdentityCard
+      profileTheme={profile.cosmetics?.profileTheme}
+      legacyProfileBanner={profile.cosmetics?.profileBanner}
+      profileEffect={profile.cosmetics?.profileEffect}
+      bannerUrl={bannerPreview ?? profile.bannerUrl}
+      visuals={profile.cosmetics?.visuals}
+      communityStyles={profile.cosmetics?.communityStyles}
+      className="product-profile-editor-inline"
+    >
+      <label className="product-profile-theme-edit" title="Change profile background">
+        <span>Change background</span>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          onChange={(event) => setBannerFile(event.target.files?.[0] ?? null)}
+        />
+      </label>
 
       <form
-        className="product-profile-content product-profile-editor-inline__form"
+        className="product-profile-content product-profile-editor-inline__form profile-header"
         onSubmit={(event) => void saveProfile(event)}
       >
         <div className="product-profile-editor-inline__identity">
@@ -398,7 +390,6 @@ export function ProfileEditor({
               displayName={draft.displayName.trim() || profile.username}
               avatarUrl={avatarPreview ?? profile.avatarUrl}
               avatarFrame={profile.cosmetics?.avatarFrame}
-              profileEffect={profile.cosmetics?.profileEffect}
               nameFont={profile.cosmetics?.nameFont}
               nameEffect={profile.cosmetics?.nameEffect}
               visuals={profile.cosmetics?.visuals}
@@ -570,6 +561,6 @@ export function ProfileEditor({
           </div>
         ) : null}
       </form>
-    </Card>
+    </ProfileIdentityCard>
   );
 }

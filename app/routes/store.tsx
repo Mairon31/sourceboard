@@ -3,7 +3,6 @@ import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "r
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
-import { CommunityCosmeticStudio } from "../components/product/CommunityCosmeticStudio";
 import { ProductShell, PresentationNotice } from "../components/product/ProductShell";
 import { StoreItemCard } from "../components/product/StoreItemCard";
 import { StoreSection } from "../components/product/StoreSection";
@@ -12,16 +11,18 @@ import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server
 
 const STORE_FILTERS = [
   { key: "ALL", label: "All" },
-  { key: "AVATAR_FRAME", label: "Frame" },
-  { key: "PROFILE_BANNER", label: "Banner" },
-  { key: "PROFILE_EFFECT", label: "Profile effects" },
-  { key: "NAME_EFFECT", label: "Name effects" },
-  { key: "NAME_FONT", label: "Font" },
+  { key: "PROFILE_BANNER", label: "Profile Themes" },
+  { key: "AVATAR_FRAME", label: "Avatar Frames" },
+  { key: "PROFILE_EFFECT", label: "Profile Effects" },
+  { key: "NAME_EFFECT", label: "Name Effects" },
+  { key: "NAME_FONT", label: "Fonts" },
   { key: "EMOTE_PACK", label: "Emotes" },
   { key: "STICKER_PACK", label: "Stickers" },
+  { key: "COMMUNITY", label: "Community" },
 ] as const;
 
 type StoreFilter = (typeof STORE_FILTERS)[number]["key"];
+const INCLUDED_STORE_STATE = { state: "INCLUDED" as const }.state;
 const COSMETIC_TYPES = new Set<StoreItemType>([
   "AVATAR_FRAME",
   "PROFILE_BANNER",
@@ -103,14 +104,17 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           : [];
         const id = String(item.id);
         const equippedItem = equippedIds.has(id);
+        const isGlobal = Boolean(item.isGlobal);
         const ownedItem = adminUnlocked || ownedIds.has(id);
-        const state: StoreItemView["state"] = equippedItem
-          ? "EQUIPPED"
-          : ownedItem
-            ? "OWNED"
-            : points !== null && Number(item.pricePoints) > points
-              ? "INSUFFICIENT_POINTS"
-              : "AVAILABLE";
+        const state: StoreItemView["state"] = isGlobal
+          ? INCLUDED_STORE_STATE
+          : equippedItem
+            ? "EQUIPPED"
+            : ownedItem
+              ? "OWNED"
+              : points !== null && Number(item.pricePoints) > points
+                ? "INSUFFICIENT_POINTS"
+                : "AVAILABLE";
         return {
           id,
           name: String(item.name),
@@ -120,12 +124,14 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           price: Number(item.pricePoints),
           createdAt: new Date(Number(item.createdAt)).toISOString(),
           featured: Boolean(item.isFeatured),
+          isGlobal,
           owned: ownedItem,
           equipped: equippedItem,
           previewLabel: String(item.name),
           packSize: assets.length || undefined,
           adminUnlocked,
           preview: { config: parseConfig(item.configJson), media: assets },
+          community: item.community ?? undefined,
         } satisfies StoreItemView;
       });
       return {
@@ -181,7 +187,9 @@ export default function StoreRoute() {
   const visibleItems =
     activeFilter === "ALL"
       ? catalogItems
-      : catalogItems.filter((item) => item.type === activeFilter);
+      : activeFilter === "COMMUNITY"
+        ? catalogItems.filter((item) => Boolean(item.community))
+        : catalogItems.filter((item) => item.type === activeFilter);
   const sections = partitionStoreItems(visibleItems, authenticated);
 
   function markOwned(item: StoreItemView) {
@@ -192,7 +200,7 @@ export default function StoreRoute() {
           : candidate,
       ),
     );
-    if (!adminUnlocked && currentPoints !== null) {
+    if (!adminUnlocked && currentPoints !== null && item.price > 0) {
       setCurrentPoints((balance) =>
         balance === null ? balance : Math.max(0, balance - Math.max(0, item.price)),
       );
@@ -296,6 +304,7 @@ export default function StoreRoute() {
       navigate("/login");
       return;
     }
+    if (item.state === "INCLUDED") return;
     if (item.state === "EQUIPPED") {
       if (COSMETIC_TYPES.has(item.type)) void unequip(item);
       return;
@@ -333,6 +342,9 @@ export default function StoreRoute() {
             <h1>Make SourceBoard yours</h1>
             <p>Unlock profile frames, effects, fonts and community emote packs with points.</p>
           </div>
+          <a className="product-store-create-link" href="/store/create">
+            Create cosmetic
+          </a>
           <div className="product-store-wallet">
             <span>{adminUnlocked ? "Admin access" : "Balance"}</span>
             <strong>{adminUnlocked ? "Admin unlocked" : `${currentPoints ?? 0} pts`}</strong>
@@ -373,15 +385,15 @@ export default function StoreRoute() {
           </StoreSection>
         ) : null}
 
-        {sections.owned.length ? (
-          <StoreSection title="Owned" description="Your unlocked and currently equipped items.">
-            {renderItems(sections.owned)}
-          </StoreSection>
-        ) : null}
-
         {sections.newest.length ? (
           <StoreSection title="New" description="Recent additions in the selected category.">
             {renderItems(sections.newest)}
+          </StoreSection>
+        ) : null}
+
+        {sections.owned.length ? (
+          <StoreSection title="Owned" description="Your unlocked and currently equipped items.">
+            {renderItems(sections.owned)}
           </StoreSection>
         ) : null}
 
@@ -390,8 +402,6 @@ export default function StoreRoute() {
             {renderItems(sections.browse)}
           </StoreSection>
         ) : null}
-
-        {authenticated ? <CommunityCosmeticStudio /> : null}
       </div>
     </ProductShell>
   );

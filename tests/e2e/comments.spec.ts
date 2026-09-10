@@ -58,7 +58,7 @@ test("legacy Markdown plus emote renders without address or page errors", async 
 
   const emote = comment.locator("img.product-richtext__emote-image");
   await expect(emote).toHaveAttribute("src", "/api/media/catalog/emote/e2e-comment-media-emote");
-  await expect(emote).toHaveAttribute("title", "e2e_media_wave");
+  await expect(emote).toHaveAttribute("title", ":e2e_media_wave:");
 
   expect(mediaRequestFailures).toEqual([]);
   expect(pageErrors).toEqual([]);

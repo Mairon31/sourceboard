@@ -4,11 +4,13 @@ import {
   isNameFontFamily,
   isProfileBannerPreset,
   isProfileEffectPreset,
+  isProfileThemePreset,
   type AvatarFramePreset,
   type NameEffectPreset,
   type NameFontFamily,
   type ProfileBannerPreset,
   type ProfileEffectPreset,
+  type ProfileThemePreset,
 } from "../../shared/store/cosmetics";
 import type {
   FriendsListDto,
@@ -48,6 +50,8 @@ export interface SocialLinkInput {
 
 export interface EquippedCosmetics {
   avatarFrame?: AvatarFramePreset;
+  profileTheme?: ProfileThemePreset;
+  /** @deprecated Persisted legacy alias. Prefer profileTheme. */
   profileBanner?: ProfileBannerPreset;
   profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
@@ -372,8 +376,10 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       if (row.type === "AVATAR_FRAME" && isAvatarFramePreset(value.preset)) {
         cosmetics.avatarFrame = value.preset;
       }
-      if (row.type === "PROFILE_BANNER" && isProfileBannerPreset(value.preset)) {
-        cosmetics.profileBanner = value.preset;
+      if (row.type === "PROFILE_BANNER" && isProfileThemePreset(value.preset)) {
+        cosmetics.profileTheme = value.preset;
+        // Preserve the legacy alias for older callers while public UI migrates to Profile Theme.
+        if (isProfileBannerPreset(value.preset)) cosmetics.profileBanner = value.preset;
       }
       if (row.type === "PROFILE_EFFECT" && isProfileEffectPreset(value.preset)) {
         cosmetics.profileEffect = value.preset;

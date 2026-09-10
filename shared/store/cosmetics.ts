@@ -12,6 +12,12 @@ export const AVATAR_FRAME_PRESETS = [
   "sakura",
   "inferno",
   "crystal",
+  "holographic",
+  "fire",
+  "ice",
+  "electric",
+  "cat-ears",
+  "wings",
 ] as const;
 
 export type AvatarFramePreset = (typeof AVATAR_FRAME_PRESETS)[number];
@@ -36,7 +42,7 @@ export const PROFILE_EFFECT_PRESETS = [
 
 export type ProfileEffectPreset = (typeof PROFILE_EFFECT_PRESETS)[number];
 
-export const PROFILE_BANNER_PRESETS = [
+export const PROFILE_THEME_PRESETS = [
   "nebula",
   "aurora",
   "ember",
@@ -45,9 +51,17 @@ export const PROFILE_BANNER_PRESETS = [
   "prism-grid",
   "forest-ink",
   "silver-wave",
+  "cosmic-dusk",
+  "terminal-grid",
+  "sakura-night",
+  "golden-hour",
 ] as const;
 
-export type ProfileBannerPreset = (typeof PROFILE_BANNER_PRESETS)[number];
+export type ProfileThemePreset = (typeof PROFILE_THEME_PRESETS)[number];
+
+// Compatibility alias for persisted PROFILE_BANNER Store rows. New UI and DTOs use Profile Theme.
+export const PROFILE_BANNER_PRESETS = PROFILE_THEME_PRESETS;
+export type ProfileBannerPreset = ProfileThemePreset;
 
 export const NAME_EFFECT_PRESETS = [
   "red",
@@ -73,6 +87,14 @@ export type NameEffectPreset = (typeof NAME_EFFECT_PRESETS)[number];
 export const NAME_FONT_FAMILIES = [
   "InterVariable",
   "AtkinsonHyperlegible",
+  "Manrope",
+  "DM Sans",
+  "Urbanist",
+  "Anton",
+  "League Spartan",
+  "Fredoka",
+  "Playfair Display",
+  "Cormorant Garamond",
   "Georgia",
   "Trebuchet MS",
   "Courier New",
@@ -93,8 +115,12 @@ export function isProfileEffectPreset(value: unknown): value is ProfileEffectPre
   return PROFILE_EFFECT_PRESETS.includes(value as ProfileEffectPreset);
 }
 
+export function isProfileThemePreset(value: unknown): value is ProfileThemePreset {
+  return PROFILE_THEME_PRESETS.includes(value as ProfileThemePreset);
+}
+
 export function isProfileBannerPreset(value: unknown): value is ProfileBannerPreset {
-  return PROFILE_BANNER_PRESETS.includes(value as ProfileBannerPreset);
+  return isProfileThemePreset(value);
 }
 
 export function isNameEffectPreset(value: unknown): value is NameEffectPreset {

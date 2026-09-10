@@ -21,7 +21,7 @@ export type StoreItemType =
   | "EMOTE_PACK"
   | "STICKER_PACK";
 export type StoreItemState =
-  "AVAILABLE" | "OWNED" | "EQUIPPED" | "DISABLED" | "INSUFFICIENT_POINTS";
+  "AVAILABLE" | "INCLUDED" | "OWNED" | "EQUIPPED" | "DISABLED" | "INSUFFICIENT_POINTS";
 
 export interface UserSummary {
   id: string;
@@ -220,11 +220,18 @@ export interface StoreItemView {
   price: number;
   createdAt: string;
   featured: boolean;
+  isGlobal: boolean;
   owned: boolean;
   equipped: boolean;
   previewLabel: string;
   packSize?: number;
   adminUnlocked?: boolean;
+  community?: {
+    cosmeticId: string;
+    creatorUsername: string;
+    creatorDisplayName: string;
+    css: string;
+  };
   preview: {
     config: {
       namespace?: string;

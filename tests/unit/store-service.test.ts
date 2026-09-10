@@ -12,16 +12,18 @@ function createDb(changes = 1) {
       queries.push(query);
       const statement = {
         bind: vi.fn(() => statement),
-        first: vi.fn(async () =>
-          query.includes("FROM store_purchases WHERE")
-            ? {
-                id: "purchase",
-                storeItemId: "item",
-                pricePaid: 25,
-                idempotencyKey: "store:user:key",
-              }
-            : { points: 100 },
-        ),
+        first: vi.fn(async () => {
+          if (query.includes("price_points AS pricePoints"))
+            return { id: "item", pricePoints: 25, isGlobal: 0 };
+          if (query.includes("FROM store_purchases WHERE"))
+            return {
+              id: "purchase",
+              storeItemId: "item",
+              pricePaid: 25,
+              idempotencyKey: "store:user:key",
+            };
+          return { points: 100 };
+        }),
         all: vi.fn(async () => ({ results: [], success: true as const, meta: {} })),
         raw: vi.fn(async () => []),
         run: vi.fn(async () => ({ success: true as const, results: [], meta: { changes } })),

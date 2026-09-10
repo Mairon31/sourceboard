@@ -1,4 +1,5 @@
 import { createD1ProfileStore } from "../profile/store";
+import { ADMIN_AUDIT_SQL_PREDICATE } from "./audit-visibility";
 import type {
   AdminAuditFilters,
   AdminAuditRow,
@@ -41,7 +42,7 @@ function mapAudit(row: Record<string, unknown>): AdminAuditRow {
 
 export function createAdminReadService(db: D1Database): AdminReadService {
   async function audit(filters: AdminAuditFilters): Promise<AdminAuditRow[]> {
-    const predicates: string[] = [];
+    const predicates: string[] = filters.action ? [] : [ADMIN_AUDIT_SQL_PREDICATE];
     const binds: unknown[] = [];
 
     if (filters.actor) {

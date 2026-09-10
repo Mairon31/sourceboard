@@ -1,6 +1,7 @@
 import { createIdentifier } from "../auth/crypto";
 import { PublicHttpError } from "../http/error";
 import { ensureBuiltInStoreCatalog } from "./builtin-catalog";
+import { sanitizeCommunityCosmeticCss } from "../../shared/store/community-css";
 import {
   isAvatarFramePreset,
   isNameEffectPreset,
@@ -35,7 +36,18 @@ interface StorePreviewAsset {
   assetKey: string;
 }
 
-type StoreCatalogRow = StoreItemInput & { previewAssets: StorePreviewAsset[] };
+interface CommunityStoreMetadata {
+  cosmeticId: string;
+  creatorUsername: string;
+  creatorDisplayName: string;
+  css: string;
+}
+
+type StoreCatalogRow = StoreItemInput & {
+  previewAssets: StorePreviewAsset[];
+  isGlobal: boolean;
+  community: CommunityStoreMetadata | null;
+};
 
 export interface StoreItemInput {
   id: string;
@@ -110,6 +122,51 @@ async function listStoreCatalog(db: D1Database, now: number): Promise<StoreItemI
   }
 }
 
+type CommunityLookup = { isSubmission: boolean; metadata: CommunityStoreMetadata | null };
+
+async function communityStoreMetadata(
+  db: D1Database,
+  item: StoreItemInput,
+): Promise<CommunityLookup> {
+  const exists = await db
+    .prepare("SELECT 1 AS present FROM cosmetic_submission_reviews WHERE store_item_id = ?")
+    .bind(item.id)
+    .first<{ present: number }>();
+  if (!exists) return { isSubmission: false, metadata: null };
+  try {
+    const row = await db
+      .prepare(
+        `SELECT r.store_item_id AS cosmeticId, u.username AS creatorUsername,
+              COALESCE(p.display_name, u.username) AS creatorDisplayName
+       FROM cosmetic_submission_reviews r
+       JOIN users u ON u.id = r.submitted_by_user_id
+       LEFT JOIN user_profiles p ON p.user_id = u.id
+       WHERE r.store_item_id = ? AND r.community_state = 'PUBLISHED'
+         AND r.moderation_state = 'CLEAR' AND r.review_state = 'APPROVED'`,
+      )
+      .bind(item.id)
+      .first<{ cosmeticId: string; creatorUsername: string; creatorDisplayName: string }>();
+    if (!row) return { isSubmission: true, metadata: null };
+    let config: Record<string, unknown> = {};
+    try {
+      config = JSON.parse(item.configJson) as Record<string, unknown>;
+    } catch {
+      return { isSubmission: true, metadata: null };
+    }
+    const css = typeof config.communityCss === "string" ? config.communityCss : "";
+    return { isSubmission: true, metadata: { ...row, css } };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    if (
+      message.includes("no such column") &&
+      (message.includes("community_state") || message.includes("moderation_state"))
+    )
+      return { isSubmission: true, metadata: null };
+    throw error;
+  }
+}
+
 async function listEmotePreviewAssets(db: D1Database, packId: string) {
   try {
     return await db
@@ -151,8 +208,14 @@ export function createStoreService(db: D1Database) {
     async list(now = Date.now()): Promise<StoreCatalogRow[]> {
       await ensureBuiltInStoreCatalog(db);
       const result = await listStoreCatalog(db, now);
+      const checked = await Promise.all(
+        result.map(async (item) => ({ item, community: await communityStoreMetadata(db, item) })),
+      );
+      const publicItems = checked.filter(
+        ({ community }) => !community.isSubmission || Boolean(community.metadata),
+      );
       return Promise.all(
-        result.map(async (item): Promise<StoreCatalogRow> => {
+        publicItems.map(async ({ item, community }): Promise<StoreCatalogRow> => {
           let config: { packId?: unknown } = {};
           try {
             config = JSON.parse(String(item.configJson)) as { packId?: unknown };
@@ -162,17 +225,37 @@ export function createStoreService(db: D1Database) {
           const type = String(item.type);
           const packId = typeof config.packId === "string" ? config.packId : null;
           if (!packId || (type !== "EMOTE_PACK" && type !== "STICKER_PACK"))
-            return { ...item, previewAssets: [] as StorePreviewAsset[] };
+            return {
+              ...item,
+              previewAssets: [] as StorePreviewAsset[],
+              isGlobal: false,
+              community: community.metadata,
+            };
           const rows =
             type === "EMOTE_PACK"
               ? await listEmotePreviewAssets(db, packId)
               : await db
                   .prepare(
-                    `SELECT id, label, asset_key AS assetKey FROM sticker_catalog WHERE pack_id = ? AND status = 'ACTIVE' ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+                    `SELECT id, label, asset_key AS assetKey FROM sticker_catalog
+                     WHERE pack_id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1
+                       AND moderation_state NOT IN ('HIDDEN', 'REMOVED')
+                     ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
                   )
                   .bind(packId)
                   .all<StorePreviewAsset>();
-          return { ...item, previewAssets: rows.results };
+          const globalRow =
+            type === "EMOTE_PACK"
+              ? await db
+                  .prepare("SELECT is_global AS isGlobal FROM emote_packs WHERE id = ?")
+                  .bind(packId)
+                  .first<{ isGlobal: number }>()
+              : null;
+          return {
+            ...item,
+            previewAssets: rows.results,
+            isGlobal: Boolean(globalRow?.isGlobal),
+            community: community.metadata,
+          };
         }),
       );
     },
@@ -188,6 +271,70 @@ export function createStoreService(db: D1Database) {
     async purchase(userId: string, itemId: string, idempotencyKey: string, now = Date.now()) {
       if (!/^[A-Za-z0-9:_-]{16,128}$/.test(idempotencyKey))
         throw new StoreError(400, "INVALID_IDEMPOTENCY_KEY", "The idempotency key is invalid.");
+
+      const item = await db
+        .prepare(
+          `SELECT s.id, s.price_points AS pricePoints,
+                  CASE WHEN s.type = 'EMOTE_PACK' THEN COALESCE(p.is_global, 0) ELSE 0 END AS isGlobal
+           FROM store_items s
+           LEFT JOIN emote_packs p ON p.id = json_extract(s.config_json, '$.packId')
+           WHERE s.id = ? AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
+             AND (s.starts_at IS NULL OR s.starts_at <= ?)
+             AND (s.ends_at IS NULL OR s.ends_at > ?)`,
+        )
+        .bind(itemId, now, now)
+        .first<{ id: string; pricePoints: number; isGlobal: number }>();
+      if (!item) throw new StoreError(409, "PURCHASE_UNAVAILABLE", "The item is unavailable.");
+
+      if (item.isGlobal) {
+        return {
+          id: `included:${itemId}`,
+          storeItemId: itemId,
+          pricePaid: 0,
+          idempotencyKey: `included:${itemId}`,
+          included: true as const,
+        };
+      }
+
+      const pricePoints = Number(item.pricePoints);
+      if (pricePoints === 0) {
+        const claimKey = `store:free:${userId}:${itemId}`;
+        const purchaseId = createIdentifier();
+        await db.batch([
+          db
+            .prepare(
+              `INSERT OR IGNORE INTO store_purchases
+               (id, user_id, store_item_id, price_paid, ledger_debit_id, idempotency_key, created_at)
+               SELECT ?, ?, id, 0, ?, ?, ? FROM store_items
+               WHERE id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1
+                 AND (starts_at IS NULL OR starts_at <= ?)
+                 AND (ends_at IS NULL OR ends_at > ?)`,
+            )
+            .bind(purchaseId, userId, `free:${itemId}`, claimKey, now, itemId, now, now),
+          db
+            .prepare(
+              `INSERT OR IGNORE INTO user_inventory (user_id, store_item_id, acquired_at, source)
+               SELECT user_id, store_item_id, created_at, 'PURCHASE' FROM store_purchases WHERE idempotency_key = ?`,
+            )
+            .bind(claimKey),
+        ]);
+        const claim = await db
+          .prepare(
+            `SELECT id, store_item_id AS storeItemId, price_paid AS pricePaid, idempotency_key AS idempotencyKey
+             FROM store_purchases WHERE idempotency_key = ?`,
+          )
+          .bind(claimKey)
+          .first<{
+            id: string;
+            storeItemId: string;
+            pricePaid: number;
+            idempotencyKey: string;
+          }>();
+        if (!claim)
+          throw new StoreError(409, "PURCHASE_UNAVAILABLE", "The free item could not be claimed.");
+        return claim;
+      }
+
       const purchaseKey = `store:${userId}:${idempotencyKey}`;
       const ledgerId = createIdentifier();
       const purchaseId = createIdentifier();
@@ -200,6 +347,7 @@ export function createStoreService(db: D1Database) {
              SELECT ?, ?, -price_points, 'REVERSAL', 'STORE_PURCHASE', 'store.purchase', ?, ?, ?, ?
              FROM store_items
              WHERE id = ? AND ${available.sql}
+               AND price_points > 0
                AND NOT EXISTS (SELECT 1 FROM user_inventory WHERE user_id = ? AND store_item_id = ?)
                AND NOT EXISTS (SELECT 1 FROM store_purchases WHERE idempotency_key = ?)
                AND (SELECT COALESCE(SUM(amount), 0) FROM point_ledger WHERE user_id = ?) >= price_points`,
@@ -368,7 +516,7 @@ export function assertSafeStoreConfig(config: unknown): string {
   if (Object.keys(value).some((key) => !/^[a-z][a-zA-Z0-9_]*$/.test(key)))
     throw new StoreError(400, "INVALID_STORE_CONFIG", "The config contains an invalid key.");
   const serialized = JSON.stringify(value);
-  if (serialized.length > 4_000 || /<|javascript:|url\s*\(/i.test(serialized))
+  if (serialized.length > 20_000 || /<|javascript:|url\s*\(/i.test(serialized))
     throw new StoreError(400, "UNSAFE_STORE_CONFIG", "The config contains unsafe content.");
   return serialized;
 }
@@ -376,6 +524,26 @@ export function assertSafeStoreConfig(config: unknown): string {
 export function validateStoreConfig(type: StoreType, config: unknown): string {
   const serialized = assertSafeStoreConfig(config);
   const value = config as Record<string, unknown>;
+  if ("communityCss" in value || "communityCssSource" in value || "communityCosmeticId" in value) {
+    if (
+      typeof value.communityCosmeticId !== "string" ||
+      typeof value.communityCssSource !== "string" ||
+      typeof value.communityCss !== "string"
+    )
+      throw new StoreError(400, "UNSAFE_STORE_CONFIG", "Community CSS metadata is incomplete.");
+    let sanitized;
+    try {
+      sanitized = sanitizeCommunityCosmeticCss(value.communityCssSource, value.communityCosmeticId);
+    } catch {
+      throw new StoreError(400, "UNSAFE_STORE_CONFIG", "Community CSS is not safe.");
+    }
+    if (sanitized.scopedCss !== value.communityCss)
+      throw new StoreError(
+        400,
+        "UNSAFE_STORE_CONFIG",
+        "Community CSS must match the server-scoped version.",
+      );
+  }
   if (type === "NAME_FONT" && !isNameFontFamily(value.family))
     throw new StoreError(400, "STORE_CONFIG_NOT_ALLOWED", "NAME_FONT family is not allowlisted.");
   if (type === "NAME_EFFECT" && !isNameEffectPreset(value.preset))

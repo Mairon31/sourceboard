@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
 import {
   formatEmoteMarkdown,
+  normalizeEmoteShortcode,
   renderMarkdownPreview,
+  serializeInlineRichTextMarkdown,
+  type SafeInlineRichTextNode,
   type SafeRichTextNode,
 } from "../../../shared/richtext/markdown";
 import { readCsrfToken } from "../../data/csrf";
@@ -45,9 +48,47 @@ function commentNodes(comment: CommentView): SafeRichTextNode[] {
   ];
 }
 
-function commentPreviewNodes(input: string): SafeRichTextNode[] {
+function editableCommentMarkdown(comment: CommentView): string {
+  return comment.richtext?.length
+    ? serializeInlineRichTextMarkdown(comment.richtext)
+    : comment.body;
+}
+
+function commentPreviewNodes(
+  input: string,
+  sourceRichtext?: CommentView["richtext"],
+): SafeRichTextNode[] {
   try {
-    return renderMarkdownPreview(input);
+    const assets = new Map(
+      (sourceRichtext ?? [])
+        .filter(
+          (
+            node,
+          ): node is Extract<NonNullable<CommentView["richtext"]>[number], { type: "emote" }> =>
+            node.type === "emote" && Boolean(node.url),
+        )
+        .map((node) => [normalizeEmoteShortcode(node.shortcode), node] as const)
+        .filter((entry): entry is [string, (typeof entry)[1]] => Boolean(entry[0])),
+    );
+    const hydrateInline = (nodes: SafeInlineRichTextNode[]): SafeInlineRichTextNode[] =>
+      nodes.map((node) => {
+        if (node.type !== "emote") return node;
+        const shortcode = normalizeEmoteShortcode(node.shortcode);
+        const asset = shortcode ? assets.get(shortcode) : undefined;
+        return asset ? { ...node, id: asset.id, label: asset.label, url: asset.url } : node;
+      });
+    const hydrateBlock = (node: SafeRichTextNode): SafeRichTextNode => {
+      if (node.type === "paragraph") return { ...node, children: hydrateInline(node.children) };
+      if (node.type === "quote") return { ...node, children: node.children.map(hydrateBlock) };
+      if (node.type === "list") {
+        return {
+          ...node,
+          items: node.items.map((item) => ({ ...item, children: hydrateInline(item.children) })),
+        };
+      }
+      return node;
+    };
+    return renderMarkdownPreview(input).map(hydrateBlock);
   } catch {
     return [{ type: "paragraph", children: [{ type: "text", text: input }] }];
   }
@@ -156,7 +197,7 @@ function CommentItem({
     count: comment.reaction.count,
   });
   const [editing, setEditing] = useState(false);
-  const [editBody, setEditBody] = useState(comment.body);
+  const [editBody, setEditBody] = useState(() => editableCommentMarkdown(comment));
   const [previewingEdit, setPreviewingEdit] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -178,8 +219,8 @@ function CommentItem({
   }, [comment.reaction.count, comment.reaction.viewerReacted]);
 
   useEffect(() => {
-    if (!editing) setEditBody(comment.body);
-  }, [comment.body, editing]);
+    if (!editing) setEditBody(editableCommentMarkdown(comment));
+  }, [comment, editing]);
 
   async function toggleLike() {
     if (likeInFlightRef.current) return;
@@ -310,6 +351,7 @@ function CommentItem({
                         label: "Edit",
                         icon: <EditIcon width="16" height="16" />,
                         onSelect: () => {
+                          setEditBody(editableCommentMarkdown(comment));
                           setPreviewingEdit(false);
                           setEditing(true);
                         },
@@ -376,7 +418,7 @@ function CommentItem({
               {previewingEdit ? (
                 <div className="product-comment-editor-preview" role="tabpanel">
                   {editBody.trim() ? (
-                    <RichText nodes={commentPreviewNodes(editBody)} />
+                    <RichText nodes={commentPreviewNodes(editBody, comment.richtext)} />
                   ) : (
                     <span>Nothing to preview yet.</span>
                   )}
@@ -396,7 +438,7 @@ function CommentItem({
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    setEditBody(comment.body);
+                    setEditBody(editableCommentMarkdown(comment));
                     setPreviewingEdit(false);
                     setEditing(false);
                   }}

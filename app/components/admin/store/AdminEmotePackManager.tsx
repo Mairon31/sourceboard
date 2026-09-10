@@ -218,6 +218,7 @@ function EmoteEditor({
             <Badge tone={truthy(emote.isEnabled) ? "success" : "neutral"}>
               {truthy(emote.isEnabled) ? "Enabled" : "Disabled"}
             </Badge>
+            {truthy(emote.isAnimated) ? <Badge>Animated</Badge> : null}
           </div>
         </div>
         <div className="admin-store-emote-meta">
@@ -293,7 +294,12 @@ function EmoteEditor({
           <form className="admin-store-replace-form" onSubmit={(event) => void replaceImage(event)}>
             <label className="sb-field">
               <span>Replacement image</span>
-              <input name="file" type="file" accept="image/png,image/jpeg,image/webp" required />
+              <input
+                name="file"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                required
+              />
             </label>
             <div className="admin-store-inline-actions">
               <Button type="submit" size="sm" loading={disabled}>
@@ -1090,7 +1096,7 @@ export function AdminEmotePackManager({
                       name="file"
                       type="file"
                       multiple
-                      accept="image/png,image/jpeg,image/webp"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
                       required
                     />
                   </label>

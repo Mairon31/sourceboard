@@ -30,8 +30,8 @@ test("authorized Admin Store exposes published cosmetics and editable metadata",
   await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Catalog control center" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Cosmetics" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Emote packs" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Catalog" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Emote Packs" })).toBeVisible();
 
   const stellar = page.locator(".admin-store-cosmetic-card").filter({ hasText: "Stellar Magic" });
   await expect(stellar).toBeVisible();
@@ -53,7 +53,7 @@ test("authorized Admin Store opens draft packs and administers individual emotes
   await page.goto("/admin/store");
   await waitForUiReady(page);
 
-  await page.getByRole("tab", { name: "Emote packs" }).click();
+  await page.getByRole("tab", { name: "Emote Packs" }).click();
   const packButton = page
     .locator(".admin-store-pack-list__item")
     .filter({ hasText: "E2E Draft Pack" });
@@ -104,7 +104,7 @@ test("authorized Admin Store uploads an emote into a draft pack without media ne
   await expect(page.getByRole("heading", { name: "Catalog control center" })).toBeVisible({
     timeout: 30_000,
   });
-  await page.getByRole("tab", { name: "Emote packs" }).click();
+  await page.getByRole("tab", { name: "Emote Packs" }).click();
   const packButton = page
     .locator(".admin-store-pack-list__item")
     .filter({ hasText: "E2E Draft Pack" });

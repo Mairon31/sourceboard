@@ -1,5 +1,7 @@
 import type { StoreItemType, StoreItemView } from "../../../shared/ui/contracts";
 import { Avatar, Card } from "../ui";
+import "./profile-identity-card.css";
+import "./community-cosmetics.css";
 
 function categoryLabel(type: StoreItemType): string {
   if (type === "AVATAR_FRAME") return "Frame";
@@ -7,18 +9,20 @@ function categoryLabel(type: StoreItemType): string {
   if (type === "NAME_EFFECT") return "Name effect";
   if (type === "NAME_FONT") return "Font";
   if (type === "EMOTE_PACK") return "Emote pack";
-  if (type === "PROFILE_BANNER") return "Banner";
+  if (type === "PROFILE_BANNER") return "Profile theme";
   return "Sticker pack";
 }
 
 function actionLabel(item: StoreItemView, adminUnlocked: boolean, authenticated: boolean): string {
+  if (item.state === "INCLUDED") return "Included";
   if (!authenticated) return "Sign in";
   if (item.state === "EQUIPPED") return "Unequip";
   if (item.state === "DISABLED") return "Unavailable";
   if (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) return "Not enough points";
   if (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked)) return "Unlocked";
   if (item.state === "OWNED" || adminUnlocked) return "Equip";
-  return "Redeem";
+  if (item.price === 0) return "Get";
+  return "Purchase";
 }
 
 function priceLabel(price: number): string {
@@ -47,7 +51,21 @@ export function StorePreview({
       </div>
     );
   }
-  if (item.type === "PROFILE_EFFECT" || item.type === "PROFILE_BANNER") {
+  if (item.type === "PROFILE_BANNER") {
+    return (
+      <div
+        className="product-store-preview product-store-preview--theme product-profile-identity-card"
+        data-profile-theme={config.preset ?? "default"}
+      >
+        <div className="product-profile-theme-layer" aria-hidden="true" />
+        <div className="product-store-preview__profile">
+          <Avatar name={name} src={avatarUrl} size="xl" />
+          <strong>{name}</strong>
+        </div>
+      </div>
+    );
+  }
+  if (item.type === "PROFILE_EFFECT") {
     return (
       <div
         className={`product-store-preview product-store-preview--effect product-store-preview--${config.preset ?? "none"}`}
@@ -113,32 +131,52 @@ export function StoreItemCard({
   const label = actionLabel(item, adminUnlocked, authenticated);
   const disabled =
     busy ||
+    item.state === "INCLUDED" ||
     item.state === "DISABLED" ||
     (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) ||
     (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked));
 
   return (
     <Card className="product-store-item">
-      <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
+      {item.community ? (
+        <div
+          className="product-community-store-preview cosmetic-root"
+          data-community-cosmetic={item.community.cosmeticId}
+        >
+          {item.community.css ? <style>{item.community.css}</style> : null}
+          <div className="profile-card">
+            <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
+          </div>
+        </div>
+      ) : (
+        <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
+      )}
       <span className="product-store-item__category">{categoryLabel(item.type)}</span>
       <h3>{item.name}</h3>
       <p>{item.description}</p>
+      {item.community ? (
+        <span className="product-store-item__creator">
+          Created by @{item.community.creatorUsername}
+        </span>
+      ) : null}
       {item.featured ? <span className="product-store-featured-badge">Featured</span> : null}
       {adminUnlocked ? <span className="product-store-admin-badge">Admin unlocked</span> : null}
       <div className="product-store-item__footer">
         <div>
           <span className="product-store-item__price">
             {item.price > 0 ? <i className="product-store-coin" aria-hidden="true" /> : null}
-            {priceLabel(item.price)}
+            {item.state === "INCLUDED" ? "Included" : priceLabel(item.price)}
           </span>
           <div className="product-store-state">
-            {item.equipped
-              ? "Currently equipped"
-              : item.owned
-                ? "Owned"
-                : item.state === "INSUFFICIENT_POINTS"
-                  ? "More points required"
-                  : "Available"}
+            {item.state === "INCLUDED"
+              ? "Included for everyone"
+              : item.equipped
+                ? "Currently equipped"
+                : item.owned
+                  ? "Owned"
+                  : item.state === "INSUFFICIENT_POINTS"
+                    ? "More points required"
+                    : "Available"}
           </div>
         </div>
         <button
