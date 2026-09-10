@@ -85,6 +85,26 @@ async function installExpiredCommentOwnerFixture(page: Page) {
   `);
 }
 
+async function installAnonymousAuthorPostFixture(page: Page) {
+  const now = Date.now();
+  await installNavigationUserSession(page, "anonymous-author");
+  executeLocalSql(`
+    DELETE FROM comments WHERE post_id = 'e2e-anonymous-comment-post';
+    DELETE FROM posts WHERE id = 'e2e-anonymous-comment-post';
+    INSERT INTO posts
+      (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
+       title, slug, description, image_asset_id, visibility, status, comment_count, like_count,
+       accepted_comment_id, verified_source_id, created_at, updated_at, edit_deadline_at,
+       archived_at, deleted_at, hidden_at, locked_at)
+    VALUES
+      ('e2e-anonymous-comment-post', 'e2e-navigation-user', 'ANONYMOUS', 0, NULL, NULL,
+       'Anonymous comment identity', 'e2e-anonymous-comment-post',
+       'Anonymous author comment regression fixture.', 'e2e-navigation-media', 'PUBLIC', 'OPEN',
+       0, 0, NULL, NULL, ${now}, ${now}, ${now + 7 * 24 * 60 * 60 * 1000},
+       NULL, NULL, NULL, NULL);
+  `);
+}
+
 test.beforeAll(() => {
   seedCommentMediaRegressionFixture();
 });
@@ -178,4 +198,24 @@ test("new comment immediately shows the authenticated author's real identity", a
   await expect(comment).toBeVisible();
   await expect(comment.getByText("E2E Navigator", { exact: true })).toBeVisible();
   await expect(comment.getByText("SourceBoard member", { exact: true })).toHaveCount(0);
+});
+
+test("anonymous post author stays anonymous when their new comment renders", async ({ page }) => {
+  await installAnonymousAuthorPostFixture(page);
+  const response = await page.goto(
+    "/posts/e2e-anonymous-comment-post/e2e-anonymous-comment-post",
+  );
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  await page.getByLabel("Add a comment").fill("Anonymous identity remains private");
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
+
+  const comment = page
+    .locator("article.product-comment")
+    .filter({ hasText: "Anonymous identity remains private" });
+  await expect(comment).toBeVisible();
+  await expect(comment.getByText("Anonymous Author", { exact: true })).toBeVisible();
+  await expect(comment.getByText("E2E Navigator", { exact: true })).toHaveCount(0);
 });
