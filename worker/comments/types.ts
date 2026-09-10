@@ -1,5 +1,15 @@
 import type { CommentAttachment, RichTextNode } from "./richtext";
 
+export interface CommentLinkPreviewSnapshot {
+  canonicalUrl: string;
+  siteName: string | null;
+  title: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  fetchedAt: number;
+  metadataStatus: "COMPLETE" | "PARTIAL" | "URL_ONLY";
+}
+
 export interface CommentRecord {
   id: string;
   postId: string;

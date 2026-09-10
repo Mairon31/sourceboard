@@ -103,6 +103,15 @@ export interface CommentEmotePackView {
   emotes: CommentEmoteView[];
 }
 
+export interface CommentLinkPreviewView {
+  canonicalUrl: string;
+  siteName?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  metadataStatus: "COMPLETE" | "PARTIAL" | "URL_ONLY";
+}
+
 export interface CommentView {
   id: string;
   parentCommentId?: string;
@@ -119,6 +128,7 @@ export interface CommentView {
   canReport?: boolean;
   commentHref?: string;
   attachment?: CommentAttachmentView;
+  linkPreview?: CommentLinkPreviewView;
   replies: CommentView[];
 }
 

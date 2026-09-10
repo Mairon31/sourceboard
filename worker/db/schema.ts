@@ -770,6 +770,29 @@ export const comments = sqliteTable(
   ],
 );
 
+export const commentLinkPreviews = sqliteTable(
+  "comment_link_previews",
+  {
+    commentId: text("comment_id")
+      .primaryKey()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    canonicalUrl: text("canonical_url").notNull(),
+    siteName: text("site_name"),
+    title: text("title"),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    fetchedAt: integer("fetched_at", { mode: "number" }).notNull(),
+    metadataStatus: text("metadata_status").notNull(),
+  },
+  (table) => [
+    index("comment_link_previews_fetched_at_idx").on(table.fetchedAt),
+    check(
+      "comment_link_previews_metadata_status_check",
+      sql`${table.metadataStatus} IN ('COMPLETE', 'PARTIAL', 'URL_ONLY')`,
+    ),
+  ],
+);
+
 export const commentRevisions = sqliteTable(
   "comment_revisions",
   {

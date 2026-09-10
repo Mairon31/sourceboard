@@ -52,3 +52,5 @@ Cloudflare D1 migrations are forward-only. Production rollback uses the
 approved backup/restore process or a reviewed corrective migration; no unsafe
 automatic `down` migration is implied. Local reset experiments must use a
 temporary local database only.
+
+Migration `0027` adds one server-derived link-preview snapshot per comment. The table stores only bounded metadata and the canonical/remote image URLs needed by the Worker; remote HTML is never persisted, and public preview images remain behind the same-origin comment image gateway.
