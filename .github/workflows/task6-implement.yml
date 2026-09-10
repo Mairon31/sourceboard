@@ -26,85 +26,51 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path("app/components/product/CommentThread.tsx")
           source = path.read_text()
 
-          old_imports = '''  EditIcon,
-            FlagIcon,
-            HeartIcon,
-            MessageIcon,
-            MoreIcon,
-            Textarea,
-            TrashIcon,'''.replace("            ", "  ")
-          new_imports = '''  EditIcon,
-            FlagIcon,
-            GifIcon,
-            HeartIcon,
-            MessageIcon,
-            MoreIcon,
-            SmileIcon,
-            StickerIcon,
-            Textarea,
-            TrashIcon,'''.replace("            ", "  ")
-          if old_imports not in source:
+          import_anchor = "  FlagIcon,\n  HeartIcon,\n  MessageIcon,\n  MoreIcon,\n  Textarea,"
+          import_replacement = "  FlagIcon,\n  GifIcon,\n  HeartIcon,\n  MessageIcon,\n  MoreIcon,\n  SmileIcon,\n  StickerIcon,\n  Textarea,"
+          if import_anchor not in source:
               raise SystemExit("CommentThread icon import anchor not found")
-          source = source.replace(old_imports, new_imports, 1)
+          source = source.replace(import_anchor, import_replacement, 1)
 
-          old_toolbar = '''                <button
+          controls = [
+              (
+                  "GIF",
+                  "GifIcon",
+                  r'<button\s+type="button"\s+aria-expanded=\{mediaKind === "GIF"\}\s+onClick=\{\(\) => setMediaKind\(mediaKind === "GIF" \? null : "GIF"\)\}\s*>\s*GIF\s*</button>',
+              ),
+              (
+                  "STICKER",
+                  "StickerIcon",
+                  r'<button\s+type="button"\s+aria-expanded=\{mediaKind === "STICKER"\}\s+onClick=\{\(\) => setMediaKind\(mediaKind === "STICKER" \? null : "STICKER"\)\}\s*>\s*Sticker\s*</button>',
+              ),
+              (
+                  "EMOTE",
+                  "SmileIcon",
+                  r'<button\s+type="button"\s+aria-expanded=\{mediaKind === "EMOTE"\}\s+onClick=\{\(\) => setMediaKind\(mediaKind === "EMOTE" \? null : "EMOTE"\)\}\s*>\s*Emote\s*</button>',
+              ),
+          ]
+          labels = {"GIF": "GIF", "STICKER": "Sticker", "EMOTE": "Emote"}
+          for kind, icon, pattern in controls:
+              label = labels[kind]
+              replacement = f'''<button
+                  className={{`product-comment-composer__media-action${{mediaKind === "{kind}" ? " is-active" : ""}}`}}
                   type="button"
-                  aria-expanded={mediaKind === "GIF"}
-                  onClick={() => setMediaKind(mediaKind === "GIF" ? null : "GIF")}
+                  aria-label="{label}"
+                  title="{label}"
+                  aria-expanded={{mediaKind === "{kind}"}}
+                  onClick={{() => setMediaKind(mediaKind === "{kind}" ? null : "{kind}")}}
                 >
-                  GIF
-                </button>
-                <button
-                  type="button"
-                  aria-expanded={mediaKind === "STICKER"}
-                  onClick={() => setMediaKind(mediaKind === "STICKER" ? null : "STICKER")}
-                >
-                  Sticker
-                </button>
-                <button
-                  type="button"
-                  aria-expanded={mediaKind === "EMOTE"}
-                  onClick={() => setMediaKind(mediaKind === "EMOTE" ? null : "EMOTE")}
-                >
-                  Emote
+                  <{icon} width="20" height="20" />
                 </button>'''
-          new_toolbar = '''                <button
-                  className={`product-comment-composer__media-action${mediaKind === "GIF" ? " is-active" : ""}`}
-                  type="button"
-                  aria-label="GIF"
-                  title="GIF"
-                  aria-expanded={mediaKind === "GIF"}
-                  onClick={() => setMediaKind(mediaKind === "GIF" ? null : "GIF")}
-                >
-                  <GifIcon width="20" height="20" />
-                </button>
-                <button
-                  className={`product-comment-composer__media-action${mediaKind === "STICKER" ? " is-active" : ""}`}
-                  type="button"
-                  aria-label="Sticker"
-                  title="Sticker"
-                  aria-expanded={mediaKind === "STICKER"}
-                  onClick={() => setMediaKind(mediaKind === "STICKER" ? null : "STICKER")}
-                >
-                  <StickerIcon width="20" height="20" />
-                </button>
-                <button
-                  className={`product-comment-composer__media-action${mediaKind === "EMOTE" ? " is-active" : ""}`}
-                  type="button"
-                  aria-label="Emote"
-                  title="Emote"
-                  aria-expanded={mediaKind === "EMOTE"}
-                  onClick={() => setMediaKind(mediaKind === "EMOTE" ? null : "EMOTE")}
-                >
-                  <SmileIcon width="20" height="20" />
-                </button>'''
-          if old_toolbar not in source:
-              raise SystemExit("CommentThread media toolbar anchor not found")
-          source = source.replace(old_toolbar, new_toolbar, 1)
+              source, count = re.subn(pattern, replacement, source, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f"CommentThread {kind} toolbar control not found")
+
           path.write_text(source)
           PY
       - run: npx prettier app/components/product/CommentThread.tsx app/components/ui/icons.tsx app/components/product/comment-actions.css tests/unit/media-picker.test.ts tests/unit/comments-social-actions.test.ts --write
