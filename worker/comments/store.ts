@@ -226,11 +226,7 @@ export function createD1CommentStore(db: D1Database): CommentStore {
 
   return {
     async listForPost({ postId, cursor, limit, sort }) {
-      const conditions = [
-        "c.post_id = ?",
-        "c.deleted_at IS NULL",
-        "c.parent_comment_id IS NULL",
-      ];
+      const conditions = ["c.post_id = ?", "c.deleted_at IS NULL", "c.parent_comment_id IS NULL"];
       const bindings: unknown[] = [postId];
       addRootCursor(conditions, bindings, cursor, sort);
       const rootResult = await db
