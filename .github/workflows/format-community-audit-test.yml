@@ -1,0 +1,34 @@
+name: Format community audit test
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+    paths:
+      - .github/workflows/format-community-audit-test.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - run: npx prettier --write tests/unit/community-audit-boundary.test.ts
+      - run: npx prettier --check tests/unit/community-audit-boundary.test.ts
+      - name: Commit formatting and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/format-community-audit-test.yml
+          git add tests/unit/community-audit-boundary.test.ts
+          git commit -m "style(test): format community audit boundary"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
