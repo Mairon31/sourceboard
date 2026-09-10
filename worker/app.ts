@@ -42,11 +42,7 @@ export default {
     const cspNonce = crypto.randomUUID().replaceAll("-", "");
     const finish = (response: Response): Response => {
       const secured = preventHtmlTransforms(
-        withSecurityHeaders(
-          response,
-          new URL(request.url).protocol === "https:",
-          cspNonce,
-        ),
+        withSecurityHeaders(response, new URL(request.url).protocol === "https:", cspNonce),
       );
       observeRequest(request, secured, startedAt);
       return secured;
