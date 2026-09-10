@@ -131,7 +131,9 @@ test("profile theme decorates the profile card surface instead of the banner", a
 
   const card = page.locator(".product-profile-identity-card");
   await expect(card).toHaveAttribute("data-profile-theme", "nebula");
-  await expect(card.locator(".product-profile-cover > .product-profile-theme-layer")).toHaveCount(0);
+  await expect(card.locator(".product-profile-cover > .product-profile-theme-layer")).toHaveCount(
+    0,
+  );
 
   const cardSurface = card.locator(".product-profile-card-surface");
   const themeLayer = cardSurface.locator(":scope > .product-profile-theme-layer");
