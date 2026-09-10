@@ -1,7 +1,7 @@
 import { isStoreLifecycleSchemaError } from "../store/service";
-import { encodePostCursor } from "../posts/pagination";
+import { encodeCommentCursor } from "./pagination";
 import { parseStoredCommentBody } from "./richtext";
-import type { CommentCursor, CommentRecord, CommentWithAuthor } from "./types";
+import type { CommentCursor, CommentRecord, CommentSort, CommentWithAuthor } from "./types";
 
 export interface CommentEmoteAsset {
   id: string;
@@ -15,6 +15,7 @@ export interface CommentStore {
     postId: string;
     cursor: CommentCursor | null;
     limit: number;
+    sort: CommentSort;
   }): Promise<{ comments: CommentWithAuthor[]; nextCursor: string | null }>;
   getComment(commentId: string): Promise<CommentWithAuthor | null>;
   createComment(input: {
@@ -133,6 +134,54 @@ function toRecord(row: CommentRow): CommentWithAuthor {
   };
 }
 
+function addRootCursor(
+  conditions: string[],
+  bindings: unknown[],
+  cursor: CommentCursor | null,
+  sort: CommentSort,
+): void {
+  if (!cursor) return;
+  if (sort === "oldest") {
+    conditions.push("(c.created_at > ? OR (c.created_at = ? AND c.id > ?))");
+    bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
+    return;
+  }
+  if (sort === "popular") {
+    if (cursor.sort !== "popular") return;
+    conditions.push(
+      "(c.like_count < ? OR (c.like_count = ? AND c.created_at < ?) OR (c.like_count = ? AND c.created_at = ? AND c.id < ?))",
+    );
+    bindings.push(
+      cursor.likeCount,
+      cursor.likeCount,
+      cursor.createdAt,
+      cursor.likeCount,
+      cursor.createdAt,
+      cursor.id,
+    );
+    return;
+  }
+  conditions.push("(c.created_at < ? OR (c.created_at = ? AND c.id < ?))");
+  bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
+}
+
+function rootOrder(sort: CommentSort): string {
+  if (sort === "oldest") return "c.created_at ASC, c.id ASC";
+  if (sort === "popular") return "c.like_count DESC, c.created_at DESC, c.id DESC";
+  return "c.created_at DESC, c.id DESC";
+}
+
+function nextCursor(sort: CommentSort, row: CommentRow): string {
+  return sort === "popular"
+    ? encodeCommentCursor({
+        sort,
+        likeCount: row.like_count,
+        createdAt: row.created_at,
+        id: row.id,
+      })
+    : encodeCommentCursor({ sort, createdAt: row.created_at, id: row.id });
+}
+
 export function createD1CommentStore(db: D1Database): CommentStore {
   async function persistLike({
     userId,
@@ -176,24 +225,45 @@ export function createD1CommentStore(db: D1Database): CommentStore {
   }
 
   return {
-    async listForPost({ postId, cursor, limit }) {
-      const conditions = ["c.post_id = ?", "c.deleted_at IS NULL"];
+    async listForPost({ postId, cursor, limit, sort }) {
+      const conditions = [
+        "c.post_id = ?",
+        "c.deleted_at IS NULL",
+        "c.parent_comment_id IS NULL",
+      ];
       const bindings: unknown[] = [postId];
-      if (cursor) {
-        conditions.push("(c.created_at > ? OR (c.created_at = ? AND c.id > ?))");
-        bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
-      }
-      const result = await db
-        .prepare(`${query(conditions.join(" AND "))} ORDER BY c.created_at ASC, c.id ASC LIMIT ?`)
+      addRootCursor(conditions, bindings, cursor, sort);
+      const rootResult = await db
+        .prepare(`${query(conditions.join(" AND "))} ORDER BY ${rootOrder(sort)} LIMIT ?`)
         .bind(...bindings, limit + 1)
         .all<CommentRow>();
-      const hasNext = result.results.length > limit;
-      const rows = hasNext ? result.results.slice(0, limit) : result.results;
-      const last = rows.at(-1);
+      const hasNext = rootResult.results.length > limit;
+      const rootRows = hasNext ? rootResult.results.slice(0, limit) : rootResult.results;
+      const rootIds = rootRows.map((row) => row.id);
+      let replyRows: CommentRow[] = [];
+      if (rootIds.length) {
+        const placeholders = rootIds.map(() => "?").join(", ");
+        const descendants = await db
+          .prepare(
+            `WITH RECURSIVE thread_ids(id) AS (
+               SELECT id FROM comments WHERE id IN (${placeholders}) AND deleted_at IS NULL
+               UNION ALL
+               SELECT child.id
+               FROM comments child
+               JOIN thread_ids parent ON child.parent_comment_id = parent.id
+               WHERE child.deleted_at IS NULL
+             )
+             ${query(`c.id IN (SELECT id FROM thread_ids) AND c.id NOT IN (${placeholders})`)}
+             ORDER BY c.created_at ASC, c.id ASC`,
+          )
+          .bind(...rootIds, ...rootIds)
+          .all<CommentRow>();
+        replyRows = descendants.results;
+      }
+      const last = rootRows.at(-1);
       return {
-        comments: rows.map(toRecord),
-        nextCursor:
-          hasNext && last ? encodePostCursor({ createdAt: last.created_at, id: last.id }) : null,
+        comments: [...rootRows, ...replyRows].map(toRecord),
+        nextCursor: hasNext && last ? nextCursor(sort, last) : null,
       };
     },
 
