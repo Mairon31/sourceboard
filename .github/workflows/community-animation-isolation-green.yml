@@ -83,16 +83,22 @@ jobs:
           if anchor not in text:
               raise SystemExit("sanitizeDeclarations anchor not found")
           text = text.replace(anchor, helper, 1)
-          old = '''    if (property.startsWith("animation")) {
-              validateAnimation(value, property);
-              for (const [original, scoped] of keyframeNames) {'''
-          new = '''    if (property.startsWith("animation")) {
-              validateAnimation(value, property);
-              validateAnimationScope(value, property, keyframeNames);
-              for (const [original, scoped] of keyframeNames) {'''
-          if old not in text:
-              raise SystemExit("animation validation anchor not found")
-          path.write_text(text.replace(old, new, 1))
+          block = 'if (property.startsWith("animation")) {'
+          start = text.find(block)
+          if start < 0:
+              raise SystemExit("animation block not found")
+          call = "validateAnimation(value, property);"
+          call_pos = text.find(call, start)
+          if call_pos < 0:
+              raise SystemExit("animation validation call not found")
+          line_start = text.rfind("\n", 0, call_pos) + 1
+          line_end = text.find("\n", call_pos)
+          if line_end < 0:
+              raise SystemExit("animation validation line end not found")
+          indent = text[line_start:call_pos]
+          insertion = f"{indent}validateAnimationScope(value, property, keyframeNames);\n"
+          text = text[: line_end + 1] + insertion + text[line_end + 1 :]
+          path.write_text(text)
           PY
       - run: npx prettier --write shared/store/community-css.ts
       - run: npx vitest run tests/unit/community-css-animation-isolation.test.ts tests/unit/community-plan-phase-d.test.ts
