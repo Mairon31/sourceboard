@@ -42,4 +42,5 @@ jobs:
             cat /tmp/sourceboard-dev.log
             exit 1
           fi
+          CI= npx playwright test tests/e2e/profile-editor.spec.ts --repeat-each=1 --retries=1 --timeout=60000
           CI= npx playwright test tests/e2e/profile-editor.spec.ts --repeat-each=10 --retries=0 --timeout=60000
