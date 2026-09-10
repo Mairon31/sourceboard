@@ -635,6 +635,7 @@ export function CommentThread({
   onAcceptSource?: (commentId: string) => void;
 }) {
   const submitInFlightRef = useRef(false);
+  const pendingFocusIdRef = useRef<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const [items, setItems] = useState(comments);
@@ -653,11 +654,16 @@ export function CommentThread({
     navigate(`${location.pathname}?${params.toString()}`);
   }
 
-  function focusCreatedComment(id: string) {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
+  useEffect(() => {
+    const id = pendingFocusIdRef.current;
+    if (!id) return;
+
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
         const target = document.getElementById(`comment-${id}`);
         if (!(target instanceof HTMLElement)) return;
+        pendingFocusIdRef.current = null;
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
         target.focus({ preventScroll: true });
@@ -668,7 +674,12 @@ export function CommentThread({
         );
       });
     });
-  }
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [items]);
 
   async function submit() {
     if (submitInFlightRef.current || (!body.trim() && !attachment)) return;
@@ -685,13 +696,13 @@ export function CommentThread({
       if (!response.ok || !payload?.comment)
         throw new Error(response.status === 401 ? "Sign in to comment." : "Comment unavailable.");
       const created = payload.comment;
+      pendingFocusIdRef.current = created.id;
       setItems((current) => insertRootComment(current, created, sort));
       setBody("");
       setAttachment(null);
       setMediaKind(null);
       setReplyTo(null);
       setStatus("Comment posted.");
-      focusCreatedComment(created.id);
     } catch (cause) {
       setStatus(cause instanceof Error ? cause.message : "Comment unavailable.");
     } finally {
