@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createLinkPreviewService,
   createWorkersLinkPreviewCache,
+  fetchPreviewImage,
   isPublicIpAddress,
   normalizeLinkPreviewUrl,
 } from "../../worker/comments/link-preview";
@@ -153,6 +154,49 @@ describe("link preview metadata fetcher", () => {
   });
 });
 
+describe("persisted link preview image fetcher", () => {
+  it("returns a bounded supported image", async () => {
+    const body = new Uint8Array([1, 2, 3, 4]);
+    const fetchImpl = vi.fn(
+      async () => new Response(body, { headers: { "content-type": "image/png" } }),
+    ) as unknown as typeof fetch;
+    const image = await fetchPreviewImage("https://example.com/preview.png", {
+      fetchImpl,
+      resolveHost: publicResolver(),
+    });
+    expect(image.contentType).toBe("image/png");
+    expect(Array.from(new Uint8Array(image.body))).toEqual([1, 2, 3, 4]);
+  });
+
+  it("revalidates image redirects and rejects private targets", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(null, { status: 302, headers: { location: "http://127.0.0.1/a.png" } }),
+    ) as unknown as typeof fetch;
+    await expect(
+      fetchPreviewImage("https://example.com/preview.png", {
+        fetchImpl,
+        resolveHost: publicResolver(),
+      }),
+    ).rejects.toMatchObject({ code: "LINK_PREVIEW_PRIVATE_TARGET" });
+  });
+
+  it("rejects preview images larger than 2 MiB", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(new Uint8Array([1]), {
+          headers: { "content-type": "image/webp", "content-length": String(2 * 1024 * 1024 + 1) },
+        }),
+    ) as unknown as typeof fetch;
+    await expect(
+      fetchPreviewImage("https://example.com/preview.webp", {
+        fetchImpl,
+        resolveHost: publicResolver(),
+      }),
+    ).rejects.toMatchObject({ code: "LINK_PREVIEW_IMAGE_TOO_LARGE" });
+  });
+});
+
 describe("Workers link preview cache", () => {
   it("stores snapshots on a deterministic internal cache URL", async () => {
     const storage = new Map<string, Response>();
@@ -219,5 +263,12 @@ describe("link preview API route", () => {
     expect(handler).toContain("canonicalUrl");
     expect(handler).toContain("metadataStatus");
     expect(handler).not.toContain("imageUrl: preview.imageUrl");
+  });
+
+  it("denies the persisted image proxy when the comment is not visible", () => {
+    const imageStart = apiSource.indexOf("const previewImageMatch");
+    const imageEnd = apiSource.indexOf("const commentService", imageStart);
+    const imageHandler = apiSource.slice(imageStart, imageEnd);
+    expect(imageHandler).toContain('comment.comment.state !== "VISIBLE"');
   });
 });
