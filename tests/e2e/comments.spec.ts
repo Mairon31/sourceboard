@@ -202,9 +202,7 @@ test("new comment immediately shows the authenticated author's real identity", a
 
 test("anonymous post author stays anonymous when their new comment renders", async ({ page }) => {
   await installAnonymousAuthorPostFixture(page);
-  const response = await page.goto(
-    "/posts/e2e-anonymous-comment-post/e2e-anonymous-comment-post",
-  );
+  const response = await page.goto("/posts/e2e-anonymous-comment-post/e2e-anonymous-comment-post");
   expect(response?.status()).toBe(200);
   await waitForUiReady(page);
 
