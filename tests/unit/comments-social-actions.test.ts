@@ -6,6 +6,10 @@ const threadSource = readFileSync(
   new URL("../../app/components/product/CommentThread.tsx", import.meta.url),
   "utf8",
 );
+const postCardSource = readFileSync(
+  new URL("../../app/components/product/PostCard.tsx", import.meta.url),
+  "utf8",
+);
 const serviceSource = readFileSync(
   new URL("../../worker/comments/service.ts", import.meta.url),
   "utf8",
@@ -90,6 +94,17 @@ describe("comment social actions", () => {
     expect(threadSource).toContain("requestAnimationFrame");
     expect(threadSource).toContain("focus({ preventScroll: true })");
     expect(postDetailSource).toContain("sort={commentSort}");
+  });
+
+  it("keeps comment and post overflow triggers icon-only", () => {
+    expect(threadSource).toContain('triggerIcon={<MoreIcon width="18" height="18" />}');
+    expect(threadSource).toContain("iconOnly");
+    expect(postCardSource).toContain('triggerIcon={<MoreIcon width="18" height="18" />}');
+    expect(postCardSource).toContain("iconOnly");
+    expect(threadSource).not.toContain('label="..."');
+    expect(threadSource).not.toContain('label="…"');
+    expect(postCardSource).not.toContain('label="..."');
+    expect(postCardSource).not.toContain('label="…"');
   });
 
   it("keeps the moderation service importable for report audit coverage", () => {
