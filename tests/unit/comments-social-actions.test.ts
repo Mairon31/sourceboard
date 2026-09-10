@@ -107,6 +107,13 @@ describe("comment social actions", () => {
     expect(postCardSource).not.toContain('label="…"');
   });
 
+  it("keeps the link preview composer endpoint authenticated and rate limited", () => {
+    expect(apiSource).toContain('pathname === "/api/comments/link-preview"');
+    expect(apiSource).toContain('url.pathname === "/api/comments/link-preview"');
+    expect(apiSource).toContain("LINK_PREVIEW_RATE_LIMITED");
+    expect(apiSource).toContain("LINK_PREVIEW_RATE_LIMIT_UNAVAILABLE");
+  });
+
   it("keeps the moderation service importable for report audit coverage", () => {
     expect(createModerationService).toBeTypeOf("function");
   });
