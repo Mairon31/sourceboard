@@ -57,19 +57,22 @@ jobs:
           labels = {"GIF": "GIF", "STICKER": "Sticker", "EMOTE": "Emote"}
           for kind, icon, pattern in controls:
               label = labels[kind]
-              replacement = f'''<button
-                  className={{`product-comment-composer__media-action${{mediaKind === "{kind}" ? " is-active" : ""}}`}}
-                  type="button"
-                  aria-label="{label}"
-                  title="{label}"
-                  aria-expanded={{mediaKind === "{kind}"}}
-                  onClick={{() => setMediaKind(mediaKind === "{kind}" ? null : "{kind}")}}
-                >
-                  <{icon} width="20" height="20" />
-                </button>'''
+              active_expr = "$" + "{mediaKind === \"" + kind + "\" ? \" is-active\" : \"\"}"
+              replacement = (
+                  '<button\n'
+                  '  className={`product-comment-composer__media-action' + active_expr + '`}\n'
+                  '  type="button"\n'
+                  '  aria-label="' + label + '"\n'
+                  '  title="' + label + '"\n'
+                  '  aria-expanded={mediaKind === "' + kind + '"}\n'
+                  '  onClick={() => setMediaKind(mediaKind === "' + kind + '" ? null : "' + kind + '")}\n'
+                  '>\n'
+                  '  <' + icon + ' width="20" height="20" />\n'
+                  '</button>'
+              )
               source, count = re.subn(pattern, replacement, source, count=1, flags=re.S)
               if count != 1:
-                  raise SystemExit(f"CommentThread {kind} toolbar control not found")
+                  raise SystemExit("CommentThread " + kind + " toolbar control not found")
 
           path.write_text(source)
           PY
