@@ -12,6 +12,7 @@ import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { PostError, isPostError } from "../posts/errors";
 import { createD1PostStore } from "../posts/store";
+import { canViewPost } from "../posts/service";
 import { createD1ProfileStore } from "../profile/store";
 import { createD1CommentStore } from "./store";
 import { createCommentService } from "./service";
@@ -26,6 +27,7 @@ import { enforceRateLimit } from "../security/rate-limit";
 import {
   createLinkPreviewService,
   createWorkersLinkPreviewCache,
+  fetchPreviewImage,
   resolveLinkPreviewHost,
 } from "./link-preview";
 
@@ -33,6 +35,7 @@ function isCommentRoute(pathname: string): boolean {
   return (
     /^\/api\/posts\/[^/]+\/comments$/.test(pathname) ||
     /^\/api\/comments\/[^/]+$/.test(pathname) ||
+    /^\/api\/comments\/[^/]+\/link-preview-image$/.test(pathname) ||
     pathname === "/api/comments/link-preview" ||
     pathname === "/api/comments/media/search" ||
     pathname === "/api/comments/emotes" ||
@@ -232,13 +235,23 @@ async function requiredViewer(request: Request, env: SourceBoardEnvironment): Pr
   return id;
 }
 
+function createProductionLinkPreviewService() {
+  return createLinkPreviewService({
+    fetchImpl: fetch,
+    resolveHost: (hostname) => resolveLinkPreviewHost(hostname),
+    cache: createWorkersLinkPreviewCache((caches as CacheStorage & { default: Cache }).default),
+  });
+}
+
 function service(env: SourceBoardEnvironment) {
   const db = database(env);
+  const previewService = createProductionLinkPreviewService();
   return createCommentService({
     store: createD1CommentStore(db),
     postStore: createD1PostStore(db),
     profileStore: createD1ProfileStore(db),
     assertEntitlements: createEntitlementChecker(db),
+    previewLink: (value) => previewService.preview(value),
   });
 }
 
@@ -337,11 +350,7 @@ export async function handleCommentApiRequest(
         },
       );
       const input = await body(request);
-      const preview = await createLinkPreviewService({
-        fetchImpl: fetch,
-        resolveHost: (hostname) => resolveLinkPreviewHost(hostname),
-        cache: createWorkersLinkPreviewCache((caches as CacheStorage & { default: Cache }).default),
-      }).preview(input.url);
+      const preview = await createProductionLinkPreviewService().preview(input.url);
       return json(
         {
           preview: {
@@ -354,6 +363,45 @@ export async function handleCommentApiRequest(
         },
         requestId,
       );
+    }
+    const previewImageMatch = url.pathname.match(/^\/api\/comments\/([^/]+)\/link-preview-image$/);
+    if (previewImageMatch && request.method === "GET") {
+      const db = database(env);
+      const comment = await createD1CommentStore(db).getComment(
+        decodeURIComponent(previewImageMatch[1] ?? ""),
+      );
+      if (!comment?.linkPreview?.imageUrl) {
+        throw new PostError(
+          404,
+          "LINK_PREVIEW_IMAGE_NOT_FOUND",
+          "The preview image was not found.",
+        );
+      }
+      const postStore = createD1PostStore(db);
+      const profileStore = createD1ProfileStore(db);
+      const post = await postStore.getPost(comment.comment.postId);
+      const viewer = await viewerId(request, env);
+      const policy = { profileStore, store: postStore, now: () => Date.now() };
+      if (!post || !(await canViewPost(viewer, post.post, policy))) {
+        throw new PostError(
+          404,
+          "LINK_PREVIEW_IMAGE_NOT_FOUND",
+          "The preview image was not found.",
+        );
+      }
+      const publiclyViewable = await canViewPost(null, post.post, policy);
+      const image = await fetchPreviewImage(comment.linkPreview.imageUrl, {
+        fetchImpl: fetch,
+        resolveHost: (hostname) => resolveLinkPreviewHost(hostname),
+      });
+      return new Response(image.body, {
+        status: 200,
+        headers: {
+          "content-type": image.contentType,
+          "cache-control": publiclyViewable ? "public, max-age=3600" : "private, no-store",
+          [REQUEST_ID_HEADER]: requestId,
+        },
+      });
     }
     const commentService = service(env);
     const postMatch = url.pathname.match(/^\/api\/posts\/([^/]+)\/comments$/);
@@ -416,6 +464,7 @@ export async function handleCommentApiRequest(
         plaintext: input.plaintext,
         markdown: input.markdown,
         attachment: input.attachment,
+        linkPreviewUrl: input.linkPreviewUrl,
       });
       if (env.EVENTS && recipient && recipient.userId !== authorId) {
         await env.EVENTS.send({

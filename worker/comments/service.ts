@@ -7,7 +7,7 @@ import { PostError } from "../posts/errors";
 import { decodeCommentCursor } from "./pagination";
 import { normalizeCommentBody } from "./richtext";
 import type { CommentEmoteAsset, CommentStore } from "./store";
-import type { CommentSort, CommentWithAuthor } from "./types";
+import type { CommentLinkPreviewSnapshot, CommentSort, CommentWithAuthor } from "./types";
 import { normalizeEmoteShortcode } from "../../shared/richtext/markdown";
 import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
 
@@ -22,6 +22,7 @@ export interface CommentServiceDependencies {
     userId: string,
     body: ReturnType<typeof normalizeCommentBody>,
   ) => Promise<void>;
+  previewLink?: (value: unknown) => Promise<CommentLinkPreviewSnapshot>;
   now?: () => number;
 }
 
@@ -44,6 +45,7 @@ export interface CommentService {
     plaintext?: unknown;
     markdown?: unknown;
     attachment?: unknown;
+    linkPreviewUrl?: unknown;
   }): Promise<CommentView>;
   update(
     commentId: string,
@@ -135,6 +137,23 @@ async function toView(
       record.comment.authorId !== viewerId &&
       record.comment.state === "VISIBLE",
     commentHref: `#comment-${encodeURIComponent(record.comment.id)}`,
+    linkPreview:
+      record.comment.state !== "DELETED" && record.linkPreview
+        ? {
+            canonicalUrl: record.linkPreview.canonicalUrl,
+            ...(record.linkPreview.siteName ? { siteName: record.linkPreview.siteName } : {}),
+            ...(record.linkPreview.title ? { title: record.linkPreview.title } : {}),
+            ...(record.linkPreview.description
+              ? { description: record.linkPreview.description }
+              : {}),
+            ...(record.linkPreview.imageUrl
+              ? {
+                  imageUrl: `/api/comments/${encodeURIComponent(record.comment.id)}/link-preview-image`,
+                }
+              : {}),
+            metadataStatus: record.linkPreview.metadataStatus,
+          }
+        : undefined,
     attachment: record.comment.attachment
       ? {
           type: record.comment.attachment.type,
@@ -246,7 +265,29 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           throw new PostError(400, "INVALID_COMMENT_PARENT", "The reply target is invalid.");
         }
       }
-      const body = normalizeCommentBody(input);
+      const hasLinkPreview =
+        input.linkPreviewUrl !== undefined &&
+        input.linkPreviewUrl !== null &&
+        input.linkPreviewUrl !== "";
+      const body = normalizeCommentBody({ ...input, allowEmpty: hasLinkPreview });
+      if (hasLinkPreview && body.attachment) {
+        throw new PostError(
+          400,
+          "LINK_PREVIEW_ATTACHMENT_CONFLICT",
+          "A link preview cannot be combined with a GIF or sticker.",
+        );
+      }
+      let linkPreview: CommentLinkPreviewSnapshot | null = null;
+      if (hasLinkPreview) {
+        if (!dependencies.previewLink) {
+          throw new PostError(
+            503,
+            "LINK_PREVIEW_UNAVAILABLE",
+            "Link previews are temporarily unavailable.",
+          );
+        }
+        linkPreview = await dependencies.previewLink(input.linkPreviewUrl);
+      }
       await dependencies.assertEntitlements?.(input.authorId, body);
       const createdAt = now();
       const record = {
@@ -269,6 +310,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         comment: record,
         richtextJson: JSON.stringify(body.richtext),
         attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,
+        linkPreview,
       });
       const createdEmoteAssets = dependencies.store.getEmoteAssets
         ? await dependencies.store.getEmoteAssets(

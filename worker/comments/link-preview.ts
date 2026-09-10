@@ -15,6 +15,7 @@ export interface LinkPreviewDependencies {
 
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 512 * 1024;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 const FETCH_TIMEOUT_MS = 5000;
 const CACHE_TTL_SECONDS = 21600;
@@ -489,6 +490,95 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
       }
     },
   };
+}
+
+async function readBoundedBytes(response: Response, maximumBytes: number): Promise<ArrayBuffer> {
+  if (!response.body) return new ArrayBuffer(0);
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value?.byteLength) continue;
+      total += value.byteLength;
+      if (total > maximumBytes) {
+        await reader.cancel();
+        throw linkError(413, "LINK_PREVIEW_IMAGE_TOO_LARGE", "The preview image is too large.");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes.buffer;
+}
+
+export async function fetchPreviewImage(
+  value: unknown,
+  dependencies: Pick<LinkPreviewDependencies, "fetchImpl" | "resolveHost">,
+): Promise<{ body: ArrayBuffer; contentType: string }> {
+  let current = normalizeLinkPreviewUrl(value);
+  const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+  for (let redirects = 0; ; redirects += 1) {
+    await assertPublicTarget(current, dependencies.resolveHost);
+    let response: Response;
+    try {
+      response = await dependencies.fetchImpl(current.toString(), {
+        redirect: "manual",
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        headers: {
+          accept: "image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9,*/*;q=0.1",
+          "user-agent": "SourceBoard-LinkPreview/1.0",
+        },
+      });
+    } catch (error) {
+      if (shouldPropagate(error)) throw error;
+      throw linkError(502, "LINK_PREVIEW_IMAGE_UNAVAILABLE", "The preview image is unavailable.");
+    }
+    if (isRedirect(response.status)) {
+      if (redirects >= MAX_REDIRECTS) {
+        throw linkError(
+          400,
+          "LINK_PREVIEW_TOO_MANY_REDIRECTS",
+          "The preview image redirects too many times.",
+        );
+      }
+      const location = response.headers.get("location");
+      if (!location) {
+        throw linkError(502, "LINK_PREVIEW_IMAGE_UNAVAILABLE", "The preview image is unavailable.");
+      }
+      current = normalizeLinkPreviewUrl(new URL(location, current).toString());
+      continue;
+    }
+    if (!response.ok) {
+      throw linkError(502, "LINK_PREVIEW_IMAGE_UNAVAILABLE", "The preview image is unavailable.");
+    }
+    const contentType = response.headers
+      .get("content-type")
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase();
+    if (!contentType || !allowedTypes.has(contentType)) {
+      throw linkError(
+        415,
+        "LINK_PREVIEW_IMAGE_UNSUPPORTED",
+        "The preview image format is unsupported.",
+      );
+    }
+    const contentLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > MAX_IMAGE_BYTES) {
+      throw linkError(413, "LINK_PREVIEW_IMAGE_TOO_LARGE", "The preview image is too large.");
+    }
+    return { body: await readBoundedBytes(response, MAX_IMAGE_BYTES), contentType };
+  }
 }
 
 async function cacheKey(canonicalUrl: string): Promise<string> {

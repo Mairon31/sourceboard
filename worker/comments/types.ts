@@ -29,6 +29,7 @@ export interface CommentRecord {
 
 export interface CommentWithAuthor {
   comment: CommentRecord;
+  linkPreview: CommentLinkPreviewSnapshot | null;
   author: {
     userId: string;
     username: string;
