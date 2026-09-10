@@ -25,6 +25,7 @@ jobs:
       - run: npm ci --strict-allow-scripts
       - name: Apply Block B Task 4
         run: |
+          sed -i 's/^    }"""$/    },"""/' .github/scripts/block_b4_patch.py
           python .github/scripts/block_b4_patch.py
           npx prettier --write worker/comments/types.ts worker/comments/richtext.ts worker/comments/store.ts worker/comments/service.ts worker/comments/link-preview.ts worker/comments/api.ts
       - name: Focused Task B4 tests
