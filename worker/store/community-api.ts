@@ -284,13 +284,6 @@ async function createSubmission(
       )
       .bind(id, current.session.user.id, now, communityState),
   ]);
-  await writeAudit(db, {
-    actorUserId: current.session.user.id,
-    action: submitForReview ? "COSMETIC_SUBMISSION_CREATED" : "COSMETIC_DRAFT_SAVED",
-    targetId: id,
-    requestId,
-    metadata: { type, communityState },
-  });
   return json(
     {
       submission: {
@@ -362,13 +355,6 @@ async function updateSubmission(
       )
       .bind(nextState, itemId),
   ]);
-  await writeAudit(db, {
-    actorUserId: current.session.user.id,
-    action: submitForReview ? "COSMETIC_SUBMISSION_RESUBMITTED" : "COSMETIC_DRAFT_UPDATED",
-    targetId: itemId,
-    requestId,
-    metadata: { communityState: nextState },
-  });
   return json({ submission: { id: itemId, communityState: nextState, updatedAt: now } }, requestId);
 }
 

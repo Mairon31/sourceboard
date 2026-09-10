@@ -54,7 +54,7 @@ const ALLOWED_PROPERTIES = new Set<string>(COMMUNITY_CSS_ALLOWED_PROPERTIES);
 
 const KEYFRAME_PROPERTIES = new Set(["opacity", "transform", "filter"]);
 const CSS_LENGTH_TOKEN =
-  /([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*(px|rem|em|ex|ch|cap|ic|lh|rlh|vw|vh|vi|vb|vmin|vmax|svw|svh|svi|svb|svmin|svmax|lvw|lvh|lvi|lvb|lvmin|lvmax|dvw|dvh|dvi|dvb|dvmin|dvmax|cm|mm|q|in|pt|pc)\b/gi;
+  /([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)\s*(px|rem|em|ex|ch|cap|ic|lh|rlh|vw|vh|vi|vb|vmin|vmax|svw|svh|svi|svb|svmin|svmax|lvw|lvh|lvi|lvb|lvmin|lvmax|dvw|dvh|dvi|dvb|dvmin|dvmax|cm|mm|q|in|pt|pc)\b/gi;
 const CSS_NUMBER = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/;
 const CSS_PIXEL = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+))px$/i;
 const CSS_DEGREE = /^([+-]?(?:\d+(?:\.\d+)?|\.\d+))deg$/i;
