@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
+import type {
+  CommentAttachmentView,
+  CommentView,
+  PublicPostAuthor,
+} from "../../../shared/ui/contracts";
 import {
   classifyCommentContent,
   hasSourceEligibleCommentContent,
@@ -587,10 +591,13 @@ function appendComment(comments: CommentView[], next: CommentView): CommentView[
   );
 }
 
+const COMPOSER_FALLBACK_NAME = "SourceBoard member";
+
 export function CommentThread({
   postId,
   comments,
   authenticated = true,
+  viewerIdentity,
   commentsClosed = false,
   canAcceptSource,
   onAcceptSource,
@@ -598,6 +605,7 @@ export function CommentThread({
   postId: string;
   comments: CommentView[];
   authenticated?: boolean;
+  viewerIdentity?: PublicPostAuthor | null;
   commentsClosed?: boolean;
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
@@ -664,7 +672,22 @@ export function CommentThread({
         </div>
       ) : (
         <div className="product-comment-composer glass-panel">
-          <Avatar name="SourceBoard member" size="sm" />
+          {viewerIdentity?.mode === "IDENTIFIED" ? (
+            <CosmeticIdentity
+              displayName={viewerIdentity.displayName}
+              avatarUrl={viewerIdentity.avatarUrl}
+              avatarFrame={viewerIdentity.avatarFrame}
+              profileEffect={viewerIdentity.profileEffect}
+              nameFont={viewerIdentity.nameFont}
+              nameEffect={viewerIdentity.nameEffect}
+              visuals={viewerIdentity.visuals}
+              mode="compact"
+              avatarSize="sm"
+              nameAs="strong"
+            />
+          ) : (
+            <Avatar name={viewerIdentity?.displayName ?? COMPOSER_FALLBACK_NAME} size="sm" />
+          )}
           <div className="product-comment-composer__field">
             <Textarea
               id="comment-composer"

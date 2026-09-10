@@ -276,24 +276,16 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
               .filter((shortcode): shortcode is string => Boolean(shortcode)),
           )
         : new Map<string, CommentEmoteAsset>();
+      const persisted = await dependencies.store.getComment(record.id);
+      if (!persisted) {
+        throw new PostError(
+          500,
+          "COMMENT_CREATE_READ_FAILED",
+          "The comment could not be loaded.",
+        );
+      }
       return toView(
-        {
-          comment: record,
-          author: {
-            userId: input.authorId,
-            username: "SourceBoard member",
-            displayName: "SourceBoard member",
-            avatarAssetId: null,
-          },
-          post: {
-            authorId: post.post.authorId,
-            authorMode: post.post.authorMode,
-            visibility: post.post.visibility,
-            deletedAt: post.post.deletedAt,
-            hiddenAt: post.post.hiddenAt,
-            status: post.post.status,
-          },
-        },
+        persisted,
         input.authorId,
         dependencies.profileStore,
         now,
