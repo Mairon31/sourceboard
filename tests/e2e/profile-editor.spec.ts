@@ -93,7 +93,8 @@ test("inline Edit profile changes username through the existing username policy 
 
   await page.goto(`/u/${ORIGINAL_USERNAME}`);
   const profileGet = page.waitForResponse(
-    (response) => response.url().endsWith("/api/profile/me") && response.request().method() === "GET",
+    (response) =>
+      response.url().endsWith("/api/profile/me") && response.request().method() === "GET",
   );
   const usernameGet = page.waitForResponse(
     (response) =>
