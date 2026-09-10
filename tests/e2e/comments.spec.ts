@@ -1,6 +1,81 @@
-import { expect, test } from "@playwright/test";
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+import { expect, test, type Page } from "@playwright/test";
+import { hashOpaqueToken } from "../../worker/auth/crypto";
+import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/security";
 import { seedCommentMediaRegressionFixture } from "./comment-media-fixture";
 import { waitForUiReady } from "./test-helpers";
+
+function executeLocalSql(sql: string) {
+  const wranglerEntrypoint = resolve(
+    process.cwd(),
+    "node_modules",
+    "wrangler",
+    "bin",
+    "wrangler.js",
+  );
+  execFileSync(
+    process.execPath,
+    [wranglerEntrypoint, "d1", "execute", "DB", "--local", "--command", sql],
+    { cwd: process.cwd(), stdio: "pipe" },
+  );
+}
+
+async function installExpiredCommentOwnerFixture(page: Page) {
+  const now = Date.now();
+  const createdAt = now - 48 * 60 * 60 * 1000;
+  const editDeadlineAt = now - 24 * 60 * 60 * 1000;
+  const sessionToken = "sourceboard-e2e-expired-comment-session";
+  const csrfToken = "sourceboard-e2e-expired-comment-csrf";
+  const tokenHash = hashOpaqueToken(sessionToken);
+  const expiresAt = now + 24 * 60 * 60 * 1000;
+
+  executeLocalSql(`
+    DELETE FROM sessions WHERE id = 'e2e-expired-comment-session' OR token_hash = '${tokenHash}';
+    INSERT INTO sessions
+      (id, user_id, token_hash, created_at, last_used_at, expires_at, revoked_at,
+       ip_prefix_hash, user_agent_hash)
+    VALUES
+      ('e2e-expired-comment-session', 'e2e-navigation-user', '${tokenHash}', ${now}, ${now},
+       ${expiresAt}, NULL, NULL, NULL);
+
+    DELETE FROM comments WHERE id = 'e2e-expired-owner-comment';
+    INSERT INTO comments
+      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+       deleted_at, hidden_at)
+    VALUES
+      ('e2e-expired-owner-comment', 'e2e-navigation-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Expired owner comment"}]', 'Expired owner comment', NULL,
+       'VISIBLE', 0, ${createdAt}, ${createdAt}, ${editDeadlineAt}, NULL, NULL);
+
+    UPDATE posts
+    SET comment_count = (
+      SELECT COUNT(*) FROM comments
+      WHERE post_id = 'e2e-navigation-post' AND deleted_at IS NULL
+    )
+    WHERE id = 'e2e-navigation-post';
+  `);
+
+  await page.context().addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: sessionToken,
+      url: "https://localhost:5173",
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    },
+    {
+      name: CSRF_COOKIE_NAME,
+      value: csrfToken,
+      url: "https://localhost:5173",
+      httpOnly: false,
+      secure: true,
+      sameSite: "Lax",
+    },
+  ]);
+}
 
 test.beforeAll(() => {
   seedCommentMediaRegressionFixture();
@@ -62,4 +137,19 @@ test("legacy Markdown plus emote renders without address or page errors", async 
 
   expect(mediaRequestFailures).toEqual([]);
   expect(pageErrors).toEqual([]);
+});
+
+test("comment owner keeps Delete after the edit window expires", async ({ page }) => {
+  await installExpiredCommentOwnerFixture(page);
+  const response = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const comment = page.locator("#comment-e2e-expired-owner-comment");
+  await expect(comment).toBeVisible();
+  const more = comment.getByRole("button", { name: "More actions" });
+  await expect(more).toBeVisible();
+  await more.click();
+  await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Edit" })).toHaveCount(0);
 });
