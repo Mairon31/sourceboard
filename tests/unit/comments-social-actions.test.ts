@@ -10,6 +10,7 @@ const postCardSource = readFileSync(
   new URL("../../app/components/product/PostCard.tsx", import.meta.url),
   "utf8",
 );
+const iconsSource = readFileSync(new URL("../../app/components/ui/icons.tsx", import.meta.url), "utf8");
 const serviceSource = readFileSync(
   new URL("../../worker/comments/service.ts", import.meta.url),
   "utf8",
@@ -112,6 +113,16 @@ describe("comment social actions", () => {
     expect(apiSource).toContain('url.pathname === "/api/comments/link-preview"');
     expect(apiSource).toContain("LINK_PREVIEW_RATE_LIMITED");
     expect(apiSource).toContain("LINK_PREVIEW_RATE_LIMIT_UNAVAILABLE");
+  });
+
+  it("offers a Link tool that submits only the canonical preview URL", () => {
+    expect(iconsSource).toContain("export function LinkIcon");
+    expect(threadSource).toContain("<LinkIcon");
+    expect(threadSource).toContain('aria-label="Link"');
+    expect(threadSource).toContain('fetch("/api/comments/link-preview"');
+    expect(threadSource).toContain("<LinkPreviewCard");
+    expect(threadSource).toContain("linkPreviewUrl: linkPreview?.canonicalUrl");
+    expect(threadSource).not.toContain("linkPreview: linkPreview");
   });
 
   it("keeps the moderation service importable for report audit coverage", () => {
