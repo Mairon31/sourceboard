@@ -4,10 +4,10 @@ import { canViewPost } from "../posts/service";
 import type { ProfileStore } from "../profile/store";
 import type { PostStore } from "../posts/store";
 import { PostError } from "../posts/errors";
-import { decodePostCursor } from "../posts/pagination";
+import { decodeCommentCursor } from "./pagination";
 import { normalizeCommentBody } from "./richtext";
 import type { CommentEmoteAsset, CommentStore } from "./store";
-import type { CommentCursor, CommentWithAuthor } from "./types";
+import type { CommentSort, CommentWithAuthor } from "./types";
 import { normalizeEmoteShortcode } from "../../shared/richtext/markdown";
 import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
 
@@ -31,6 +31,7 @@ export interface CommentService {
     viewerId: string | null,
     cursor: string | null,
     limit: number,
+    sort: CommentSort,
   ): Promise<{
     comments: CommentView[];
     nextCursor: string | null;
@@ -178,12 +179,13 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
   }
 
   return {
-    async listForPost(postId, viewerId, cursor, limit) {
+    async listForPost(postId, viewerId, cursor, limit, sort) {
       await requireVisiblePost(postId, viewerId);
       const page = await dependencies.store.listForPost({
         postId,
-        cursor: decodePostCursor(cursor) as CommentCursor | null,
+        cursor: decodeCommentCursor(cursor, sort),
         limit: Math.min(Math.max(1, Math.floor(limit)), MAX_LIMIT),
+        sort,
       });
       const likedIds = viewerId
         ? dependencies.store.getLikedCommentIds
