@@ -1,0 +1,119 @@
+name: Block B Task 3 GREEN
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+    paths:
+      - .github/workflows/block-b-task3-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  green:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/profile-comments-categories-discovery
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Implement authenticated link preview API
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("worker/comments/api.ts")
+          text = path.read_text()
+
+          import_anchor = 'import { enforceRateLimit } from "../security/rate-limit";\n'
+          import_block = '''import {
+            createLinkPreviewService,
+            createWorkersLinkPreviewCache,
+            resolveLinkPreviewHost,
+          } from "./link-preview";
+          '''
+          if 'from "./link-preview"' not in text:
+              if import_anchor not in text:
+                  raise SystemExit("link preview import anchor not found")
+              text = text.replace(import_anchor, import_anchor + import_block, 1)
+
+          route_anchor = '    pathname === "/api/comments/media/search" ||\n'
+          route_line = '    pathname === "/api/comments/link-preview" ||\n'
+          if route_line not in text:
+              if route_anchor not in text:
+                  raise SystemExit("route guard anchor not found")
+              text = text.replace(route_anchor, route_line + route_anchor, 1)
+
+          service_anchor = '    const commentService = service(env);\n'
+          handler_lines = [
+              '    if (url.pathname === "/api/comments/link-preview" && request.method === "POST") {',
+              '      mutationSecurity(request);',
+              '      const userId = await requiredViewer(request, env);',
+              '      await enforceRateLimit(',
+              '        env.RATE_LIMIT_CONTENT,',
+              '        `link-preview:${userId}:${getRequestSecurityContext(request).ipPrefixHash}`,',
+              '        {',
+              '          unavailable: () =>',
+              '            new PostError(',
+              '              503,',
+              '              "LINK_PREVIEW_RATE_LIMIT_UNAVAILABLE",',
+              '              "Link previews are temporarily unavailable.",',
+              '            ),',
+              '          limited: () =>',
+              '            new PostError(',
+              '              429,',
+              '              "LINK_PREVIEW_RATE_LIMITED",',
+              '              "Too many link previews. Try again later.",',
+              '              { retryAfter: 60 },',
+              '            ),',
+              '        },',
+              '      );',
+              '      const input = await body(request);',
+              '      const preview = await createLinkPreviewService({',
+              '        fetchImpl: fetch,',
+              '        resolveHost: (hostname) => resolveLinkPreviewHost(hostname),',
+              '        cache: createWorkersLinkPreviewCache(caches.default),',
+              '      }).preview(input.url);',
+              '      return json(',
+              '        {',
+              '          preview: {',
+              '            canonicalUrl: preview.canonicalUrl,',
+              '            ...(preview.siteName ? { siteName: preview.siteName } : {}),',
+              '            ...(preview.title ? { title: preview.title } : {}),',
+              '            ...(preview.description ? { description: preview.description } : {}),',
+              '            metadataStatus: preview.metadataStatus,',
+              '          },',
+              '        },',
+              '        requestId,',
+              '      );',
+              '    }',
+              '',
+          ]
+          handler = "\n".join(handler_lines)
+          if 'url.pathname === "/api/comments/link-preview" && request.method === "POST"' not in text:
+              if service_anchor not in text:
+                  raise SystemExit("comment service anchor not found")
+              text = text.replace(service_anchor, handler + service_anchor, 1)
+
+          path.write_text(text)
+          PY
+          npx prettier --write worker/comments/api.ts
+      - name: Verify focused GREEN
+        run: |
+          npx vitest run tests/unit/link-preview.test.ts tests/unit/comments-social-actions.test.ts
+          npm run typecheck
+          npm run lint
+      - name: Commit product change and remove temporary workflows
+        run: |
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git rm -f .github/workflows/block-b-task3-red.yml .github/workflows/block-b-task3-green.yml
+          git add worker/comments/api.ts
+          git diff --cached --check
+          git commit -m "feat(comments): expose safe link preview API"
+          git push origin HEAD:feature/profile-comments-categories-discovery
