@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { hashOpaqueToken } from "../../worker/auth/crypto";
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/security";
+import { waitForUiReady } from "./test-helpers";
 
 const USER_ID = "e2e-profile-editor-user";
 const ORIGINAL_USERNAME = "e2e-profile-editor";
@@ -87,11 +88,9 @@ test("inline Edit profile changes username through the existing username policy 
   page,
 }) => {
   await installProfileEditorFixture(page);
-  const usernamePatch = page.waitForRequest(
-    (request) => request.url().endsWith("/api/profile/me/username") && request.method() === "PATCH",
-  );
-
   await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  await waitForUiReady(page);
+
   const profileGet = page.waitForResponse(
     (response) =>
       response.url().endsWith("/api/profile/me") && response.request().method() === "GET",
@@ -108,6 +107,9 @@ test("inline Edit profile changes username through the existing username policy 
   const username = page.getByLabel("Username");
   await expect(username).toBeVisible();
   await username.fill(NEXT_USERNAME);
+  const usernamePatch = page.waitForRequest(
+    (request) => request.url().endsWith("/api/profile/me/username") && request.method() === "PATCH",
+  );
   await page.getByRole("button", { name: "Save", exact: true }).click();
 
   const request = await usernamePatch;
