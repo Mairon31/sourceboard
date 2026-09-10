@@ -6,6 +6,7 @@ import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { hasSourceEligibleCommentContent } from "../../shared/richtext/comment-content";
 import { PostError } from "../posts/errors";
 import type { NotificationEvent } from "../notifications/service";
 
@@ -104,6 +105,16 @@ function reason(value: unknown): string {
       "A reason between 10 and 500 characters is required.",
     );
   return value.trim();
+}
+
+function storedCommentRichtext(value: unknown): unknown[] | undefined {
+  if (typeof value !== "string") return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 async function revokeResolution(
@@ -220,7 +231,12 @@ export async function handleSourceRequest(
     const database = db(env);
     const target = await database
       .prepare(
-        `SELECT p.author_id AS post_author_id, p.accepted_comment_id, p.verified_source_id, c.id AS comment_id, c.author_id AS comment_author_id, c.state AS comment_state FROM posts p LEFT JOIN comments c ON c.id = ? AND c.post_id = p.id WHERE p.id = ?`,
+        `SELECT p.author_id AS post_author_id, p.accepted_comment_id, p.verified_source_id,
+                c.id AS comment_id, c.author_id AS comment_author_id, c.state AS comment_state,
+                c.richtext_json AS comment_richtext_json, c.plaintext AS comment_plaintext
+         FROM posts p
+         LEFT JOIN comments c ON c.id = ? AND c.post_id = p.id
+         WHERE p.id = ?`,
       )
       .bind(String(body.commentId ?? ""), id)
       .first<Record<string, unknown>>();
@@ -234,6 +250,19 @@ export async function handleSourceRequest(
     const current = await actor(request, requestId, env, capability);
     if (!capability && current.id !== target.post_author_id)
       throw new PostError(403, "POST_AUTHOR_REQUIRED", "Only the post author can accept a source.");
+    if (
+      kind === "accept" &&
+      !hasSourceEligibleCommentContent(
+        storedCommentRichtext(target.comment_richtext_json),
+        typeof target.comment_plaintext === "string" ? target.comment_plaintext : "",
+      )
+    ) {
+      throw new PostError(
+        400,
+        "SOURCE_TEXT_REQUIRED",
+        "Accepted sources must include text or a link; media-only comments cannot be accepted.",
+      );
+    }
     if (kind === "accept") {
       const resolvedAt = Date.now();
       const results = await database.batch([
