@@ -108,8 +108,7 @@ test("inline Edit profile changes username through the existing username policy 
   await expect(username).toBeVisible();
   await username.fill(NEXT_USERNAME);
   const usernamePatch = page.waitForRequest(
-    (request) =>
-      request.url().endsWith("/api/profile/me/username") && request.method() === "PATCH",
+    (request) => request.url().endsWith("/api/profile/me/username") && request.method() === "PATCH",
   );
   await page.getByRole("button", { name: "Save", exact: true }).click();
 
