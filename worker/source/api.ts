@@ -233,7 +233,8 @@ export async function handleSourceRequest(
       .prepare(
         `SELECT p.author_id AS post_author_id, p.accepted_comment_id, p.verified_source_id,
                 c.id AS comment_id, c.author_id AS comment_author_id, c.state AS comment_state,
-                c.richtext_json AS comment_richtext_json, c.plaintext AS comment_plaintext
+                c.body_richtext_json AS comment_richtext_json,
+                c.body_plaintext AS comment_plaintext
          FROM posts p
          LEFT JOIN comments c ON c.id = ? AND c.post_id = p.id
          WHERE p.id = ?`,
