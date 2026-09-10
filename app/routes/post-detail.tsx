@@ -15,6 +15,7 @@ import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
 import { createD1CommentStore } from "../../worker/comments/store";
 import { createCommentService } from "../../worker/comments/service";
+import { parseCommentSort } from "../../worker/comments/types";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { PostCard } from "../components/product/PostCard";
 import { CommentThread } from "../components/product/CommentThread";
@@ -29,6 +30,7 @@ interface LoaderArgs extends ServerLoaderArgs {
 
 export async function loader({ params, request, context, url }: LoaderArgs) {
   const requested = url;
+  const commentSort = parseCommentSort(requested.searchParams.get("comments"));
   const result = await withOptionalServerSession(
     request,
     context,
@@ -37,6 +39,7 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
       unavailable,
       authenticated: false,
       viewerIdentity: null as PublicPostAuthor | null,
+      commentSort,
       canonicalUrl: requested.toString(),
     }),
     async (runtime, userId) => {
@@ -52,7 +55,7 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
         profileStore,
       });
       const postId = params.postId ?? "";
-      const commentsPromise = commentService.listForPost(postId, userId, null, 50).then(
+      const commentsPromise = commentService.listForPost(postId, userId, null, 50, commentSort).then(
         (value) => ({ ok: true as const, value }),
         (error: unknown) => ({ ok: false as const, error }),
       );
@@ -93,6 +96,7 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
         unavailable: false,
         authenticated: Boolean(userId),
         viewerIdentity,
+        commentSort,
         canonicalUrl: requested.toString(),
       };
     },
