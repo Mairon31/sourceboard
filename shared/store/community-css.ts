@@ -252,12 +252,16 @@ function validateFilter(value: string): void {
 }
 
 function durationMs(value: string): number[] {
-  return [...value.matchAll(/(\d+(?:\.\d+)?)(ms|s)\b/gi)].map((match) =>
-    match[2]?.toLowerCase() === "s" ? Number(match[1]) * 1000 : Number(match[1]),
-  );
+  const pattern = /(^|[\s,(])([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(ms|s)\b/gi;
+  return [...value.matchAll(pattern)].map((match) => {
+    const amount = Number(match[2]);
+    return match[3]?.toLowerCase() === "s" ? amount * 1000 : amount;
+  });
 }
 
 function validateAnimation(value: string, property: string): void {
+  if (/\b(?:calc|min|max|clamp)\s*\(/i.test(value))
+    invalid("Animation math functions are not allowed.");
   for (const duration of durationMs(value)) {
     if (duration < 800 || duration > 20_000)
       invalid("Animations must use durations between 800ms and 20s.");
