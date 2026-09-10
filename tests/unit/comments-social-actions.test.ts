@@ -27,7 +27,7 @@ const postDetailSource = readFileSync(
 describe("comment social actions", () => {
   it("renders stable anchors and performs local mutations without a reload", () => {
     expect(threadSource).toContain("id={`comment-${comment.id}`}");
-    expect(threadSource).toContain("setItems((current) => appendComment");
+    expect(threadSource).toContain("setItems((current) => insertRootComment");
     expect(threadSource).not.toContain("window.location.reload");
     expect(threadSource).toContain("/api/reports");
   });
