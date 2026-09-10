@@ -47,7 +47,23 @@
 
 .product-comment__action.is-active {
   color: var(--accent);
-  background: var(--accent-soft);
+}
+
+.product-comment__action--like {
+  min-width: 46px;
+  padding-inline: 8px;
+  border-radius: 999px;
+}
+
+.product-comment__action--like.is-active {
+  border-color: transparent;
+  background: transparent;
+}
+
+.product-comment__action--like.is-active:hover,
+.product-comment__action--like.is-active:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .product-comment__action--accept {
@@ -57,6 +73,41 @@
 .product-comment__action-count {
   min-width: 1ch;
   font-variant-numeric: tabular-nums;
+}
+
+.product-comment__author-badge {
+  display: inline-flex;
+  min-height: 20px;
+  align-items: center;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border-subtle));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.product-comment__edited {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-glass-soft) 62%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.product-comment__edited svg {
+  opacity: 0.8;
 }
 
 .product-comment__action-meta {
@@ -112,6 +163,12 @@
   display: inline-flex;
 }
 
+.product-comment__actions .product-share-action .sb-button {
+  border-radius: 999px;
+  padding-inline: 8px;
+  font-weight: 650;
+}
+
 .product-comment__actions .product-share-action [role="alert"] {
   margin-left: 4px;
   color: var(--danger);
@@ -127,6 +184,10 @@
   .product-comment__actions .product-share-action .sb-button {
     min-height: 30px;
     padding-inline: 7px;
+  }
+
+  .product-comment__action--like {
+    min-width: 42px;
   }
 }
 
