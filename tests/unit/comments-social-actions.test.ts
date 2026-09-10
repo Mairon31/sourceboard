@@ -14,6 +14,14 @@ const storeSource = readFileSync(
   new URL("../../worker/comments/store.ts", import.meta.url),
   "utf8",
 );
+const typesSource = readFileSync(
+  new URL("../../worker/comments/types.ts", import.meta.url),
+  "utf8",
+);
+const apiSource = readFileSync(
+  new URL("../../worker/comments/api.ts", import.meta.url),
+  "utf8",
+);
 const postDetailSource = readFileSync(
   new URL("../../app/routes/post-detail.tsx", import.meta.url),
   "utf8",
@@ -57,6 +65,22 @@ describe("comment social actions", () => {
     expect(postDetailSource).toContain("viewerIdentity");
     expect(threadSource).toContain("viewerIdentity");
     expect(threadSource).not.toContain('<Avatar name="SourceBoard member" size="sm" />');
+  });
+
+  it("keeps comment sorting server-backed and deterministic", () => {
+    expect(typesSource).toContain('export type CommentSort = "recent" | "popular" | "oldest"');
+    expect(typesSource).toContain('return value === "popular" || value === "oldest" ? value : "recent"');
+    expect(serviceSource).toContain("decodeCommentCursor(cursor, sort)");
+    expect(apiSource).toContain('parseCommentSort(url.searchParams.get("sort"))');
+    expect(postDetailSource).toContain('parseCommentSort(requested.searchParams.get("comments"))');
+    expect(storeSource).toContain('"c.parent_comment_id IS NULL"');
+    expect(storeSource).toContain('return "c.created_at DESC, c.id DESC"');
+    expect(storeSource).toContain('return "c.created_at ASC, c.id ASC"');
+    expect(storeSource).toContain(
+      'return "c.like_count DESC, c.created_at DESC, c.id DESC"',
+    );
+    expect(storeSource).toContain("WITH RECURSIVE thread_ids(id)");
+    expect(storeSource).toContain("child.deleted_at IS NULL");
   });
 
   it("keeps the moderation service importable for report audit coverage", () => {
