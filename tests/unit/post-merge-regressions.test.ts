@@ -22,6 +22,10 @@ describe("post-merge production regressions", () => {
     expect(commentThread).toContain("hasSourceEligibleCommentContent");
     expect(sourceApi).toContain("SOURCE_TEXT_REQUIRED");
     expect(sourceApi).toContain("hasSourceEligibleCommentContent");
+    expect(sourceApi).toContain("c.body_richtext_json AS comment_richtext_json");
+    expect(sourceApi).toContain("c.body_plaintext AS comment_plaintext");
+    expect(sourceApi).not.toContain("c.richtext_json AS comment_richtext_json");
+    expect(sourceApi).not.toContain("c.plaintext AS comment_plaintext");
   });
 
   it("marks comments written by the post author", () => {
