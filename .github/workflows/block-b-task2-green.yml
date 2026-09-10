@@ -1,0 +1,40 @@
+name: Block B Task 2 GREEN
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+    paths:
+      - .github/workflows/block-b-task2-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  green:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/profile-comments-categories-discovery
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Apply canonical formatting
+        run: npx prettier --write worker/comments/link-preview.ts tests/unit/link-preview.test.ts
+      - name: Run focused safe-link tests
+        run: npx vitest run tests/unit/link-preview.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Commit verified Task B2 and remove temporary workflows
+        run: |
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git rm -f .github/workflows/block-b-task2-red.yml .github/workflows/block-b-task2-green.yml
+          git add worker/comments/link-preview.ts tests/unit/link-preview.test.ts
+          git diff --cached --check
+          git commit -m "feat(comments): add safe link metadata fetcher"
+          git push origin HEAD:feature/profile-comments-categories-discovery
