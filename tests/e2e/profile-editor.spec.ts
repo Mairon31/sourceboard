@@ -83,25 +83,24 @@ async function installProfileEditorFixture(page: Page) {
   ]);
 }
 
-test(
-  "inline Edit profile changes username through the existing username policy endpoint",
-  async ({ page }) => {
-    await installProfileEditorFixture(page);
-    const usernamePatch = page.waitForRequest(
-      (request) =>
-        request.url().endsWith("/api/profile/me/username") && request.method() === "PATCH",
-    );
+test("inline Edit profile changes username through the existing username policy endpoint", async ({
+  page,
+}) => {
+  await installProfileEditorFixture(page);
+  const usernamePatch = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/api/profile/me/username") && request.method() === "PATCH",
+  );
 
-    await page.goto(`/u/${ORIGINAL_USERNAME}`);
-    await page.getByRole("button", { name: "Edit profile" }).click();
-    const username = page.getByLabel("Username");
-    await expect(username).toBeVisible();
-    await username.fill(NEXT_USERNAME);
-    await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  await page.getByRole("button", { name: "Edit profile" }).click();
+  const username = page.getByLabel("Username");
+  await expect(username).toBeVisible();
+  await username.fill(NEXT_USERNAME);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
 
-    const request = await usernamePatch;
-    expect(request.postDataJSON()).toEqual({ username: NEXT_USERNAME });
-    await expect(page).toHaveURL(new RegExp(`/u/${NEXT_USERNAME}$`));
-    await expect(page.getByText(`@${NEXT_USERNAME}`, { exact: true }).first()).toBeVisible();
-  },
-);
+  const request = await usernamePatch;
+  expect(request.postDataJSON()).toEqual({ username: NEXT_USERNAME });
+  await expect(page).toHaveURL(new RegExp(`/u/${NEXT_USERNAME}$`));
+  await expect(page.getByText(`@${NEXT_USERNAME}`, { exact: true }).first()).toBeVisible();
+});
