@@ -47,10 +47,8 @@ describe("comment content classification", () => {
 
   it("treats a link as substantive source content", () => {
     const richtext = [{ type: "link", url: "https://example.com/source", label: "Source" }];
-    const eligible = hasSourceEligibleCommentContent(
-      richtext,
-      "Source https://example.com/source",
-    );
+    const sourceUrl = "Source https://example.com/source";
+    const eligible = hasSourceEligibleCommentContent(richtext, sourceUrl);
 
     expect(eligible).toBe(true);
   });
