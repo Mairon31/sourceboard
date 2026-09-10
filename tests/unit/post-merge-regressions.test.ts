@@ -33,7 +33,9 @@ describe("post-merge production regressions", () => {
   it("uses explicit visual-only and emote-only presentation instead of styling every attachment as media-only", () => {
     expect(commentThread).toContain("product-comment__bubble--visual-only");
     expect(commentThread).toContain("product-comment__bubble--emote-only");
-    expect(profileKlipyCss).not.toContain(":has(.product-comment-attachment):not(.product-comment__bubble--muted)");
+    expect(profileKlipyCss).not.toContain(
+      ":has(.product-comment-attachment):not(.product-comment__bubble--muted)",
+    );
     expect(profileKlipyCss).toContain(".product-comment__bubble--visual-only");
     expect(profileKlipyCss).toContain("2.325em");
   });
