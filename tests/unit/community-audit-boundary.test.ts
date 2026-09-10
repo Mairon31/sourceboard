@@ -10,10 +10,7 @@ function sourceBetween(source: string, start: string, end: string): string {
 }
 
 describe("community cosmetic audit boundary", () => {
-  const api = readFileSync(
-    new URL("../../worker/store/community-api.ts", import.meta.url),
-    "utf8",
-  );
+  const api = readFileSync(new URL("../../worker/store/community-api.ts", import.meta.url), "utf8");
 
   it("does not audit ordinary creator submission or draft edits", () => {
     const create = sourceBetween(
