@@ -342,6 +342,7 @@ function sanitizeDeclarations(
       if (!Number.isFinite(numeric) || numeric < 0.15 || numeric > 1)
         invalid("Opacity must stay between 0.15 and 1.");
     }
+    if (property === "border") validateBoundedLengths(value, 8, property);
     if (property === "border-width")
       validateBoundedLengths(value, 8, property, { inspectPercent: true });
     if (property === "border-radius")
