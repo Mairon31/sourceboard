@@ -1,0 +1,22 @@
+name: Task 6 red
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+
+permissions:
+  contents: read
+
+jobs:
+  focused-red:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - run: npx vitest run tests/unit/media-picker.test.ts tests/unit/comments-social-actions.test.ts
