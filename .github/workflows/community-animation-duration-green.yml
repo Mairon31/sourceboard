@@ -1,0 +1,68 @@
+name: Community animation duration GREEN
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+    paths:
+      - .github/workflows/community-animation-duration-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Bound animation time grammar
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("shared/store/community-css.ts")
+          text = path.read_text()
+          old = '''function durationMs(value: string): number[] {
+            return [...value.matchAll(/(\\d+(?:\\.\\d+)?)(ms|s)\\b/gi)].map((match) =>
+              match[2]?.toLowerCase() === "s" ? Number(match[1]) * 1000 : Number(match[1]),
+            );
+          }
+
+          function validateAnimation(value: string, property: string): void {
+            for (const duration of durationMs(value)) {'''
+          new = '''function durationMs(value: string): number[] {
+            const pattern =
+              /(^|[\\s,(])([+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[eE][+-]?\\d+)?)(ms|s)\\b/gi;
+            return [...value.matchAll(pattern)].map((match) => {
+              const amount = Number(match[2]);
+              return match[3]?.toLowerCase() === "s" ? amount * 1000 : amount;
+            });
+          }
+
+          function validateAnimation(value: string, property: string): void {
+            if (/\\b(?:calc|min|max|clamp)\\s*\\(/i.test(value))
+              invalid("Animation math functions are not allowed.");
+            for (const duration of durationMs(value)) {'''
+          if text.count(old) != 1:
+              raise SystemExit(f"animation duration block mismatch: {text.count(old)}")
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: npx prettier --write shared/store/community-css.ts tests/unit/community-css-animation-duration-bounds.test.ts
+      - run: npx vitest run tests/unit/community-css-animation-duration-bounds.test.ts tests/unit/community-css-animation-isolation.test.ts tests/unit/community-css-scientific-lengths.test.ts tests/unit/community-css-border-bounds.test.ts tests/unit/community-plan-phase-d.test.ts tests/unit/community-audit-boundary.test.ts
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: git diff --check
+      - name: Commit verified GREEN and remove temporary gate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/community-animation-duration-green.yml
+          git add shared/store/community-css.ts tests/unit/community-css-animation-duration-bounds.test.ts
+          git commit -m "fix(store): enforce community animation duration bounds"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
