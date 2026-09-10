@@ -23,11 +23,17 @@ import {
 } from "../store/entitlements";
 import { createModerationService } from "../moderation/service";
 import { enforceRateLimit } from "../security/rate-limit";
+import {
+  createLinkPreviewService,
+  createWorkersLinkPreviewCache,
+  resolveLinkPreviewHost,
+} from "./link-preview";
 
 function isCommentRoute(pathname: string): boolean {
   return (
     /^\/api\/posts\/[^/]+\/comments$/.test(pathname) ||
     /^\/api\/comments\/[^/]+$/.test(pathname) ||
+    pathname === "/api/comments/link-preview" ||
     pathname === "/api/comments/media/search" ||
     pathname === "/api/comments/emotes" ||
     pathname === "/api/comments/stickers" ||
@@ -307,6 +313,47 @@ export async function handleCommentApiRequest(
     if (url.pathname === "/api/comments/stickers" && request.method === "GET") {
       const userId = await requiredViewer(request, env);
       return json({ packs: await listEntitledStickerPacks(database(env), userId) }, requestId);
+    }
+    if (url.pathname === "/api/comments/link-preview" && request.method === "POST") {
+      mutationSecurity(request);
+      const userId = await requiredViewer(request, env);
+      await enforceRateLimit(
+        env.RATE_LIMIT_CONTENT,
+        `link-preview:${userId}:${getRequestSecurityContext(request).ipPrefixHash}`,
+        {
+          unavailable: () =>
+            new PostError(
+              503,
+              "LINK_PREVIEW_RATE_LIMIT_UNAVAILABLE",
+              "Link previews are temporarily unavailable.",
+            ),
+          limited: () =>
+            new PostError(
+              429,
+              "LINK_PREVIEW_RATE_LIMITED",
+              "Too many link previews. Try again later.",
+              { retryAfter: 60 },
+            ),
+        },
+      );
+      const input = await body(request);
+      const preview = await createLinkPreviewService({
+        fetchImpl: fetch,
+        resolveHost: (hostname) => resolveLinkPreviewHost(hostname),
+        cache: createWorkersLinkPreviewCache((caches as CacheStorage & { default: Cache }).default),
+      }).preview(input.url);
+      return json(
+        {
+          preview: {
+            canonicalUrl: preview.canonicalUrl,
+            ...(preview.siteName ? { siteName: preview.siteName } : {}),
+            ...(preview.title ? { title: preview.title } : {}),
+            ...(preview.description ? { description: preview.description } : {}),
+            metadataStatus: preview.metadataStatus,
+          },
+        },
+        requestId,
+      );
     }
     const commentService = service(env);
     const postMatch = url.pathname.match(/^\/api\/posts\/([^/]+)\/comments$/);
