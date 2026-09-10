@@ -1,0 +1,41 @@
+name: Block B5 implementation gate
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+    paths:
+      - .github/workflows/block-b5-implement.yml
+
+permissions:
+  contents: write
+
+jobs:
+  implement-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/profile-comments-categories-discovery
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Apply Block B Task 5
+        run: |
+          python .github/scripts/block_b5_patch.py
+          npx prettier --write app/components/ui/icons.tsx app/components/product/LinkPreviewCard.tsx app/components/product/CommentThread.tsx app/components/product/comment-actions.css
+      - name: Focused Task B5 tests
+        run: npx vitest run tests/unit/comments-social-actions.test.ts tests/unit/link-preview.test.ts tests/unit/link-preview-persistence.test.ts tests/unit/media-picker.test.ts
+      - run: npm run typecheck
+      - name: Commit verified implementation and remove temporary tooling
+        run: |
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git rm -f .github/workflows/block-b5-implement.yml .github/scripts/block_b5_patch.py
+          git add app/components/ui/icons.tsx app/components/product/LinkPreviewCard.tsx app/components/product/CommentThread.tsx app/components/product/comment-actions.css
+          git diff --cached --check
+          git commit -m "feat(comments): add Link preview composer tool"
+          git push origin HEAD:feature/profile-comments-categories-discovery
