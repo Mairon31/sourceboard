@@ -28,14 +28,15 @@ jobs:
           from pathlib import Path
           path = Path("shared/store/community-css.ts")
           text = path.read_text()
-          anchor = '''    if (property === "border-width")
-              validateBoundedLengths(value, 8, property, { inspectPercent: true });'''
-          replacement = '''    if (property === "border") validateBoundedLengths(value, 8, property);
-              if (property === "border-width")
-              validateBoundedLengths(value, 8, property, { inspectPercent: true });'''
-          if anchor not in text:
-              raise SystemExit("border-width anchor not found")
-          path.write_text(text.replace(anchor, replacement, 1))
+          needle = 'if (property === "border-width")'
+          pos = text.find(needle)
+          if pos < 0:
+              raise SystemExit("border-width condition not found")
+          line_start = text.rfind("\n", 0, pos) + 1
+          indent = text[line_start:pos]
+          insertion = f'{indent}if (property === "border") validateBoundedLengths(value, 8, property);\n'
+          text = text[:line_start] + insertion + text[line_start:]
+          path.write_text(text)
           PY
       - run: npx prettier --write shared/store/community-css.ts
       - run: npx vitest run tests/unit/community-css-border-bounds.test.ts tests/unit/community-css-animation-isolation.test.ts tests/unit/community-plan-phase-d.test.ts
