@@ -265,6 +265,7 @@ function cleanMetadata(value: string | null, max: number): string | null {
   if (!value) return null;
   const cleaned = decodeEntities(value)
     .replace(/<[^>]*>/g, " ")
+    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
