@@ -80,6 +80,18 @@ describe("comment social actions", () => {
     expect(storeSource).toContain("child.deleted_at IS NULL");
   });
 
+  it("offers route-backed sort controls and focuses a freshly created comment", () => {
+    expect(threadSource).toContain("Recent");
+    expect(threadSource).toContain("Popular");
+    expect(threadSource).toContain("Oldest");
+    expect(threadSource).toContain('params.set("comments", nextSort)');
+    expect(threadSource).toContain("insertRootComment");
+    expect(threadSource).toContain("tabIndex={-1}");
+    expect(threadSource).toContain("requestAnimationFrame");
+    expect(threadSource).toContain("focus({ preventScroll: true })");
+    expect(postDetailSource).toContain("sort={commentSort}");
+  });
+
   it("keeps the moderation service importable for report audit coverage", () => {
     expect(createModerationService).toBeTypeOf("function");
   });
