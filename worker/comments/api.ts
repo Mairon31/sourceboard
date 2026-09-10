@@ -370,7 +370,7 @@ export async function handleCommentApiRequest(
       const comment = await createD1CommentStore(db).getComment(
         decodeURIComponent(previewImageMatch[1] ?? ""),
       );
-      if (!comment?.linkPreview?.imageUrl) {
+      if (!comment?.linkPreview?.imageUrl || comment.comment.state !== "VISIBLE") {
         throw new PostError(
           404,
           "LINK_PREVIEW_IMAGE_NOT_FOUND",
