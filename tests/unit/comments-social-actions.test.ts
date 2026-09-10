@@ -14,6 +14,10 @@ const storeSource = readFileSync(
   new URL("../../worker/comments/store.ts", import.meta.url),
   "utf8",
 );
+const postDetailSource = readFileSync(
+  new URL("../../app/routes/post-detail.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("comment social actions", () => {
   it("renders stable anchors and performs local mutations without a reload", () => {
@@ -40,6 +44,19 @@ describe("comment social actions", () => {
     );
     expect(deleteStoreSource).not.toContain("edit_deadline_at");
     expect(deleteStoreSource).toContain("state = 'VISIBLE'");
+  });
+
+  it("projects the persisted author when a new comment is returned", () => {
+    const createSource = serviceSource.slice(
+      serviceSource.indexOf("async create(input)"),
+      serviceSource.indexOf("async update(commentId"),
+    );
+    expect(createSource).toContain("await dependencies.store.getComment(record.id)");
+    expect(createSource).not.toContain('username: "SourceBoard member"');
+    expect(createSource).not.toContain('displayName: "SourceBoard member"');
+    expect(postDetailSource).toContain("viewerIdentity");
+    expect(threadSource).toContain("viewerIdentity");
+    expect(threadSource).not.toContain('<Avatar name="SourceBoard member" size="sm" />');
   });
 
   it("keeps the moderation service importable for report audit coverage", () => {

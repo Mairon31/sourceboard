@@ -21,40 +21,22 @@ function executeLocalSql(sql: string) {
   );
 }
 
-async function installExpiredCommentOwnerFixture(page: Page) {
+async function installNavigationUserSession(page: Page, suffix: string) {
   const now = Date.now();
-  const createdAt = now - 48 * 60 * 60 * 1000;
-  const editDeadlineAt = now - 24 * 60 * 60 * 1000;
-  const sessionToken = "sourceboard-e2e-expired-comment-session";
-  const csrfToken = "sourceboard-e2e-expired-comment-csrf";
+  const sessionId = `e2e-comment-${suffix}-session`;
+  const sessionToken = `sourceboard-e2e-comment-${suffix}-session`;
+  const csrfToken = `sourceboard-e2e-comment-${suffix}-csrf`;
   const tokenHash = hashOpaqueToken(sessionToken);
   const expiresAt = now + 24 * 60 * 60 * 1000;
 
   executeLocalSql(`
-    DELETE FROM sessions WHERE id = 'e2e-expired-comment-session' OR token_hash = '${tokenHash}';
+    DELETE FROM sessions WHERE id = '${sessionId}' OR token_hash = '${tokenHash}';
     INSERT INTO sessions
       (id, user_id, token_hash, created_at, last_used_at, expires_at, revoked_at,
        ip_prefix_hash, user_agent_hash)
     VALUES
-      ('e2e-expired-comment-session', 'e2e-navigation-user', '${tokenHash}', ${now}, ${now},
+      ('${sessionId}', 'e2e-navigation-user', '${tokenHash}', ${now}, ${now},
        ${expiresAt}, NULL, NULL, NULL);
-
-    DELETE FROM comments WHERE id = 'e2e-expired-owner-comment';
-    INSERT INTO comments
-      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
-       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
-       deleted_at, hidden_at)
-    VALUES
-      ('e2e-expired-owner-comment', 'e2e-navigation-post', 'e2e-navigation-user', NULL,
-       '[{"type":"text","text":"Expired owner comment"}]', 'Expired owner comment', NULL,
-       'VISIBLE', 0, ${createdAt}, ${createdAt}, ${editDeadlineAt}, NULL, NULL);
-
-    UPDATE posts
-    SET comment_count = (
-      SELECT COUNT(*) FROM comments
-      WHERE post_id = 'e2e-navigation-post' AND deleted_at IS NULL
-    )
-    WHERE id = 'e2e-navigation-post';
   `);
 
   await page.context().addCookies([
@@ -75,6 +57,32 @@ async function installExpiredCommentOwnerFixture(page: Page) {
       sameSite: "Lax",
     },
   ]);
+}
+
+async function installExpiredCommentOwnerFixture(page: Page) {
+  const now = Date.now();
+  const createdAt = now - 48 * 60 * 60 * 1000;
+  const editDeadlineAt = now - 24 * 60 * 60 * 1000;
+  await installNavigationUserSession(page, "expired-owner");
+
+  executeLocalSql(`
+    DELETE FROM comments WHERE id = 'e2e-expired-owner-comment';
+    INSERT INTO comments
+      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+       deleted_at, hidden_at)
+    VALUES
+      ('e2e-expired-owner-comment', 'e2e-navigation-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Expired owner comment"}]', 'Expired owner comment', NULL,
+       'VISIBLE', 0, ${createdAt}, ${createdAt}, ${editDeadlineAt}, NULL, NULL);
+
+    UPDATE posts
+    SET comment_count = (
+      SELECT COUNT(*) FROM comments
+      WHERE post_id = 'e2e-navigation-post' AND deleted_at IS NULL
+    )
+    WHERE id = 'e2e-navigation-post';
+  `);
 }
 
 test.beforeAll(() => {
@@ -152,4 +160,22 @@ test("comment owner keeps Delete after the edit window expires", async ({ page }
   await more.click();
   await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Edit" })).toHaveCount(0);
+});
+
+test("new comment immediately shows the authenticated author's real identity", async ({ page }) => {
+  await installNavigationUserSession(page, "real-identity");
+  const response = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  await page.getByLabel("Add a comment").fill("Identity appears immediately");
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
+
+  const comment = page
+    .locator("article.product-comment")
+    .filter({ hasText: "Identity appears immediately" });
+  await expect(comment).toBeVisible();
+  await expect(comment.getByText("E2E Navigator", { exact: true })).toBeVisible();
+  await expect(comment.getByText("SourceBoard member", { exact: true })).toHaveCount(0);
 });
