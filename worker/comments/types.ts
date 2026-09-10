@@ -35,7 +35,12 @@ export interface CommentWithAuthor {
   };
 }
 
-export interface CommentCursor {
-  createdAt: number;
-  id: string;
+export type CommentSort = "recent" | "popular" | "oldest";
+
+export type CommentCursor =
+  | { sort: "recent" | "oldest"; createdAt: number; id: string }
+  | { sort: "popular"; likeCount: number; createdAt: number; id: string };
+
+export function parseCommentSort(value: string | null): CommentSort {
+  return value === "popular" || value === "oldest" ? value : "recent";
 }
