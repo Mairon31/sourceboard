@@ -34,7 +34,7 @@
 - Modify: `worker/db/schema.ts`
 - Modify: `shared/ui/contracts.ts`
 - Modify: `worker/comments/types.ts`
-- Test: `tests/unit/migrations.test.ts` or the existing migration-chain test.
+- Modify: `tests/unit/migrations.test.ts`
 
 **Interfaces:**
 - Produces: `CommentLinkPreviewView` with `canonicalUrl`, `siteName?`, `title?`, `description?`, `imageUrl?`, `metadataStatus`.
@@ -42,7 +42,7 @@
 
 - [ ] **Step 1: Write the failing migration/contract tests**
 
-Add assertions equivalent to:
+Add to `tests/unit/migrations.test.ts`:
 
 ```ts
 const migration = read("../../migrations/0027_comment_link_previews.sql");
@@ -51,10 +51,13 @@ expect(migration).toContain("comment_id TEXT PRIMARY KEY");
 expect(migration).toContain("CHECK (metadata_status IN ('COMPLETE', 'PARTIAL', 'URL_ONLY'))");
 ```
 
-And a compile-time DTO use:
+Add a compile-time DTO use in the same test file:
 
 ```ts
-const preview: CommentLinkPreviewView = { canonicalUrl: "https://example.com/", metadataStatus: "URL_ONLY" };
+const preview: CommentLinkPreviewView = {
+  canonicalUrl: "https://example.com/",
+  metadataStatus: "URL_ONLY",
+};
 expect(preview.canonicalUrl).toBe("https://example.com/");
 ```
 
@@ -63,6 +66,8 @@ expect(preview.canonicalUrl).toBe("https://example.com/");
 ```bash
 npx vitest run tests/unit/migrations.test.ts
 ```
+
+Expected: FAIL because migration `0027` and `CommentLinkPreviewView` do not exist.
 
 - [ ] **Step 3: Create migration `0027_comment_link_previews.sql`**
 
@@ -86,7 +91,7 @@ ON comment_link_previews (fetched_at DESC);
 
 - [ ] **Step 4: Mirror the table in Drizzle schema and DTOs**
 
-Add a `commentLinkPreviews` table to `worker/db/schema.ts`. Add:
+Add a `commentLinkPreviews` table to `worker/db/schema.ts`. Add to `shared/ui/contracts.ts`:
 
 ```ts
 export interface CommentLinkPreviewView {
@@ -99,7 +104,7 @@ export interface CommentLinkPreviewView {
 }
 ```
 
-`CommentView.linkPreview` uses that interface.
+Add `linkPreview?: CommentLinkPreviewView` to `CommentView`. Extend `worker/comments/types.ts` with the persisted internal snapshot type used by the store.
 
 - [ ] **Step 5: Apply migrations locally and run typecheck**
 
@@ -108,10 +113,12 @@ npm run db:migrations:apply
 npm run typecheck
 ```
 
+Expected: both commands exit 0 and the local migration list includes `0027_comment_link_previews.sql`.
+
 - [ ] **Step 6: Commit**
 
 ```bash
-git add migrations/0027_comment_link_previews.sql migrations/README.md worker/db/schema.ts shared/ui/contracts.ts worker/comments/types.ts tests/unit
+git add migrations/0027_comment_link_previews.sql migrations/README.md worker/db/schema.ts shared/ui/contracts.ts worker/comments/types.ts tests/unit/migrations.test.ts
 git commit -m "feat(comments): add link preview persistence"
 ```
 
@@ -121,17 +128,18 @@ git commit -m "feat(comments): add link preview persistence"
 
 **Files:**
 - Create: `worker/comments/link-preview.ts`
-- Test: `tests/unit/link-preview.test.ts`
+- Create: `tests/unit/link-preview.test.ts`
 
 **Interfaces:**
 - Produces: `normalizeLinkPreviewUrl(value: unknown): URL`.
 - Produces: `isPublicIpAddress(value: string): boolean`.
+- Produces: `type LinkPreviewSnapshot` for trusted server-derived metadata.
 - Produces: `createLinkPreviewService(deps).preview(url): Promise<LinkPreviewSnapshot>`.
-- `LinkPreviewSnapshot` fields match persisted metadata and include the remote image URL internally.
+- Produces: `createWorkersLinkPreviewCache(cache: Cache)`.
 
 - [ ] **Step 1: Write failing URL-policy tests**
 
-Create `tests/unit/link-preview.test.ts` with cases for public URL acceptance and rejection of credentials/local/private addresses:
+Create `tests/unit/link-preview.test.ts`:
 
 ```ts
 expect(normalizeLinkPreviewUrl("https://example.com/a").toString()).toBe("https://example.com/a");
@@ -146,7 +154,15 @@ expect(() => normalizeLinkPreviewUrl("http://[fc00::1]/test")).toThrow();
 
 - [ ] **Step 2: Write failing fetch-behavior tests**
 
-Inject fake `resolveHost` and `fetchImpl` dependencies. Verify a hostname resolving to `192.168.1.2` is rejected before metadata fetch, a redirect to `127.0.0.1` is rejected, a sixth redirect is rejected, and an upstream exception returns `URL_ONLY` rather than accepting client metadata.
+Inject fake `resolveHost` and `fetchImpl` dependencies. Verify:
+
+```ts
+await expect(service.preview("https://private.example/")).rejects.toMatchObject({
+  code: "LINK_PREVIEW_PRIVATE_TARGET",
+});
+```
+
+when DNS resolves to `192.168.1.2`; a redirect to `127.0.0.1` is rejected; a sixth redirect is rejected; timeout/metadata-fetch failure returns a snapshot with `metadataStatus: "URL_ONLY"` and the validated canonical URL.
 
 - [ ] **Step 3: Verify RED**
 
@@ -154,9 +170,11 @@ Inject fake `resolveHost` and `fetchImpl` dependencies. Verify a hostname resolv
 npx vitest run tests/unit/link-preview.test.ts
 ```
 
+Expected: FAIL because the module does not exist.
+
 - [ ] **Step 4: Implement strict URL normalization**
 
-Normalize with `new URL`, restrict to `http:`/`https:`, clear fragments, reject credentials and hostnames `localhost`, `*.localhost`, `.local` and literal non-public IPv4/IPv6. Enforce serialized length <= 2048.
+Normalize with `new URL`, restrict to `http:`/`https:`, clear fragments, reject credentials and hostnames `localhost`, `*.localhost`, `.local` and literal non-public IPv4/IPv6. Enforce serialized length <= 2048. Invalid/disallowed input throws stable `PostError` codes prefixed `LINK_PREVIEW_`.
 
 - [ ] **Step 5: Implement address validation and resolver dependency**
 
@@ -166,12 +184,17 @@ Define:
 export interface LinkPreviewDependencies {
   fetchImpl: typeof fetch;
   resolveHost: (hostname: string) => Promise<string[]>;
-  cache?: { get(url: string): Promise<LinkPreviewSnapshot | null>; put(url: string, value: LinkPreviewSnapshot, ttlSeconds: number): Promise<void> };
+  cache?: {
+    get(url: string): Promise<LinkPreviewSnapshot | null>;
+    put(url: string, value: LinkPreviewSnapshot, ttlSeconds: number): Promise<void>;
+  };
   now?: () => number;
 }
 ```
 
-Before each fetch hop, resolve the hostname and require at least one address and require every returned address to be public. The production resolver in the same module uses Cloudflare DNS-over-HTTPS for A and AAAA records, follows CNAMEs only within a bounded depth, and validates returned address strings before the target fetch. Re-run resolution after each redirect. Document that Workers cannot pin the subsequent hostname fetch to the checked IP, so repeated resolution + manual redirects + literal/private-host blocking are the runtime mitigation rather than claiming impossible perfect pinning.
+Before each fetch hop, resolve the hostname and require at least one address; every returned address must be public. The production resolver in the same module uses Cloudflare DNS-over-HTTPS for A and AAAA records, follows CNAMEs only within a bounded depth of 4, and validates returned address strings before target fetch. Re-run resolution after each redirect.
+
+Document in the module that Workers cannot pin the subsequent hostname fetch to the checked IP; repeated DNS validation plus manual redirects plus literal/private-host blocking are the runtime mitigation and must not be described as perfect DNS-rebinding prevention.
 
 - [ ] **Step 6: Implement bounded manual fetch**
 
@@ -179,17 +202,18 @@ Use `redirect: "manual"` and `AbortSignal.timeout(5000)`. Permit at most 5 redir
 
 - [ ] **Step 7: Extract and clip plain metadata**
 
-Extract `<title>`, `og:title`, `og:description`, `description`, `og:site_name`, `og:image`/`twitter:image`. Decode only safe/common HTML entities needed for readable metadata, strip tags/control characters, collapse whitespace, and clip by Unicode code points:
+Extract `<title>`, `og:title`, `og:description`, `description`, `og:site_name`, `og:image`/`twitter:image`. Decode only common text entities needed for readable metadata, strip tags/control characters, collapse whitespace, and clip by Unicode code points:
 
 ```ts
-const clip = (value: string, max: number) => Array.from(value.trim()).slice(0, max).join("");
+const clip = (value: string, max: number) =>
+  Array.from(value.trim()).slice(0, max).join("");
 ```
 
 Resolve relative image URLs against the final URL and run them through the public URL policy before storing.
 
-- [ ] **Step 8: Add a Workers Cache adapter**
+- [ ] **Step 8: Add the Workers Cache adapter**
 
-Expose `createWorkersLinkPreviewCache(cache: Cache)` that stores JSON Responses under an internal same-origin-style cache key derived from the canonical URL with `Cache-Control: max-age=21600`. Unit tests use an in-memory fake; no new npm dependency is added.
+`createWorkersLinkPreviewCache(cache)` stores JSON Responses under a deterministic cache key derived from `SHA-256(canonicalUrl)` on an internal URL such as `https://sourceboard.invalid/__link-preview-cache/<hash>`. Set `Cache-Control: max-age=21600`. Unit tests use an in-memory cache fake; no npm dependency is added.
 
 - [ ] **Step 9: Run tests and commit**
 
@@ -206,22 +230,24 @@ git commit -m "feat(comments): add safe link metadata fetcher"
 
 **Files:**
 - Modify: `worker/comments/api.ts`
-- Modify: `worker/environment.ts` only if generated Worker types require a cache-facing helper type; do not add a new binding when Cache API suffices.
-- Test: `tests/unit/link-preview.test.ts`
-- Test: `tests/unit/comments-social-actions.test.ts`
+- Modify: `tests/unit/link-preview.test.ts`
+- Modify: `tests/unit/comments-social-actions.test.ts`
 
 **Interfaces:**
 - Produces: `POST /api/comments/link-preview` accepting `{ url: string }` and returning `{ preview: CommentLinkPreviewView }`.
+- Consumes: global Workers Cache API through `caches.default`; no new Worker binding or environment field is introduced.
 
 - [ ] **Step 1: Write failing route tests**
 
-Assert `isCommentRoute()` includes `/api/comments/link-preview`, mutation security is enforced, authenticated viewer is required, and a rate-limit key begins with `link-preview:`.
+Assert `isCommentRoute()` includes `/api/comments/link-preview`, mutation security is enforced, authenticated viewer is required, and the rate-limit key begins with `link-preview:`.
 
 - [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/unit/link-preview.test.ts tests/unit/comments-social-actions.test.ts
 ```
+
+Expected: FAIL because the route is absent.
 
 - [ ] **Step 3: Route preview requests before dynamic `/api/comments/:id` matching**
 
@@ -235,18 +261,18 @@ Use `env.RATE_LIMIT_CONTENT` with:
 `link-preview:${userId}:${getRequestSecurityContext(request).ipPrefixHash}`
 ```
 
-Return stable 429/503 PostError codes distinct from GIF search errors.
+Use stable errors `LINK_PREVIEW_RATE_LIMITED` for 429 and `LINK_PREVIEW_RATE_LIMIT_UNAVAILABLE` for 503.
 
 - [ ] **Step 5: Return server-derived preview only**
 
-Parse `{ url }`, invoke the link-preview service, and map internal remote image metadata to `imageUrl: undefined` for the pre-submit composer unless a same-origin cached image path is available. Do not return remote HTML.
+Parse `{ url }`, create the preview service with the production resolver and `createWorkersLinkPreviewCache(caches.default)`, and return public display fields. The advisory pre-submit response does not expose the remote image URL; return `imageUrl` only when there is a same-origin persisted image path, which does not exist before comment creation. Do not return remote HTML.
 
 - [ ] **Step 6: Run tests and commit**
 
 ```bash
 npx vitest run tests/unit/link-preview.test.ts tests/unit/comments-social-actions.test.ts
 npm run typecheck
-git add worker/comments/api.ts worker/environment.ts tests/unit
+git add worker/comments/api.ts tests/unit/link-preview.test.ts tests/unit/comments-social-actions.test.ts
 git commit -m "feat(comments): expose safe link preview API"
 ```
 
@@ -259,8 +285,8 @@ git commit -m "feat(comments): expose safe link preview API"
 - Modify: `worker/comments/service.ts`
 - Modify: `worker/comments/api.ts`
 - Modify: `shared/ui/contracts.ts`
-- Test: `tests/unit/link-preview.test.ts`
-- Test: `tests/e2e/comments.spec.ts` or equivalent.
+- Modify: `tests/unit/link-preview.test.ts`
+- Modify: `tests/e2e/comments.spec.ts`
 
 **Interfaces:**
 - Changes comment create input to accept `linkPreviewUrl?: unknown`.
@@ -270,7 +296,7 @@ git commit -m "feat(comments): expose safe link preview API"
 
 - [ ] **Step 1: Write failing persistence tests**
 
-Assert `COMMENT_COLUMNS` joins `comment_link_previews`, `toRecord()` carries a preview snapshot, and create uses the snapshot in the same `db.batch` as the comment insert.
+Assert `COMMENT_COLUMNS` joins `comment_link_previews`, `toRecord()` carries a preview snapshot, and `createComment` inserts the snapshot in the same `db.batch` as the comment.
 
 - [ ] **Step 2: Verify RED**
 
@@ -278,23 +304,27 @@ Assert `COMMENT_COLUMNS` joins `comment_link_previews`, `toRecord()` carries a p
 npx vitest run tests/unit/link-preview.test.ts
 ```
 
+Expected: FAIL because comment persistence does not include link previews.
+
 - [ ] **Step 3: Extend the comment row/query**
 
-LEFT JOIN `comment_link_previews lp ON lp.comment_id = c.id` and select aliased preview fields. Convert them to an optional `linkPreview` record in `CommentWithAuthor`/`CommentView`.
+LEFT JOIN `comment_link_previews lp ON lp.comment_id = c.id` and select aliased preview fields. Convert them to an optional `linkPreview` record in `CommentWithAuthor` and then `CommentView`.
 
 - [ ] **Step 4: Revalidate at final comment creation**
 
-If `linkPreviewUrl` is present, reject simultaneous GIF/STICKER `attachment`, call the preview service again (normally cache-backed), and pass the server-derived snapshot to `store.createComment`. Do not accept title/description/image supplied by the browser.
+If `linkPreviewUrl` is present, reject simultaneous GIF/STICKER `attachment`, call the preview service again (cache-backed in normal operation), and pass the server-derived snapshot to `store.createComment`. Do not accept title/description/image fields supplied by the browser.
 
 - [ ] **Step 5: Insert comment and preview atomically**
 
 Append an `INSERT INTO comment_link_previews (...) VALUES (...)` statement to the existing D1 batch only when a preview exists.
 
-- [ ] **Step 6: Implement persisted image proxy**
+- [ ] **Step 6: Implement the persisted image proxy**
 
-Match `/api/comments/:id/link-preview-image` before `/api/comments/:id`. Look up the stored preview and associated post, apply the same `canViewPost` visibility policy used for comment reads, then use the safe fetcher to fetch only the stored image URL with a 2 MiB maximum and accepted image content types (`image/jpeg`, `image/png`, `image/webp`, `image/gif`). Return it from the SourceBoard origin with `Cache-Control: public, max-age=3600` only for publicly viewable posts; private/friends content receives private/no-store semantics. Never accept a raw image URL query parameter.
+Match `/api/comments/:id/link-preview-image` before `/api/comments/:id`. Look up the stored preview and associated post, then apply the same post-view policy used for comment reads. Fetch only the image URL stored in D1 through a dedicated `fetchPreviewImage()` helper in `worker/comments/link-preview.ts`; this helper repeats URL/DNS/redirect validation, limits the body to 2 MiB and accepts only `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
 
-- [ ] **Step 7: Map DTO image URL to same-origin path**
+Return `Cache-Control: public, max-age=3600` only when the target post is publicly viewable without a session. Return `Cache-Control: private, no-store` for viewer-dependent access. Never accept a raw image URL query parameter.
+
+- [ ] **Step 7: Map DTO image URL to the same-origin path**
 
 When `image_url` is present in D1, expose:
 
@@ -302,14 +332,19 @@ When `image_url` is present in D1, expose:
 imageUrl: `/api/comments/${encodeURIComponent(comment.id)}/link-preview-image`
 ```
 
-The remote URL remains server-side persistence and does not need to be added to CSP.
+The remote URL remains server-side persistence and does not need a CSP origin exception.
 
-- [ ] **Step 8: Run focused tests and commit**
+- [ ] **Step 8: Add E2E persistence coverage**
+
+Extend `tests/e2e/comments.spec.ts` to create a comment with a preview through a deterministic test upstream/fetch fixture, reload the post, and assert title/description/canonical link remain from the persisted snapshot.
+
+- [ ] **Step 9: Run focused tests and commit**
 
 ```bash
 npx vitest run tests/unit/link-preview.test.ts
+npx playwright test tests/e2e/comments.spec.ts
 npm run typecheck
-git add worker/comments/store.ts worker/comments/service.ts worker/comments/api.ts shared/ui/contracts.ts tests/unit tests/e2e
+git add worker/comments/link-preview.ts worker/comments/store.ts worker/comments/service.ts worker/comments/api.ts shared/ui/contracts.ts tests/unit/link-preview.test.ts tests/e2e/comments.spec.ts
 git commit -m "feat(comments): persist and render link previews"
 ```
 
@@ -323,8 +358,8 @@ git commit -m "feat(comments): persist and render link previews"
 - Create: `app/components/product/LinkPreviewCard.tsx`
 - Modify: `app/components/product/CommentThread.tsx`
 - Modify: `app/components/product/comment-actions.css`
-- Test: `tests/unit/comments-social-actions.test.ts`
-- Test: `tests/e2e/comments.spec.ts` or equivalent.
+- Modify: `tests/unit/comments-social-actions.test.ts`
+- Modify: `tests/e2e/comments.spec.ts`
 
 **Interfaces:**
 - Produces: `LinkIcon` and reusable `LinkPreviewCard`.
@@ -332,7 +367,7 @@ git commit -m "feat(comments): persist and render link previews"
 
 - [ ] **Step 1: Write failing UI tests**
 
-Assert Link appears as an icon tool, calls `/api/comments/link-preview`, renders a preview card and sends only `linkPreviewUrl` with comment creation.
+Assert Link appears as an icon tool, calls `/api/comments/link-preview`, renders `LinkPreviewCard`, and sends only `linkPreviewUrl` with comment creation.
 
 - [ ] **Step 2: Verify RED**
 
@@ -350,11 +385,11 @@ const [linkPreview, setLinkPreview] = useState<CommentLinkPreviewView | null>(nu
 const [linkBusy, setLinkBusy] = useState(false);
 ```
 
-Opening Link closes MediaPicker. Choosing GIF/STICKER clears link preview after a confirmation-free deterministic replacement; emotes do not clear it.
+Opening Link closes MediaPicker. Choosing GIF/STICKER clears the existing link preview as deterministic replacement; emotes do not clear it.
 
 - [ ] **Step 4: Fetch advisory preview**
 
-POST `{ url: linkUrl }` to `/api/comments/link-preview` with CSRF. Distinguish invalid/disallowed (400), rate limited (429), and unavailable metadata. Keep a valid URL-only card when the server returns `URL_ONLY`.
+POST `{ url: linkUrl }` to `/api/comments/link-preview` with CSRF. Map 400 to an invalid/disallowed URL message, 429 to a rate-limit message, and 5xx to metadata-unavailable messaging. Keep a valid URL-only card when the server returns `URL_ONLY`.
 
 - [ ] **Step 5: Render `LinkPreviewCard`**
 
@@ -365,19 +400,27 @@ Render host/site label, clipped title, description, canonical destination and op
 Comment request body becomes:
 
 ```ts
-JSON.stringify({ markdown: body, parentCommentId: replyTo, attachment, linkPreviewUrl: linkPreview?.canonicalUrl })
+JSON.stringify({
+  markdown: body,
+  parentCommentId: replyTo,
+  attachment,
+  linkPreviewUrl: linkPreview?.canonicalUrl,
+})
 ```
 
 After successful submission clear link state together with body/attachment.
 
 - [ ] **Step 7: Add E2E cases**
 
-Verify valid preview rendering, URL-only fallback, Link + text, Link + emotes, and Link/GIF mutual exclusion.
+Extend `tests/e2e/comments.spec.ts` to verify valid preview rendering, URL-only fallback, Link + text, Link + emotes, and Link/GIF mutual exclusion.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Run tests and commit**
 
 ```bash
-git add app/components/ui app/components/product/LinkPreviewCard.tsx app/components/product/CommentThread.tsx app/components/product/comment-actions.css tests/unit tests/e2e
+npx vitest run tests/unit/comments-social-actions.test.ts
+npx playwright test tests/e2e/comments.spec.ts
+npm run typecheck
+git add app/components/ui/icons.tsx app/components/ui/index.ts app/components/product/LinkPreviewCard.tsx app/components/product/CommentThread.tsx app/components/product/comment-actions.css tests/unit/comments-social-actions.test.ts tests/e2e/comments.spec.ts
 git commit -m "feat(comments): add link preview composer tool"
 ```
 
@@ -388,43 +431,45 @@ git commit -m "feat(comments): add link preview composer tool"
 **Files:**
 - Modify: `shared/richtext/comment-content.ts`
 - Modify: `worker/source/api.ts`
-- Modify: `app/routes/admin-verifications.tsx` if its candidate DTO needs the preview URL.
-- Test: `tests/unit/comment-content.test.ts`
-- Test: `tests/e2e/source-resolution.spec.ts`
+- Modify: `app/routes/admin-verifications.tsx`
+- Modify: `tests/unit/comment-content.test.ts`
+- Modify: `tests/e2e/source-resolution.spec.ts`
 
 **Interfaces:**
 - Produces: source eligibility that accepts substantive text, inline link, or explicit `linkPreview.canonicalUrl`.
 - Accepted Source stores the preview canonical URL when available.
-- Verified Source uses the preview canonical URL as the default candidate while preserving authorized verifier confirmation/editing.
+- Verified Source uses the preview canonical URL as the default candidate while preserving verifier confirmation/editing.
 
 - [ ] **Step 1: Write failing eligibility tests**
 
-Add a case where body/richtext is otherwise empty but `linkPreview.canonicalUrl` is valid and expect eligible. Retain existing negative media-only tests.
+Add a case where body/richtext is otherwise empty but `linkPreview.canonicalUrl` is valid and expect eligible. Retain existing negative GIF/sticker/emote-only tests.
 
 - [ ] **Step 2: Verify RED**
 
 ```bash
-npx vitest run tests/unit/comment-content.test.ts tests/e2e/source-resolution.spec.ts
+npx vitest run tests/unit/comment-content.test.ts
+npx playwright test tests/e2e/source-resolution.spec.ts
 ```
 
-- [ ] **Step 3: Extend source target query**
+- [ ] **Step 3: Extend the source target query**
 
 LEFT JOIN `comment_link_previews lp ON lp.comment_id = c.id` in `worker/source/api.ts` and select `lp.canonical_url AS comment_preview_url`.
 
 - [ ] **Step 4: Update acceptance eligibility and persistence**
 
-Treat a non-empty validated preview URL as source-eligible. When accepting, write it into `source_resolutions.canonical_source_url` instead of leaving Accepted Source without a canonical URL.
+Extend the eligibility helper call to include the explicit preview URL. When accepting, include `canonical_source_url` in the `source_resolutions` insert and bind the validated preview URL when present; leave it null for eligible prose/inline-link comments that do not have an explicit preview.
 
 - [ ] **Step 5: Default verification URL to preview URL**
 
-The admin verification candidate should prefill the explicit preview canonical URL. A verifier may still supply/confirm another HTTPS canonical URL through the existing protected verification flow.
+Extend the verification candidate query/DTO used by `app/routes/admin-verifications.tsx` so its URL field defaults to `comment_preview_url`. The verifier may still replace/confirm another HTTPS canonical URL through the existing protected verification request.
 
 - [ ] **Step 6: Run tests and commit**
 
 ```bash
-npx vitest run tests/unit/comment-content.test.ts tests/e2e/source-resolution.spec.ts
+npx vitest run tests/unit/comment-content.test.ts
+npx playwright test tests/e2e/source-resolution.spec.ts
 npm run typecheck
-git add shared/richtext/comment-content.ts worker/source/api.ts app/routes/admin-verifications.tsx tests/unit tests/e2e/source-resolution.spec.ts
+git add shared/richtext/comment-content.ts worker/source/api.ts app/routes/admin-verifications.tsx tests/unit/comment-content.test.ts tests/e2e/source-resolution.spec.ts
 git commit -m "feat(source): use comment link previews as source evidence"
 ```
 
@@ -433,7 +478,7 @@ git commit -m "feat(source): use comment link previews as source evidence"
 ### Task 7: Block B regression gate
 
 **Files:**
-- Modify only when verification exposes a Block B defect.
+- Modify only files implicated by a failing Block B verification check.
 
 - [ ] **Step 1: Run focused security tests**
 
@@ -458,11 +503,11 @@ Expected: production audit 0 vulnerabilities and all checks pass, including migr
 
 Confirm no arbitrary remote domain was added to CSP, no endpoint accepts an untrusted raw image URL for proxying, redirect validation occurs before each hop, and client-supplied metadata is never persisted as authoritative.
 
-- [ ] **Step 4: Commit only if verification required fixes**
+- [ ] **Step 4: Commit verification fixes only when the gate changed files**
 
 ```bash
 git add worker app shared migrations tests
 git commit -m "fix: close safe link preview verification findings"
 ```
 
-Skip when the working tree is clean.
+When the gate leaves the working tree clean, do not create an empty commit.
