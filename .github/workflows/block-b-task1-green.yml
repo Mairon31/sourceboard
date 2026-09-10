@@ -28,77 +28,83 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          migration = Path("migrations/0027_comment_link_previews.sql")
-          migration.write_text("""CREATE TABLE comment_link_previews (
-            comment_id TEXT PRIMARY KEY NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
-            canonical_url TEXT NOT NULL,
-            site_name TEXT,
-            title TEXT,
-            description TEXT,
-            image_url TEXT,
-            fetched_at INTEGER NOT NULL,
-            metadata_status TEXT NOT NULL CHECK (metadata_status IN ('COMPLETE', 'PARTIAL', 'URL_ONLY'))
-          );
+          def joined(lines):
+              return "\n".join(lines) + "\n"
 
-          CREATE INDEX comment_link_previews_fetched_at_idx
-          ON comment_link_previews (fetched_at DESC);
-          """.replace("          ", ""))
+          migration = Path("migrations/0027_comment_link_previews.sql")
+          migration.write_text(joined([
+              "CREATE TABLE comment_link_previews (",
+              "  comment_id TEXT PRIMARY KEY NOT NULL REFERENCES comments(id) ON DELETE CASCADE,",
+              "  canonical_url TEXT NOT NULL,",
+              "  site_name TEXT,",
+              "  title TEXT,",
+              "  description TEXT,",
+              "  image_url TEXT,",
+              "  fetched_at INTEGER NOT NULL,",
+              "  metadata_status TEXT NOT NULL CHECK (metadata_status IN ('COMPLETE', 'PARTIAL', 'URL_ONLY'))",
+              ");",
+              "",
+              "CREATE INDEX comment_link_previews_fetched_at_idx",
+              "ON comment_link_previews (fetched_at DESC);",
+          ]))
 
           readme = Path("migrations/README.md")
           text = readme.read_text()
-          paragraph = "\nMigration `0027` adds one server-derived link-preview snapshot per comment. The table stores only bounded metadata and the canonical/remote image URLs needed by the Worker; remote HTML is never persisted, and public preview images remain behind the same-origin comment image gateway.\n"
-          if "Migration `0027` adds one server-derived link-preview snapshot per comment." not in text:
-              readme.write_text(text.rstrip() + "\n" + paragraph)
+          paragraph = "Migration `0027` adds one server-derived link-preview snapshot per comment. The table stores only bounded metadata and the canonical/remote image URLs needed by the Worker; remote HTML is never persisted, and public preview images remain behind the same-origin comment image gateway."
+          if paragraph not in text:
+              readme.write_text(text.rstrip() + "\n\n" + paragraph + "\n")
 
           schema = Path("worker/db/schema.ts")
           text = schema.read_text()
           marker = "\nexport const commentRevisions = sqliteTable(\n"
-          block = '''
-export const commentLinkPreviews = sqliteTable(
-  "comment_link_previews",
-  {
-    commentId: text("comment_id")
-      .primaryKey()
-      .references(() => comments.id, { onDelete: "cascade" }),
-    canonicalUrl: text("canonical_url").notNull(),
-    siteName: text("site_name"),
-    title: text("title"),
-    description: text("description"),
-    imageUrl: text("image_url"),
-    fetchedAt: integer("fetched_at", { mode: "number" }).notNull(),
-    metadataStatus: text("metadata_status").notNull(),
-  },
-  (table) => [
-    index("comment_link_previews_fetched_at_idx").on(table.fetchedAt),
-    check(
-      "comment_link_previews_metadata_status_check",
-      sql`${table.metadataStatus} IN ('COMPLETE', 'PARTIAL', 'URL_ONLY')`,
-    ),
-  ],
-);
-'''
+          schema_block = joined([
+              "export const commentLinkPreviews = sqliteTable(",
+              "  \"comment_link_previews\",",
+              "  {",
+              "    commentId: text(\"comment_id\")",
+              "      .primaryKey()",
+              "      .references(() => comments.id, { onDelete: \"cascade\" }),",
+              "    canonicalUrl: text(\"canonical_url\").notNull(),",
+              "    siteName: text(\"site_name\"),",
+              "    title: text(\"title\"),",
+              "    description: text(\"description\"),",
+              "    imageUrl: text(\"image_url\"),",
+              "    fetchedAt: integer(\"fetched_at\", { mode: \"number\" }).notNull(),",
+              "    metadataStatus: text(\"metadata_status\").notNull(),",
+              "  },",
+              "  (table) => [",
+              "    index(\"comment_link_previews_fetched_at_idx\").on(table.fetchedAt),",
+              "    check(",
+              "      \"comment_link_previews_metadata_status_check\",",
+              "      sql`${table.metadataStatus} IN ('COMPLETE', 'PARTIAL', 'URL_ONLY')`,",
+              "    ),",
+              "  ],",
+              ");",
+              "",
+          ])
           if "export const commentLinkPreviews" not in text:
               if marker not in text:
                   raise SystemExit("schema insertion marker not found")
-              schema.write_text(text.replace(marker, "\n" + block + marker.lstrip("\n"), 1))
+              schema.write_text(text.replace(marker, "\n" + schema_block + marker.lstrip("\n"), 1))
 
           contracts = Path("shared/ui/contracts.ts")
           text = contracts.read_text()
           marker = "export interface CommentView {\n"
-          interface = '''export interface CommentLinkPreviewView {
-  canonicalUrl: string;
-  siteName?: string;
-  title?: string;
-  description?: string;
-  imageUrl?: string;
-  metadataStatus: "COMPLETE" | "PARTIAL" | "URL_ONLY";
-}
-
-'''
+          contract_block = joined([
+              "export interface CommentLinkPreviewView {",
+              "  canonicalUrl: string;",
+              "  siteName?: string;",
+              "  title?: string;",
+              "  description?: string;",
+              "  imageUrl?: string;",
+              "  metadataStatus: \"COMPLETE\" | \"PARTIAL\" | \"URL_ONLY\";",
+              "}",
+              "",
+          ])
           if "export interface CommentLinkPreviewView" not in text:
               if marker not in text:
                   raise SystemExit("CommentView marker not found")
-              text = text.replace(marker, interface + marker, 1)
+              text = text.replace(marker, contract_block + marker, 1)
           field_marker = "  attachment?: CommentAttachmentView;\n  replies: CommentView[];\n"
           field_replacement = "  attachment?: CommentAttachmentView;\n  linkPreview?: CommentLinkPreviewView;\n  replies: CommentView[];\n"
           if "linkPreview?: CommentLinkPreviewView" not in text:
@@ -110,21 +116,22 @@ export const commentLinkPreviews = sqliteTable(
           types = Path("worker/comments/types.ts")
           text = types.read_text()
           marker = "export interface CommentRecord {\n"
-          interface = '''export interface CommentLinkPreviewSnapshot {
-  canonicalUrl: string;
-  siteName: string | null;
-  title: string | null;
-  description: string | null;
-  imageUrl: string | null;
-  fetchedAt: number;
-  metadataStatus: "COMPLETE" | "PARTIAL" | "URL_ONLY";
-}
-
-'''
+          type_block = joined([
+              "export interface CommentLinkPreviewSnapshot {",
+              "  canonicalUrl: string;",
+              "  siteName: string | null;",
+              "  title: string | null;",
+              "  description: string | null;",
+              "  imageUrl: string | null;",
+              "  fetchedAt: number;",
+              "  metadataStatus: \"COMPLETE\" | \"PARTIAL\" | \"URL_ONLY\";",
+              "}",
+              "",
+          ])
           if "export interface CommentLinkPreviewSnapshot" not in text:
               if marker not in text:
                   raise SystemExit("CommentRecord marker not found")
-              types.write_text(text.replace(marker, interface + marker, 1))
+              types.write_text(text.replace(marker, type_block + marker, 1))
           PY
           npx prettier --write migrations/README.md worker/db/schema.ts shared/ui/contracts.ts worker/comments/types.ts tests/unit/link-preview-migration.test.ts
       - name: Apply local migrations
