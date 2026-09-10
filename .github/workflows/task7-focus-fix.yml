@@ -27,79 +27,57 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           path = Path("app/components/product/CommentThread.tsx")
           text = path.read_text()
-
           anchor = "  const submitInFlightRef = useRef(false);\n"
-          replacement = anchor + "  const pendingFocusIdRef = useRef<string | null>(null);\n"
-          if replacement not in text:
+          pending = "  const pendingFocusIdRef = useRef<string | null>(null);\n"
+          if pending not in text:
               if anchor not in text:
                   raise SystemExit("submit ref anchor not found")
-              text = text.replace(anchor, replacement, 1)
-
-          old_focus = '''  function focusCreatedComment(id: string) {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        const target = document.getElementById(`comment-${id}`);
-        if (!(target instanceof HTMLElement)) return;
-        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
-        target.focus({ preventScroll: true });
-        window.history.replaceState(
-          window.history.state,
-          "",
-          `${window.location.pathname}${window.location.search}#comment-${encodeURIComponent(id)}`,
-        );
-      });
-    });
-  }
-'''
-          new_focus = '''  useEffect(() => {
-    const id = pendingFocusIdRef.current;
-    if (!id) return;
-
-    let secondFrame = 0;
-    const firstFrame = window.requestAnimationFrame(() => {
-      secondFrame = window.requestAnimationFrame(() => {
-        const target = document.getElementById(`comment-${id}`);
-        if (!(target instanceof HTMLElement)) return;
-        pendingFocusIdRef.current = null;
-        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
-        target.focus({ preventScroll: true });
-        window.history.replaceState(
-          window.history.state,
-          "",
-          `${window.location.pathname}${window.location.search}#comment-${encodeURIComponent(id)}`,
-        );
-      });
-    });
-
-    return () => {
-      window.cancelAnimationFrame(firstFrame);
-      if (secondFrame) window.cancelAnimationFrame(secondFrame);
-    };
-  }, [items]);
-'''
-          if new_focus not in text:
-              if old_focus not in text:
-                  raise SystemExit("focus function anchor not found")
-              text = text.replace(old_focus, new_focus, 1)
-
-          old_submit = '''      const created = payload.comment;
-      setItems((current) => insertRootComment(current, created, sort));
-'''
-          new_submit = '''      const created = payload.comment;
-      pendingFocusIdRef.current = created.id;
-      setItems((current) => insertRootComment(current, created, sort));
-'''
-          if new_submit not in text:
-              if old_submit not in text:
+              text = text.replace(anchor, anchor + pending, 1)
+          start_marker = "  function focusCreatedComment(id: string) {"
+          end_marker = "\n\n  async function submit()"
+          if start_marker in text:
+              start = text.index(start_marker)
+              end = text.index(end_marker, start)
+              lines = [
+                  "  useEffect(() => {",
+                  "    const id = pendingFocusIdRef.current;",
+                  "    if (!id) return;",
+                  "",
+                  "    let secondFrame = 0;",
+                  "    const firstFrame = window.requestAnimationFrame(() => {",
+                  "      secondFrame = window.requestAnimationFrame(() => {",
+                  "        const target = document.getElementById(`comment-${id}`);",
+                  "        if (!(target instanceof HTMLElement)) return;",
+                  "        pendingFocusIdRef.current = null;",
+                  "        const reduceMotion = window.matchMedia(\"(prefers-reduced-motion: reduce)\").matches;",
+                  "        target.scrollIntoView({ behavior: reduceMotion ? \"auto\" : \"smooth\", block: \"center\" });",
+                  "        target.focus({ preventScroll: true });",
+                  "        window.history.replaceState(",
+                  "          window.history.state,",
+                  "          \"\",",
+                  "          `${window.location.pathname}${window.location.search}#comment-${encodeURIComponent(id)}`,",
+                  "        );",
+                  "      });",
+                  "    });",
+                  "",
+                  "    return () => {",
+                  "      window.cancelAnimationFrame(firstFrame);",
+                  "      if (secondFrame) window.cancelAnimationFrame(secondFrame);",
+                  "    };",
+                  "  }, [items]);",
+              ]
+              text = text[:start] + "\n".join(lines) + text[end:]
+          elif "pendingFocusIdRef.current" not in text:
+              raise SystemExit("focus function anchor not found")
+          submit_anchor = "      const created = payload.comment;\n      setItems((current) => insertRootComment(current, created, sort));\n"
+          submit_replacement = "      const created = payload.comment;\n      pendingFocusIdRef.current = created.id;\n      setItems((current) => insertRootComment(current, created, sort));\n"
+          if submit_replacement not in text:
+              if submit_anchor not in text:
                   raise SystemExit("submit insertion anchor not found")
-              text = text.replace(old_submit, new_submit, 1)
-
-          text = text.replace('      focusCreatedComment(created.id);\n', '', 1)
+              text = text.replace(submit_anchor, submit_replacement, 1)
+          text = text.replace("      focusCreatedComment(created.id);\n", "", 1)
           path.write_text(text)
           PY
           npx prettier --write app/components/product/CommentThread.tsx
