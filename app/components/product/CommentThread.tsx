@@ -33,9 +33,12 @@ import {
   Dropdown,
   EditIcon,
   FlagIcon,
+  GifIcon,
   HeartIcon,
   MessageIcon,
   MoreIcon,
+  SmileIcon,
+  StickerIcon,
   Textarea,
   TrashIcon,
 } from "../ui";
@@ -761,25 +764,34 @@ export function CommentThread({
             <div className="product-comment-composer__toolbar">
               <div>
                 <button
+                  className={`product-comment-composer__media-action${mediaKind === "GIF" ? " is-active" : ""}`}
                   type="button"
+                  aria-label="GIF"
+                  title="GIF"
                   aria-expanded={mediaKind === "GIF"}
                   onClick={() => setMediaKind(mediaKind === "GIF" ? null : "GIF")}
                 >
-                  GIF
+                  <GifIcon width="20" height="20" />
                 </button>
                 <button
+                  className={`product-comment-composer__media-action${mediaKind === "STICKER" ? " is-active" : ""}`}
                   type="button"
+                  aria-label="Sticker"
+                  title="Sticker"
                   aria-expanded={mediaKind === "STICKER"}
                   onClick={() => setMediaKind(mediaKind === "STICKER" ? null : "STICKER")}
                 >
-                  Sticker
+                  <StickerIcon width="20" height="20" />
                 </button>
                 <button
+                  className={`product-comment-composer__media-action${mediaKind === "EMOTE" ? " is-active" : ""}`}
                   type="button"
+                  aria-label="Emote"
+                  title="Emote"
                   aria-expanded={mediaKind === "EMOTE"}
                   onClick={() => setMediaKind(mediaKind === "EMOTE" ? null : "EMOTE")}
                 >
-                  Emote
+                  <SmileIcon width="20" height="20" />
                 </button>
                 {attachment ? (
                   <button type="button" onClick={() => setAttachment(null)}>
