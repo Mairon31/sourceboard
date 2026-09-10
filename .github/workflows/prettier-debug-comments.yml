@@ -1,0 +1,24 @@
+name: Prettier debug comments
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Show exact Prettier diff
+        run: |
+          npx prettier tests/e2e/comments.spec.ts --write
+          git diff -- tests/e2e/comments.spec.ts
