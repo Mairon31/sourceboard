@@ -151,13 +151,16 @@ describe("community plan phase E1", () => {
     expect(settings).toContain("changes available");
   });
 
-  it("wires the inline profile editor to the existing username policy endpoint", () => {
-    const editor = read("../../app/components/product/ProfileEditor.tsx");
-    expect(editor).toContain('fetch("/api/profile/me/username"');
-    expect(editor).toContain('label="Username"');
-    expect(editor).toContain('fetch("/api/profile/me/username", {');
-    expect(editor).toContain('method: "PATCH"');
-  });
+  it(
+    "wires the inline profile editor to the existing username policy endpoint",
+    () => {
+      const editor = read("../../app/components/product/ProfileEditor.tsx");
+      expect(editor).toContain('fetch("/api/profile/me/username"');
+      expect(editor).toContain('label="Username"');
+      expect(editor).toContain('fetch("/api/profile/me/username", {');
+      expect(editor).toContain('method: "PATCH"');
+    },
+  );
 
   it("shows privileged audit activity by default and excludes ordinary account/user activity", () => {
     for (const action of [
