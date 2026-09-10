@@ -81,8 +81,10 @@ export function AdminCosmeticGuide() {
             ))}
           </ul>
           <p>
-            Custom properties are limited to <code>--accent</code> and <code>--cosmetic-*</code>.
-            External URLs, <code>@import</code>, executable CSS and global selectors are rejected.
+            The only custom property Community CSS may define is <code>--accent</code>.
+            <code> var()</code> and SourceBoard&apos;s internal <code>--cosmetic-*</code> namespace are
+            not available to community styles. External URLs, <code>@import</code>, executable CSS
+            and global selectors are rejected.
           </p>
         </Card>
 
@@ -93,6 +95,10 @@ export function AdminCosmeticGuide() {
             <li>{COMMUNITY_CSS_MAX_RULES} rules maximum.</li>
             <li>{COMMUNITY_CSS_MAX_KEYFRAMES} keyframes maximum.</li>
             <li>Animation duration must stay between 800ms and 20s.</li>
+            <li>
+              Animation names may only reference <code>@keyframes</code> declared inside the same
+              cosmetic; animation shorthand starts with that local keyframe name.
+            </li>
             <li>
               Transforms are limited to translate, scale and rotate; translation is bounded to 18px.
             </li>
