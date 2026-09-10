@@ -107,7 +107,7 @@ export async function withOptionalServerSession<Unauthenticated, Loaded>(
   try {
     const state = await readServerState(request, context);
     if (!hasAvailableRuntime(state.runtime)) return unauthenticated(true);
-    return loaded(state.runtime, state.userId);
+    return await loaded(state.runtime, state.userId);
   } catch {
     return unauthenticated(true);
   }
