@@ -219,9 +219,7 @@ export function ProfileEditor({
     draft &&
     (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
   );
-  const usernameDirty = Boolean(
-    usernameStatus && usernameDraft.trim() !== usernameStatus.username,
-  );
+  const usernameDirty = Boolean(usernameStatus && usernameDraft.trim() !== usernameStatus.username);
   const dirty = profileDirty || usernameDirty;
 
   useEffect(() => {
