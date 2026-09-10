@@ -34,7 +34,7 @@
 - Modify: `worker/db/schema.ts`
 - Modify: `shared/ui/contracts.ts`
 - Modify: `worker/comments/types.ts`
-- Modify: `tests/unit/migrations.test.ts`
+- Create: `tests/unit/link-preview-migration.test.ts`
 
 **Interfaces:**
 - Produces: `CommentLinkPreviewView` with `canonicalUrl`, `siteName?`, `title?`, `description?`, `imageUrl?`, `metadataStatus`.
@@ -42,29 +42,39 @@
 
 - [ ] **Step 1: Write the failing migration/contract tests**
 
-Add to `tests/unit/migrations.test.ts`:
+Create `tests/unit/link-preview-migration.test.ts`:
 
 ```ts
-const migration = read("../../migrations/0027_comment_link_previews.sql");
-expect(migration).toContain("CREATE TABLE comment_link_previews");
-expect(migration).toContain("comment_id TEXT PRIMARY KEY");
-expect(migration).toContain("CHECK (metadata_status IN ('COMPLETE', 'PARTIAL', 'URL_ONLY'))");
-```
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import type { CommentLinkPreviewView } from "../../shared/ui/contracts";
 
-Add a compile-time DTO use in the same test file:
+function read(path: string): string {
+  return readFileSync(new URL(path, import.meta.url), "utf8");
+}
 
-```ts
-const preview: CommentLinkPreviewView = {
-  canonicalUrl: "https://example.com/",
-  metadataStatus: "URL_ONLY",
-};
-expect(preview.canonicalUrl).toBe("https://example.com/");
+describe("comment link-preview migration", () => {
+  it("adds one persisted preview snapshot per comment", () => {
+    const migration = read("../../migrations/0027_comment_link_previews.sql");
+    expect(migration).toContain("CREATE TABLE comment_link_previews");
+    expect(migration).toContain("comment_id TEXT PRIMARY KEY");
+    expect(migration).toContain("CHECK (metadata_status IN ('COMPLETE', 'PARTIAL', 'URL_ONLY'))");
+  });
+
+  it("exposes the typed public preview contract", () => {
+    const preview: CommentLinkPreviewView = {
+      canonicalUrl: "https://example.com/",
+      metadataStatus: "URL_ONLY",
+    };
+    expect(preview.canonicalUrl).toBe("https://example.com/");
+  });
+});
 ```
 
 - [ ] **Step 2: Verify RED**
 
 ```bash
-npx vitest run tests/unit/migrations.test.ts
+npx vitest run tests/unit/link-preview-migration.test.ts
 ```
 
 Expected: FAIL because migration `0027` and `CommentLinkPreviewView` do not exist.
@@ -106,19 +116,20 @@ export interface CommentLinkPreviewView {
 
 Add `linkPreview?: CommentLinkPreviewView` to `CommentView`. Extend `worker/comments/types.ts` with the persisted internal snapshot type used by the store.
 
-- [ ] **Step 5: Apply migrations locally and run typecheck**
+- [ ] **Step 5: Apply migrations locally and run focused tests/typecheck**
 
 ```bash
 npm run db:migrations:apply
+npx vitest run tests/unit/link-preview-migration.test.ts
 npm run typecheck
 ```
 
-Expected: both commands exit 0 and the local migration list includes `0027_comment_link_previews.sql`.
+Expected: all commands exit 0 and the local migration list includes `0027_comment_link_previews.sql`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add migrations/0027_comment_link_previews.sql migrations/README.md worker/db/schema.ts shared/ui/contracts.ts worker/comments/types.ts tests/unit/migrations.test.ts
+git add migrations/0027_comment_link_previews.sql migrations/README.md worker/db/schema.ts shared/ui/contracts.ts worker/comments/types.ts tests/unit/link-preview-migration.test.ts
 git commit -m "feat(comments): add link preview persistence"
 ```
 
@@ -483,10 +494,10 @@ git commit -m "feat(source): use comment link previews as source evidence"
 - [ ] **Step 1: Run focused security tests**
 
 ```bash
-npx vitest run tests/unit/link-preview.test.ts tests/unit/comment-content.test.ts
+npx vitest run tests/unit/link-preview.test.ts tests/unit/comment-content.test.ts tests/unit/link-preview-migration.test.ts
 ```
 
-Expected: all URL, redirect, address-range, clipping and source-eligibility cases pass.
+Expected: all URL, redirect, address-range, clipping, migration and source-eligibility cases pass.
 
 - [ ] **Step 2: Run full repository verification**
 
