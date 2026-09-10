@@ -37,27 +37,15 @@ jobs:
 
           api_path = Path("worker/store/community-api.ts")
           api = api_path.read_text()
-          create_audit = '''  await writeAudit(db, {
-            actorUserId: current.session.user.id,
-            action: submitForReview ? "COSMETIC_SUBMISSION_CREATED" : "COSMETIC_DRAFT_SAVED",
-            targetId: id,
-            requestId,
-            metadata: { type, communityState },
-          });
-'''
-          update_audit = '''  await writeAudit(db, {
-            actorUserId: current.session.user.id,
-            action: submitForReview ? "COSMETIC_SUBMISSION_RESUBMITTED" : "COSMETIC_DRAFT_UPDATED",
-            targetId: itemId,
-            requestId,
-            metadata: { communityState: nextState },
-          });
-'''
-          if api.count(create_audit) != 1:
-              raise SystemExit(f"expected one creator create audit block, found {api.count(create_audit)}")
-          if api.count(update_audit) != 1:
-              raise SystemExit(f"expected one creator update audit block, found {api.count(update_audit)}")
-          api = api.replace(create_audit, "", 1).replace(update_audit, "", 1)
+          for action in ["COSMETIC_SUBMISSION_CREATED", "COSMETIC_SUBMISSION_RESUBMITTED"]:
+              action_pos = api.find(action)
+              if action_pos < 0:
+                  raise SystemExit(f"ordinary audit action not found: {action}")
+              block_start = api.rfind("  await writeAudit(db, {", 0, action_pos)
+              block_end = api.find("  });\n", action_pos)
+              if block_start < 0 or block_end < 0:
+                  raise SystemExit(f"ordinary audit block not found: {action}")
+              api = api[:block_start] + api[block_end + len("  });\n"):]
           api_path.write_text(api)
           PY
       - run: npx prettier --write shared/store/community-css.ts worker/store/community-api.ts tests/unit/community-css-scientific-lengths.test.ts tests/unit/community-audit-boundary.test.ts
