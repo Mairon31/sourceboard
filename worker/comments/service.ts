@@ -278,11 +278,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         : new Map<string, CommentEmoteAsset>();
       const persisted = await dependencies.store.getComment(record.id);
       if (!persisted) {
-        throw new PostError(
-          500,
-          "COMMENT_CREATE_READ_FAILED",
-          "The comment could not be loaded.",
-        );
+        throw new PostError(500, "COMMENT_CREATE_READ_FAILED", "The comment could not be loaded.");
       }
       return toView(
         persisted,
