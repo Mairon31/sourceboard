@@ -91,6 +91,6 @@ describe("navigation session performance", () => {
 
     expect(detailRoute).toContain("Promise.all");
     expect(detailRoute).toContain("service.getPost");
-    expect(detailRoute).toContain("commentService.listForPost");
+    expect(detailRoute).toMatch(/commentService\s*\.listForPost/);
   });
 });
