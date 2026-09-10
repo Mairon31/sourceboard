@@ -84,14 +84,27 @@ jobs:
       - run: npm run typecheck
       - run: npx playwright install --with-deps chromium
       - run: npm run db:migrations:apply
-      - name: Extend only infrastructure readiness wait for stress run
+      - name: Warm server then repeat post-submit focus strictly
         run: |
-          sed -i 's/timeout: 30_000/timeout: 60_000/' tests/e2e/test-helpers.ts
-      - name: Repeat post-submit focus without retries
-        run: npx playwright test tests/e2e/comments.spec.ts --grep "freshly submitted root comment" --repeat-each=10 --retries=0 --timeout=60000
+          npm run dev -- --host localhost --port 5173 > /tmp/sourceboard-dev.log 2>&1 &
+          DEV_PID=$!
+          trap 'kill "$DEV_PID" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://localhost:5173/ > /dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/sourceboard-dev.log
+            exit 1
+          fi
+          CI= npx playwright test tests/e2e/comments.spec.ts --grep "freshly submitted root comment" --repeat-each=1 --retries=1 --timeout=60000
+          CI= npx playwright test tests/e2e/comments.spec.ts --grep "freshly submitted root comment" --repeat-each=10 --retries=0 --timeout=60000
       - name: Commit verified fix and remove temporary diagnostics
         run: |
-          git checkout -- tests/e2e/test-helpers.ts
           git config user.name "Mairon"
           git config user.email "maironjoelkin430@gmail.com"
           git rm -f .github/workflows/task5-focus-diagnostic.yml .github/workflows/task7-focus-fix.yml
