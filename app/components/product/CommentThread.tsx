@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import type {
   CommentAttachmentView,
   CommentView,
@@ -16,6 +17,7 @@ import {
   type SafeInlineRichTextNode,
   type SafeRichTextNode,
 } from "../../../shared/richtext/markdown";
+import type { CommentSort } from "../../../worker/comments/types";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
@@ -328,6 +330,7 @@ function CommentItem({
   return (
     <article
       id={`comment-${comment.id}`}
+      tabIndex={-1}
       className={`product-comment${depth ? " product-comment--reply" : ""}`}
     >
       <div className="product-comment__body">
@@ -591,11 +594,24 @@ function appendComment(comments: CommentView[], next: CommentView): CommentView[
   );
 }
 
+function insertRootComment(items: CommentView[], next: CommentView, sort: CommentSort): CommentView[] {
+  if (next.parentCommentId) return appendComment(items, next);
+  if (sort === "oldest") return [...items, next];
+  if (sort === "recent") return [next, ...items];
+  return [...items, next].sort(
+    (a, b) =>
+      b.reaction.count - a.reaction.count ||
+      b.createdAt.localeCompare(a.createdAt) ||
+      b.id.localeCompare(a.id),
+  );
+}
+
 const COMPOSER_FALLBACK_NAME = "SourceBoard member";
 
 export function CommentThread({
   postId,
   comments,
+  sort,
   authenticated = true,
   viewerIdentity,
   commentsClosed = false,
@@ -604,6 +620,7 @@ export function CommentThread({
 }: {
   postId: string;
   comments: CommentView[];
+  sort: CommentSort;
   authenticated?: boolean;
   viewerIdentity?: PublicPostAuthor | null;
   commentsClosed?: boolean;
@@ -611,6 +628,8 @@ export function CommentThread({
   onAcceptSource?: (commentId: string) => void;
 }) {
   const submitInFlightRef = useRef(false);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [items, setItems] = useState(comments);
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<string>();
@@ -619,6 +638,30 @@ export function CommentThread({
   const [attachment, setAttachment] = useState<CommentAttachmentView | null>(null);
   const [submitting, setSubmitting] = useState(false);
   useEffect(() => setItems(comments), [comments]);
+
+  function changeSort(nextSort: CommentSort) {
+    if (nextSort === sort) return;
+    const params = new URLSearchParams(location.search);
+    params.set("comments", nextSort);
+    navigate(`${location.pathname}?${params.toString()}`);
+  }
+
+  function focusCreatedComment(id: string) {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const target = document.getElementById(`comment-${id}`);
+        if (!(target instanceof HTMLElement)) return;
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+        target.focus({ preventScroll: true });
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${window.location.pathname}${window.location.search}#comment-${encodeURIComponent(id)}`,
+        );
+      });
+    });
+  }
 
   async function submit() {
     if (submitInFlightRef.current || (!body.trim() && !attachment)) return;
@@ -634,12 +677,14 @@ export function CommentThread({
       const payload = (await response.json().catch(() => null)) as { comment?: CommentView } | null;
       if (!response.ok || !payload?.comment)
         throw new Error(response.status === 401 ? "Sign in to comment." : "Comment unavailable.");
-      setItems((current) => appendComment(current, payload.comment!));
+      const created = payload.comment;
+      setItems((current) => insertRootComment(current, created, sort));
       setBody("");
       setAttachment(null);
       setMediaKind(null);
       setReplyTo(null);
       setStatus("Comment posted.");
+      focusCreatedComment(created.id);
     } catch (cause) {
       setStatus(cause instanceof Error ? cause.message : "Comment unavailable.");
     } finally {
@@ -655,7 +700,19 @@ export function CommentThread({
           <span className="product-eyebrow">Discussion</span>
           <h2 id="comments-heading">Comments</h2>
         </div>
-        <span>{items.length} top-level</span>
+        <div className="product-comments__heading-actions">
+          <span>{items.length} top-level</span>
+          <select
+            className="product-comments__sort"
+            aria-label="Sort comments"
+            value={sort}
+            onChange={(event) => changeSort(event.target.value as CommentSort)}
+          >
+            <option value="recent">Recent</option>
+            <option value="popular">Popular</option>
+            <option value="oldest">Oldest</option>
+          </select>
+        </div>
       </header>
       {!authenticated ? (
         <AuthRequiredCard
