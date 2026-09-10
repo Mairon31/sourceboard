@@ -31,8 +31,8 @@ jobs:
           css = css_path.read_text()
           old_number = r'([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*'
           new_number = r'([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)\s*'
-          if css.count(old_number) != 1:
-              raise SystemExit(f"expected one CSS length numeric token, found {css.count(old_number)}")
+          if old_number not in css:
+              raise SystemExit("CSS length numeric token not found")
           css_path.write_text(css.replace(old_number, new_number, 1))
 
           api_path = Path("worker/store/community-api.ts")
