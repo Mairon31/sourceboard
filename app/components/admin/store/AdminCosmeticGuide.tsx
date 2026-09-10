@@ -82,9 +82,9 @@ export function AdminCosmeticGuide() {
           </ul>
           <p>
             The only custom property Community CSS may define is <code>--accent</code>.
-            <code> var()</code> and SourceBoard&apos;s internal <code>--cosmetic-*</code> namespace are
-            not available to community styles. External URLs, <code>@import</code>, executable CSS
-            and global selectors are rejected.
+            <code> var()</code> and SourceBoard&apos;s internal <code>--cosmetic-*</code> namespace
+            are not available to community styles. External URLs, <code>@import</code>, executable
+            CSS and global selectors are rejected.
           </p>
         </Card>
 
