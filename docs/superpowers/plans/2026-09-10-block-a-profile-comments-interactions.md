@@ -30,8 +30,8 @@
 **Files:**
 - Modify: `app/components/product/ProfileEditor.tsx`
 - Modify: `app/components/product/profile-summary.css`
-- Test: `tests/unit/community-plan-phase-e1.test.ts`
-- Test: `tests/e2e/profile.spec.ts` if present; otherwise extend the existing profile E2E spec that exercises Edit profile.
+- Modify: `tests/unit/community-plan-phase-e1.test.ts`
+- Create: `tests/e2e/profile-editor.spec.ts`
 
 **Interfaces:**
 - Consumes: `GET /api/profile/me/username` and `PATCH /api/profile/me/username` returning `{ username: UsernameChangeStatus }`.
@@ -49,15 +49,16 @@ expect(editor).toContain('fetch("/api/profile/me/username", {');
 expect(editor).toContain('method: "PATCH"');
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+Create `tests/e2e/profile-editor.spec.ts` with an authenticated profile fixture that opens Edit profile, changes only the username, intercepts/observes the PATCH to `/api/profile/me/username`, and asserts the visible profile identity updates without using the Settings page.
 
-Run:
+- [ ] **Step 2: Run the focused tests and verify RED**
 
 ```bash
 npx vitest run tests/unit/community-plan-phase-e1.test.ts
+npx playwright test tests/e2e/profile-editor.spec.ts
 ```
 
-Expected: FAIL because `ProfileEditor.tsx` does not yet integrate username policy.
+Expected: the unit assertion and new E2E fail because the inline editor does not yet integrate username policy.
 
 - [ ] **Step 3: Add typed username editor state**
 
@@ -83,11 +84,11 @@ Use this response shape:
 type UsernameResponse = { username: UsernameChangeStatus };
 ```
 
-On username failure after an ordinary profile save, keep the editor open and report a precise status such as `Profile saved. Username was not changed: <server message>`; do not reset ordinary saved state. On success, update `usernameStatus` and `usernameDraft` from the server response.
+On username failure after an ordinary profile save, keep the editor open and report `Profile saved. Username was not changed: ${message}`; do not reset ordinary saved state. On success, update `usernameStatus` and `usernameDraft` from the server response.
 
 - [ ] **Step 5: Replace the old public-profile URL after a successful rename**
 
-Use `useLocation` and `useNavigate`. If the current path is `/u/<oldUsername>`, replace it with the encoded new username:
+Use `useLocation` and `useNavigate`. If the current path is the user's old public profile path, replace it with the new username:
 
 ```ts
 if (location.pathname === `/u/${encodeURIComponent(oldUsername)}`) {
@@ -105,6 +106,7 @@ Render changes remaining and `nextChangeAt` when blocked. Disable only the usern
 
 ```bash
 npx vitest run tests/unit/community-plan-phase-e1.test.ts
+npx playwright test tests/e2e/profile-editor.spec.ts
 npm run typecheck
 ```
 
@@ -113,7 +115,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add app/components/product/ProfileEditor.tsx app/components/product/profile-summary.css tests/unit/community-plan-phase-e1.test.ts tests/e2e
+git add app/components/product/ProfileEditor.tsx app/components/product/profile-summary.css tests/unit/community-plan-phase-e1.test.ts tests/e2e/profile-editor.spec.ts
 git commit -m "feat(profile): edit username inline"
 ```
 
@@ -124,8 +126,8 @@ git commit -m "feat(profile): edit username inline"
 **Files:**
 - Modify: `worker/comments/service.ts`
 - Modify: `worker/comments/store.ts`
-- Test: `tests/unit/comments-social-actions.test.ts`
-- Test: `tests/e2e/comments.spec.ts` or the existing comments E2E file.
+- Modify: `tests/unit/comments-social-actions.test.ts`
+- Modify: `tests/e2e/comments.spec.ts`
 
 **Interfaces:**
 - Consumes: authenticated viewer id and stored comment ownership/state.
@@ -133,22 +135,23 @@ git commit -m "feat(profile): edit username inline"
 
 - [ ] **Step 1: Write a failing regression assertion**
 
-Add a focused source assertion and E2E fixture for an expired owned comment:
+Add source assertions:
 
 ```ts
 expect(serviceSource).toContain('canDelete: record.comment.authorId === viewerId && record.comment.state === "VISIBLE"');
 expect(storeSource).not.toContain("AND edit_deadline_at >= ?");
 ```
 
-In E2E, seed an owned comment with an expired `edit_deadline_at`, open its More menu, expect Delete visible and Edit absent.
+Extend `tests/e2e/comments.spec.ts` with an owned comment whose `edit_deadline_at` is expired. Open its More menu and expect Delete visible while Edit is absent.
 
 - [ ] **Step 2: Run focused tests and verify RED**
 
 ```bash
 npx vitest run tests/unit/comments-social-actions.test.ts
+npx playwright test tests/e2e/comments.spec.ts
 ```
 
-Expected: FAIL because both service projection and D1 delete currently depend on the edit deadline.
+Expected: FAIL because service projection and D1 delete still depend on the edit deadline.
 
 - [ ] **Step 3: Change the permission projection**
 
@@ -170,19 +173,19 @@ WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND state = 'VISIBLE'
 
 Bind only `now, now, commentId, authorId`. Preserve the `meta.changes === 1` guard before decrementing `posts.comment_count`, so repeated deletes cannot double-decrement.
 
-- [ ] **Step 5: Run focused unit/E2E coverage**
+- [ ] **Step 5: Run focused tests**
 
 ```bash
 npx vitest run tests/unit/comments-social-actions.test.ts
 npx playwright test tests/e2e/comments.spec.ts
 ```
 
-If the comments E2E file has another name, run the exact existing file containing comment delete coverage.
+Expected: PASS for expired-owner Delete and existing edit-window behavior.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add worker/comments/service.ts worker/comments/store.ts tests/unit/comments-social-actions.test.ts tests/e2e
+git add worker/comments/service.ts worker/comments/store.ts tests/unit/comments-social-actions.test.ts tests/e2e/comments.spec.ts
 git commit -m "fix(comments): keep owner delete rights after edit expiry"
 ```
 
@@ -194,8 +197,8 @@ git commit -m "fix(comments): keep owner delete rights after edit expiry"
 - Modify: `worker/comments/service.ts`
 - Modify: `app/routes/post-detail.tsx`
 - Modify: `app/components/product/CommentThread.tsx`
-- Test: `tests/unit/comments-social-actions.test.ts`
-- Test: `tests/e2e/comments.spec.ts` or equivalent.
+- Modify: `tests/unit/comments-social-actions.test.ts`
+- Modify: `tests/e2e/comments.spec.ts`
 
 **Interfaces:**
 - Consumes: `CommentStore.getComment(id)`, `ProfileStore.getProfileByUserId`, equipped cosmetics, and the existing privacy projection.
@@ -203,20 +206,19 @@ git commit -m "fix(comments): keep owner delete rights after edit expiry"
 
 - [ ] **Step 1: Write failing tests for the synthetic identity bug**
 
-Assert `create()` no longer hard-codes the author record:
-
 ```ts
 expect(serviceSource).not.toContain('username: "SourceBoard member"');
 expect(serviceSource).not.toContain('displayName: "SourceBoard member"');
 expect(serviceSource).toContain("await dependencies.store.getComment(record.id)");
 ```
 
-Add E2E coverage that submits a comment as a named user and immediately sees that user's display name without a reload.
+Extend `tests/e2e/comments.spec.ts` so a named authenticated user submits a comment and immediately sees that user's display name without reload.
 
 - [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/unit/comments-social-actions.test.ts
+npx playwright test tests/e2e/comments.spec.ts
 ```
 
 - [ ] **Step 3: Re-read the persisted comment after creation**
@@ -229,24 +231,28 @@ if (!persisted) throw new PostError(500, "COMMENT_CREATE_READ_FAILED", "The comm
 return toView(persisted, input.authorId, dependencies.profileStore, now, false, createdEmoteAssets);
 ```
 
-This deliberately reuses the existing privacy/anonymity/cosmetics projection.
+This reuses the existing privacy/anonymity/cosmetics projection.
 
 - [ ] **Step 4: Load viewer identity in `post-detail.tsx`**
 
-When authenticated, use the already-created profile store to load the current profile and equipped cosmetics. Return a `viewerIdentity: PublicPostAuthor | null` from the loader containing display name, username/profile URL, avatar and equipped cosmetic fields. For unauthenticated users return `null`.
+When authenticated, use the existing profile store to load the current profile and equipped cosmetics. Return `viewerIdentity: PublicPostAuthor | null` with display name, username/profile URL, avatar and equipped cosmetic fields. Return `null` for unauthenticated users.
 
 - [ ] **Step 5: Render the real identity in the composer**
 
-Add `viewerIdentity?: PublicPostAuthor | null` to `CommentThread` props. Replace the hard-coded composer `<Avatar name="SourceBoard member" ...>` with `CosmeticIdentity` when identity is present; retain `SourceBoard member` only as the fallback.
+Add `viewerIdentity?: PublicPostAuthor | null` to `CommentThread` props. Replace the hard-coded composer `<Avatar name="SourceBoard member" size="sm" />` with `CosmeticIdentity` when identity is present; retain `SourceBoard member` only as fallback.
 
 - [ ] **Step 6: Verify named and anonymous cases**
 
-Run the named-user E2E and add/retain an anonymous post-author assertion that the create response still shows `Anonymous Author` rather than leaking the account.
+Extend `tests/e2e/comments.spec.ts` with both cases: named user creation immediately shows the real identity, and an anonymous post author commenting on their own anonymous post remains `Anonymous Author`.
+
+```bash
+npx playwright test tests/e2e/comments.spec.ts
+```
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add worker/comments/service.ts app/routes/post-detail.tsx app/components/product/CommentThread.tsx tests/unit/comments-social-actions.test.ts tests/e2e
+git add worker/comments/service.ts app/routes/post-detail.tsx app/components/product/CommentThread.tsx tests/unit/comments-social-actions.test.ts tests/e2e/comments.spec.ts
 git commit -m "fix(comments): project real author identity on create"
 ```
 
@@ -261,12 +267,12 @@ git commit -m "fix(comments): project real author identity on create"
 - Modify: `worker/comments/service.ts`
 - Modify: `worker/comments/api.ts`
 - Modify: `app/routes/post-detail.tsx`
-- Test: `tests/unit/comment-pagination.test.ts`
-- Test: `tests/unit/comments-social-actions.test.ts`
+- Create: `tests/unit/comment-pagination.test.ts`
+- Modify: `tests/unit/comments-social-actions.test.ts`
 
 **Interfaces:**
-- Produces: `type CommentSort = "recent" | "popular" | "oldest"`.
-- Produces: `encodeCommentCursor(cursor)` and `decodeCommentCursor(value, sort)`.
+- Produces: `type CommentSort = "recent" | "popular" | "oldest"` in `worker/comments/types.ts`.
+- Produces: `encodeCommentCursor(cursor)` and `decodeCommentCursor(value, sort)` in `worker/comments/pagination.ts`.
 - Changes: `CommentService.listForPost(postId, viewerId, cursor, limit, sort)`.
 - Changes: `CommentStore.listForPost({ postId, cursor, limit, sort })`.
 
@@ -297,32 +303,28 @@ npx vitest run tests/unit/comment-pagination.test.ts
 
 - [ ] **Step 3: Implement typed cursor codec**
 
-Define:
+In `worker/comments/types.ts` define:
 
 ```ts
 export type CommentSort = "recent" | "popular" | "oldest";
 export type CommentCursor =
   | { sort: "recent" | "oldest"; createdAt: number; id: string }
   | { sort: "popular"; likeCount: number; createdAt: number; id: string };
-```
 
-Use base64url JSON like post pagination, validate safe integers/string length, require the decoded `sort` to equal the requested sort, and throw `PostError(400, "INVALID_CURSOR", "The comment cursor is invalid.")` on malformed input.
-
-- [ ] **Step 4: Parse sort in the API and route loader**
-
-Add a shared small parser in `worker/comments/types.ts` or `service.ts`:
-
-```ts
 export function parseCommentSort(value: string | null): CommentSort {
   return value === "popular" || value === "oldest" ? value : "recent";
 }
 ```
 
-Pass `url.searchParams.get("sort")` through the comments API and `requested.searchParams.get("comments")` through `post-detail.tsx`.
+In `worker/comments/pagination.ts`, use base64url JSON like post pagination, validate safe integers/string length, require decoded sort to equal the requested sort, and throw `PostError(400, "INVALID_CURSOR", "The comment cursor is invalid.")` on malformed input.
+
+- [ ] **Step 4: Parse sort in the API and route loader**
+
+Pass `parseCommentSort(url.searchParams.get("sort"))` through the comments API and `parseCommentSort(requested.searchParams.get("comments"))` through `post-detail.tsx`.
 
 - [ ] **Step 5: Page top-level comments in D1**
 
-Change the root query to require `c.parent_comment_id IS NULL`. Use the exact order/predicate pairs:
+Require `c.parent_comment_id IS NULL`. Use these exact order/predicate pairs:
 
 ```sql
 -- recent
@@ -345,7 +347,7 @@ Generate `nextCursor` from the last returned root row.
 
 - [ ] **Step 6: Fetch replies only for the selected roots**
 
-Use a recursive CTE seeded by the selected root ids, excluding deleted rows, and order replies by `created_at ASC, id ASC`. Merge root rows + descendant rows before `toView()`/`tree()`. Do not fetch every comment in the post merely to sort client-side.
+Use a recursive CTE seeded by selected root ids, excluding deleted rows, and order replies by `created_at ASC, id ASC`. Merge root rows + descendants before `toView()`/`tree()`. Do not fetch every comment in the post merely to sort client-side.
 
 - [ ] **Step 7: Run pagination, comments and type tests**
 
@@ -369,16 +371,14 @@ git commit -m "feat(comments): add server-side sort modes"
 - Modify: `app/components/product/CommentThread.tsx`
 - Modify: `app/components/product/comment-actions.css`
 - Modify: `app/routes/post-detail.tsx`
-- Test: `tests/unit/comments-social-actions.test.ts`
-- Test: `tests/e2e/comments.spec.ts` or equivalent.
+- Modify: `tests/unit/comments-social-actions.test.ts`
+- Modify: `tests/e2e/comments.spec.ts`
 
 **Interfaces:**
 - Consumes: initial `sort: CommentSort` from the route loader.
 - Produces: URL state `?comments=recent|popular|oldest` and correctly placed newly-created comments.
 
 - [ ] **Step 1: Write failing UI assertions**
-
-Assert the thread exposes all three labels and the URL key `comments`:
 
 ```ts
 expect(threadSource).toContain("Recent");
@@ -395,26 +395,26 @@ npx vitest run tests/unit/comments-social-actions.test.ts
 
 - [ ] **Step 3: Add sort control beside the top-level count**
 
-Use a compact native select or existing Dropdown with an accessible name `Sort comments`. Updating it must preserve unrelated search params and navigate to the same pathname with the new `comments` parameter. `recent` may either remain explicit or remove the parameter; the loader must normalize both to Recent.
+Use the existing Dropdown component or a compact native select with accessible name `Sort comments`. Updating it preserves unrelated query parameters and navigates to the same pathname with the selected `comments` value. Omitted/invalid values remain Recent at the loader boundary.
 
 - [ ] **Step 4: Insert a created comment according to the active sort**
 
-Add a pure helper:
+Add:
 
 ```ts
 function insertRootComment(items: CommentView[], next: CommentView, sort: CommentSort): CommentView[] {
-  if (next.parentCommentId) return appendReply(items, next);
+  if (next.parentCommentId) return appendComment(items, next);
   if (sort === "oldest") return [...items, next];
   if (sort === "recent") return [next, ...items];
   return [...items, next].sort((a, b) => b.reaction.count - a.reaction.count || b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 }
 ```
 
-Keep replies appended oldest-first under their parent.
+Replies remain appended oldest-first under their parent.
 
 - [ ] **Step 5: Scroll and focus only after the element exists**
 
-After updating local state, schedule two animation frames, locate `comment-${id}`, set `tabIndex={-1}` on comment articles, then:
+Set `tabIndex={-1}` on comment articles. After local state update, schedule two animation frames, locate `comment-${id}`, then:
 
 ```ts
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -425,14 +425,17 @@ history.replaceState(history.state, "", `${location.pathname}${location.search}#
 
 Do not clear the draft until the server returns success.
 
-- [ ] **Step 6: Add Playwright cases for default/newest, Popular, Oldest and scroll target**
+- [ ] **Step 6: Add Playwright cases**
 
-Verify Recent is default, URL changes, root order changes, replies remain grouped, and a freshly submitted comment becomes the focused `article#comment-...`.
+Extend `tests/e2e/comments.spec.ts` to verify Recent is default, URL changes for Popular/Oldest, root order changes, replies remain grouped, and a freshly submitted comment becomes the focused `article#comment-...`.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Run focused tests and commit**
 
 ```bash
-git add app/components/product/CommentThread.tsx app/components/product/comment-actions.css app/routes/post-detail.tsx tests/unit/comments-social-actions.test.ts tests/e2e
+npx vitest run tests/unit/comments-social-actions.test.ts
+npx playwright test tests/e2e/comments.spec.ts
+npm run typecheck
+git add app/components/product/CommentThread.tsx app/components/product/comment-actions.css app/routes/post-detail.tsx tests/unit/comments-social-actions.test.ts tests/e2e/comments.spec.ts
 git commit -m "feat(comments): add sorting and post-submit focus"
 ```
 
@@ -446,8 +449,8 @@ git commit -m "feat(comments): add sorting and post-submit focus"
 - Modify: `app/components/product/CommentThread.tsx`
 - Modify: `app/components/product/comment-actions.css`
 - Modify: `app/components/product/PostCard.tsx`
-- Test: `tests/unit/media-picker.test.ts`
-- Test: `tests/unit/comments-social-actions.test.ts`
+- Modify: `tests/unit/media-picker.test.ts`
+- Modify: `tests/unit/comments-social-actions.test.ts`
 
 **Interfaces:**
 - Produces: `GifIcon`, `StickerIcon`, `SmileIcon` exports for composer controls.
@@ -462,10 +465,9 @@ expect(threadSource).toContain("<SmileIcon");
 expect(threadSource).toContain('aria-label="GIF"');
 expect(threadSource).toContain('aria-label="Sticker"');
 expect(threadSource).toContain('aria-label="Emote"');
-expect(threadSource).not.toContain(">\n                  GIF\n                </button>");
 ```
 
-Also assert post/comment menu triggers use `triggerIcon={<MoreIcon` with `iconOnly`.
+Also assert post/comment menu triggers use `triggerIcon={<MoreIcon` with `iconOnly`, and assert no literal `...`/`…` menu trigger appears in PostCard or CommentThread.
 
 - [ ] **Step 2: Verify RED**
 
@@ -475,22 +477,22 @@ npx vitest run tests/unit/media-picker.test.ts tests/unit/comments-social-action
 
 - [ ] **Step 3: Add minimal line icons**
 
-Implement icons in `icons.tsx` using the existing icon component conventions: `currentColor`, no external assets, 24×24 viewBox, decorative SVG hidden when the button supplies the accessible label. Export them through `ui/index.ts`.
+Implement icons in `icons.tsx` using existing component conventions: `currentColor`, no external assets, 24×24 viewBox, decorative SVG hidden when the button supplies the accessible label. Export them through `ui/index.ts`.
 
 - [ ] **Step 4: Convert composer controls to icon buttons**
 
-Each button must expose `aria-label`, `title`, `aria-expanded`, `aria-pressed` or active class where appropriate, and at least a 40×40 CSS hit area. Preserve MediaPicker behavior exactly.
+Each button exposes `aria-label`, `title`, `aria-expanded`, active class and at least a 40×40 CSS hit area. Preserve MediaPicker behavior exactly.
 
 - [ ] **Step 5: Verify overflow controls**
 
-Ensure PostCard and CommentItem render `MoreIcon` through the shared Dropdown `iconOnly` path and no literal `...`/`…` trigger text is introduced.
+Ensure PostCard and CommentItem render `MoreIcon` through the shared Dropdown `iconOnly` path.
 
 - [ ] **Step 6: Run focused tests and commit**
 
 ```bash
 npx vitest run tests/unit/media-picker.test.ts tests/unit/comments-social-actions.test.ts
 npm run typecheck
-git add app/components/ui/icons.tsx app/components/ui/index.ts app/components/product/CommentThread.tsx app/components/product/comment-actions.css app/components/product/PostCard.tsx tests/unit
+git add app/components/ui/icons.tsx app/components/ui/index.ts app/components/product/CommentThread.tsx app/components/product/comment-actions.css app/components/product/PostCard.tsx tests/unit/media-picker.test.ts tests/unit/comments-social-actions.test.ts
 git commit -m "feat(comments): polish composer and overflow controls"
 ```
 
@@ -499,8 +501,7 @@ git commit -m "feat(comments): polish composer and overflow controls"
 ### Task 7: Block A regression gate
 
 **Files:**
-- Modify only if a failing test reveals a Block A defect.
-- Test: all unit and E2E suites.
+- Modify only files implicated by a failing Block A verification check.
 
 **Interfaces:**
 - Produces: a reviewable Block A checkpoint that Block B can depend on.
@@ -534,11 +535,11 @@ Expected: all existing and new E2E tests pass.
 
 Confirm no link-preview persistence, category schema, or Discovery 2.0 implementation has leaked into Block A.
 
-- [ ] **Step 5: Commit any test-only gate adjustments if required**
+- [ ] **Step 5: Commit verification fixes only when Step 1–4 changed files**
 
 ```bash
-git add tests
-git commit -m "test: verify profile and comment interaction block"
+git add app worker shared tests
+git commit -m "fix: close Block A verification findings"
 ```
 
-Skip this commit when no files changed.
+When Steps 1–4 leave the working tree clean, do not create an empty commit.
