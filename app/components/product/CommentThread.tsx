@@ -349,7 +349,7 @@ function CommentItem({
                 nameAs="strong"
               />
             )}
-            {comment.isPostAuthor ? <span className="product-comment__author-badge">Author</span> : null}
+            {comment.isPostAuthor ? <Badge tone="accent">Author</Badge> : null}
           </div>
           <a
             className="product-comment__date"
