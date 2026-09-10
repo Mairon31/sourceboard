@@ -1,0 +1,50 @@
+name: Link preview lint normalization
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+    paths:
+      - .github/workflows/link-preview-lint-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/profile-comments-categories-discovery
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Normalize control-character cleanup lint
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('worker/comments/link-preview.ts')
+          text = path.read_text()
+          needle = '    .replace(/[\\u0000-\\u001f\\u007f]/g, " ")\n'
+          replacement = '    // eslint-disable-next-line no-control-regex\n' + needle
+          if replacement not in text:
+              if needle not in text:
+                  raise SystemExit('cleanup regex anchor not found')
+              text = text.replace(needle, replacement, 1)
+          path.write_text(text)
+          PY
+          npx prettier --write worker/comments/link-preview.ts
+          npm run lint
+      - name: Commit lint fix and remove workflow
+        run: |
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git rm .github/workflows/link-preview-lint-fix.yml
+          git add worker/comments/link-preview.ts
+          git diff --cached --check
+          git commit -m "fix(comments): satisfy metadata cleanup lint"
+          git push origin HEAD:feature/profile-comments-categories-discovery
