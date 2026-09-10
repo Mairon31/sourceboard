@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useRevalidator } from "react-router";
+import { useLocation, useNavigate, useRevalidator } from "react-router";
 import type { PublicProfileDto } from "../../../worker/profile/types";
+import type { UsernameChangeStatus } from "../../../worker/profile/username-policy";
 import {
   canonicalSocialPlatform,
   normalizeSocialUrl,
@@ -32,6 +33,10 @@ type MyProfileResponse = {
     sortOrder: number;
     isVisible: boolean;
   }>;
+};
+
+type UsernameResponse = {
+  username: UsernameChangeStatus;
 };
 
 type SocialLinkDraft = {
@@ -148,6 +153,12 @@ function validateImage(file: File | null): void {
   }
 }
 
+function validateUsername(username: string): void {
+  if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) {
+    throw new Error("Username must be 3–32 letters, numbers or underscores.");
+  }
+}
+
 function useObjectUrl(file: File | null): string | undefined {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
@@ -173,6 +184,15 @@ function socialPreview(link: SocialLinkDraft): string {
   return normalized ? socialHandleFromUrl(link.platform, normalized) : value;
 }
 
+function usernamePolicyMessage(status: UsernameChangeStatus): string {
+  const remaining = `${status.remainingChanges} change${status.remainingChanges === 1 ? "" : "s"} available`;
+  if (status.canChange) return `${remaining} in the current ${status.windowDays}-day window.`;
+  if (status.nextChangeAt) {
+    return `${remaining}. Next username change: ${new Date(status.nextChangeAt).toLocaleString()}.`;
+  }
+  return `Username change limit reached for the current ${status.windowDays}-day window.`;
+}
+
 export function ProfileEditor({
   profile,
   onEditingChange,
@@ -181,37 +201,53 @@ export function ProfileEditor({
   onEditingChange?: (editing: boolean) => void;
 }) {
   const revalidator = useRevalidator();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [source, setSource] = useState<MyProfileResponse | null>(null);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [initialFingerprint, setInitialFingerprint] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<UsernameChangeStatus | null>(null);
+  const [usernameDraft, setUsernameDraft] = useState(profile.username);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const avatarPreview = useObjectUrl(avatarFile);
   const bannerPreview = useObjectUrl(bannerFile);
-  const dirty = Boolean(
+  const profileDirty = Boolean(
     draft &&
     (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
   );
+  const usernameDirty = Boolean(
+    usernameStatus && usernameDraft.trim() !== usernameStatus.username,
+  );
+  const dirty = profileDirty || usernameDirty;
 
   useEffect(() => {
-    if (!editing || draft) return;
+    if (!editing || (draft && usernameStatus)) return;
     let cancelled = false;
     setStatus(null);
-    void fetch("/api/profile/me", { cache: "no-store" })
-      .then(async (response) => {
+    void Promise.all([
+      fetch("/api/profile/me", { cache: "no-store" }).then(async (response) => {
         if (!response.ok)
           throw new Error(await readErrorMessage(response, "Could not load your profile."));
         return (await response.json()) as MyProfileResponse;
-      })
-      .then((data) => {
+      }),
+      fetch("/api/profile/me/username", { cache: "no-store" }).then(async (response) => {
+        if (!response.ok)
+          throw new Error(await readErrorMessage(response, "Could not load username settings."));
+        return (await response.json()) as UsernameResponse;
+      }),
+    ])
+      .then(([data, usernameData]) => {
         if (cancelled) return;
         const nextDraft = createDraft(data);
         setSource(data);
         setDraft(nextDraft);
         setInitialFingerprint(draftFingerprint(nextDraft));
+        setUsernameStatus(usernameData.username);
+        setUsernameDraft(usernameData.username.username);
       })
       .catch((error: unknown) => {
         if (!cancelled)
@@ -220,7 +256,7 @@ export function ProfileEditor({
     return () => {
       cancelled = true;
     };
-  }, [draft, editing]);
+  }, [draft, editing, usernameStatus]);
 
   const availablePlatforms = useMemo(() => {
     const selected = new Set(draft?.socialLinks.map((link) => link.platform) ?? []);
@@ -238,6 +274,8 @@ export function ProfileEditor({
     setSource(null);
     setDraft(null);
     setInitialFingerprint("");
+    setUsernameStatus(null);
+    setUsernameDraft(profile.username);
     setAvatarFile(null);
     setBannerFile(null);
     setStatus(null);
@@ -287,28 +325,96 @@ export function ProfileEditor({
     setStatus(null);
     try {
       const displayName = draft.displayName.trim();
+      const nextUsername = usernameDraft.trim();
       if (!displayName) throw new Error("Display name cannot be empty.");
+      if (usernameDirty) validateUsername(nextUsername);
       validateImage(avatarFile);
       validateImage(bannerFile);
+      const socialLinks = normalizeSocialLinks(draft.socialLinks);
       const csrfToken = readCookie("__Host-sourceboard_csrf") ?? "";
       let avatarAssetId = source.profile.avatarAssetId;
       let bannerAssetId = source.profile.bannerAssetId;
+      let profileSaved = false;
+
       if (avatarFile) avatarAssetId = await uploadProfileMedia("AVATAR", avatarFile, csrfToken);
       if (bannerFile) bannerAssetId = await uploadProfileMedia("BANNER", bannerFile, csrfToken);
-      const response = await fetch("/api/profile/me", {
-        method: "PATCH",
-        headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
-        body: JSON.stringify({
-          displayName,
-          bio: draft.bio,
-          profileVisibility: draft.profileVisibility,
-          avatarAssetId,
-          bannerAssetId,
-          socialLinks: normalizeSocialLinks(draft.socialLinks),
-        }),
-      });
-      if (!response.ok)
-        throw new Error(await readErrorMessage(response, "Could not save your profile."));
+
+      if (profileDirty) {
+        const response = await fetch("/api/profile/me", {
+          method: "PATCH",
+          headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+          body: JSON.stringify({
+            displayName,
+            bio: draft.bio,
+            profileVisibility: draft.profileVisibility,
+            avatarAssetId,
+            bannerAssetId,
+            socialLinks,
+          }),
+        });
+        if (!response.ok)
+          throw new Error(await readErrorMessage(response, "Could not save your profile."));
+
+        profileSaved = true;
+        const persistedDraft = { ...draft, displayName };
+        setDraft(persistedDraft);
+        setInitialFingerprint(draftFingerprint(persistedDraft));
+        setSource((current) =>
+          current
+            ? {
+                ...current,
+                profile: {
+                  ...current.profile,
+                  displayName,
+                  bio: draft.bio,
+                  profileVisibility: draft.profileVisibility,
+                  avatarAssetId,
+                  bannerAssetId,
+                },
+              }
+            : current,
+        );
+        setAvatarFile(null);
+        setBannerFile(null);
+      }
+
+      if (usernameDirty && usernameStatus) {
+        const oldUsername = usernameStatus.username;
+        const response = await fetch("/api/profile/me/username", {
+          method: "PATCH",
+          headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+          body: JSON.stringify({ username: nextUsername }),
+        });
+        if (!response.ok) {
+          const message = await readErrorMessage(response, "Could not change your username.");
+          if (profileSaved) {
+            setStatus(`Profile saved. Username was not changed: ${message}`);
+            revalidator.revalidate();
+            return;
+          }
+          throw new Error(message);
+        }
+
+        const result = (await response.json()) as UsernameResponse;
+        setUsernameStatus(result.username);
+        setUsernameDraft(result.username.username);
+        setEditing(false);
+        onEditingChange?.(false);
+        setSource(null);
+        setDraft(null);
+        setInitialFingerprint("");
+        setAvatarFile(null);
+        setBannerFile(null);
+        setStatus(profileSaved ? "Profile and username updated." : "Username updated.");
+        const oldPath = `/u/${encodeURIComponent(oldUsername)}`;
+        if (location.pathname === oldPath) {
+          navigate(`/u/${encodeURIComponent(result.username.username)}`, { replace: true });
+        } else {
+          revalidator.revalidate();
+        }
+        return;
+      }
+
       setEditing(false);
       onEditingChange?.(false);
       setSource(null);
@@ -346,7 +452,7 @@ export function ProfileEditor({
     );
   }
 
-  if (!draft) {
+  if (!draft || !usernameStatus) {
     return (
       <Card className="product-profile-hero product-profile-editor-inline">
         <div className="product-profile-editor-loading">
@@ -387,7 +493,7 @@ export function ProfileEditor({
         <div className="product-profile-editor-inline__identity">
           <label className="product-profile-avatar-edit" title="Change avatar">
             <CosmeticIdentity
-              displayName={draft.displayName.trim() || profile.username}
+              displayName={draft.displayName.trim() || usernameDraft.trim() || profile.username}
               avatarUrl={avatarPreview ?? profile.avatarUrl}
               avatarFrame={profile.cosmetics?.avatarFrame}
               nameFont={profile.cosmetics?.nameFont}
@@ -404,8 +510,8 @@ export function ProfileEditor({
             />
           </label>
           <div className="product-profile-editor-inline__identity-copy">
-            <strong>{draft.displayName.trim() || profile.username}</strong>
-            <span>@{profile.username}</span>
+            <strong>{draft.displayName.trim() || usernameDraft.trim() || profile.username}</strong>
+            <span>@{usernameDraft.trim() || profile.username}</span>
             <small>Tap the avatar or banner to replace the image.</small>
           </div>
         </div>
@@ -426,6 +532,18 @@ export function ProfileEditor({
         </div>
 
         <div className="product-profile-editor-inline__fields">
+          <div className="product-profile-editor-inline__username">
+            <Input
+              label="Username"
+              value={usernameDraft}
+              maxLength={32}
+              disabled={busy || !usernameStatus.canChange}
+              onChange={(event) => setUsernameDraft(event.target.value)}
+            />
+            <small className="product-profile-editor-inline__username-policy">
+              {usernamePolicyMessage(usernameStatus)}
+            </small>
+          </div>
           <Input
             label="Display name"
             value={draft.displayName}
