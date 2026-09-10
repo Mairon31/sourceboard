@@ -10,7 +10,10 @@ const postCardSource = readFileSync(
   new URL("../../app/components/product/PostCard.tsx", import.meta.url),
   "utf8",
 );
-const iconsSource = readFileSync(new URL("../../app/components/ui/icons.tsx", import.meta.url), "utf8");
+const iconsSource = readFileSync(
+  new URL("../../app/components/ui/icons.tsx", import.meta.url),
+  "utf8",
+);
 const serviceSource = readFileSync(
   new URL("../../worker/comments/service.ts", import.meta.url),
   "utf8",
