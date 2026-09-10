@@ -269,6 +269,47 @@ function validateAnimation(value: string, property: string): void {
   }
 }
 
+function splitTopLevelCommas(value: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if (char === "(") depth += 1;
+    else if (char === ")") {
+      depth -= 1;
+      if (depth < 0) invalid("Animation syntax is invalid.");
+    } else if (char === "," && depth === 0) {
+      const part = value.slice(start, index).trim();
+      if (!part) invalid("Animation syntax is invalid.");
+      parts.push(part);
+      start = index + 1;
+    }
+  }
+  if (depth !== 0) invalid("Animation syntax is invalid.");
+  const tail = value.slice(start).trim();
+  if (!tail) invalid("Animation syntax is invalid.");
+  parts.push(tail);
+  return parts;
+}
+
+function validateAnimationScope(
+  value: string,
+  property: string,
+  keyframeNames: Map<string, string>,
+): void {
+  if (property !== "animation" && property !== "animation-name") return;
+  for (const segment of splitTopLevelCommas(value)) {
+    const candidate =
+      property === "animation-name"
+        ? segment
+        : (segment.match(/^([A-Za-z_][A-Za-z0-9_-]{0,31}|none)(?:\s|$)/)?.[1] ?? "");
+    if (!candidate) invalid("Animation shorthand must start with a local @keyframes name.");
+    if (candidate.toLowerCase() !== "none" && !keyframeNames.has(candidate))
+      invalid("Animations may only reference @keyframes declared in this cosmetic.");
+  }
+}
+
 function sanitizeDeclarations(
   body: string,
   keyframeNames: Map<string, string>,
@@ -323,6 +364,7 @@ function sanitizeDeclarations(
       invalid("Pseudo-element content must be a short text literal.");
     if (property.startsWith("animation")) {
       validateAnimation(value, property);
+      validateAnimationScope(value, property, keyframeNames);
       for (const [original, scoped] of keyframeNames) {
         value = value.replace(
           new RegExp(`\\b${original.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`, "g"),
