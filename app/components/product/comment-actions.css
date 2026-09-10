@@ -35,6 +35,48 @@
   border-radius: 12px;
 }
 
+.product-comment-composer__toolbar > div {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.product-comment-composer__media-action {
+  display: inline-grid;
+  min-width: 40px;
+  min-height: 40px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.product-comment-composer__media-action:hover,
+.product-comment-composer__media-action:focus-visible {
+  border-color: var(--border-subtle);
+  background: var(--bg-app-secondary);
+  color: var(--text-primary);
+}
+
+.product-comment-composer__media-action:active {
+  transform: translateY(1px);
+}
+
+.product-comment-composer__media-action.is-active {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border-subtle));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
 .product-comment__actions {
   display: flex;
   flex-wrap: wrap;
@@ -238,6 +280,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .product-comment-composer__media-action,
   .product-comment__action,
   .product-comment__actions .product-share-action .sb-button {
     transition: none;
