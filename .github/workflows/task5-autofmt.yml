@@ -1,0 +1,33 @@
+name: Task 5 autofmt
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/profile-comments-categories-discovery
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - run: npx prettier app/components/product/CommentThread.tsx tests/e2e/comments.spec.ts --write
+      - run: git diff --check
+      - name: Commit exact formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/components/product/CommentThread.tsx tests/e2e/comments.spec.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "style(comments): apply task 5 formatting"
+          git push origin HEAD:feature/profile-comments-categories-discovery
