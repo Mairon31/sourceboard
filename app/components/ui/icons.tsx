@@ -104,6 +104,38 @@ export function MessageIcon(props: IconProps) {
   );
 }
 
+export function GifIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="2.5" y="5" width="19" height="14" rx="3" />
+      <path d="M8.2 10.1H6.7a1.7 1.7 0 0 0-1.7 1.7v.4a1.7 1.7 0 0 0 1.7 1.7h1.5v-1.8H7" />
+      <path d="M11 10.1v3.8" />
+      <path d="M14 13.9v-3.8h3" />
+      <path d="M14 12h2.4" />
+    </IconBase>
+  );
+}
+
+export function StickerIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 3h7.5L20 9.5V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" />
+      <path d="M13 3v5a2 2 0 0 0 2 2h5" />
+      <path d="M8 14.5c1.1 1.2 2.2 1.8 4 1.8s2.9-.6 4-1.8" />
+    </IconBase>
+  );
+}
+
+export function SmileIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 14.5c.9 1.2 2 1.8 3.5 1.8s2.6-.6 3.5-1.8" />
+      <path d="M9 9.5h.01M15 9.5h.01" />
+    </IconBase>
+  );
+}
+
 export function ShareIcon(props: IconProps) {
   return (
     <IconBase {...props}>
