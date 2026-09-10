@@ -128,7 +128,7 @@ For an expired owned comment the menu remains visible because Delete is still av
 
 The comment create response must be produced from the actual persisted author/profile data, not a synthetic `SourceBoard member` placeholder.
 
-The service must reuse the same projection/path used by normal comment reads wherever practical so the create response and subsequent reload produce the same:
+The preferred implementation is to read/project the newly-created comment through the same store/service projection used by ordinary comment reads before returning the API response. This ensures the create response and subsequent reload produce the same:
 
 - display name;
 - username/profile URL;
@@ -213,7 +213,7 @@ The preview card can contain:
 
 The user may remove or replace the preview before posting.
 
-This phase supports one explicit preview URL per comment. Ordinary inline Markdown links may still exist independently. A comment may contain text plus one link preview. Existing GIF/sticker attachment behavior remains separate; the UI should avoid ambiguous combinations that the backend cannot persist. If the current attachment contract cannot represent simultaneous GIF/sticker plus link preview safely, the explicit Link preview and GIF/sticker attachment are mutually exclusive in this phase.
+This phase supports one explicit preview URL per comment. Ordinary inline Markdown links may still exist independently. A comment may contain text and/or emotes plus one link preview. An explicit link preview is mutually exclusive with a GIF or Sticker attachment in this phase; choosing Link clears the current GIF/Sticker selection and choosing GIF/Sticker clears the explicit link preview. This is a product rule, not an implementation fallback.
 
 ### 8.2 Metadata limits
 
@@ -261,7 +261,7 @@ The implementation must not weaken the existing CSP to render preview content.
 
 ### 8.5 Persistence
 
-Prefer a dedicated nullable one-to-one link preview record rather than overloading GIF/STICKER attachment JSON. Proposed table:
+Use a dedicated nullable one-to-one link preview record rather than overloading GIF/STICKER attachment JSON. Proposed table:
 
 `comment_link_previews`
 
@@ -274,7 +274,7 @@ Prefer a dedicated nullable one-to-one link preview record rather than overloadi
 - `fetched_at INTEGER NOT NULL`
 - `metadata_status TEXT NOT NULL`
 
-`metadata_status` is constrained to stable application values such as `COMPLETE`, `PARTIAL`, `URL_ONLY`.
+`metadata_status` is constrained to stable application values: `COMPLETE`, `PARTIAL`, `URL_ONLY`.
 
 The comment read contract exposes an optional `linkPreview` object. Existing `attachment` remains responsible for GIF/STICKER media.
 
@@ -323,7 +323,7 @@ Canonical slugs:
 
 `anime`, `manga-manhwa`, `social-media`, `lost-media`, `movies`, `tv-streaming`, `music`, `games`, `art-illustration`, `photography`, `memes`, `internet-culture`, `people-celebrities`, `fashion`, `technology`, `space`, `nature`, `animals`, `cars-vehicles`, `places-travel`, `history`, `books-comics`, `products-brands`, `other`.
 
-A shared typed catalog module is the single source of truth for slug, label, optional description and display order. Categories are not administrator-created database rows in this phase.
+A shared typed catalog module is the single source of truth for slug, label, optional description, search aliases and display order. Categories are not administrator-created database rows in this phase.
 
 ### 9.2 D1 migration
 
@@ -341,11 +341,13 @@ Application validation rejects category values not present in the shared catalog
 
 ### 9.3 Post contracts and creation
 
-Add `category`/`categorySlug` consistently to post summary/detail contracts. The post-create API requires a category for new clients; during rollout the backend may normalize a missing value to `other` only where backward compatibility is required for an older deployed client.
+Add `categorySlug` to post summary/detail contracts. Human-readable category labels and descriptions are derived from the shared typed catalog and are not redundantly persisted in each DTO.
+
+The post-create API requires a category for new clients; during rollout the backend may normalize a missing value to `other` only where backward compatibility is required for an older deployed client.
 
 The creation form gets a dedicated searchable category picker before audience/privacy controls. It must:
 
-- search category label and useful aliases;
+- search category label and aliases;
 - support keyboard navigation;
 - clearly show the selected category;
 - require one selection before publish;
@@ -383,7 +385,7 @@ The page includes:
 
 Home gains an optional category filter that works with its existing feed modes. Selecting a category requests only that category from the backend/resource loader rather than downloading the full feed and filtering client-side.
 
-Category state should be represented in the URL or another shareable navigation state. Changing Recent/Friends/Answered/Verified must preserve the selected category when that feed supports categories.
+Home category state is represented by the `category=<slug>` URL query parameter. Changing Recent/Friends/Answered/Verified must preserve that parameter when the feed supports categories; clearing the category removes the parameter.
 
 ## 11. Search/Discovery 2.0
 
@@ -399,7 +401,7 @@ Search URL state supports:
 
 Changing one control must preserve the other applicable values.
 
-For profile-only results, category/view controls that do not apply are hidden or normalized without corrupting the URL.
+For profile-only results, category/view controls that do not apply are hidden. `category` is removed when the user deliberately switches to profile-only mode. The selected `view` may remain in the URL only if the UI preserves it for the user's next post-bearing result mode; it must never change the profile result rendering itself.
 
 ### 11.2 Search service
 
@@ -407,7 +409,7 @@ Extend the existing search service rather than create a second search stack. Cat
 
 The FTS index remains responsible for textual relevance. Category is a structured filter, not injected into the FTS query string.
 
-Post search projections include category slug. Existing privacy, block, lifecycle and NSFW predicates remain mandatory in every view mode.
+Post search projections include `categorySlug`. Existing privacy, block, lifecycle and NSFW predicates remain mandatory in every view mode.
 
 ### 11.3 Search page hierarchy
 
@@ -444,7 +446,7 @@ On touch devices there is no hover dependency. A minimal readable overlay/status
 
 #### Detailed Grid
 
-A denser card grid for users who want visual scanning plus context:
+The `view=grid` mode is the Detailed Grid. It is a denser card grid for users who want visual scanning plus context:
 
 - image remains prominent;
 - author identity and truncated title are visible;
@@ -465,14 +467,14 @@ Default view when neither URL nor local preference exists is `list` to preserve 
 - Gallery hover information is also exposed on keyboard focus and does not rely solely on color.
 - Status/category badges meet contrast requirements.
 - Link preview cards expose the destination and do not create unlabeled image-only links.
-- `prefers-reduced-motion` suppresses nonessential animated transitions/scroll flourishes; programmatic scroll may use instant behavior under reduced motion.
+- `prefers-reduced-motion` suppresses nonessential animated transitions/scroll flourishes; programmatic scroll uses instant behavior under reduced motion.
 - Mobile discovery controls wrap or collapse into compact menus without horizontal page overflow.
-- Gallery must support narrow phones with a practical two-column layout; larger breakpoints may use 3+ columns according to available width.
+- Gallery supports narrow phones with a practical two-column layout; larger breakpoints may use 3+ columns according to available width.
 
 ## 13. Performance requirements
 
 - Category filtering occurs in SQL, not after fetching unrelated posts.
-- Search grid modes reuse the same result DTO where possible; changing view must not require duplicate search queries when only presentation changes.
+- Search grid modes reuse the same result DTO where possible; changing view does not require a duplicate search query when only presentation changes.
 - Gallery images retain lazy loading and appropriate responsive sizing.
 - Link preview metadata uses caching and bounded fetches.
 - Comment sorting is executed server-side for paginated data; do not fetch every comment merely to sort in the browser.
@@ -559,7 +561,7 @@ At minimum cover:
 6. create a comment with a valid link preview and render its snapshot;
 7. create a post only after selecting/searching a category;
 8. category badge links to category route;
-9. Home category filter returns category-scoped posts;
+9. Home category filter returns category-scoped posts and preserves the URL parameter across feed-mode changes;
 10. Search preserves category and status filters;
 11. Search switches between List/Gallery/Detailed Grid;
 12. Gallery exposes status/category/like/comment information on focus as well as hover.
@@ -602,8 +604,11 @@ The expansion is complete only when all of the following are true:
 - top-level comments default to newest-first and can switch to Popular/Oldest;
 - comment media tools use a polished icon toolbar;
 - a safe Link tool creates a persisted preview and its canonical URL participates in source acceptance/verification;
+- explicit Link previews and GIF/Sticker attachments are mutually exclusive while text/emotes may coexist with the preview;
 - every new post has exactly one searchable category from the canonical catalog;
+- post DTOs persist/expose the canonical `categorySlug`, with display text derived from the shared catalog;
 - category is visible on post surfaces and filterable through Home and Search;
+- Home category filtering is represented by `category=<slug>` in the URL;
 - `/category/:slug` provides a privacy-safe category feed;
 - Search/Discovery supports List, Gallery and Detailed Grid with stable URL state;
 - Gallery behaves accessibly on keyboard and touch devices;
