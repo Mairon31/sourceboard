@@ -36,7 +36,9 @@ describe("comment content classification", () => {
 
   it("treats a link as substantive source content", () => {
     const richtext = [{ type: "link", url: "https://example.com/source", label: "Source" }];
-    expect(hasSourceEligibleCommentContent(richtext, "Source https://example.com/source")).toBe(true);
+    expect(
+      hasSourceEligibleCommentContent(richtext, "Source https://example.com/source"),
+    ).toBe(true);
   });
 
   it("preserves legacy text comments when richtext is absent", () => {
