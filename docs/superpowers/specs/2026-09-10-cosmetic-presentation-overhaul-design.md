@@ -49,9 +49,9 @@ The profile presentation will be decomposed into three render responsibilities i
 3. a card-level Profile Effect layer;
 4. the readable profile content surface.
 
-A dedicated `ProfileThemeLayer` or equivalent focused renderer applies the selected theme to the profile card surface. It must not be mounted inside `.product-profile-cover`.
+Introduce a dedicated `ProfileThemeLayer` component to apply the selected theme to the profile card surface. It must not be mounted inside `.product-profile-cover`.
 
-A dedicated `ProfileEffectLayer` or equivalent focused renderer applies built-in or community Profile Effects to a card-wide, pointer-events-none layer. It must be positioned relative to the profile card, not to the avatar.
+Introduce a dedicated `ProfileEffectLayer` component to apply built-in or community Profile Effects to a card-wide, pointer-events-none layer. It must be positioned relative to the profile card, not to the avatar.
 
 `CosmeticIdentity` continues to render avatar identity, Avatar Frame, display name, name font and name effect. It no longer derives any avatar-shell classes or styles from `profileEffect`. Compact identities such as comments and navigation must therefore never render Profile Effects.
 
@@ -115,7 +115,7 @@ New built-in Profile Effect slugs are added:
 - `meteor-shower`
 - `digital-scan`
 
-The resulting built-in Profile Effect catalog therefore contains approximately 27 choices including `none`.
+The resulting built-in Profile Effect catalog contains exactly 27 choices including `none`.
 
 ## 7. Avatar Frame expansion
 
@@ -206,7 +206,7 @@ Visual E2E coverage must include representative screenshots or stable DOM/CSS as
 
 Block E is implemented after the currently approved Block A work reaches its own checkpoint. It is decomposed into these implementation tasks:
 
-- **E1 — Renderer boundaries:** extract/establish canonical card theme, card effect and avatar-frame responsibilities; remove Profile Effect ownership from `CosmeticIdentity`.
+- **E1 — Renderer boundaries:** establish the canonical `ProfileThemeLayer` and `ProfileEffectLayer` card responsibilities and remove Profile Effect ownership from `CosmeticIdentity`.
 - **E2 — Profile Theme correction:** move theme treatment from cover/banner to the card surface while preserving independent cover media.
 - **E3 — Existing Profile Effect migration:** rewrite all existing effect presets as card-wide effects without changing slugs.
 - **E4 — New Profile Effect presets:** add the 12 approved new effects to the shared catalog, built-in catalog data and preview tooling.
