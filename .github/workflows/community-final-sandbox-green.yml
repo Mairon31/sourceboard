@@ -1,0 +1,75 @@
+name: Community final sandbox GREEN
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+    paths:
+      - .github/workflows/community-final-sandbox-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Close scientific-length and audit-boundary regressions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          css_path = Path("shared/store/community-css.ts")
+          css = css_path.read_text()
+          old_number = r'([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*'
+          new_number = r'([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)\s*'
+          if css.count(old_number) != 1:
+              raise SystemExit(f"expected one CSS length numeric token, found {css.count(old_number)}")
+          css_path.write_text(css.replace(old_number, new_number, 1))
+
+          api_path = Path("worker/store/community-api.ts")
+          api = api_path.read_text()
+          create_audit = '''  await writeAudit(db, {
+            actorUserId: current.session.user.id,
+            action: submitForReview ? "COSMETIC_SUBMISSION_CREATED" : "COSMETIC_DRAFT_SAVED",
+            targetId: id,
+            requestId,
+            metadata: { type, communityState },
+          });
+'''
+          update_audit = '''  await writeAudit(db, {
+            actorUserId: current.session.user.id,
+            action: submitForReview ? "COSMETIC_SUBMISSION_RESUBMITTED" : "COSMETIC_DRAFT_UPDATED",
+            targetId: itemId,
+            requestId,
+            metadata: { communityState: nextState },
+          });
+'''
+          if api.count(create_audit) != 1:
+              raise SystemExit(f"expected one creator create audit block, found {api.count(create_audit)}")
+          if api.count(update_audit) != 1:
+              raise SystemExit(f"expected one creator update audit block, found {api.count(update_audit)}")
+          api = api.replace(create_audit, "", 1).replace(update_audit, "", 1)
+          api_path.write_text(api)
+          PY
+      - run: npx prettier --write shared/store/community-css.ts worker/store/community-api.ts tests/unit/community-css-scientific-lengths.test.ts tests/unit/community-audit-boundary.test.ts
+      - run: npx vitest run tests/unit/community-css-scientific-lengths.test.ts tests/unit/community-audit-boundary.test.ts tests/unit/community-css-border-bounds.test.ts tests/unit/community-css-animation-isolation.test.ts tests/unit/community-plan-phase-d.test.ts
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: git diff --check
+      - name: Commit verified GREEN and remove temporary gate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/community-final-sandbox-green.yml
+          git add shared/store/community-css.ts worker/store/community-api.ts tests/unit/community-css-scientific-lengths.test.ts tests/unit/community-audit-boundary.test.ts
+          git commit -m "fix(store): close final community sandbox regressions"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
