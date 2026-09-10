@@ -1,0 +1,109 @@
+name: Community animation isolation GREEN
+
+on:
+  push:
+    branches:
+      - feature/community-cosmetics-profile-identity-emotes
+    paths:
+      - .github/workflows/community-animation-isolation-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/community-cosmetics-profile-identity-emotes
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Isolate community animation names
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("shared/store/community-css.ts")
+          text = path.read_text()
+          anchor = '''function sanitizeDeclarations(
+            body: string,
+            keyframeNames: Map<string, string>,
+            keyframe = false,
+          ): string {'''
+          helper = '''function splitTopLevelCommas(value: string): string[] {
+            const parts: string[] = [];
+            let depth = 0;
+            let start = 0;
+            for (let index = 0; index < value.length; index += 1) {
+              const char = value[index];
+              if (char === "(") depth += 1;
+              else if (char === ")") {
+                depth -= 1;
+                if (depth < 0) invalid("Animation syntax is invalid.");
+              } else if (char === "," && depth === 0) {
+                const part = value.slice(start, index).trim();
+                if (!part) invalid("Animation syntax is invalid.");
+                parts.push(part);
+                start = index + 1;
+              }
+            }
+            if (depth !== 0) invalid("Animation syntax is invalid.");
+            const tail = value.slice(start).trim();
+            if (!tail) invalid("Animation syntax is invalid.");
+            parts.push(tail);
+            return parts;
+          }
+
+          function validateAnimationScope(
+            value: string,
+            property: string,
+            keyframeNames: Map<string, string>,
+          ): void {
+            if (property !== "animation" && property !== "animation-name") return;
+            for (const segment of splitTopLevelCommas(value)) {
+              const candidate =
+                property === "animation-name"
+                  ? segment
+                  : (segment.match(/^([A-Za-z_][A-Za-z0-9_-]{0,31}|none)(?:\\s|$)/)?.[1] ?? "");
+              if (!candidate)
+                invalid("Animation shorthand must start with a local @keyframes name.");
+              if (candidate.toLowerCase() !== "none" && !keyframeNames.has(candidate))
+                invalid("Animations may only reference @keyframes declared in this cosmetic.");
+            }
+          }
+
+          function sanitizeDeclarations(
+            body: string,
+            keyframeNames: Map<string, string>,
+            keyframe = false,
+          ): string {'''
+          if anchor not in text:
+              raise SystemExit("sanitizeDeclarations anchor not found")
+          text = text.replace(anchor, helper, 1)
+          old = '''    if (property.startsWith("animation")) {
+              validateAnimation(value, property);
+              for (const [original, scoped] of keyframeNames) {'''
+          new = '''    if (property.startsWith("animation")) {
+              validateAnimation(value, property);
+              validateAnimationScope(value, property, keyframeNames);
+              for (const [original, scoped] of keyframeNames) {'''
+          if old not in text:
+              raise SystemExit("animation validation anchor not found")
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - run: npx prettier --write shared/store/community-css.ts
+      - run: npx vitest run tests/unit/community-css-animation-isolation.test.ts tests/unit/community-plan-phase-d.test.ts
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: git diff --check
+      - name: Commit verified GREEN and remove temporary gate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/community-animation-isolation-green.yml
+          git add shared/store/community-css.ts tests/unit/community-css-animation-isolation.test.ts
+          git commit -m "fix(store): isolate community cosmetic animations"
+          git push origin HEAD:feature/community-cosmetics-profile-identity-emotes
