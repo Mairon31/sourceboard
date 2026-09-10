@@ -10,11 +10,22 @@ function sourceBetween(source: string, start: string, end: string): string {
 }
 
 describe("community cosmetic audit boundary", () => {
-  const api = readFileSync(new URL("../../worker/store/community-api.ts", import.meta.url), "utf8");
+  const api = readFileSync(
+    new URL("../../worker/store/community-api.ts", import.meta.url),
+    "utf8",
+  );
 
   it("does not audit ordinary creator submission or draft edits", () => {
-    const create = sourceBetween(api, "async function createSubmission", "async function updateSubmission");
-    const update = sourceBetween(api, "async function updateSubmission", "async function listOwnSubmissions");
+    const create = sourceBetween(
+      api,
+      "async function createSubmission",
+      "async function updateSubmission",
+    );
+    const update = sourceBetween(
+      api,
+      "async function updateSubmission",
+      "async function listOwnSubmissions",
+    );
 
     expect(create).not.toContain("writeAudit(");
     expect(update).not.toContain("writeAudit(");
@@ -25,7 +36,11 @@ describe("community cosmetic audit boundary", () => {
   });
 
   it("keeps privileged review and moderation decisions audited", () => {
-    const review = sourceBetween(api, "async function reviewSubmission", "export function isCommunityCosmeticRoute");
+    const review = sourceBetween(
+      api,
+      "async function reviewSubmission",
+      "export function isCommunityCosmeticRoute",
+    );
     expect(review).toContain("writeAudit(");
     expect(review).toContain("COSMETIC_COMMUNITY_");
   });
