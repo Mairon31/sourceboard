@@ -26,7 +26,11 @@ describe("comment content classification", () => {
     const richtext = [{ type: "text", text: "This is the source" }];
     expect(hasSourceEligibleCommentContent(richtext, "This is the source")).toBe(true);
     expect(
-      classifyCommentContent({ richtext, body: "This is the source", attachment: { type: "GIF" } }),
+      classifyCommentContent({
+        richtext,
+        body: "This is the source",
+        attachment: { type: "GIF" },
+      }),
     ).toMatchObject({ visualOnly: false, emoteOnly: false, mixed: true });
   });
 
