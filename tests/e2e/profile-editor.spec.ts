@@ -7,6 +7,7 @@ import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/securit
 const USER_ID = "e2e-profile-editor-user";
 const ORIGINAL_USERNAME = "e2e-profile-editor";
 const NEXT_USERNAME = "e2e_profile_editor_new";
+const PROFILE_THEME_ID = "e2e-profile-theme-nebula";
 
 function executeLocalSql(sql: string) {
   const wranglerEntrypoint = resolve(
@@ -83,6 +84,23 @@ async function installProfileEditorFixture(page: Page) {
   ]);
 }
 
+async function installProfileThemeFixture(page: Page) {
+  await installProfileEditorFixture(page);
+  const now = Date.now();
+  executeLocalSql(`
+    DELETE FROM user_cosmetics WHERE user_id = '${USER_ID}' AND slot = 'PROFILE_BANNER';
+    DELETE FROM store_items WHERE id = '${PROFILE_THEME_ID}';
+    INSERT INTO store_items
+      (id, type, name, description, price_points, config_json, is_active, lifecycle_state,
+       is_enabled, is_featured, sort_order, created_at, updated_at)
+    VALUES
+      ('${PROFILE_THEME_ID}', 'PROFILE_BANNER', 'E2E Nebula Theme', 'Profile theme placement fixture.',
+       0, '{"preset":"nebula"}', 1, 'PUBLISHED', 1, 0, 1, ${now}, ${now});
+    INSERT INTO user_cosmetics (user_id, slot, store_item_id, updated_at)
+    VALUES ('${USER_ID}', 'PROFILE_BANNER', '${PROFILE_THEME_ID}', ${now});
+  `);
+}
+
 test("inline Edit profile changes username through the existing username policy endpoint", async ({
   page,
 }) => {
@@ -102,4 +120,36 @@ test("inline Edit profile changes username through the existing username policy 
   expect(request.postDataJSON()).toEqual({ username: NEXT_USERNAME });
   await expect(page).toHaveURL(new RegExp(`/u/${NEXT_USERNAME}$`));
   await expect(page.getByText(`@${NEXT_USERNAME}`, { exact: true }).first()).toBeVisible();
+});
+
+test("profile theme decorates the profile card surface instead of the banner", async ({ page }) => {
+  await installProfileThemeFixture(page);
+  await page.context().clearCookies();
+
+  const response = await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  expect(response?.status()).toBe(200);
+
+  const card = page.locator(".product-profile-identity-card");
+  await expect(card).toHaveAttribute("data-profile-theme", "nebula");
+  await expect(card.locator(".product-profile-cover > .product-profile-theme-layer")).toHaveCount(0);
+
+  const cardSurface = card.locator(".product-profile-card-surface");
+  const themeLayer = cardSurface.locator(":scope > .product-profile-theme-layer");
+  await expect(themeLayer).toHaveCount(1);
+  const placement = await themeLayer.evaluate((element) => {
+    const theme = element.getBoundingClientRect();
+    const surface = element.parentElement!.getBoundingClientRect();
+    return {
+      topDelta: Math.abs(theme.top - surface.top),
+      leftDelta: Math.abs(theme.left - surface.left),
+      widthDelta: Math.abs(theme.width - surface.width),
+      heightDelta: Math.abs(theme.height - surface.height),
+      backgroundImage: getComputedStyle(element).backgroundImage,
+    };
+  });
+  expect(placement.topDelta).toBeLessThan(1);
+  expect(placement.leftDelta).toBeLessThan(1);
+  expect(placement.widthDelta).toBeLessThan(1);
+  expect(placement.heightDelta).toBeLessThan(1);
+  expect(placement.backgroundImage).toContain("radial-gradient");
 });
