@@ -290,7 +290,9 @@ test("comment sort control changes URL and server root order while keeping repli
   await expect(roots.nth(0)).toContainText("Oldest root");
 });
 
-test("freshly submitted root comment is placed by active sort and receives focus", async ({ page }) => {
+test("freshly submitted root comment is placed by active sort and receives focus", async ({
+  page,
+}) => {
   installCommentSortingFixture();
   await installNavigationUserSession(page, "sorted-focus");
   const response = await page.goto(
@@ -307,9 +309,9 @@ test("freshly submitted root comment is placed by active sort and receives focus
     .locator(".product-comments__list > article.product-comment")
     .filter({ hasText: "Fresh focused root" });
   await expect(fresh).toHaveCount(1);
-  await expect(page.locator(".product-comments__list > article.product-comment").first()).toContainText(
-    "Fresh focused root",
-  );
+  await expect(
+    page.locator(".product-comments__list > article.product-comment").first(),
+  ).toContainText("Fresh focused root");
   await expect(fresh).toBeFocused();
   await expect(page).toHaveURL(/\?comments=recent#comment-/);
 });

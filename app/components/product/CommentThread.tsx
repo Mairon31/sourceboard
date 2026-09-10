@@ -594,7 +594,11 @@ function appendComment(comments: CommentView[], next: CommentView): CommentView[
   );
 }
 
-function insertRootComment(items: CommentView[], next: CommentView, sort: CommentSort): CommentView[] {
+function insertRootComment(
+  items: CommentView[],
+  next: CommentView,
+  sort: CommentSort,
+): CommentView[] {
   if (next.parentCommentId) return appendComment(items, next);
   if (sort === "oldest") return [...items, next];
   if (sort === "recent") return [next, ...items];
