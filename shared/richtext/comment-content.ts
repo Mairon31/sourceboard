@@ -34,7 +34,7 @@ export function hasSourceEligibleCommentContent(
   richtext: readonly unknown[] | null | undefined,
   fallbackBody = "",
 ): boolean {
-  if (richtext?.length) return richtext.some(nodeHasTextualContent);
+  if (richtext) return richtext.some(nodeHasTextualContent);
   return fallbackBody.trim().length > 0;
 }
 
@@ -43,9 +43,10 @@ export function classifyCommentContent(input: {
   body?: string;
   attachment?: unknown;
 }): CommentContentPresentation {
-  const richtext = input.richtext ?? [];
+  const richtext = input.richtext?.length ? input.richtext : undefined;
+  const nodes = richtext ?? [];
   const hasTextualContent = hasSourceEligibleCommentContent(richtext, input.body ?? "");
-  const hasEmotes = richtext.some(nodeIsEmote);
+  const hasEmotes = nodes.some(nodeIsEmote);
   const hasAttachment = Boolean(input.attachment);
   const hasVisualContent = hasEmotes || hasAttachment;
   return {
