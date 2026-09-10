@@ -290,7 +290,8 @@ function UnavailablePost({ unavailable }: { unavailable: boolean }) {
 }
 
 export default function PostDetailRoute() {
-  const { post, unavailable, authenticated, viewerIdentity } = useLoaderData<LoaderData>();
+  const { post, unavailable, authenticated, viewerIdentity, commentSort } =
+    useLoaderData<LoaderData>();
   const location = useLocation();
   const revalidator = useRevalidator();
 
@@ -342,6 +343,7 @@ export default function PostDetailRoute() {
       <CommentThread
         postId={currentPost.id}
         comments={currentPost.comments}
+        sort={commentSort}
         authenticated={authenticated}
         viewerIdentity={viewerIdentity}
         commentsClosed={currentPost.commentsClosed}
