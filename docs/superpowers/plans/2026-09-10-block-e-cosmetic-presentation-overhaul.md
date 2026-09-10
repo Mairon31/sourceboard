@@ -4,7 +4,7 @@
 
 **Goal:** Separate Profile Theme, Profile Effect and Avatar Frame into distinct rendering responsibilities, redesign Profile Effects as card-wide Discord-style cosmetics, add the approved new effect/frame presets, and make Profile/Store/Admin/Community previews render the same visuals.
 
-**Architecture:** Keep the existing persisted Store slots and ownership/equip records unchanged. `ProfileIdentityCard` remains the full-card orchestration boundary, but card rendering is decomposed into canonical `ProfileThemeLayer` and `ProfileEffectLayer` components while `CosmeticIdentity` is restricted to avatar/name concerns. Built-in preset registries stay in `shared/store/cosmetics.ts`; public Store seed rows remain idempotent in `worker/store/builtin-catalog.ts`; all preview surfaces reuse the same production rendering primitives instead of maintaining approximate preview-only CSS.
+**Architecture:** Keep existing persisted Store slots, item IDs, ownership and equip records unchanged. `ProfileIdentityCard` remains the full-card orchestration boundary and renders four sibling layers in one stacking context: Profile Theme at z0, independent uploaded cover at z1, Profile Effect at z2, and readable profile content at z3. `CosmeticIdentity` is restricted to avatar/name concerns. Store/Admin/Community previews reuse the same production renderers.
 
 **Tech Stack:** React 19, React Router 8, TypeScript 5.9, CSS, Cloudflare Workers/D1, Vitest 5, Playwright 1.63.
 
@@ -12,24 +12,24 @@
 
 ## Global Constraints
 
-- `PROFILE_BANNER` remains the persisted compatibility slot for Profile Theme; do not introduce a replacement Store slot or schema migration solely for the visual redesign.
-- The user-uploaded banner asset remains independent from Profile Theme and can render simultaneously with Profile Theme, Profile Effect and Avatar Frame.
-- Profile Theme applies to the profile-card surface/base, not inside `.product-profile-cover`.
-- Profile Effect is a card-wide, pointer-events-none decorative layer and must never be routed through the avatar shell or compact identities.
+- `PROFILE_BANNER` remains the persisted compatibility slot for Profile Theme; no replacement Store slot or Block E schema migration.
+- Uploaded banner media remains independent from Profile Theme and may coexist with Profile Theme, Profile Effect and Avatar Frame.
+- Profile Theme is a card-root visual base and must not be mounted inside `.product-profile-cover`.
+- Profile Effect is card-wide, pointer-events-none, and must not render through `CosmeticIdentity` or compact identities.
 - Avatar Frame is the only one of these three cosmetic types allowed to decorate the avatar boundary.
 - Existing Profile Theme, Profile Effect and Avatar Frame slugs remain valid.
-- The built-in Profile Effect registry contains exactly 27 entries including `none` after E4.
-- Add exactly these 12 Profile Effect slugs: `falling-stars`, `cherry-blossom`, `neon-rain`, `matrix-rain`, `pixel-spark`, `cosmic-rift`, `ocean-bubbles`, `ghost-flames`, `confetti`, `love-letter`, `meteor-shower`, `digital-scan`.
-- Add exactly these 16 Avatar Frame slugs: `glitch-ring`, `neko-neon`, `pixel-glitch`, `devil-horns`, `angel-halo`, `cyber-wings`, `crown`, `electric-coils`, `orbit-planets`, `sakura-petals`, `black-hole`, `slime`, `retro-arcade`, `cat-ears-black`, `cat-ears-white`, `fox-ears`.
-- Decorative motion must respect `prefers-reduced-motion: reduce`.
-- Do not generate unbounded particle DOM, timers per particle, uncontrolled requestAnimationFrame loops or layout-thrashing animation.
-- Store, Admin Store, Preset Laboratory and Community Cosmetic Studio previews must use the canonical production renderers.
-- Do not weaken community CSS sanitization, Store entitlement/purchase semantics, moderation workflows or persistence compatibility.
-- No remote D1 migration or production deploy is part of this block.
+- `PROFILE_EFFECT_PRESETS` contains exactly 27 entries including `none` after E4.
+- Add exactly these Profile Effects: `falling-stars`, `cherry-blossom`, `neon-rain`, `matrix-rain`, `pixel-spark`, `cosmic-rift`, `ocean-bubbles`, `ghost-flames`, `confetti`, `love-letter`, `meteor-shower`, `digital-scan`.
+- Add exactly these Avatar Frames: `glitch-ring`, `neko-neon`, `pixel-glitch`, `devil-horns`, `angel-halo`, `cyber-wings`, `crown`, `electric-coils`, `orbit-planets`, `sakura-petals`, `black-hole`, `slime`, `retro-arcade`, `cat-ears-black`, `cat-ears-white`, `fox-ears`.
+- Decorative motion respects `prefers-reduced-motion: reduce`.
+- No unbounded particle DOM, per-particle timers, decorative JavaScript animation loops or layout-thrashing animation.
+- Store, Admin Store, Preset Laboratory and Community Cosmetic Studio previews use canonical production renderers.
+- Community CSS sanitization, Store entitlement/purchase semantics and moderation rules remain unchanged.
+- No production deploy or remote D1 migration is part of Block E.
 
 ---
 
-### Task E1: Establish canonical renderer boundaries and remove Profile Effect from `CosmeticIdentity`
+### Task E1: Establish canonical card renderer boundaries
 
 **Files:**
 - Create: `app/components/product/ProfileThemeLayer.tsx`
@@ -40,14 +40,12 @@
 - Create: `tests/unit/cosmetic-presentation-overhaul.test.ts`
 
 **Interfaces:**
-- Produces: `ProfileThemeLayer({ preset, visual })` where `preset?: ProfileThemePreset` and `visual?: CosmeticVisualDefinition`.
-- Produces: `ProfileEffectLayer({ preset, visual })` where `preset?: ProfileEffectPreset` and `visual?: CosmeticVisualDefinition`.
-- Changes: `CosmeticIdentityProps` no longer contains `profileEffect`; `visuals?.profileEffect` is not consumed by `CosmeticIdentity`.
-- Preserves: `ProfileIdentityCard` accepts `profileTheme`, `legacyProfileBanner`, `profileEffect`, `bannerUrl`, `visuals` and `communityStyles`.
+- Produces: `ProfileThemeLayer({ preset, visual })`.
+- Produces: `ProfileEffectLayer({ preset, visual })` with a fixed six-node decoration budget.
+- Changes: `CosmeticIdentityProps` no longer accepts `profileEffect`; `visuals?.profileEffect` is not consumed there.
+- Preserves: `ProfileIdentityCard` accepts `profileTheme`, `legacyProfileBanner`, `profileEffect`, `bannerUrl`, `visuals`, `communityStyles`.
 
-- [ ] **Step 1: Write failing renderer-boundary tests**
-
-Create `tests/unit/cosmetic-presentation-overhaul.test.ts` with source-contract assertions:
+- [ ] **Step 1: Write the failing boundary tests**
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -57,49 +55,51 @@ function read(path: string): string {
   return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
+function jsxBlock(source: string, startMarker: string, endMarker: string): string {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start);
+  return start >= 0 && end > start ? source.slice(start, end) : "";
+}
+
 describe("cosmetic presentation boundaries", () => {
-  it("moves card cosmetics out of CosmeticIdentity", () => {
+  it("moves card effects out of CosmeticIdentity", () => {
     const identity = read("../../app/components/product/CosmeticIdentity.tsx");
     expect(identity).not.toContain("profileEffect?: ProfileEffectPreset");
     expect(identity).not.toContain("visuals?.profileEffect");
     expect(identity).not.toContain("cosmetic-identity--effect-");
   });
 
-  it("uses dedicated card-level renderers", () => {
+  it("uses dedicated card-level renderers and keeps theme outside the cover", () => {
     const card = read("../../app/components/product/ProfileIdentityCard.tsx");
     expect(card).toContain("<ProfileThemeLayer");
     expect(card).toContain("<ProfileEffectLayer");
-    expect(card).not.toMatch(/product-profile-cover[\s\S]*<ProfileThemeLayer/);
+    const cover = jsxBlock(card, '<div className="product-profile-cover"', "</div>");
+    expect(cover).not.toContain("ProfileThemeLayer");
   });
 });
 ```
 
 - [ ] **Step 2: Verify RED**
 
-Run:
-
 ```bash
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
 ```
 
-Expected: FAIL because both dedicated components are absent and `CosmeticIdentity` still accepts/applies Profile Effect.
+Expected: FAIL because dedicated renderers do not exist and `CosmeticIdentity` still owns Profile Effect styling.
 
-- [ ] **Step 3: Implement `ProfileThemeLayer`**
-
-Create:
+- [ ] **Step 3: Create `ProfileThemeLayer`**
 
 ```tsx
 import type { ProfileThemePreset } from "../../../shared/store/cosmetics";
 import type { CosmeticVisualDefinition } from "../../../shared/store/custom-cosmetics";
 import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 
-export function ProfileThemeLayer({
-  preset,
-  visual,
-}: {
+export interface ProfileThemeLayerProps {
   preset?: ProfileThemePreset;
   visual?: CosmeticVisualDefinition;
-}) {
+}
+
+export function ProfileThemeLayer({ preset, visual }: ProfileThemeLayerProps) {
   return (
     <div
       className={`product-profile-theme-layer${cosmeticVisualClass(visual)}`}
@@ -111,16 +111,21 @@ export function ProfileThemeLayer({
 }
 ```
 
-The layer is presentation-only and never fetches data.
-
-- [ ] **Step 4: Implement `ProfileEffectLayer` with bounded decoration nodes**
-
-Use a fixed node count so CSS can animate representative particles/decorations without runtime loops:
+- [ ] **Step 4: Create `ProfileEffectLayer`**
 
 ```tsx
+import type { ProfileEffectPreset } from "../../../shared/store/cosmetics";
+import type { CosmeticVisualDefinition } from "../../../shared/store/custom-cosmetics";
+import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
+
+export interface ProfileEffectLayerProps {
+  preset?: ProfileEffectPreset;
+  visual?: CosmeticVisualDefinition;
+}
+
 const EFFECT_NODES = [0, 1, 2, 3, 4, 5] as const;
 
-export function ProfileEffectLayer({ preset, visual }: Props) {
+export function ProfileEffectLayer({ preset, visual }: ProfileEffectLayerProps) {
   const active = Boolean((preset && preset !== "none") || visual);
   if (!active) return null;
   return (
@@ -138,52 +143,39 @@ export function ProfileEffectLayer({ preset, visual }: Props) {
 }
 ```
 
-- [ ] **Step 5: Recompose `ProfileIdentityCard`**
+- [ ] **Step 5: Recompose `ProfileIdentityCard` as sibling layers**
 
-Keep `.product-profile-cover` dedicated to the user banner image only. Compose the theme with the card-body region and the effect at the full-card root:
+Use this ordering inside the existing `Card` root, after community `<style>` tags:
 
 ```tsx
+<ProfileThemeLayer preset={theme} visual={visuals?.profileBanner} />
 <div className="product-profile-cover" aria-hidden="true">
-  {bannerUrl ? <div className="product-profile-theme-photo" style={{ backgroundImage: `url("${bannerUrl}")` }} /> : null}
-</div>
-<div className="product-profile-card-region">
-  <ProfileThemeLayer preset={theme} visual={visuals?.profileBanner} />
-  <div className="product-profile-card-surface profile-card">{children}</div>
+  {bannerUrl ? (
+    <div className="product-profile-theme-photo" style={{ backgroundImage: `url("${bannerUrl}")` }} />
+  ) : null}
 </div>
 <ProfileEffectLayer preset={profileEffect} visual={visuals?.profileEffect} />
+<div className="product-profile-card-surface profile-card">{children}</div>
 ```
 
-Keep content above effect nodes in stacking order. Preserve community style scoping on the same `cosmetic-root`.
+Set root stacking to Theme z0, Cover z1, Effect z2, Surface z3. The cover must have an opaque base so the Profile Theme does not visually replace uploaded cover media.
 
-- [ ] **Step 6: Remove Profile Effect responsibility from `CosmeticIdentity`**
+- [ ] **Step 6: Remove Profile Effect from `CosmeticIdentity` and callers**
 
-Remove the `ProfileEffectPreset` import/property/destructuring, `effectClass`, `cosmeticVisualClass(visuals?.profileEffect)` and `style={cosmeticVisualStyle(visuals?.profileEffect)}` from the identity root. Keep Avatar Frame, Name Font, Name Effect and their custom visuals unchanged.
+Remove the `ProfileEffectPreset` import/property/destructuring, `effectClass`, and every `visuals?.profileEffect` class/style from `CosmeticIdentity`. Search all `CosmeticIdentity` call sites and remove `profileEffect=`. Do not add `ProfileEffectLayer` to comments/feed/navigation.
 
-- [ ] **Step 7: Update every `CosmeticIdentity` caller that passes `profileEffect`**
-
-Search the repository for `profileEffect=` on `CosmeticIdentity`; remove that prop. Full profile cards continue passing Profile Effect to `ProfileIdentityCard`. Compact comment/feed/navigation identities must not gain a replacement effect renderer.
-
-- [ ] **Step 8: Verify GREEN**
-
-Run:
+- [ ] **Step 7: Verify GREEN and commit**
 
 ```bash
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts tests/unit/community-plan-phase-c.test.ts
 npm run typecheck
-```
-
-Expected: PASS.
-
-- [ ] **Step 9: Commit**
-
-```bash
 git add app/components/product/ProfileThemeLayer.tsx app/components/product/ProfileEffectLayer.tsx app/components/product/ProfileIdentityCard.tsx app/components/product/CosmeticIdentity.tsx app/components/product/profile-identity-card.css tests/unit/cosmetic-presentation-overhaul.test.ts
 git commit -m "refactor(cosmetics): separate card and avatar renderers"
 ```
 
 ---
 
-### Task E2: Move Profile Theme treatment to the card surface and keep banner media independent
+### Task E2: Apply Profile Themes to the card rather than the banner
 
 **Files:**
 - Create: `app/components/product/profile-themes.css`
@@ -195,18 +187,18 @@ git commit -m "refactor(cosmetics): separate card and avatar renderers"
 
 **Interfaces:**
 - Consumes: `ProfileThemeLayer` from E1.
-- Produces: `.product-profile-card-region` as the theme containment surface.
-- Preserves: user banner image in `.product-profile-cover .product-profile-theme-photo`.
+- Produces: card-root theme layer behind the independent cover/effect/content siblings.
 
-- [ ] **Step 1: Add failing source assertions for cover/theme separation**
+- [ ] **Step 1: Add failing separation assertions**
 
 ```ts
-it("keeps Profile Theme off the cover and on the card region", () => {
+it("keeps theme off the uploaded cover", () => {
   const card = read("../../app/components/product/ProfileIdentityCard.tsx");
-  const cover = read("../../app/components/product/profile-cover.css");
-  expect(card).toContain('className="product-profile-card-region"');
-  expect(card).not.toMatch(/className="product-profile-cover"[\s\S]*<ProfileThemeLayer/);
-  expect(cover).not.toContain(".product-profile-cover .product-profile-theme-layer");
+  const coverCss = read("../../app/components/product/profile-cover.css");
+  const cover = jsxBlock(card, '<div className="product-profile-cover"', "</div>");
+  expect(cover).toContain("product-profile-theme-photo");
+  expect(cover).not.toContain("ProfileThemeLayer");
+  expect(coverCss).not.toContain(".product-profile-cover .product-profile-theme-layer");
 });
 ```
 
@@ -216,61 +208,60 @@ it("keeps Profile Theme off the cover and on the card region", () => {
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
 ```
 
-- [ ] **Step 3: Move all existing theme selectors into `profile-themes.css`**
+- [ ] **Step 3: Move the 12 existing theme rules to `profile-themes.css`**
 
-Keep these slugs unchanged: `nebula`, `aurora`, `ember`, `ocean-glass`, `sunset-noir`, `prism-grid`, `forest-ink`, `silver-wave`, `cosmic-dusk`, `terminal-grid`, `sakura-night`, `golden-hour`.
+Keep exactly these slugs unchanged: `nebula`, `aurora`, `ember`, `ocean-glass`, `sunset-noir`, `prism-grid`, `forest-ink`, `silver-wave`, `cosmic-dusk`, `terminal-grid`, `sakura-night`, `golden-hour`.
 
-Selectors target the dedicated layer directly:
-
-```css
-.product-profile-theme-layer[data-profile-theme="nebula"] { ... }
-.product-profile-theme-layer[data-profile-theme="aurora"] { ... }
-```
-
-The neutral layer uses the existing app surfaces and remains legible in light/dark appearance.
-
-- [ ] **Step 4: Make the card region show the theme while preserving readable content**
-
-Use a contained stacking context:
+Target the dedicated layer directly:
 
 ```css
-.product-profile-card-region {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-}
-.product-profile-card-region > .product-profile-theme-layer {
+.product-profile-theme-layer {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  background: var(--surface-solid);
 }
+
+.product-profile-theme-layer[data-profile-theme="nebula"] {
+  background:
+    radial-gradient(circle at 18% 12%, #7c5cff55, transparent 38%),
+    linear-gradient(145deg, #17182f, #242041 52%, #121a2a);
+}
+```
+
+Repeat the existing visual definitions for all 12 stable slugs; do not rename them.
+
+- [ ] **Step 4: Correct cover/content layering**
+
+`profile-cover.css` styles only `.product-profile-cover` and `.product-profile-theme-photo`; remove its theme-layer selector. Keep cover photo opacity at `0.92`. In `profile-identity-card.css` use:
+
+```css
+.product-profile-identity-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.product-profile-cover { position: relative; z-index: 1; background: var(--bg-app-secondary); }
+.product-profile-effect-layer { position: absolute; inset: 0; z-index: 2; }
 .product-profile-card-surface {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
 }
 ```
 
-Do not put the theme inside `.product-profile-cover` and do not reduce banner image opacity to reveal the theme.
+- [ ] **Step 5: Add banner + theme coexistence E2E**
 
-- [ ] **Step 5: Keep uploaded banner rendering independent**
-
-`profile-cover.css` should style only the cover and `.product-profile-theme-photo`; use normal cover opacity close to the existing `0.92`. Do not reference `.product-profile-theme-layer` from the cover stylesheet.
-
-- [ ] **Step 6: Add an E2E fixture asserting banner + theme coexistence**
-
-In `tests/e2e/cosmetics-overhaul.spec.ts`, create or reuse a public profile fixture with a banner asset URL and an equipped `PROFILE_BANNER` preset. Assert the public profile has both:
+Build a public profile fixture with banner media and equipped `PROFILE_BANNER` preset `nebula`. Assert:
 
 ```ts
 await expect(page.locator(".product-profile-cover .product-profile-theme-photo")).toHaveCount(1);
-await expect(page.locator('.product-profile-card-region [data-profile-theme="nebula"]')).toHaveCount(1);
+await expect(page.locator('.product-profile-identity-card > [data-profile-theme="nebula"]')).toHaveCount(1);
 await expect(page.locator(".product-profile-cover [data-profile-theme]")).toHaveCount(0);
 ```
 
-Use stable DOM/CSS assertions rather than pixel-perfect snapshots for this task.
-
-- [ ] **Step 7: Verify and commit**
+- [ ] **Step 6: Verify and commit**
 
 ```bash
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
@@ -282,110 +273,28 @@ git commit -m "fix(cosmetics): apply profile themes to card surface"
 
 ---
 
-### Task E3: Re-author all existing Profile Effects as card-wide effects
+### Task E3: Re-author existing Profile Effects as card-wide effects
 
 **Files:**
 - Create: `app/components/product/profile-effects.css`
-- Modify: `app/components/product/ProfileEffectLayer.tsx`
 - Modify: `app/components/product/profile-identity-card.css`
 - Modify: `tests/unit/cosmetic-presentation-overhaul.test.ts`
 - Modify: `tests/e2e/cosmetics-overhaul.spec.ts`
 
 **Interfaces:**
-- Consumes: existing 15 Profile Effect presets including `none`.
-- Produces: card-wide visuals selected by `data-profile-effect` / `.product-profile-effect-layer--<slug>`.
+- Consumes: the existing 15 Profile Effect registry entries including `none`.
+- Produces: card-wide `.product-profile-effect-layer--<slug>` rules using the six fixed decoration nodes.
 
-- [ ] **Step 1: Add failing tests for legacy effect preservation and avatar isolation**
-
-```ts
-it("keeps legacy effect slugs but never maps them to avatar classes", () => {
-  const effects = read("../../shared/store/cosmetics.ts");
-  const identity = read("../../app/components/product/CosmeticIdentity.tsx");
-  for (const slug of ["soft-glow", "paper-grain", "star-dust", "blue-energy", "fire-pulse", "pink-hearts", "dark-smoke", "snow-drift", "electric-burst", "holy-glow", "butterfly", "rgb-glitch", "moon-mist", "leaf-drift"]) {
-    expect(effects).toContain(`"${slug}"`);
-    expect(identity).not.toContain(`effect-${slug}`);
-  }
-});
-```
-
-- [ ] **Step 2: Verify RED against the old CSS ownership**
-
-The source assertion for `CosmeticIdentity` should already pass after E1; add an assertion that each non-`none` slug has a `.product-profile-effect-layer--<slug>` rule in `profile-effects.css`, which fails before this task.
-
-- [ ] **Step 3: Implement the card-wide effect system**
-
-Move existing effect CSS out of `profile-identity-card.css`. Use the fixed six nodes plus pseudo-elements; no effect may require runtime-generated node counts.
-
-Re-author the legacy effects with these semantics:
-
-```text
-soft-glow      perimeter/corner glow
-paper-grain    low-opacity full-card texture
-star-dust      sparse stars drifting over the card
-blue-energy    edge/corner blue energy accents
-fire-pulse     lower-edge embers/flame glow
-pink-hearts    hearts distributed through card space
-dark-smoke     contained dark smoke fields
-snow-drift     downward snow field
-electric-burst border/corner electric arcs
-holy-glow      perimeter rays/highlights
-butterfly      lightweight butterfly silhouettes across card
-rgb-glitch     card scan slices/chromatic displacement
-moon-mist      cool mist + moonlit accents
-leaf-drift     leaves drifting through card space
-```
-
-Use transforms/opacity/background-position only for continuous animations. Card content keeps a higher z-index.
-
-- [ ] **Step 4: Add representative E2E assertions**
-
-Equip/use `rgb-glitch` in the profile fixture and assert:
+- [ ] **Step 1: Add failing CSS coverage tests**
 
 ```ts
-await expect(page.locator('[data-profile-effect="rgb-glitch"]')).toHaveCount(1);
-await expect(page.locator('.cosmetic-identity__avatar-shell [data-profile-effect="rgb-glitch"]')).toHaveCount(0);
-```
-
-Also verify `pointer-events: none` on the card effect layer via `evaluate(getComputedStyle(...).pointerEvents)`.
-
-- [ ] **Step 5: Verify and commit**
-
-```bash
-npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
-npx playwright test tests/e2e/cosmetics-overhaul.spec.ts
-npm run typecheck
-git add app/components/product/profile-effects.css app/components/product/ProfileEffectLayer.tsx app/components/product/profile-identity-card.css tests/unit/cosmetic-presentation-overhaul.test.ts tests/e2e/cosmetics-overhaul.spec.ts
-git commit -m "feat(cosmetics): redesign profile effects as card layers"
-```
-
----
-
-### Task E4: Add the 12 new Profile Effect presets and public catalog rows
-
-**Files:**
-- Modify: `shared/store/cosmetics.ts`
-- Modify: `worker/store/builtin-catalog.ts`
-- Modify: `app/components/product/profile-effects.css`
-- Modify: `tests/unit/cosmetic-presentation-overhaul.test.ts`
-- Modify: `tests/unit/store-builtin-catalog.test.ts` if present; otherwise create `tests/unit/cosmetic-builtin-catalog.test.ts`
-
-**Interfaces:**
-- Produces: `PROFILE_EFFECT_PRESETS.length === 27`.
-- Preserves: all 15 prior entries and their slugs.
-- Produces: idempotent Store rows for the 12 new effects without rewriting purchase/equip rows.
-
-- [ ] **Step 1: Write failing registry tests**
-
-```ts
-import { PROFILE_EFFECT_PRESETS, isProfileEffectPreset } from "../../shared/store/cosmetics";
-
-it("exposes exactly 27 built-in Profile Effect choices", () => {
-  expect(PROFILE_EFFECT_PRESETS).toHaveLength(27);
+it("renders every legacy effect through the card layer", () => {
+  const css = read("../../app/components/product/profile-effects.css");
   for (const slug of [
-    "falling-stars", "cherry-blossom", "neon-rain", "matrix-rain", "pixel-spark",
-    "cosmic-rift", "ocean-bubbles", "ghost-flames", "confetti", "love-letter",
-    "meteor-shower", "digital-scan",
-  ]) expect(isProfileEffectPreset(slug)).toBe(true);
+    "soft-glow", "paper-grain", "star-dust", "blue-energy", "fire-pulse", "pink-hearts",
+    "dark-smoke", "snow-drift", "electric-burst", "holy-glow", "butterfly", "rgb-glitch",
+    "moon-mist", "leaf-drift",
+  ]) expect(css).toContain(`.product-profile-effect-layer--${slug}`);
 });
 ```
 
@@ -395,55 +304,124 @@ it("exposes exactly 27 built-in Profile Effect choices", () => {
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
 ```
 
-- [ ] **Step 3: Append the exact 12 slugs to `PROFILE_EFFECT_PRESETS`**
+- [ ] **Step 3: Create `profile-effects.css` and move effect-only CSS into it**
 
-Do not reorder or rename legacy entries. Keep `none` first.
-
-- [ ] **Step 4: Implement visual rules for every new effect**
-
-Use the following design mapping:
+Use these fixed semantics:
 
 ```text
-falling-stars   diagonal falling stars with bounded nodes
-cherry-blossom  pink petals drifting across the card
-neon-rain       cyan/magenta vertical light rain
-matrix-rain     restrained green digital rain pattern
-pixel-spark     pixel-square sparks near corners
-cosmic-rift     violet/cyan rift glow crossing one card edge
-ocean-bubbles   translucent bubbles rising from lower card
-ghost-flames    cool blue-violet ghost flame treatment
-confetti        multicolor bounded confetti pieces
-love-letter     hearts + envelope-like corner motifs
-meteor-shower   angled meteor streaks
-digital-scan    horizontal scanner line + subtle grid
+soft-glow      perimeter/corner glow
+paper-grain    low-opacity texture
+star-dust      sparse stars drifting through card space
+blue-energy    blue edge/corner energy
+fire-pulse     lower-edge ember/flame glow
+pink-hearts    hearts distributed through card space
+dark-smoke     contained dark smoke fields
+snow-drift     downward snow field
+electric-burst border/corner arcs
+holy-glow      perimeter rays/highlights
+butterfly      lightweight silhouettes across the card
+rgb-glitch     scan slices/chromatic displacement
+moon-mist      cool mist/moonlit accents
+leaf-drift     drifting leaves
 ```
 
-- [ ] **Step 5: Seed idempotent public Store rows**
+The base rule is:
 
-Bump `BUILTIN_STORE_VERSION` to `2026-09-10-cosmetics-v3`. Add `INSERT OR IGNORE` rows with stable IDs `store-effect-<slug>` and `config_json` `{ "preset": "<slug>" }`. Use these exact names/prices:
+```css
+.product-profile-effect-layer {
+  pointer-events: none;
+  overflow: hidden;
+}
+.product-profile-effect-layer__node {
+  position: absolute;
+  pointer-events: none;
+}
+```
+
+Animate only opacity, transforms or background-position; content remains z3.
+
+- [ ] **Step 4: Add representative E2E assertions**
+
+With `rgb-glitch` equipped:
+
+```ts
+await expect(page.locator('[data-profile-effect="rgb-glitch"]')).toHaveCount(1);
+await expect(page.locator('.cosmetic-identity__avatar-shell [data-profile-effect="rgb-glitch"]')).toHaveCount(0);
+expect(await page.locator('[data-profile-effect="rgb-glitch"]').evaluate((node) => getComputedStyle(node).pointerEvents)).toBe("none");
+```
+
+- [ ] **Step 5: Verify and commit**
+
+```bash
+npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
+npx playwright test tests/e2e/cosmetics-overhaul.spec.ts
+npm run typecheck
+git add app/components/product/profile-effects.css app/components/product/profile-identity-card.css tests/unit/cosmetic-presentation-overhaul.test.ts tests/e2e/cosmetics-overhaul.spec.ts
+git commit -m "feat(cosmetics): redesign profile effects as card layers"
+```
+
+---
+
+### Task E4: Add 12 new Profile Effects and idempotent Store rows
+
+**Files:**
+- Modify: `shared/store/cosmetics.ts`
+- Modify: `worker/store/builtin-catalog.ts`
+- Modify: `app/components/product/profile-effects.css`
+- Modify: `tests/unit/cosmetic-presentation-overhaul.test.ts`
+- Create: `tests/unit/cosmetic-builtin-catalog.test.ts`
+
+**Interfaces:**
+- Produces: `PROFILE_EFFECT_PRESETS.length === 27`.
+- Produces: `store-effect-<slug>` rows using the existing Store schema.
+
+- [ ] **Step 1: Write failing registry/catalog tests**
+
+```ts
+import { PROFILE_EFFECT_PRESETS, isProfileEffectPreset } from "../../shared/store/cosmetics";
+
+it("exposes exactly 27 Profile Effect choices", () => {
+  expect(PROFILE_EFFECT_PRESETS).toHaveLength(27);
+  for (const slug of [
+    "falling-stars", "cherry-blossom", "neon-rain", "matrix-rain", "pixel-spark",
+    "cosmic-rift", "ocean-bubbles", "ghost-flames", "confetti", "love-letter",
+    "meteor-shower", "digital-scan",
+  ]) expect(isProfileEffectPreset(slug)).toBe(true);
+});
+```
+
+In `cosmetic-builtin-catalog.test.ts`, read `worker/store/builtin-catalog.ts`, assert version `2026-09-10-cosmetics-v3`, and assert every new effect has `store-effect-${slug}` and `{"preset":"${slug}"}`.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts tests/unit/cosmetic-builtin-catalog.test.ts
+```
+
+- [ ] **Step 3: Append the exact 12 slugs and CSS rules**
+
+Do not reorder/remove legacy entries. Add CSS with these meanings:
 
 ```text
-falling-stars  Falling Stars  3600
-cherry-blossom Cherry Blossom 3800
-neon-rain      Neon Rain      4200
-matrix-rain    Matrix Rain    4500
-pixel-spark    Pixel Spark    3000
-cosmic-rift    Cosmic Rift    7000
-ocean-bubbles  Ocean Bubbles  2800
-ghost-flames   Ghost Flames   5200
-confetti       Confetti       2600
-love-letter    Love Letter    3200
-meteor-shower  Meteor Shower  6200
-digital-scan   Digital Scan   4000
+falling-stars=diagonal stars; cherry-blossom=petals; neon-rain=cyan/magenta rain;
+matrix-rain=restrained green digital rain; pixel-spark=pixel squares; cosmic-rift=violet/cyan rift;
+ocean-bubbles=rising bubbles; ghost-flames=blue-violet flames; confetti=bounded confetti;
+love-letter=hearts/envelope motifs; meteor-shower=angled streaks; digital-scan=scanner line/grid.
 ```
 
-Assign sort orders after the existing Profile Effect range and before unrelated later categories. Do not mutate existing purchases/inventory.
+- [ ] **Step 4: Seed exact public Store rows**
 
-- [ ] **Step 6: Test seed idempotency/source contract**
+Bump `BUILTIN_STORE_VERSION` to `2026-09-10-cosmetics-v3`. Use `INSERT OR IGNORE`, stable `store-effect-<slug>` IDs and these prices:
 
-Assert the catalog version changed and every new slug appears exactly once as an `INSERT OR IGNORE` Store row.
+```text
+falling-stars=3600; cherry-blossom=3800; neon-rain=4200; matrix-rain=4500;
+pixel-spark=3000; cosmic-rift=7000; ocean-bubbles=2800; ghost-flames=5200;
+confetti=2600; love-letter=3200; meteor-shower=6200; digital-scan=4000.
+```
 
-- [ ] **Step 7: Verify and commit**
+Use human-readable names matching the slug capitalization (`Falling Stars`, `Cherry Blossom`, `Neon Rain`, `Matrix Rain`, `Pixel Spark`, `Cosmic Rift`, `Ocean Bubbles`, `Ghost Flames`, `Confetti`, `Love Letter`, `Meteor Shower`, `Digital Scan`). Assign distinct sort orders after existing effect rows. Do not mutate purchase/inventory rows.
+
+- [ ] **Step 5: Verify and commit**
 
 ```bash
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts tests/unit/cosmetic-builtin-catalog.test.ts
@@ -454,7 +432,7 @@ git commit -m "feat(cosmetics): add new profile effect presets"
 
 ---
 
-### Task E5: Add the 16 new Avatar Frames with structural and animated treatments
+### Task E5: Add 16 structural/animated Avatar Frames
 
 **Files:**
 - Create: `app/components/product/avatar-frames.css`
@@ -466,23 +444,25 @@ git commit -m "feat(cosmetics): add new profile effect presets"
 - Modify: `tests/e2e/cosmetics-overhaul.spec.ts`
 
 **Interfaces:**
-- Produces: `AVATAR_FRAME_PRESETS` containing all 19 existing entries plus the 16 approved new entries.
-- Produces: frame selectors through `[data-avatar-frame="<slug>"]` and/or `.sb-avatar--frame-<slug>`.
-- Keeps the avatar image itself stable; only frame decorations animate.
+- Produces: 35 total Avatar Frame presets (19 existing + 16 new).
+- Produces: frame visuals through `data-avatar-frame` / `.sb-avatar--frame-*` without touching card effect/theme layers.
 
-- [ ] **Step 1: Write failing registry/frame-boundary tests**
+- [ ] **Step 1: Write failing registry/boundary tests**
 
 ```ts
-for (const slug of [
-  "glitch-ring", "neko-neon", "pixel-glitch", "devil-horns", "angel-halo",
-  "cyber-wings", "crown", "electric-coils", "orbit-planets", "sakura-petals",
-  "black-hole", "slime", "retro-arcade", "cat-ears-black", "cat-ears-white", "fox-ears",
-]) {
-  expect(isAvatarFramePreset(slug)).toBe(true);
-}
+import { AVATAR_FRAME_PRESETS, isAvatarFramePreset } from "../../shared/store/cosmetics";
+
+it("accepts all approved Avatar Frames", () => {
+  expect(AVATAR_FRAME_PRESETS).toHaveLength(35);
+  for (const slug of [
+    "glitch-ring", "neko-neon", "pixel-glitch", "devil-horns", "angel-halo",
+    "cyber-wings", "crown", "electric-coils", "orbit-planets", "sakura-petals",
+    "black-hole", "slime", "retro-arcade", "cat-ears-black", "cat-ears-white", "fox-ears",
+  ]) expect(isAvatarFramePreset(slug)).toBe(true);
+});
 ```
 
-Add source assertions that structural frames use the avatar-shell boundary and no frame selector targets `.product-profile-card-region` or `.product-profile-effect-layer`.
+Also assert `avatar-frames.css` contains no `.product-profile-effect-layer` or `.product-profile-card-surface` selector.
 
 - [ ] **Step 2: Verify RED**
 
@@ -490,80 +470,49 @@ Add source assertions that structural frames use the avatar-shell boundary and n
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
 ```
 
-- [ ] **Step 3: Add all 16 slugs to `AVATAR_FRAME_PRESETS`**
+- [ ] **Step 3: Append all 16 slugs and expand structural detection**
 
-Append them without renaming/removing existing presets.
-
-- [ ] **Step 4: Replace the two-slug decorative boolean with a shared structural set**
-
-In `CosmeticIdentity.tsx` define:
+Use:
 
 ```ts
 const STRUCTURAL_AVATAR_FRAMES = new Set<AvatarFramePreset>([
-  "cat-ears", "wings", "neko-neon", "devil-horns", "angel-halo", "cyber-wings",
-  "crown", "orbit-planets", "sakura-petals", "black-hole", "slime", "retro-arcade",
-  "cat-ears-black", "cat-ears-white", "fox-ears", "glitch-ring", "pixel-glitch",
-  "electric-coils",
+  "cat-ears", "wings", "glitch-ring", "neko-neon", "pixel-glitch", "devil-horns",
+  "angel-halo", "cyber-wings", "crown", "electric-coils", "orbit-planets",
+  "sakura-petals", "black-hole", "slime", "retro-arcade", "cat-ears-black",
+  "cat-ears-white", "fox-ears",
 ]);
 ```
 
-Use it only to opt the avatar shell into structural pseudo-elements/nodes. Keep `data-avatar-frame={avatarFrame}`.
+Use membership only to add the existing structural shell class; keep `data-avatar-frame={avatarFrame}`.
 
-- [ ] **Step 5: Implement the approved frame visuals**
-
-Move frame-only CSS out of `profile-identity-card.css` into `avatar-frames.css`. Use these semantics:
+- [ ] **Step 4: Move frame CSS to `avatar-frames.css` and implement designs**
 
 ```text
-glitch-ring      broken chromatic ring, restrained step animation
-neko-neon        neon cat ears + ring
-pixel-glitch     square/pixel fragments around avatar
-devil-horns      two horn silhouettes above avatar
-angel-halo       floating halo above avatar
-cyber-wings      compact angular wings behind avatar
-crown            crown ornament above avatar
-electric-coils   pulsing electric ring/coils
-orbit-planets    rotating bounded orbit + planet dots
-sakura-petals    small petals around avatar
-black-hole       dark/violet accretion ring
-slime            rounded green drip/slime rim
-retro-arcade     pixelated arcade border
-cat-ears-black   black cat ears with readable outline
-cat-ears-white   white cat ears with readable outline
-fox-ears         taller orange/cream fox ears
+glitch-ring=broken chromatic ring; neko-neon=neon cat ears/ring; pixel-glitch=pixel fragments;
+devil-horns=horns; angel-halo=floating halo; cyber-wings=angular wings; crown=crown;
+electric-coils=electric ring; orbit-planets=bounded rotating orbit; sakura-petals=petals;
+black-hole=violet accretion ring; slime=green drip rim; retro-arcade=pixel border;
+cat-ears-black=black ears; cat-ears-white=white ears; fox-ears=orange/cream tall ears.
 ```
 
-Animations modify frame pseudo-elements/nodes only. Never continuously translate/scale the actual `.sb-avatar` image.
+Animations operate on frame shell pseudo-elements/nodes, never continuously on the avatar image.
 
-- [ ] **Step 6: Add idempotent Store rows for the 16 new frames**
+- [ ] **Step 5: Seed Store rows**
 
-Use stable IDs `store-frame-<slug>`, the same `2026-09-10-cosmetics-v3` built-in catalog version from E4, and exact prices:
+Use the same `2026-09-10-cosmetics-v3` version and `INSERT OR IGNORE` IDs `store-frame-<slug>`. Prices:
 
 ```text
-glitch-ring      4800
-neko-neon        5200
-pixel-glitch     4000
-devil-horns      5000
-angel-halo       5400
-cyber-wings      6500
-crown            7000
-electric-coils   6200
-orbit-planets    7500
-sakura-petals    4600
-black-hole       9000
-slime            3000
-retro-arcade     4200
-cat-ears-black   3400
-cat-ears-white   3400
-fox-ears         3800
+glitch-ring=4800; neko-neon=5200; pixel-glitch=4000; devil-horns=5000;
+angel-halo=5400; cyber-wings=6500; crown=7000; electric-coils=6200;
+orbit-planets=7500; sakura-petals=4600; black-hole=9000; slime=3000;
+retro-arcade=4200; cat-ears-black=3400; cat-ears-white=3400; fox-ears=3800.
 ```
 
-- [ ] **Step 7: Add structural and animated E2E cases**
+- [ ] **Step 6: Add structural/animated desktop and mobile E2E**
 
-At desktop width assert a `fox-ears` or `neko-neon` shell carries `data-avatar-frame`; assert an animated `orbit-planets`/`glitch-ring` decoration exists while the avatar image transform remains `none`/stable.
+At desktop, assert `fox-ears`/`neko-neon` uses `data-avatar-frame`. For `orbit-planets` or `glitch-ring`, assert decorative animation exists while the underlying avatar image computed transform stays `none`/stable. At `390x844`, assert no document horizontal overflow.
 
-At a mobile viewport (`390x844`), assert the structural frame remains inside the profile header/card bounds and does not produce horizontal page overflow.
-
-- [ ] **Step 8: Verify and commit**
+- [ ] **Step 7: Verify and commit**
 
 ```bash
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts tests/unit/cosmetic-builtin-catalog.test.ts
@@ -575,7 +524,7 @@ git commit -m "feat(cosmetics): expand animated avatar frames"
 
 ---
 
-### Task E6: Unify Profile, Store, Admin and Community previews on canonical renderers
+### Task E6: Unify Profile, Store, Admin and Community previews
 
 **Files:**
 - Create: `app/components/product/ProfileCosmeticPreview.tsx`
@@ -589,13 +538,13 @@ git commit -m "feat(cosmetics): expand animated avatar frames"
 - Modify: `tests/e2e/cosmetics-overhaul.spec.ts`
 
 **Interfaces:**
-- Produces: reusable `ProfileCosmeticPreview` for `PROFILE_BANNER`, `PROFILE_EFFECT` and `AVATAR_FRAME` previews.
-- Consumes: canonical `ProfileIdentityCard`, `ProfileThemeLayer`, `ProfileEffectLayer` and `CosmeticIdentity` boundaries.
+- Produces: `ProfileCosmeticPreview` for `PROFILE_BANNER`, `PROFILE_EFFECT`, `AVATAR_FRAME`.
+- Consumes: canonical `ProfileIdentityCard` and `CosmeticIdentity` renderers.
 
-- [ ] **Step 1: Write failing preview-reuse tests**
+- [ ] **Step 1: Write failing preview reuse tests**
 
 ```ts
-it("routes preview surfaces through the canonical cosmetic preview", () => {
+it("routes preview surfaces through ProfileCosmeticPreview", () => {
   for (const path of [
     "../../app/components/product/StoreItemCard.tsx",
     "../../app/components/admin/store/AdminPresetLaboratory.tsx",
@@ -604,7 +553,7 @@ it("routes preview surfaces through the canonical cosmetic preview", () => {
 });
 ```
 
-Also assert `StoreItemCard.tsx` no longer hand-builds `.product-profile-theme-layer` or a `product-store-preview--<effect>` approximation.
+Also assert `StoreItemCard.tsx` no longer hand-builds `product-profile-theme-layer` or `product-store-preview--${config.preset}`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -612,9 +561,7 @@ Also assert `StoreItemCard.tsx` no longer hand-builds `.product-profile-theme-la
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
 ```
 
-- [ ] **Step 3: Implement `ProfileCosmeticPreview`**
-
-The component accepts:
+- [ ] **Step 3: Create `ProfileCosmeticPreview`**
 
 ```ts
 type ProfileCosmeticPreviewProps = {
@@ -628,31 +575,17 @@ type ProfileCosmeticPreviewProps = {
 };
 ```
 
-Validate/cast the preset using `isProfileThemePreset`, `isProfileEffectPreset`, `isAvatarFramePreset`. For Profile Theme/Profile Effect render a miniature `ProfileIdentityCard`; for Avatar Frame render `CosmeticIdentity` in `preview` mode. Do not reproduce CSS selectors in this component.
+Validate `preset` with `isProfileThemePreset`, `isProfileEffectPreset`, `isAvatarFramePreset`. Theme/effect previews render a miniature `ProfileIdentityCard`; frame previews render `CosmeticIdentity` in `preview` mode. Do not duplicate cosmetic CSS rules in the component.
 
-- [ ] **Step 4: Replace Store preview approximations**
+- [ ] **Step 4: Replace Store/Admin/Community approximations**
 
-In `StoreItemCard.tsx`, route `PROFILE_BANNER`, `PROFILE_EFFECT`, `AVATAR_FRAME` through `ProfileCosmeticPreview`. Preserve pack/name previews and purchasing/equip behavior unchanged.
+`StoreItemCard` routes `PROFILE_BANNER`, `PROFILE_EFFECT`, `AVATAR_FRAME` through `ProfileCosmeticPreview`; purchasing/equip behavior stays unchanged. `AdminPresetLaboratory` uses it for `AVATAR_FRAMES`, `PROFILE_STYLES`, `EFFECTS`. `AdminCosmeticGuide` uses the same primitive where it previews those categories. `CommunityCosmeticStudio` sends `base`, `visual`, sanitized community CSS and cosmetic type into the same preview instead of styling a generic `.profile-card` directly.
 
-Community Store items pass their scoped CSS/custom visual through the same preview component rather than wrapping an approximation.
+- [ ] **Step 5: Add cross-surface E2E assertions**
 
-- [ ] **Step 5: Replace Admin Preset Laboratory preview approximations**
+For `rgb-glitch`, assert Profile, Store and Admin preview expose `data-profile-effect="rgb-glitch"`. For `nebula`, assert `data-profile-theme="nebula"`. For `fox-ears`, assert `data-avatar-frame="fox-ears"`.
 
-Use `ProfileCosmeticPreview` for `AVATAR_FRAMES`, `PROFILE_STYLES` and `EFFECTS`. `buildStaticPresets()` continues deriving directly from the shared arrays, which guarantees the 27 effects and expanded frames appear automatically.
-
-- [ ] **Step 6: Align Admin Cosmetic Guide**
-
-Where the guide renders profile-card cosmetics, use `ProfileCosmeticPreview` or the same canonical primitives directly. Keep its sanitizer/editor functionality unchanged.
-
-- [ ] **Step 7: Replace Community Cosmetic Studio live preview**
-
-For `PROFILE_BANNER`, `PROFILE_EFFECT`, `AVATAR_FRAME`, feed `base`, `visual` and sanitized `communityStyles` into `ProfileCosmeticPreview`. Name Font/Name Effect may keep their specialized preview path. Do not apply Profile Effect `visual` directly to `.profile-card` or avatar shell.
-
-- [ ] **Step 8: Add E2E cross-surface assertions**
-
-For one effect such as `rgb-glitch`, assert public Profile, Store preview and Admin/Preset preview expose the same `data-profile-effect="rgb-glitch"` primitive. For one theme assert the same `data-profile-theme`. For one frame assert the same `data-avatar-frame`.
-
-- [ ] **Step 9: Verify and commit**
+- [ ] **Step 6: Verify and commit**
 
 ```bash
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts tests/unit/community-plan-phase-c.test.ts
@@ -664,7 +597,7 @@ git commit -m "refactor(cosmetics): unify profile cosmetic previews"
 
 ---
 
-### Task E7: Harden motion, containment, accessibility and responsive behavior
+### Task E7: Harden motion, containment and responsive accessibility
 
 **Files:**
 - Modify: `app/components/product/profile-effects.css`
@@ -675,12 +608,10 @@ git commit -m "refactor(cosmetics): unify profile cosmetic previews"
 - Modify: `tests/e2e/cosmetics-overhaul.spec.ts`
 
 **Interfaces:**
-- Produces: deterministic reduced-motion behavior and containment guarantees.
-- Preserves: fixed maximum six effect decoration nodes per `ProfileEffectLayer` instance.
+- Preserves: maximum six card-effect decoration nodes per `ProfileEffectLayer`.
+- Produces: reduced-motion static representations and bounded responsive decoration.
 
-- [ ] **Step 1: Add failing accessibility/performance source assertions**
-
-Assert:
+- [ ] **Step 1: Add failing hardening tests**
 
 ```ts
 const effectComponent = read("../../app/components/product/ProfileEffectLayer.tsx");
@@ -690,32 +621,44 @@ expect(effectComponent).toContain("[0, 1, 2, 3, 4, 5]");
 expect(effectCss).toContain("pointer-events: none");
 expect(effectCss).toContain("@media (prefers-reduced-motion: reduce)");
 expect(frameCss).toContain("@media (prefers-reduced-motion: reduce)");
+for (const token of ["setInterval", "setTimeout", "requestAnimationFrame"]) {
+  expect(effectComponent).not.toContain(token);
+}
 ```
 
-Also source-scan the new components for `setInterval`, `setTimeout` and direct `requestAnimationFrame`; they must not be used for decorative animation.
-
-- [ ] **Step 2: Verify RED for any missing hardening**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts
 ```
 
-- [ ] **Step 3: Add reduced-motion fallbacks**
+- [ ] **Step 3: Add reduced-motion static fallbacks**
 
-Under `@media (prefers-reduced-motion: reduce)`, set continuous effect/frame animations to `none !important`, transitions to `none !important`, and leave static backgrounds/ornaments visible. Do not hide the entire cosmetic.
+In both animation stylesheets:
 
-- [ ] **Step 4: Lock containment and pointer behavior**
+```css
+@media (prefers-reduced-motion: reduce) {
+  .product-profile-effect-layer,
+  .product-profile-effect-layer::before,
+  .product-profile-effect-layer::after,
+  .product-profile-effect-layer__node,
+  .product-avatar-frame--decorative::before,
+  .product-avatar-frame--decorative::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+```
 
-Ensure the profile-card root uses `isolation: isolate; overflow: hidden`; the effect layer uses `pointer-events: none`; card content/actions have a higher z-index. Avatar structural ornaments may overflow their shell only within the profile header/card but must not create document horizontal overflow.
+Keep representative static backgrounds/ornaments visible.
 
-- [ ] **Step 5: Add reduced-motion and mobile E2E checks**
+- [ ] **Step 4: Enforce containment**
 
-Use Playwright `page.emulateMedia({ reducedMotion: "reduce" })`. Assert representative `meteor-shower`/`orbit-planets` nodes have computed `animationName === "none"` while still visible.
+Root remains `isolation: isolate; overflow: hidden`; effect layer remains pointer-events-none; content/actions z3. Frame ornaments may exceed the immediate avatar circle but must stay within profile-card/header geometry and must not produce document horizontal overflow.
 
-At desktop and `390x844`, assert:
-- Profile actions remain clickable with an effect equipped.
-- `document.documentElement.scrollWidth <= document.documentElement.clientWidth`.
-- effect layer bounds stay within the profile card bounds.
+- [ ] **Step 5: Add reduced-motion/mobile E2E checks**
+
+Use `page.emulateMedia({ reducedMotion: "reduce" })`. Assert `meteor-shower` and `orbit-planets` representative animated nodes have computed `animationName === "none"` while still visible. At desktop and `390x844`, assert profile actions remain clickable, effect bounds are inside card bounds, and `document.documentElement.scrollWidth <= document.documentElement.clientWidth`.
 
 - [ ] **Step 6: Verify and commit**
 
@@ -732,43 +675,43 @@ git commit -m "fix(cosmetics): harden motion and containment"
 ### Task E8: Compatibility regression pass and Block E gate
 
 **Files:**
-- Modify only files implicated by failing Block E verification checks.
-- Modify: `tests/unit/cosmetic-presentation-overhaul.test.ts` only when a missing compatibility assertion is discovered.
+- Modify only files implicated by failing verification.
+- Modify: `tests/unit/cosmetic-presentation-overhaul.test.ts` only for missing compatibility assertions.
 
 **Interfaces:**
-- Produces: final Block E checkpoint compatible with existing Store ownership/equip records and compact identity surfaces.
+- Produces: a final Block E checkpoint compatible with historical Store ownership/equip records and compact identity surfaces.
 
-- [ ] **Step 1: Verify existing persisted aliases and slugs remain representable**
-
-Add/retain assertions that:
+- [ ] **Step 1: Lock legacy compatibility**
 
 ```ts
+import {
+  PROFILE_BANNER_PRESETS,
+  PROFILE_THEME_PRESETS,
+  isProfileBannerPreset,
+  isProfileEffectPreset,
+  isAvatarFramePreset,
+} from "../../shared/store/cosmetics";
+
 expect(PROFILE_BANNER_PRESETS).toBe(PROFILE_THEME_PRESETS);
 expect(isProfileBannerPreset("nebula")).toBe(true);
 expect(isProfileEffectPreset("star-dust")).toBe(true);
 expect(isAvatarFramePreset("cat-ears")).toBe(true);
 ```
 
-Do not rename Store item IDs or historical preset slugs.
+- [ ] **Step 2: Verify compact identity isolation and no Block E migration**
 
-- [ ] **Step 2: Verify compact identities never render Profile Effects**
+Source-scan CommentThread/feed/navigation call sites: they must not mount `ProfileEffectLayer`. `CosmeticIdentity` compact mode may show Avatar Frame/Name cosmetics but no card-wide effect. Compare `migrations/` against the pre-E checkpoint: Block E must add no presentation-only migration.
 
-Inspect CommentThread/feed/navigation call sites and assert they do not mount `ProfileEffectLayer`. `CosmeticIdentity` in `compact` mode may still show Avatar Frame/Name cosmetics, but there must be no card-wide Profile Effect class/style.
-
-- [ ] **Step 3: Verify no schema migration was introduced for Block E**
-
-Compare the migration directory before/after E. E must not create a D1 migration solely for Profile Theme/Profile Effect/Avatar Frame presentation. New built-in catalog rows are loaded through the existing idempotent catalog mechanism.
-
-- [ ] **Step 4: Run focused cosmetic suites**
+- [ ] **Step 3: Run focused cosmetic gate**
 
 ```bash
 npx vitest run tests/unit/cosmetic-presentation-overhaul.test.ts tests/unit/cosmetic-builtin-catalog.test.ts tests/unit/community-plan-phase-c.test.ts
 npx playwright test tests/e2e/cosmetics-overhaul.spec.ts
 ```
 
-Expected: PASS with representative Theme, redesigned Effect, structural Frame, animated Frame, reduced-motion and mobile assertions.
+Expected: Theme, legacy/new Effect, structural/animated Frame, reduced-motion and mobile coverage all pass.
 
-- [ ] **Step 5: Run the full repository gate**
+- [ ] **Step 4: Run full repository gate**
 
 ```bash
 npm run audit:prod
@@ -777,17 +720,17 @@ npm run db:migrations:apply
 npm run test:e2e
 ```
 
-Expected: production audit 0 vulnerabilities; lint/format, typecheck, unit, build, Worker dry-run, complete local migrations and all E2E pass.
+Expected: production audit 0 vulnerabilities; lint/format, typecheck, unit tests, build, Worker dry-run, complete local migration chain and all E2E pass.
 
-- [ ] **Step 6: Review scope and persistence compatibility**
+- [ ] **Step 5: Scope review**
 
-Confirm the Block E diff contains no changes to purchase semantics, points accounting, entitlement ownership, moderation rules or remote migration/deploy scripts. Confirm public profile and every preview use the same renderer boundaries.
+Confirm no changes to purchase semantics, points accounting, entitlement ownership, moderation rules, remote migration scripts or production deploy behavior. Confirm Profile, Store, Admin and Community preview paths use the same renderer boundaries.
 
-- [ ] **Step 7: Commit only verification fixes, if any**
+- [ ] **Step 6: Commit only verification fixes when needed**
 
 ```bash
 git add app shared worker tests
 git commit -m "fix(cosmetics): close Block E verification findings"
 ```
 
-If the verification steps leave the working tree clean, do not create an empty commit.
+If verification leaves the working tree clean, do not create an empty commit.
