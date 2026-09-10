@@ -15,6 +15,7 @@ import { createD1PostStore } from "../posts/store";
 import { createD1ProfileStore } from "../profile/store";
 import { createD1CommentStore } from "./store";
 import { createCommentService } from "./service";
+import { parseCommentSort } from "./types";
 import {
   createEntitlementChecker,
   listEntitledEmotePacks,
@@ -316,6 +317,7 @@ export async function handleCommentApiRequest(
           await viewerId(request, env),
           url.searchParams.get("cursor"),
           Number(url.searchParams.get("limit") ?? 50),
+          parseCommentSort(url.searchParams.get("sort")),
         ),
         requestId,
       );
