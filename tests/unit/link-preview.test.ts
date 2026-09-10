@@ -57,8 +57,9 @@ describe("link preview metadata fetcher", () => {
   });
 
   it("revalidates redirect targets and rejects a private redirect", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(null, { status: 302, headers: { location: "http://127.0.0.1/admin" } }),
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(null, { status: 302, headers: { location: "http://127.0.0.1/admin" } }),
     ) as unknown as typeof fetch;
     const service = createLinkPreviewService({ fetchImpl, resolveHost: publicResolver() });
     await expect(service.preview("https://example.com/start")).rejects.toMatchObject({
@@ -108,8 +109,8 @@ describe("link preview metadata fetcher", () => {
       <meta property="og:image" content="/preview.webp">
     </head><body>ignored</body></html>`;
     const service = createLinkPreviewService({
-      fetchImpl: vi.fn(async () =>
-        new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } }),
+      fetchImpl: vi.fn(
+        async () => new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } }),
       ) as unknown as typeof fetch,
       resolveHost: publicResolver(),
       now: () => 2000,

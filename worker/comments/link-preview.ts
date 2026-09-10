@@ -116,9 +116,8 @@ export function isPublicIpAddress(value: string): boolean {
 }
 
 function hostnameIpLiteral(hostname: string): string | null {
-  const unwrapped = hostname.startsWith("[") && hostname.endsWith("]")
-    ? hostname.slice(1, -1)
-    : hostname;
+  const unwrapped =
+    hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
   return parseIpv4(unwrapped) || parseIpv6(unwrapped) ? unwrapped : null;
 }
 
@@ -133,17 +132,21 @@ export function normalizeLinkPreviewUrl(value: unknown): URL {
     throw linkError(400, "LINK_PREVIEW_INVALID_URL", "Enter a valid link.");
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw linkError(400, "LINK_PREVIEW_UNSUPPORTED_PROTOCOL", "Only HTTP and HTTPS links are supported.");
+    throw linkError(
+      400,
+      "LINK_PREVIEW_UNSUPPORTED_PROTOCOL",
+      "Only HTTP and HTTPS links are supported.",
+    );
   }
   if (url.username || url.password) {
-    throw linkError(400, "LINK_PREVIEW_CREDENTIALS_FORBIDDEN", "Links with embedded credentials are not supported.");
+    throw linkError(
+      400,
+      "LINK_PREVIEW_CREDENTIALS_FORBIDDEN",
+      "Links with embedded credentials are not supported.",
+    );
   }
   const hostname = url.hostname.toLowerCase();
-  if (
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    hostname.endsWith(".local")
-  ) {
+  if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
     throw linkError(400, "LINK_PREVIEW_PRIVATE_TARGET", "Private network links are not supported.");
   }
   const literal = hostnameIpLiteral(hostname);
@@ -203,7 +206,9 @@ export async function resolveLinkPreviewHost(
     return [];
   });
   if (addresses.length) return [...new Set(addresses)];
-  const cname = answers.find((answer) => answer.type === 5 && typeof answer.data === "string")?.data;
+  const cname = answers.find(
+    (answer) => answer.type === 5 && typeof answer.data === "string",
+  )?.data;
   if (!cname) return [];
   return resolveLinkPreviewHost(cname.replace(/\.$/, ""), fetchImpl, depth + 1);
 }
@@ -215,7 +220,11 @@ async function assertPublicTarget(
   const literal = hostnameIpLiteral(url.hostname);
   if (literal) {
     if (!isPublicIpAddress(literal)) {
-      throw linkError(400, "LINK_PREVIEW_PRIVATE_TARGET", "Private network links are not supported.");
+      throw linkError(
+        400,
+        "LINK_PREVIEW_PRIVATE_TARGET",
+        "Private network links are not supported.",
+      );
     }
     return;
   }
@@ -235,18 +244,21 @@ function decodeEntities(value: string): string {
     apos: "'",
     nbsp: " ",
   };
-  return value.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, (match, entity: string) => {
-    const lower = entity.toLowerCase();
-    if (lower.startsWith("#x")) {
-      const code = Number.parseInt(lower.slice(2), 16);
-      return Number.isSafeInteger(code) ? String.fromCodePoint(code) : match;
-    }
-    if (lower.startsWith("#")) {
-      const code = Number.parseInt(lower.slice(1), 10);
-      return Number.isSafeInteger(code) ? String.fromCodePoint(code) : match;
-    }
-    return named[lower] ?? match;
-  });
+  return value.replace(
+    /&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi,
+    (match, entity: string) => {
+      const lower = entity.toLowerCase();
+      if (lower.startsWith("#x")) {
+        const code = Number.parseInt(lower.slice(2), 16);
+        return Number.isSafeInteger(code) ? String.fromCodePoint(code) : match;
+      }
+      if (lower.startsWith("#")) {
+        const code = Number.parseInt(lower.slice(1), 10);
+        return Number.isSafeInteger(code) ? String.fromCodePoint(code) : match;
+      }
+      return named[lower] ?? match;
+    },
+  );
 }
 
 function cleanMetadata(value: string | null, max: number): string | null {
@@ -387,7 +399,11 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
           });
           if (isRedirect(response.status)) {
             if (redirects >= MAX_REDIRECTS) {
-              throw linkError(400, "LINK_PREVIEW_TOO_MANY_REDIRECTS", "The link redirects too many times.");
+              throw linkError(
+                400,
+                "LINK_PREVIEW_TOO_MANY_REDIRECTS",
+                "The link redirects too many times.",
+              );
             }
             const location = response.headers.get("location");
             if (!location) return urlOnly(current, now());
@@ -395,15 +411,24 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             try {
               redirected = normalizeLinkPreviewUrl(new URL(location, current).toString());
             } catch (error) {
-              if (error instanceof PostError && error.code === "LINK_PREVIEW_PRIVATE_TARGET") throw error;
-              throw linkError(400, "LINK_PREVIEW_INVALID_REDIRECT", "The link redirects to an invalid address.");
+              if (error instanceof PostError && error.code === "LINK_PREVIEW_PRIVATE_TARGET")
+                throw error;
+              throw linkError(
+                400,
+                "LINK_PREVIEW_INVALID_REDIRECT",
+                "The link redirects to an invalid address.",
+              );
             }
             current = redirected;
             continue;
           }
 
           const fetchedAt = now();
-          const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+          const contentType = response.headers
+            .get("content-type")
+            ?.split(";", 1)[0]
+            ?.trim()
+            .toLowerCase();
           if (
             !response.ok ||
             (contentType !== "text/html" && contentType !== "application/xhtml+xml")
@@ -422,12 +447,19 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
           let imageUrl: string | null = null;
           if (metadata.image) {
             try {
-              imageUrl = normalizeLinkPreviewUrl(new URL(metadata.image, current).toString()).toString();
+              imageUrl = normalizeLinkPreviewUrl(
+                new URL(metadata.image, current).toString(),
+              ).toString();
             } catch {
               imageUrl = null;
             }
           }
-          const present = [metadata.title, metadata.description, metadata.siteName, imageUrl].filter(Boolean).length;
+          const present = [
+            metadata.title,
+            metadata.description,
+            metadata.siteName,
+            imageUrl,
+          ].filter(Boolean).length;
           const snapshot: LinkPreviewSnapshot = {
             canonicalUrl: current.toString(),
             siteName: metadata.siteName,
@@ -460,7 +492,9 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
 
 async function cacheKey(canonicalUrl: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonicalUrl));
-  const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const hash = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
   return `https://sourceboard.invalid/__link-preview-cache/${hash}`;
 }
 
