@@ -27,6 +27,6 @@ describe("production rollout regressions", () => {
 
   it("prevents Cloudflare automatic Web Analytics beacon injection on HTML responses", () => {
     expect(workerApp).toContain("no-transform");
-    expect(workerApp).toContain('content-type');
+    expect(workerApp).toContain("content-type");
   });
 });
