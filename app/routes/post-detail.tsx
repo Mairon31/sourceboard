@@ -55,10 +55,12 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
         profileStore,
       });
       const postId = params.postId ?? "";
-      const commentsPromise = commentService.listForPost(postId, userId, null, 50, commentSort).then(
-        (value) => ({ ok: true as const, value }),
-        (error: unknown) => ({ ok: false as const, error }),
-      );
+      const commentsPromise = commentService
+        .listForPost(postId, userId, null, 50, commentSort)
+        .then(
+          (value) => ({ ok: true as const, value }),
+          (error: unknown) => ({ ok: false as const, error }),
+        );
       const viewerIdentityPromise: Promise<PublicPostAuthor | null> = userId
         ? Promise.all([
             profileStore.getProfileByUserId(userId, Date.now()),
