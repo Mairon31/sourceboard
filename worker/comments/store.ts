@@ -273,9 +273,9 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       const result = await db
         .prepare(
           `UPDATE comments SET state = 'DELETED', deleted_at = ?, updated_at = ?
-           WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND edit_deadline_at >= ?`,
+           WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND state = 'VISIBLE'`,
         )
-        .bind(now, now, commentId, authorId, now)
+        .bind(now, now, commentId, authorId)
         .run();
       if (result.meta.changes !== 1) return false;
       const comment = await db

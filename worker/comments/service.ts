@@ -128,10 +128,7 @@ async function toView(
       record.comment.authorId === viewerId &&
       record.comment.state === "VISIBLE" &&
       record.comment.editDeadlineAt >= now(),
-    canDelete:
-      record.comment.authorId === viewerId &&
-      record.comment.state === "VISIBLE" &&
-      record.comment.editDeadlineAt >= now(),
+    canDelete: record.comment.authorId === viewerId && record.comment.state === "VISIBLE",
     canReport:
       Boolean(viewerId) &&
       record.comment.authorId !== viewerId &&
