@@ -41,7 +41,8 @@ describe("category routing", () => {
   it("threads category URL state through Home and the feed resource", () => {
     expect(homeSource).toContain("parsePostCategorySlug");
     expect(homeSource).toContain('searchParams.get("category")');
-    expect(homeSource).toContain('searchParams.set("category",');
+    expect(homeSource).toContain('next.set("category", nextCategory)');
+    expect(homeSource).toContain("feedCacheKey(feed, nextCategory)");
     expect(feedResourceSource).toContain("parsePostCategorySlug");
     expect(feedResourceSource).toContain("categorySlug");
   });
