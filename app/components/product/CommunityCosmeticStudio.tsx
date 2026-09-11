@@ -14,10 +14,16 @@ import {
 import { readCsrfToken } from "../../data/csrf";
 import { Button, Card, Input, Textarea } from "../ui";
 import { cosmeticVisualStyle } from "./cosmetic-visual";
+import { ProfileCosmeticPreview } from "./ProfileCosmeticPreview";
 import "./community-cosmetics.css";
 
 type CosmeticType =
-  "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_EFFECT" | "NAME_FONT";
+  | "AVATAR_FRAME"
+  | "PROFILE_BANNER"
+  | "PROFILE_EFFECT"
+  | "NAME_EFFECT"
+  | "NAME_FONT";
+type ProfilePreviewType = "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT";
 type CommunityState = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
 type Submission = {
   id: string;
@@ -57,6 +63,9 @@ function errorMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== "object") return fallback;
   const error = (payload as { error?: { message?: unknown } }).error;
   return typeof error?.message === "string" ? error.message : fallback;
+}
+function isProfilePreviewType(type: CosmeticType): type is ProfilePreviewType {
+  return type === "AVATAR_FRAME" || type === "PROFILE_BANNER" || type === "PROFILE_EFFECT";
 }
 
 export function CommunityCosmeticStudio() {
@@ -204,6 +213,10 @@ export function CommunityCosmeticStudio() {
     }
   }
 
+  const previewName = name.trim() || "Community cosmetic";
+  const communityStyles =
+    cssPreview.css && !cssPreview.error ? [{ id: "preview", css: cssPreview.css }] : undefined;
+
   return (
     <section className="product-community-studio" aria-labelledby="community-cosmetic-heading">
       <div className="product-store-section__header">
@@ -332,29 +345,44 @@ export function CommunityCosmeticStudio() {
         </div>
 
         <div className="product-community-studio__side">
-          <div
-            className="product-community-live-preview cosmetic-root"
-            data-community-cosmetic="preview"
-          >
-            {cssPreview.css ? <style>{cssPreview.css}</style> : null}
-            <div className="profile-card" style={cosmeticVisualStyle(visual)}>
-              <div className="profile-header">
-                <div className="profile-avatar-area" aria-hidden="true">
-                  SB
-                </div>
-                <div className="profile-name-area">
-                  <strong>{name.trim() || "Community cosmetic"}</strong>
-                  <span>@creator</span>
+          <div className="product-community-live-preview">
+            {isProfilePreviewType(type) ? (
+              <ProfileCosmeticPreview
+                type={type}
+                preset={base}
+                name={previewName}
+                visual={visual}
+                communityStyles={communityStyles}
+                className="product-community-live-preview__profile"
+              />
+            ) : (
+              <div className="cosmetic-root" data-community-cosmetic="preview">
+                {cssPreview.css ? <style>{cssPreview.css}</style> : null}
+                <div className="profile-card" style={cosmeticVisualStyle(visual)}>
+                  <div className="profile-header">
+                    <div className="profile-avatar-area" aria-hidden="true">
+                      SB
+                    </div>
+                    <div className="profile-name-area">
+                      <strong
+                        className={type === "NAME_EFFECT" ? `sb-name-effect--${base}` : undefined}
+                        style={type === "NAME_FONT" ? { fontFamily: base } : undefined}
+                      >
+                        {previewName}
+                      </strong>
+                      <span>@creator</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <p>
-                {description.trim() ||
-                  "Your public profile preview uses the same sandbox slots that will be available after publication."}
-              </p>
-              <small>
-                {TYPE_LABELS[type]} · {base.replaceAll("-", " ")}
-              </small>
-            </div>
+            )}
+            <p>
+              {description.trim() ||
+                "Your public profile preview uses the same sandbox slots that will be available after publication."}
+            </p>
+            <small>
+              {TYPE_LABELS[type]} · {base.replaceAll("-", " ")}
+            </small>
           </div>
           <Card className="product-community-studio__submissions">
             <div>
