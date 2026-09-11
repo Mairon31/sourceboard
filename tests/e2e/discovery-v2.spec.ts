@@ -63,3 +63,32 @@ test("Discovery keeps result identity across views", async ({ page }) => {
   await expect(animeCard.getByText("E2E Anime category post", { exact: true })).toBeVisible();
   await expect(animeCard.getByText("E2E Category User", { exact: true })).toBeVisible();
 });
+
+test("Discovery persists view preference without overriding an explicit URL view", async ({ page }) => {
+  seedCategoryBadgeFixture();
+  const baseSearch = "/search?q=E2E&kind=posts&category=anime";
+
+  await page.goto(baseSearch);
+  await waitForUiReady(page);
+  await page.getByRole("link", { name: "Gallery view" }).click();
+  await expect(page).toHaveURL(/view=gallery/);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("sourceboard.search.view")))
+    .toBe("gallery");
+
+  await page.goto(baseSearch);
+  await waitForUiReady(page);
+  await expect(page).toHaveURL(/view=gallery/);
+  await expect(page.getByRole("link", { name: "Gallery view" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  await page.goto(`${baseSearch}&view=list`);
+  await waitForUiReady(page);
+  await expect(page).toHaveURL(/view=list/);
+  await expect(page.getByRole("link", { name: "List view" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+});
