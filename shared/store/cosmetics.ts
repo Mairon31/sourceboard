@@ -38,6 +38,18 @@ export const PROFILE_EFFECT_PRESETS = [
   "rgb-glitch",
   "moon-mist",
   "leaf-drift",
+  "falling-stars",
+  "cherry-blossom",
+  "neon-rain",
+  "matrix-rain",
+  "pixel-spark",
+  "cosmic-rift",
+  "ocean-bubbles",
+  "ghost-flames",
+  "confetti",
+  "love-letter",
+  "meteor-shower",
+  "digital-scan",
 ] as const;
 
 export type ProfileEffectPreset = (typeof PROFILE_EFFECT_PRESETS)[number];
