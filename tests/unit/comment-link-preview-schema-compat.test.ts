@@ -119,7 +119,9 @@ describe("comment link-preview production schema compatibility", () => {
     expect(listed.comments).toHaveLength(1);
     expect(listed.comments[0]?.linkPreview).toBeNull();
     expect(fetched?.linkPreview).toBeNull();
-    expect(prepared.some((sql) => sql.includes("NULL AS link_preview_canonical_url"))).toBe(true);
+    expect(
+      prepared.some((sql) => sql.includes("NULL AS link_preview_canonical_url")),
+    ).toBe(true);
   });
 
   it("preserves the comment when an optional preview cannot be persisted yet", async () => {
@@ -144,8 +146,12 @@ describe("comment link-preview production schema compatibility", () => {
     ).resolves.toBeUndefined();
 
     expect(batches).toHaveLength(2);
-    expect(batches[0]?.some((sql) => sql.includes("INSERT INTO comment_link_previews"))).toBe(true);
-    expect(batches[1]?.some((sql) => sql.includes("INSERT INTO comment_link_previews"))).toBe(false);
+    expect(
+      batches[0]?.some((sql) => sql.includes("INSERT INTO comment_link_previews")),
+    ).toBe(true);
+    expect(
+      batches[1]?.some((sql) => sql.includes("INSERT INTO comment_link_previews")),
+    ).toBe(false);
   });
 
   it("does not hide unrelated D1 read failures", async () => {
