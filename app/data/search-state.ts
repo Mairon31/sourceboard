@@ -1,7 +1,4 @@
-import {
-  parsePostCategorySlug,
-  type PostCategorySlug,
-} from "../../shared/posts/categories";
+import { parsePostCategorySlug, type PostCategorySlug } from "../../shared/posts/categories";
 import type { SearchFilter, SearchKind } from "../../worker/search/service";
 
 export type SearchView = "list" | "gallery" | "grid";
