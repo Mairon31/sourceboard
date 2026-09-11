@@ -159,7 +159,10 @@ describe("Cosmetic presentation overhaul", () => {
   });
 
   it("keeps structural Avatar Frame visuals isolated from card-wide cosmetic layers", () => {
-    const framePath = resolve(import.meta.dirname, "../../app/components/product/avatar-frames.css");
+    const framePath = resolve(
+      import.meta.dirname,
+      "../../app/components/product/avatar-frames.css",
+    );
     expect(existsSync(framePath)).toBe(true);
     if (!existsSync(framePath)) return;
 
