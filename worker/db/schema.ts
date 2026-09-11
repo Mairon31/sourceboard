@@ -111,8 +111,8 @@ export const roles = sqliteTable(
     id: text("id").primaryKey(),
     slug: text("slug").notNull(),
     name: text("name").notNull(),
-    rank: integer("rank").notNull(),
-    isSystem: integer("is_system").notNull().default(1),
+    rank: integer("rank", { mode: "number" }).notNull(),
+    isSystem: integer("is_system", { mode: "number" }).notNull().default(1),
   },
   (table) => [uniqueIndex("roles_slug_unique").on(table.slug)],
 );
@@ -157,7 +157,7 @@ export const userRoles = sqliteTable(
 
 export const loginFailureCounters = sqliteTable("login_failure_counters", {
   keyHash: text("key_hash").primaryKey(),
-  failures: integer("failures").notNull(),
+  failures: integer("failures", { mode: "number" }).notNull(),
   windowStartedAt: integer("window_started_at", { mode: "number" }).notNull(),
   updatedAt: integer("updated_at", { mode: "number" }).notNull(),
 });
@@ -499,7 +499,7 @@ export const pointLedger = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    amount: integer("amount").notNull(),
+    amount: integer("amount", { mode: "number" }).notNull(),
     entryType: text("entry_type").notNull(),
     rewardType: text("reward_type"),
     sourceEvent: text("source_event"),
@@ -528,8 +528,8 @@ export const reputationRewardRules = sqliteTable(
   {
     id: text("id").primaryKey(),
     rewardType: text("reward_type").notNull(),
-    version: integer("version").notNull(),
-    amount: integer("amount").notNull(),
+    version: integer("version", { mode: "number" }).notNull(),
+    amount: integer("amount", { mode: "number" }).notNull(),
     provisional: integer("provisional", { mode: "boolean" }).notNull().default(false),
     status: text("status").notNull().default("ACTIVE"),
     createdByUserId: text("created_by_user_id").references(() => users.id, {
@@ -544,7 +544,8 @@ export const reputationRewardRules = sqliteTable(
       .where(sql`${table.status} = 'ACTIVE'`),
     check(
       "reputation_reward_rules_type_check",
-      sql`${table.rewardType} IN ('ACCEPTED_SOURCE', 'VERIFIED_SOURCE')`),
+      sql`${table.rewardType} IN ('ACCEPTED_SOURCE', 'VERIFIED_SOURCE')`,
+    ),
     check("reputation_reward_rules_version_check", sql`${table.version} > 0`),
     check("reputation_reward_rules_amount_check", sql`${table.amount} > 0`),
     check("reputation_reward_rules_provisional_check", sql`${table.provisional} IN (0, 1)`),
@@ -557,11 +558,11 @@ export const achievementCatalog = sqliteTable(
   {
     id: text("id").primaryKey(),
     slug: text("slug").notNull(),
-    version: integer("version").notNull().default(1),
+    version: integer("version", { mode: "number" }).notNull().default(1),
     name: text("name").notNull(),
     description: text("description").notNull(),
     icon: text("icon").notNull(),
-    verifiedSourceThreshold: integer("verified_source_threshold").notNull(),
+    verifiedSourceThreshold: integer("verified_source_threshold", { mode: "number" }).notNull(),
     status: text("status").notNull().default("ACTIVE"),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
   },
@@ -615,7 +616,7 @@ export const storeItems = sqliteTable(
     type: text("type").notNull(),
     name: text("name").notNull(),
     description: text("description").notNull(),
-    pricePoints: integer("price_points").notNull(),
+    pricePoints: integer("price_points", { mode: "number" }).notNull(),
     assetId: text("asset_id"),
     configJson: text("config_json").notNull().default("{}"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
@@ -624,7 +625,7 @@ export const storeItems = sqliteTable(
     isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
     startsAt: integer("starts_at", { mode: "number" }),
     endsAt: integer("ends_at", { mode: "number" }),
-    sortOrder: integer("sort_order").notNull().default(0),
+    sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
     updatedAt: integer("updated_at", { mode: "number" }).notNull(),
   },
@@ -667,7 +668,7 @@ export const userInventory = sqliteTable(
     index("user_inventory_user_acquired_index").on(table.userId, table.acquiredAt),
     check(
       "user_inventory_source_check",
-      sql`${table.source} IN ('PURCHASE', 'ACHIEVEMENT', 'ADMIN_GRANT')`),
+      sql`${table.source} IN ('PURCHASE', 'ACHIEVEMENT', 'ADMIN_GRANT')`,
     ),
   ],
 );
@@ -682,7 +683,7 @@ export const storePurchases = sqliteTable(
     storeItemId: text("store_item_id")
       .notNull()
       .references(() => storeItems.id, { onDelete: "restrict" }),
-    pricePaid: integer("price_paid").notNull(),
+    pricePaid: integer("price_paid", { mode: "number" }).notNull(),
     ledgerDebitId: text("ledger_debit_id").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
@@ -751,7 +752,7 @@ export const comments = sqliteTable(
     bodyPlaintext: text("body_plaintext").notNull(),
     attachmentJson: text("attachment_json"),
     state: text("state").notNull().default("VISIBLE"),
-    likeCount: integer("like_count").notNull().default(0),
+    likeCount: integer("like_count", { mode: "number" }).notNull().default(0),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
     updatedAt: integer("updated_at", { mode: "number" }).notNull(),
     editDeadlineAt: integer("edit_deadline_at", { mode: "number" }).notNull(),
@@ -851,7 +852,7 @@ export const emoteCatalog = sqliteTable(
     mediaHeight: integer("media_height"),
     isAnimated: integer("is_animated", { mode: "boolean" }).notNull().default(false),
     packId: text("pack_id"),
-    sortOrder: integer("sort_order").notNull().default(0),
+    sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
     status: text("status").notNull().default("ACTIVE"),
     lifecycleState: text("lifecycle_state").notNull().default("PUBLISHED"),
     isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
@@ -893,7 +894,7 @@ export const stickerCatalog = sqliteTable(
     mediaHeight: integer("media_height"),
     isAnimated: integer("is_animated", { mode: "boolean" }).notNull().default(false),
     packId: text("pack_id"),
-    sortOrder: integer("sort_order").notNull().default(0),
+    sortOrder: integer("sort_order", { mode: "number" }).notNull().default(0),
     status: text("status").notNull().default("ACTIVE"),
     lifecycleState: text("lifecycle_state").notNull().default("PUBLISHED"),
     isEnabled: integer("is_enabled", { mode: "boolean" }).notNull().default(true),
@@ -925,7 +926,7 @@ export const emotePacks = sqliteTable(
     check("emote_packs_status_check", sql`${table.status} IN ('ACTIVE', 'DISABLED')`),
     check(
       "emote_packs_lifecycle_state_check",
-      sql`${table.lifecycleState} IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')`),
+      sql`${table.lifecycleState} IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')`,
     ),
     check("emote_packs_is_enabled_check", sql`${table.isEnabled} IN (0, 1)`),
   ],
