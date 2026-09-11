@@ -67,3 +67,35 @@ test("category badge navigates to its canonical category instead of opening the 
   await expect(page).toHaveURL(/\/category\/anime$/);
   await expect(page).not.toHaveURL(/\/posts\/e2e-category-anime-post/);
 });
+
+test("category feeds filter server-side without leaking non-public posts", async ({ page }) => {
+  seedCategoryBadgeFixture();
+  await page.goto("/category/anime");
+  await waitForUiReady(page);
+
+  await expect(page.getByText("E2E Anime category post", { exact: true })).toBeVisible();
+  await expect(page.getByText("E2E Answered Anime category post", { exact: true })).toBeVisible();
+  await expect(page.getByText("E2E Space category post", { exact: true })).not.toBeVisible();
+  await expect(page.getByText("E2E Private Anime category post", { exact: true })).not.toBeVisible();
+  await expect(page.getByText("E2E Friends Anime category post", { exact: true })).not.toBeVisible();
+});
+
+test("Home keeps the canonical category while switching feed modes", async ({ page }) => {
+  seedCategoryBadgeFixture();
+  await page.goto("/?category=anime");
+  await waitForUiReady(page);
+
+  await expect(page.getByLabel("Category filter")).toHaveValue("anime");
+  await expect(page).toHaveURL(/\?category=anime$/);
+  await expect(page.getByText("E2E Anime category post", { exact: true })).toBeVisible();
+  await expect(page.getByText("E2E Space category post", { exact: true })).not.toBeVisible();
+
+  await page.getByRole("tab", { name: "Answered" }).click();
+  await expect(page).toHaveURL(/\?category=anime$/);
+  await expect(page.getByText("E2E Answered Anime category post", { exact: true })).toBeVisible();
+  await expect(page.getByText("E2E Anime category post", { exact: true })).not.toBeVisible();
+
+  await page.getByRole("tab", { name: "Recent" }).click();
+  await expect(page).toHaveURL(/\?category=anime$/);
+  await expect(page.getByText("E2E Anime category post", { exact: true })).toBeVisible();
+});
