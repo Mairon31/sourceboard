@@ -1,0 +1,34 @@
+name: Format comment schema RED test
+
+on:
+  push:
+    branches:
+      - hotfix/comment-link-preview-schema-lag-sep11
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: hotfix/comment-link-preview-schema-lag-sep11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - run: npx prettier --write tests/unit/comment-link-preview-schema-compat.test.ts
+      - name: Commit formatting when needed
+        run: |
+          if git diff --quiet -- tests/unit/comment-link-preview-schema-compat.test.ts; then
+            echo "Already formatted"
+            exit 0
+          fi
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git add tests/unit/comment-link-preview-schema-compat.test.ts
+          git commit -m "style(comments): apply Prettier to schema-lag test"
+          git push origin HEAD:hotfix/comment-link-preview-schema-lag-sep11
