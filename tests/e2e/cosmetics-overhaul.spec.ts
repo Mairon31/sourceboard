@@ -5,7 +5,9 @@ test.beforeAll(() => {
   seedCosmeticsProfileFixture();
 });
 
-test("profile theme remains card-wide while uploaded banner stays independent", async ({ page }) => {
+test("profile theme remains card-wide while uploaded banner stays independent", async ({
+  page,
+}) => {
   await page.goto("/u/e2e-cosmetics");
 
   const card = page.locator(".product-profile-identity-card");
