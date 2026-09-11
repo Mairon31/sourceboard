@@ -1,3 +1,4 @@
+import type { PostCategorySlug } from "../posts/categories";
 import type {
   AvatarFramePreset,
   NameEffectPreset,
@@ -137,6 +138,7 @@ export interface PostSummary {
   slug?: string;
   title: string;
   description?: string;
+  categorySlug: PostCategorySlug;
   author: PublicPostAuthor;
   createdAt: string;
   updatedAt: string;
