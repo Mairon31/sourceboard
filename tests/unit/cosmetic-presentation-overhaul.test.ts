@@ -1,7 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PROFILE_EFFECT_PRESETS, isProfileEffectPreset } from "../../shared/store/cosmetics";
+import {
+  AVATAR_FRAME_PRESETS,
+  PROFILE_EFFECT_PRESETS,
+  isAvatarFramePreset,
+  isProfileEffectPreset,
+} from "../../shared/store/cosmetics";
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, path), "utf8");
 
@@ -24,6 +29,25 @@ const NEW_PROFILE_EFFECTS = [
   "love-letter",
   "meteor-shower",
   "digital-scan",
+] as const;
+
+const NEW_AVATAR_FRAMES = [
+  "glitch-ring",
+  "neko-neon",
+  "pixel-glitch",
+  "devil-horns",
+  "angel-halo",
+  "cyber-wings",
+  "crown",
+  "electric-coils",
+  "orbit-planets",
+  "sakura-petals",
+  "black-hole",
+  "slime",
+  "retro-arcade",
+  "cat-ears-black",
+  "cat-ears-white",
+  "fox-ears",
 ] as const;
 
 describe("Cosmetic presentation overhaul", () => {
@@ -124,6 +148,28 @@ describe("Cosmetic presentation overhaul", () => {
     const effectCss = read("../../app/components/product/profile-effects.css");
     for (const slug of NEW_PROFILE_EFFECTS) {
       expect(effectCss).toContain(`.product-profile-effect-layer--${slug}`);
+    }
+  });
+
+  it("accepts all approved Avatar Frames", () => {
+    expect(AVATAR_FRAME_PRESETS).toHaveLength(35);
+    for (const slug of NEW_AVATAR_FRAMES) {
+      expect(isAvatarFramePreset(slug)).toBe(true);
+    }
+  });
+
+  it("keeps structural Avatar Frame visuals isolated from card-wide cosmetic layers", () => {
+    const framePath = resolve(import.meta.dirname, "../../app/components/product/avatar-frames.css");
+    expect(existsSync(framePath)).toBe(true);
+    if (!existsSync(framePath)) return;
+
+    const frameCss = read("../../app/components/product/avatar-frames.css");
+    const identity = read("../../app/components/product/CosmeticIdentity.tsx");
+    expect(identity).toContain('import "./avatar-frames.css"');
+    expect(frameCss).not.toContain(".product-profile-effect-layer");
+    expect(frameCss).not.toContain(".product-profile-card-surface");
+    for (const slug of NEW_AVATAR_FRAMES) {
+      expect(frameCss).toContain(`[data-avatar-frame="${slug}"]`);
     }
   });
 });
