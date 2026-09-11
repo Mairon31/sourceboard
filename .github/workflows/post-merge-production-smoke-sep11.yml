@@ -13,24 +13,23 @@ jobs:
       - name: Probe production routes
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
+          failures=0
           check() {
             local path="$1"
             local expected="$2"
             local body
             local code
             body="$(mktemp)"
-            code="$(curl --retry 6 --retry-delay 5 --retry-all-errors --connect-timeout 10 --max-time 30 -L -sS -o "$body" -w '%{http_code}' "https://srcboard.me${path}")"
+            code="$(curl --retry 2 --retry-delay 2 --retry-all-errors --connect-timeout 10 --max-time 30 -L -sS -o "$body" -w '%{http_code}' "https://srcboard.me${path}" || true)"
             echo "${path} -> HTTP ${code}"
             if [ "$code" != "$expected" ]; then
               echo "Unexpected status for ${path}"
-              cat "$body"
-              exit 1
-            fi
-            if grep -Eqi 'Application Error|Internal Server Error' "$body"; then
+              grep -Eo 'Application Error|Internal Server Error|Unexpected Server Error' "$body" | head -5 || true
+              failures=$((failures + 1))
+            elif grep -Eqi 'Application Error|Internal Server Error' "$body"; then
               echo "Application error marker found on ${path}"
-              cat "$body"
-              exit 1
+              failures=$((failures + 1))
             fi
             rm -f "$body"
           }
@@ -42,3 +41,6 @@ jobs:
           check "/category" "200"
           check "/category/other" "200"
           check "/u/sourceboard-smoke-does-not-exist" "200"
+
+          echo "failures=${failures}"
+          exit "$failures"
