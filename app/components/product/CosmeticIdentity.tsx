@@ -7,6 +7,28 @@ import type {
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { Avatar } from "../ui";
 import { cosmeticVisualClass, cosmeticVisualStyle, mergeCosmeticVisuals } from "./cosmetic-visual";
+import "./avatar-frames.css";
+
+const STRUCTURAL_AVATAR_FRAMES = new Set<AvatarFramePreset>([
+  "cat-ears",
+  "wings",
+  "glitch-ring",
+  "neko-neon",
+  "pixel-glitch",
+  "devil-horns",
+  "angel-halo",
+  "cyber-wings",
+  "crown",
+  "electric-coils",
+  "orbit-planets",
+  "sakura-petals",
+  "black-hole",
+  "slime",
+  "retro-arcade",
+  "cat-ears-black",
+  "cat-ears-white",
+  "fox-ears",
+]);
 
 export interface CosmeticIdentityProps {
   displayName: string;
@@ -37,7 +59,7 @@ export function CosmeticIdentity({
     ...(nameFont ? { fontFamily: nameFont } : {}),
     ...(cosmeticVisualStyle(nameVisual) ?? {}),
   };
-  const decorativeFrame = avatarFrame === "cat-ears" || avatarFrame === "wings";
+  const decorativeFrame = avatarFrame ? STRUCTURAL_AVATAR_FRAMES.has(avatarFrame) : false;
 
   return (
     <div className={`cosmetic-identity cosmetic-identity--${mode}`}>
