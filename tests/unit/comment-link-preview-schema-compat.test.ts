@@ -11,7 +11,7 @@ const row = {
   post_id: "post-1",
   author_id: "author-1",
   parent_comment_id: null,
-  body_richtext_json: JSON.stringify({ type: "doc", content: [] }),
+  body_richtext_json: JSON.stringify([{ type: "text", text: "Legacy comment" }]),
   body_plaintext: "Legacy comment",
   attachment_json: null,
   state: "VISIBLE",
@@ -90,7 +90,7 @@ function comment(): CommentRecord {
     postId: "post-1",
     authorId: "author-1",
     parentCommentId: null,
-    richtext: [],
+    richtext: [{ type: "text", text: "Legacy comment" }],
     plaintext: "Legacy comment",
     attachment: null,
     state: "VISIBLE",
@@ -129,7 +129,7 @@ describe("comment link-preview production schema compatibility", () => {
     await expect(
       store.createComment({
         comment: comment(),
-        richtextJson: JSON.stringify({ type: "doc", content: [] }),
+        richtextJson: JSON.stringify([{ type: "text", text: "Legacy comment" }]),
         attachmentJson: null,
         linkPreview: {
           canonicalUrl: "https://example.com/source",
