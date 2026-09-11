@@ -9,7 +9,12 @@ export interface ProfileThemeLayerProps {
   bannerUrl?: string;
 }
 
-export function ProfileThemeLayer({ preset, legacyPreset, visual, bannerUrl }: ProfileThemeLayerProps) {
+export function ProfileThemeLayer({
+  preset,
+  legacyPreset,
+  visual,
+  bannerUrl,
+}: ProfileThemeLayerProps) {
   const theme = preset ?? legacyPreset ?? "default";
 
   return (
