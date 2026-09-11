@@ -9,7 +9,9 @@ test("profile theme remains card-wide while uploaded banner stays independent", 
   await page.goto("/u/e2e-cosmetics");
 
   const card = page.locator(".product-profile-identity-card");
-  const theme = card.locator(':scope > .product-profile-theme-layer[data-profile-theme="nebula"]');
+  const theme = card.locator(
+    ':scope > .product-profile-theme-layer[data-profile-theme="nebula"]',
+  );
   const cover = card.locator(":scope > .product-profile-cover");
   const photo = cover.locator(":scope > .product-profile-theme-photo");
   const surface = card.locator(":scope > .product-profile-card-surface");
@@ -21,7 +23,11 @@ test("profile theme remains card-wide while uploaded banner stays independent", 
   await expect(photo).toHaveCount(1);
   await expect(cover.locator(".product-profile-theme-layer")).toHaveCount(0);
 
-  const geometry = await Promise.all([card.boundingBox(), theme.boundingBox(), cover.boundingBox()]);
+  const geometry = await Promise.all([
+    card.boundingBox(),
+    theme.boundingBox(),
+    cover.boundingBox(),
+  ]);
   expect(geometry[0]).not.toBeNull();
   expect(geometry[1]).not.toBeNull();
   expect(geometry[2]).not.toBeNull();
