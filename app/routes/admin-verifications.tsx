@@ -17,6 +17,7 @@ interface Candidate {
   commentBody: string;
   authorLabel: string;
   acceptedAt: number | null;
+  canonicalSourceUrl: string | null;
 }
 
 interface VerifiedSource {
@@ -120,10 +121,12 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           .prepare(
             `SELECT p.id AS postId, p.slug AS postSlug, p.title AS postTitle,
                     c.id AS commentId, c.body_plaintext AS commentBody,
-                    u.username AS authorLabel, accepted.created_at AS acceptedAt
+                    u.username AS authorLabel, accepted.created_at AS acceptedAt,
+                    lp.canonical_url AS canonicalSourceUrl
              FROM posts p
              JOIN comments c ON c.id = p.accepted_comment_id AND c.post_id = p.id
              JOIN users u ON u.id = c.author_id
+             LEFT JOIN comment_link_previews lp ON lp.comment_id = c.id
              LEFT JOIN source_resolutions accepted
                ON accepted.post_id = p.id AND accepted.comment_id = c.id
               AND accepted.resolution_type = 'ACCEPTED' AND accepted.state = 'ACTIVE'
@@ -443,7 +446,13 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
           <h3>Verify this accepted source</h3>
           <p>Preserve the canonical source URL and evidence supporting the verification.</p>
         </div>
-        <Input name="url" label="Canonical source URL" type="url" required />
+        <Input
+          name="url"
+          label="Canonical source URL"
+          type="url"
+          defaultValue={candidate.canonicalSourceUrl ?? ""}
+          required
+        />
         <Textarea
           name="evidence"
           label="Evidence note"
