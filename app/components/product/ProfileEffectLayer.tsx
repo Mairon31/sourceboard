@@ -7,6 +7,8 @@ export interface ProfileEffectLayerProps {
   visual?: CosmeticVisualDefinition;
 }
 
+const EFFECT_NODES = [0, 1, 2, 3, 4, 5] as const;
+
 export function ProfileEffectLayer({ preset, visual }: ProfileEffectLayerProps) {
   const hasEffect = Boolean((preset && preset !== "none") || visual);
   if (!hasEffect) return null;
@@ -19,6 +21,10 @@ export function ProfileEffectLayer({ preset, visual }: ProfileEffectLayerProps) 
       style={cosmeticVisualStyle(visual)}
       data-profile-effect={preset ?? "custom"}
       aria-hidden="true"
-    />
+    >
+      {EFFECT_NODES.map((index) => (
+        <i key={index} className="product-profile-effect-layer__node" data-effect-node={index} />
+      ))}
+    </div>
   );
 }
