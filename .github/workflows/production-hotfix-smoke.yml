@@ -1,0 +1,44 @@
+name: Production hotfix smoke
+
+on:
+  push:
+    branches:
+      - diagnostic/prod-smoke-hotfix-sep11
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Probe production routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          urls=(
+            "https://srcboard.me/api/health"
+            "https://srcboard.me/"
+            "https://srcboard.me/u/sourceboard-smoke-does-not-exist"
+            "https://srcboard.me/store"
+          )
+          failed=0
+          for url in "${urls[@]}"; do
+            body="$(mktemp)"
+            code="$(curl --location --silent --show-error --connect-timeout 10 --max-time 25 --output "$body" --write-out '%{http_code}' "$url" || true)"
+            echo "${url} -> HTTP ${code}"
+            if ! [[ "$code" =~ ^[23][0-9][0-9]$ ]]; then
+              failed=1
+            fi
+            if grep -Eqi 'Application Error|Internal Server Error' "$body"; then
+              echo "Application error marker found at ${url}"
+              failed=1
+            fi
+            if [[ "$url" == *"/store" ]] && ! grep -q 'SourceBoard Store' "$body"; then
+              echo "Expected Store content not found"
+              failed=1
+            fi
+            rm -f "$body"
+          done
+          exit "$failed"
