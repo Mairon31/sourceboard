@@ -12,6 +12,10 @@ const postStoreSource = readFileSync(
   "utf8",
 );
 const postApiSource = readFileSync(new URL("../../worker/posts/api.ts", import.meta.url), "utf8");
+const composerSource = readFileSync(
+  new URL("../../app/components/product/PostComposer.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("post categories", () => {
   it("ships the approved 24-category catalog", () => {
@@ -34,5 +38,11 @@ describe("post categories", () => {
     expect(summary.categorySlug).toBe("anime");
     expect(postStoreSource).toContain("p.category_slug");
     expect(postApiSource).toContain('form.get("category")');
+  });
+
+  it("requires a category picker before publishing a source request", () => {
+    expect(composerSource).toContain("<CategoryPicker");
+    expect(composerSource).toContain('form.set("category", category)');
+    expect(composerSource).toContain("!category");
   });
 });
