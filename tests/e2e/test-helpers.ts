@@ -71,6 +71,66 @@ export function seedNavigationPostFixture() {
   executeLocalSql(sql);
 }
 
+export function seedCosmeticsProfileFixture() {
+  const now = Date.now();
+  const sql = `
+    INSERT OR IGNORE INTO users
+      (id, username, username_normalized, email_lookup_hash, email_encrypted, email_key_version,
+       status, email_verified_at, created_at, updated_at, last_seen_at)
+    VALUES
+      ('e2e-cosmetics-user', 'e2e-cosmetics', 'e2e-cosmetics',
+       'e2e-cosmetics-email-hash', 'e2e-cosmetics-encrypted-email', 'test-v1',
+       'ACTIVE', ${now}, ${now}, ${now}, ${now});
+
+    INSERT OR IGNORE INTO media_assets
+      (id, owner_user_id, purpose, r2_key, content_type, byte_size, checksum_sha256,
+       status, created_at, deleted_at, width, height)
+    VALUES
+      ('e2e-cosmetics-banner', 'e2e-cosmetics-user', 'BANNER',
+       'e2e/cosmetics-banner.webp', 'image/webp', 1, 'e2e-cosmetics-banner-checksum',
+       'ACTIVE', ${now}, NULL, 1200, 360);
+
+    INSERT OR IGNORE INTO user_profiles
+      (user_id, display_name, bio, avatar_asset_id, banner_asset_id, profile_visibility,
+       created_at, updated_at)
+    VALUES
+      ('e2e-cosmetics-user', 'E2E Cosmetics', 'Theme and banner fixture.', NULL,
+       'e2e-cosmetics-banner', 'PUBLIC', ${now}, ${now});
+
+    UPDATE user_profiles
+    SET banner_asset_id = 'e2e-cosmetics-banner', display_name = 'E2E Cosmetics',
+        profile_visibility = 'PUBLIC', updated_at = ${now}
+    WHERE user_id = 'e2e-cosmetics-user';
+
+    INSERT OR IGNORE INTO user_preferences
+      (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests,
+       notify_activity, notify_friendships, created_at, updated_at)
+    VALUES
+      ('e2e-cosmetics-user', 1, 1, 0, 1, 1, 1, ${now}, ${now});
+
+    INSERT OR IGNORE INTO store_items
+      (id, type, name, description, price_points, asset_id, config_json, is_active,
+       starts_at, ends_at, sort_order, created_at, updated_at,
+       lifecycle_state, is_enabled, is_featured)
+    VALUES
+      ('e2e-cosmetics-theme', 'PROFILE_BANNER', 'E2E Nebula Theme',
+       'Deterministic theme for cosmetic presentation E2E.', 0, NULL,
+       '{"preset":"nebula"}', 1, NULL, NULL, 999, ${now}, ${now}, 'PUBLISHED', 1, 0);
+
+    UPDATE store_items
+    SET config_json = '{"preset":"nebula"}', is_active = 1, lifecycle_state = 'PUBLISHED',
+        is_enabled = 1, updated_at = ${now}
+    WHERE id = 'e2e-cosmetics-theme';
+
+    DELETE FROM user_cosmetics
+    WHERE user_id = 'e2e-cosmetics-user' AND slot = 'PROFILE_BANNER';
+
+    INSERT INTO user_cosmetics (user_id, slot, store_item_id, updated_at)
+    VALUES ('e2e-cosmetics-user', 'PROFILE_BANNER', 'e2e-cosmetics-theme', ${now});
+  `;
+  executeLocalSql(sql);
+}
+
 export async function installAdminStoreFixture(page: Page) {
   const now = Date.now();
   const sessionToken = "sourceboard-e2e-admin-session-token";
