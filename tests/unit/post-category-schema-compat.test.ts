@@ -68,7 +68,7 @@ describe("post category production schema compatibility", () => {
       store.listFeed({
         viewerId: null,
         kind: "recent",
-        categorySlug: "anime-manga",
+        categorySlug: "anime",
         cursor: null,
         limit: 20,
       }),
