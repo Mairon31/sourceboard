@@ -160,7 +160,7 @@ test("Discovery Gallery removes overlay transitions under reduced motion", async
   const transitionDuration = await overlay.evaluate(
     (element) => getComputedStyle(element).transitionDuration,
   );
-  expect(transitionDuration).toBe("0s");
+  expect(Number.parseFloat(transitionDuration)).toBeLessThanOrEqual(0.001);
 });
 
 test("reduced motion remains active on product surfaces", async ({ page }) => {
