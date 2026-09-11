@@ -64,7 +64,9 @@ test("Discovery keeps result identity across views", async ({ page }) => {
   await expect(animeCard.getByText("E2E Category User", { exact: true })).toBeVisible();
 });
 
-test("Discovery persists view preference without overriding an explicit URL view", async ({ page }) => {
+test("Discovery persists view preference without overriding an explicit URL view", async ({
+  page,
+}) => {
   seedCategoryBadgeFixture();
   const baseSearch = "/search?q=E2E&kind=posts&category=anime";
 
