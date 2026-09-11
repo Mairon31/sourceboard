@@ -255,6 +255,168 @@
   animation-delay: var(--fx-delay);
 }
 
+.product-profile-effect-layer--falling-stars .product-profile-effect-layer__node {
+  width: 26px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffffff, #b8d6ff88, transparent);
+  box-shadow: 0 0 8px #d8e8ff88;
+  animation: profile-fx-falling-star 6.4s linear infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--cherry-blossom .product-profile-effect-layer__node {
+  width: 13px;
+  height: 9px;
+  border-radius: 90% 20% 85% 20%;
+  background: linear-gradient(145deg, #ffd5e6, #ff8fbd99);
+  animation: profile-fx-petal 8.6s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--neon-rain {
+  background: linear-gradient(90deg, #37dcff0f, transparent 42%, #ff4ecb0f);
+  mix-blend-mode: screen;
+}
+
+.product-profile-effect-layer--neon-rain .product-profile-effect-layer__node {
+  top: -20%;
+  width: 2px;
+  height: 58px;
+  background: linear-gradient(180deg, transparent, #51e2ff, #ff5fd2aa, transparent);
+  box-shadow: 0 0 8px #55dcff77;
+  animation: profile-fx-rain 4.8s linear infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--matrix-rain {
+  background-image: linear-gradient(90deg, transparent 0 97%, #63ff8a0a 97% 100%);
+  background-size: 18px 18px;
+}
+
+.product-profile-effect-layer--matrix-rain .product-profile-effect-layer__node {
+  top: -24%;
+  width: 2px;
+  height: 72px;
+  background: linear-gradient(180deg, transparent, #8bffa6cc, #28c95c66, transparent);
+  box-shadow: 0 0 6px #44ee7070;
+  animation: profile-fx-rain 6.6s linear infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--pixel-spark .product-profile-effect-layer__node {
+  width: 7px;
+  height: 7px;
+  background: #8edcffb3;
+  box-shadow:
+    12px 8px 0 #ff8bd299,
+    -9px 18px 0 #c597ff88;
+  animation: profile-fx-pixel 5.4s steps(4, end) infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--cosmic-rift {
+  background:
+    radial-gradient(ellipse at 50% 48%, #a056ff2e, transparent 32%),
+    linear-gradient(125deg, transparent 43%, #6adfff1c 48%, #c160ff24 53%, transparent 58%);
+  mix-blend-mode: screen;
+}
+
+.product-profile-effect-layer--cosmic-rift .product-profile-effect-layer__node {
+  width: 74px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6ce3ff, #c173ff, transparent);
+  box-shadow: 0 0 14px #906cff8c;
+  animation: profile-fx-rift 4.6s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--ocean-bubbles .product-profile-effect-layer__node {
+  top: auto;
+  bottom: -18px;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #bcefffaa;
+  border-radius: 999px;
+  background: radial-gradient(circle at 34% 30%, #ffffff88 0 1px, #4fc8ff18 28%, transparent 62%);
+  box-shadow: 0 0 7px #55cfff44;
+  animation: profile-fx-bubble 7.4s ease-in infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--ghost-flames {
+  background: linear-gradient(180deg, transparent 60%, #526cff1c 86%, #9a55ff26);
+  mix-blend-mode: screen;
+}
+
+.product-profile-effect-layer--ghost-flames .product-profile-effect-layer__node {
+  top: auto;
+  bottom: -12px;
+  width: 20px;
+  height: 34px;
+  border-radius: 60% 45% 55% 48%;
+  background: radial-gradient(ellipse at 50% 76%, #8be3ffcc, #7566ff88 48%, #b05cff33 68%, transparent 74%);
+  filter: blur(0.6px);
+  animation: profile-fx-ghost-flame 4.2s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--confetti .product-profile-effect-layer__node {
+  top: -12%;
+  width: 5px;
+  height: 12px;
+  border-radius: 2px;
+  background: #ffcf5cbf;
+  box-shadow:
+    14px 30px 0 #65dcffb0,
+    -12px 56px 0 #ff72b8b0;
+  animation: profile-fx-confetti 6.2s linear infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--love-letter .product-profile-effect-layer__node {
+  width: 22px;
+  height: 15px;
+  border: 1px solid #ffd1e1b5;
+  border-radius: 3px;
+  background:
+    linear-gradient(32deg, transparent 49%, #ffd1e180 50% 53%, transparent 54%),
+    linear-gradient(-32deg, transparent 49%, #ffd1e180 50% 53%, transparent 54%),
+    #ff6fa833;
+  box-shadow: 0 0 8px #ff7eb944;
+  animation: profile-fx-letter 8s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--meteor-shower .product-profile-effect-layer__node {
+  width: 56px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffffff, #8dc8ff99 35%, transparent);
+  box-shadow: 0 0 10px #9acfff88;
+  animation: profile-fx-meteor 5.2s linear infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--digital-scan {
+  background-image:
+    linear-gradient(#5ddcff0b 1px, transparent 1px),
+    linear-gradient(90deg, #5ddcff08 1px, transparent 1px);
+  background-size: 20px 20px;
+  mix-blend-mode: screen;
+}
+
+.product-profile-effect-layer--digital-scan .product-profile-effect-layer__node {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #70e6ffcc 20% 80%, transparent);
+  box-shadow: 0 0 10px #4bdfff66;
+  animation: profile-fx-scan 4.8s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
 @keyframes profile-fx-breathe {
   0%,
   100% {
@@ -422,6 +584,166 @@
   100% {
     opacity: 0;
     transform: translate3d(30px, 34px, 0) rotate(46deg);
+  }
+}
+
+@keyframes profile-fx-falling-star {
+  0% {
+    opacity: 0;
+    transform: translate3d(-42px, -24px, 0) rotate(-30deg);
+  }
+  20%,
+  70% {
+    opacity: 0.86;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(78px, 54px, 0) rotate(-30deg);
+  }
+}
+
+@keyframes profile-fx-petal {
+  0% {
+    opacity: 0;
+    transform: translate3d(-10px, -18px, 0) rotate(-20deg);
+  }
+  24%,
+  76% {
+    opacity: 0.76;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(34px, 66px, 0) rotate(80deg);
+  }
+}
+
+@keyframes profile-fx-rain {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -36px, 0);
+  }
+  16%,
+  84% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 250px, 0);
+  }
+}
+
+@keyframes profile-fx-pixel {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(-8px, 6px, 0) scale(0.7);
+  }
+  35% {
+    opacity: 0.88;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  70% {
+    opacity: 0.42;
+    transform: translate3d(12px, -10px, 0) scale(0.82);
+  }
+}
+
+@keyframes profile-fx-rift {
+  0%,
+  100% {
+    opacity: 0.16;
+    transform: translate3d(-8px, 0, 0) rotate(-8deg) scaleX(0.82);
+  }
+  50% {
+    opacity: 0.76;
+    transform: translate3d(8px, 0, 0) rotate(7deg) scaleX(1.08);
+  }
+}
+
+@keyframes profile-fx-bubble {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.62);
+  }
+  24%,
+  78% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(16px, -180px, 0) scale(1.16);
+  }
+}
+
+@keyframes profile-fx-ghost-flame {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translate3d(-4px, 5px, 0) scale(0.82) rotate(-4deg);
+  }
+  50% {
+    opacity: 0.78;
+    transform: translate3d(5px, -10px, 0) scale(1.08) rotate(6deg);
+  }
+}
+
+@keyframes profile-fx-confetti {
+  0% {
+    opacity: 0;
+    transform: translate3d(-10px, -24px, 0) rotate(0deg);
+  }
+  18%,
+  82% {
+    opacity: 0.78;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(22px, 220px, 0) rotate(240deg);
+  }
+}
+
+@keyframes profile-fx-letter {
+  0% {
+    opacity: 0;
+    transform: translate3d(-12px, 16px, 0) rotate(-8deg) scale(0.8);
+  }
+  28%,
+  74% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(28px, -38px, 0) rotate(10deg) scale(1.04);
+  }
+}
+
+@keyframes profile-fx-meteor {
+  0% {
+    opacity: 0;
+    transform: translate3d(-62px, -34px, 0) rotate(-28deg) scaleX(0.72);
+  }
+  20%,
+  62% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(110px, 78px, 0) rotate(-28deg) scaleX(1.08);
+  }
+}
+
+@keyframes profile-fx-scan {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  16% {
+    opacity: 0.78;
+  }
+  84% {
+    opacity: 0.46;
+    transform: translate3d(0, 220px, 0);
   }
 }
 
