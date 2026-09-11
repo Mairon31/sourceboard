@@ -252,3 +252,33 @@ export function InfoIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+export function ListIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M8 6h13M8 12h13M8 18h13" />
+      <path d="M3 6h1M3 12h1M3 18h1" />
+    </IconBase>
+  );
+}
+
+export function GalleryIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m4 18 5-5 3 3 3-4 5 6" />
+    </IconBase>
+  );
+}
+
+export function GridIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </IconBase>
+  );
+}
