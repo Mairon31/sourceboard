@@ -14,8 +14,12 @@ const sourceApi = read("../../worker/source/api.ts");
 const postCard = read("../../app/components/product/PostCard.tsx");
 
 describe("post-merge production regressions", () => {
-  it("awaits async loader callbacks so server data failures degrade instead of escaping as 500s", () => {
-    expect(serverRequest).toContain("return await loaded(state.runtime, state.userId)");
+  it("distinguishes missing server bindings from loader and service failures", () => {
+    expect(serverRequest).toContain(
+      "if (!hasAvailableRuntime(state.runtime)) return unauthenticated(true);",
+    );
+    expect(serverRequest).toContain("return loaded(state.runtime, state.userId);");
+    expect(serverRequest).not.toMatch(/catch\s*\{\s*return unauthenticated\(true\);/);
   });
 
   it("prevents media-only comments from being accepted as sources in both UI and API", () => {
