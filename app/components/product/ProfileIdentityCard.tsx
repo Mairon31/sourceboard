@@ -43,12 +43,15 @@ export function ProfileIdentityCard({
       {communityStyles?.map((communityStyle) => (
         <style key={communityStyle.id}>{communityStyle.css}</style>
       ))}
-      <ProfileThemeLayer
-        preset={profileTheme}
-        legacyPreset={legacyProfileBanner}
-        visual={visuals?.profileBanner}
-        bannerUrl={bannerUrl}
-      />
+      <ProfileThemeLayer preset={theme} visual={visuals?.profileBanner} />
+      <div className="product-profile-cover" aria-hidden="true">
+        {bannerUrl ? (
+          <div
+            className="product-profile-theme-photo"
+            style={{ backgroundImage: `url("${bannerUrl}")` }}
+          />
+        ) : null}
+      </div>
       <ProfileEffectLayer preset={profileEffect} visual={visuals?.profileEffect} />
       <div className="product-profile-card-surface profile-card">{children}</div>
     </Card>
