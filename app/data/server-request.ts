@@ -104,11 +104,7 @@ export async function withOptionalServerSession<Unauthenticated, Loaded>(
   unauthenticated: (unavailable: boolean) => Unauthenticated,
   loaded: (runtime: AvailableServerRequestRuntime, userId: string | null) => Promise<Loaded>,
 ): Promise<Unauthenticated | Loaded> {
-  try {
-    const state = await readServerState(request, context);
-    if (!hasAvailableRuntime(state.runtime)) return unauthenticated(true);
-    return await loaded(state.runtime, state.userId);
-  } catch {
-    return unauthenticated(true);
-  }
+  const state = await readServerState(request, context);
+  if (!hasAvailableRuntime(state.runtime)) return unauthenticated(true);
+  return loaded(state.runtime, state.userId);
 }
