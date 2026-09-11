@@ -215,7 +215,9 @@ describe("Cosmetic presentation overhaul", () => {
 
     expect(cardCss).toContain("overflow: hidden");
     expect(cardCss).toContain("isolation: isolate");
-    const reducedMotion = effectCss.slice(effectCss.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    const reducedMotion = effectCss.slice(
+      effectCss.lastIndexOf("@media (prefers-reduced-motion: reduce)"),
+    );
     expect(reducedMotion).toMatch(
       /\.product-profile-effect-layer__node\s*\{[^}]*opacity:\s*(?:0\.[1-9]\d*|1(?:\.0+)?)\s*!important;/s,
     );
