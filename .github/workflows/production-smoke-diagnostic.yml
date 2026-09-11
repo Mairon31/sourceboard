@@ -1,0 +1,43 @@
+name: Production smoke diagnostic
+
+on:
+  push:
+    branches:
+      - diagnostic/production-smoke-sep11
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe production routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          urls=(
+            "https://srcboard.me/"
+            "https://srcboard.me/u/sourceboard-smoke-does-not-exist"
+            "https://srcboard.me/store"
+          )
+          for url in "${urls[@]}"; do
+            body="$(mktemp)"
+            healthy=0
+            for attempt in $(seq 1 12); do
+              code="$(curl --location --silent --show-error --max-time 20 --output "$body" --write-out '%{http_code}' "$url" || true)"
+              if [[ "$code" =~ ^[23][0-9][0-9]$ ]] && ! grep -Eqi 'Application Error|Internal Server Error' "$body"; then
+                healthy=1
+                break
+              fi
+              sleep 5
+            done
+            echo "${url} -> HTTP ${code}"
+            if [[ "$healthy" -ne 1 ]]; then
+              echo "Production route is unhealthy: ${url}"
+              sed -n '1,120p' "$body"
+              exit 1
+            fi
+            rm -f "$body"
+          done
