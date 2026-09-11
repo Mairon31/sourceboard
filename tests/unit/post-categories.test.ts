@@ -16,7 +16,10 @@ const postStoreSource = readSource("../../worker/posts/store.ts");
 const postApiSource = readSource("../../worker/posts/api.ts");
 const composerSource = readSource("../../app/components/product/PostComposer.tsx");
 const postCardSource = readSource("../../app/components/product/PostCard.tsx");
-const categoryBadgeSource = readSource("../../app/components/product/PostCategoryBadge.tsx");
+const categoryBadgeSource = readSource(
+  "../../app/components/product/PostCategoryBadge.tsx",
+);
+const categoryMigrationSource = readSource("../../migrations/0028_post_categories.sql");
 
 describe("post categories", () => {
   it("ships the approved 24-category catalog", () => {
@@ -50,5 +53,10 @@ describe("post categories", () => {
   it("renders post categories as linked badges", () => {
     expect(postCardSource).toContain("<PostCategoryBadge");
     expect(categoryBadgeSource).toContain('to={`/category/${category.slug}`}');
+  });
+
+  it("explicitly backfills legacy posts into Other", () => {
+    expect(categoryMigrationSource).toContain("UPDATE posts");
+    expect(categoryMigrationSource).toContain("SET category_slug = 'other'");
   });
 });
