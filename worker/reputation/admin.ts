@@ -19,32 +19,6 @@ export interface RewardRuleAdminView {
   createdAt: number;
 }
 
-const LEGACY_REWARD_RULE_VIEWS: RewardRuleAdminView[] = [
-  {
-    id: "reward-accepted-source-v1",
-    rewardType: "ACCEPTED_SOURCE",
-    version: 1,
-    amount: 10,
-    provisional: true,
-    status: "ACTIVE",
-    createdAt: 0,
-  },
-  {
-    id: "reward-verified-source-v1",
-    rewardType: "VERIFIED_SOURCE",
-    version: 1,
-    amount: 100,
-    provisional: false,
-    status: "ACTIVE",
-    createdAt: 0,
-  },
-];
-
-function isMissingRewardRuleTable(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /no such table[^\n]*reputation_reward_rules/i.test(message);
-}
-
 export interface AchievementAdminView {
   id: string;
   slug: string;
@@ -163,19 +137,14 @@ function toAchievement(row: AchievementRow): AchievementAdminView {
 }
 
 export async function listRewardRules(db: D1Database): Promise<RewardRuleAdminView[]> {
-  try {
-    const result = await db
-      .prepare(
-        `SELECT id, reward_type, version, amount, provisional, status, created_at
-         FROM reputation_reward_rules
-         ORDER BY reward_type ASC, version DESC`,
-      )
-      .all<RewardRuleRow>();
-    return result.results.map(toRule);
-  } catch (error) {
-    if (!isMissingRewardRuleTable(error)) throw error;
-    return LEGACY_REWARD_RULE_VIEWS.map((rule) => ({ ...rule }));
-  }
+  const result = await db
+    .prepare(
+      `SELECT id, reward_type, version, amount, provisional, status, created_at
+       FROM reputation_reward_rules
+       ORDER BY reward_type ASC, version DESC`,
+    )
+    .all<RewardRuleRow>();
+  return result.results.map(toRule);
 }
 
 export async function listAchievements(db: D1Database): Promise<AchievementAdminView[]> {

@@ -8,7 +8,6 @@ import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosme
 import { Card } from "../ui";
 import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 import "./profile-identity-card.css";
-import "./profile-cover.css";
 
 export interface ProfileIdentityCardProps {
   children: ReactNode;
@@ -45,18 +44,18 @@ export function ProfileIdentityCard({
       {communityStyles?.map((communityStyle) => (
         <style key={communityStyle.id}>{communityStyle.css}</style>
       ))}
-      <div className="product-profile-cover" aria-hidden="true">
+      <div
+        className={`product-profile-theme-layer${cosmeticVisualClass(themeVisual)}`}
+        style={cosmeticVisualStyle(themeVisual)}
+        aria-hidden="true"
+      />
+      {bannerUrl ? (
         <div
-          className={`product-profile-theme-layer${cosmeticVisualClass(themeVisual)}`}
-          style={cosmeticVisualStyle(themeVisual)}
+          className="product-profile-theme-photo"
+          style={{ backgroundImage: `url("${bannerUrl}")` }}
+          aria-hidden="true"
         />
-        {bannerUrl ? (
-          <div
-            className="product-profile-theme-photo"
-            style={{ backgroundImage: `url("${bannerUrl}")` }}
-          />
-        ) : null}
-      </div>
+      ) : null}
       {hasEffect ? (
         <div
           className={`product-profile-effect-layer${profileEffect && profileEffect !== "none" ? ` product-profile-effect-layer--${profileEffect}` : ""}${cosmeticVisualClass(effectVisual)}`}

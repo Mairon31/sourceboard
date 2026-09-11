@@ -434,30 +434,13 @@
   object-fit: contain;
 }
 
-.product-comment__bubble--visual-only {
-  gap: 0;
-  width: fit-content;
-  max-width: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
+.product-comment__bubble:has(.product-comment-attachment):not(.product-comment__bubble--muted) {
   background: transparent;
   box-shadow: none;
 }
 
-.product-comment__bubble--visual-only .product-richtext > p:empty {
+.product-comment__bubble:has(.product-comment-attachment) > p:empty {
   display: none;
-}
-
-.product-comment__bubble--emote-only .product-richtext__emote-image {
-  width: 2.325em;
-  height: 2.325em;
-  margin: 0 0.12em;
-  vertical-align: -0.52em;
-}
-
-.product-comment__bubble--mixed .product-comment-attachment {
-  margin-top: 2px;
 }
 
 @media (max-width: 760px) {

@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
 import {
-  classifyCommentContent,
-  hasSourceEligibleCommentContent,
-} from "../../../shared/richtext/comment-content";
-import {
   formatEmoteMarkdown,
   normalizeEmoteShortcode,
   renderMarkdownPreview,
@@ -209,24 +205,6 @@ function CommentItem({
   const [busy, setBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const hidden = comment.state !== "VISIBLE";
-  const content = classifyCommentContent({
-    richtext: comment.richtext,
-    body: comment.body,
-    attachment: comment.attachment,
-  });
-  const sourceEligible = hasSourceEligibleCommentContent(
-    comment.richtext?.length ? comment.richtext : undefined,
-    comment.body,
-  );
-  const bubbleClassName = [
-    "product-comment__bubble",
-    hidden ? "product-comment__bubble--muted" : "",
-    !hidden && content.visualOnly ? "product-comment__bubble--visual-only" : "",
-    !hidden && content.emoteOnly ? "product-comment__bubble--emote-only" : "",
-    !hidden && content.mixed ? "product-comment__bubble--mixed" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
 
   useEffect(() => {
     authoritativeLikeRef.current = {
@@ -349,7 +327,6 @@ function CommentItem({
                 nameAs="strong"
               />
             )}
-            {comment.isPostAuthor ? <Badge tone="accent">Author</Badge> : null}
           </div>
           <a
             className="product-comment__date"
@@ -405,7 +382,13 @@ function CommentItem({
             />
           ) : null}
         </div>
-        <div className={bubbleClassName}>
+        <div
+          className={
+            hidden
+              ? "product-comment__bubble product-comment__bubble--muted"
+              : "product-comment__bubble"
+          }
+        >
           {editing ? (
             <>
               <div
@@ -476,15 +459,15 @@ function CommentItem({
         ) : null}
         <div className="product-comment__actions">
           <button
-            className={`product-comment__action product-comment__action--like${liked ? " is-active" : ""}`}
+            className={`product-comment__action${liked ? " is-active" : ""}`}
             type="button"
             aria-pressed={liked}
-            aria-label={liked ? "Unlike comment" : "Like comment"}
             disabled={likeBusy}
             onClick={() => void toggleLike()}
           >
             <HeartIcon width="15" height="15" fill={liked ? "currentColor" : "none"} />
-            <span className="product-comment__action-count">{likes}</span>
+            <span>{liked ? "Liked" : "Like"}</span>
+            {likes ? <span className="product-comment__action-count">{likes}</span> : null}
           </button>
           <button
             className="product-comment__action"
@@ -494,7 +477,7 @@ function CommentItem({
             <MessageIcon width="15" height="15" />
             <span>Reply</span>
           </button>
-          {canAcceptSource && comment.state === "VISIBLE" && sourceEligible ? (
+          {canAcceptSource && comment.state === "VISIBLE" ? (
             <button
               className="product-comment__action product-comment__action--accept"
               type="button"
@@ -508,12 +491,7 @@ function CommentItem({
             url={comment.commentHref ?? `#comment-${comment.id}`}
             title="SourceBoard comment"
           />
-          {comment.editedAt ? (
-            <span className="product-comment__edited" title="This comment was edited">
-              <EditIcon width="13" height="13" />
-              <span>Edited</span>
-            </span>
-          ) : null}
+          {comment.editedAt ? <span className="product-comment__action-meta">Edited</span> : null}
           {hidden ? (
             <span className="product-comment__action-meta">
               {comment.state === "HIDDEN" ? "Moderated" : "Deleted"}

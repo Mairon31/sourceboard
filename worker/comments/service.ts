@@ -123,7 +123,6 @@ async function toView(
         : undefined,
     state: record.comment.state,
     reaction: { type: "LIKE", count: record.comment.likeCount, viewerReacted },
-    isPostAuthor: record.comment.authorId === record.post.authorId,
     canEdit:
       record.comment.authorId === viewerId &&
       record.comment.state === "VISIBLE" &&

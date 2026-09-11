@@ -62,18 +62,14 @@
   flex: 0 0 auto;
 }
 
-.product-post__action--like {
-  font-variant-numeric: tabular-nums;
-}
-
 .product-post__action--liked {
-  background: transparent;
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
 .product-post__action--liked:hover,
 .product-post__action--liked:focus-visible {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent-soft);
   color: var(--accent-hover);
 }
 

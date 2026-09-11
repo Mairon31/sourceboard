@@ -113,7 +113,6 @@ export interface CommentView {
   editedAt?: string;
   state: CommentState;
   reaction: ReactionSummary;
-  isPostAuthor?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
   canReport?: boolean;

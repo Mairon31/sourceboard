@@ -88,11 +88,6 @@ export function isStoreLifecycleSchemaError(error: unknown): boolean {
   );
 }
 
-function isMissingCommunityReviewTable(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /no such table[^\n]*cosmetic_submission_reviews/i.test(message);
-}
-
 async function legacyListStoreCatalog(db: D1Database, now: number): Promise<StoreItemInput[]> {
   const rows = await db
     .prepare(
@@ -133,16 +128,10 @@ async function communityStoreMetadata(
   db: D1Database,
   item: StoreItemInput,
 ): Promise<CommunityLookup> {
-  let exists: { present: number } | null;
-  try {
-    exists = await db
-      .prepare("SELECT 1 AS present FROM cosmetic_submission_reviews WHERE store_item_id = ?")
-      .bind(item.id)
-      .first<{ present: number }>();
-  } catch (error) {
-    if (isMissingCommunityReviewTable(error)) return { isSubmission: false, metadata: null };
-    throw error;
-  }
+  const exists = await db
+    .prepare("SELECT 1 AS present FROM cosmetic_submission_reviews WHERE store_item_id = ?")
+    .bind(item.id)
+    .first<{ present: number }>();
   if (!exists) return { isSubmission: false, metadata: null };
   try {
     const row = await db
@@ -167,7 +156,6 @@ async function communityStoreMetadata(
     const css = typeof config.communityCss === "string" ? config.communityCss : "";
     return { isSubmission: true, metadata: { ...row, css } };
   } catch (error) {
-    if (isMissingCommunityReviewTable(error)) return { isSubmission: false, metadata: null };
     const message =
       error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
     if (
