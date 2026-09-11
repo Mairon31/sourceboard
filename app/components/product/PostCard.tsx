@@ -4,6 +4,7 @@ import type { PostDetail, PostSummary } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
 import { markNavigationStart } from "../../data/performance-metrics";
 import { CosmeticIdentity } from "./CosmeticIdentity";
+import { PostCategoryBadge } from "./PostCategoryBadge";
 import { ShareAction } from "./ShareAction";
 import {
   Avatar,
@@ -335,6 +336,7 @@ export function PostCard({
         <div className="product-post__badges">
           {post.author.mode === "ANONYMOUS" ? <Badge>Anonymous</Badge> : null}
           {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
+          <PostCategoryBadge slug={post.categorySlug} />
           <Badge tone={statusTone(post.status)}>{post.status.toLowerCase()}</Badge>
           {menuItems.length ? (
             <Dropdown
