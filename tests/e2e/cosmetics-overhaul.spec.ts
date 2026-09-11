@@ -44,3 +44,25 @@ test("profile theme remains card-wide while uploaded banner stays independent", 
   await expect(photo).toHaveCSS("opacity", "0.92");
   await expect(photo).toHaveCSS("background-image", /\/api\/media\/profile\/e2e-cosmetics-banner/);
 });
+
+test("legacy profile effect renders across the card and never inside the avatar", async ({
+  page,
+}) => {
+  await page.goto("/u/e2e-cosmetics");
+
+  const card = page.locator(".product-profile-identity-card");
+  const effect = card.locator(':scope > [data-profile-effect="rgb-glitch"]');
+
+  await expect(effect).toHaveCount(1);
+  await expect(effect.locator(".product-profile-effect-layer__node")).toHaveCount(6);
+  await expect(
+    page.locator('.cosmetic-identity__avatar-shell [data-profile-effect="rgb-glitch"]'),
+  ).toHaveCount(0);
+  expect(await effect.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
+
+  const geometry = await Promise.all([card.boundingBox(), effect.boundingBox()]);
+  expect(geometry[0]).not.toBeNull();
+  expect(geometry[1]).not.toBeNull();
+  expect(Math.abs((geometry[1]?.width ?? 0) - (geometry[0]?.width ?? 0))).toBeLessThanOrEqual(2);
+  expect(Math.abs((geometry[1]?.height ?? 0) - (geometry[0]?.height ?? 0))).toBeLessThanOrEqual(2);
+});
