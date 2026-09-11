@@ -117,6 +117,17 @@ function storedCommentRichtext(value: unknown): unknown[] | undefined {
   }
 }
 
+function storedPreviewUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 2048) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 async function revokeResolution(
   database: D1Database,
   input: {
@@ -234,9 +245,11 @@ export async function handleSourceRequest(
         `SELECT p.author_id AS post_author_id, p.accepted_comment_id, p.verified_source_id,
                 c.id AS comment_id, c.author_id AS comment_author_id, c.state AS comment_state,
                 c.body_richtext_json AS comment_richtext_json,
-                c.body_plaintext AS comment_plaintext
+                c.body_plaintext AS comment_plaintext,
+                lp.canonical_url AS comment_preview_url
          FROM posts p
          LEFT JOIN comments c ON c.id = ? AND c.post_id = p.id
+         LEFT JOIN comment_link_previews lp ON lp.comment_id = c.id
          WHERE p.id = ?`,
       )
       .bind(String(body.commentId ?? ""), id)
@@ -247,6 +260,7 @@ export async function handleSourceRequest(
         "INVALID_SOURCE_COMMENT",
         "The comment must belong to this post and be visible.",
       );
+    const commentPreviewUrl = storedPreviewUrl(target.comment_preview_url);
     const capability = requiredSourceCapability(kind);
     const current = await actor(request, requestId, env, capability);
     if (!capability && current.id !== target.post_author_id)
@@ -256,6 +270,7 @@ export async function handleSourceRequest(
       !hasSourceEligibleCommentContent(
         storedCommentRichtext(target.comment_richtext_json),
         typeof target.comment_plaintext === "string" ? target.comment_plaintext : "",
+        commentPreviewUrl,
       )
     ) {
       throw new PostError(
@@ -270,8 +285,8 @@ export async function handleSourceRequest(
         database
           .prepare(
             `INSERT INTO source_resolutions
-             (id, post_id, comment_id, resolution_type, state, actor_user_id, created_at)
-             SELECT ?, ?, ?, 'ACCEPTED', 'ACTIVE', ?, ?
+             (id, post_id, comment_id, resolution_type, state, canonical_source_url, actor_user_id, created_at)
+             SELECT ?, ?, ?, 'ACCEPTED', 'ACTIVE', ?, ?, ?
              WHERE EXISTS (
                SELECT 1 FROM posts
                WHERE id = ? AND accepted_comment_id IS NULL
@@ -281,7 +296,16 @@ export async function handleSourceRequest(
                  WHERE post_id = ? AND resolution_type = 'ACCEPTED' AND state = 'ACTIVE'
                )`,
           )
-          .bind(createIdentifier(), id, target.comment_id, current.id, resolvedAt, id, id),
+          .bind(
+            createIdentifier(),
+            id,
+            target.comment_id,
+            commentPreviewUrl,
+            current.id,
+            resolvedAt,
+            id,
+            id,
+          ),
         database
           .prepare(
             `UPDATE posts
