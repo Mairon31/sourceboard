@@ -169,6 +169,8 @@ describe("Cosmetic presentation overhaul", () => {
     const frameCss = read("../../app/components/product/avatar-frames.css");
     const identity = read("../../app/components/product/CosmeticIdentity.tsx");
     expect(identity).toContain('import "./avatar-frames.css"');
+    expect(identity).toContain("STRUCTURAL_AVATAR_FRAMES");
+    expect(identity).toContain("STRUCTURAL_AVATAR_FRAMES.has(avatarFrame)");
     expect(frameCss).not.toContain(".product-profile-effect-layer");
     expect(frameCss).not.toContain(".product-profile-card-surface");
     for (const slug of NEW_AVATAR_FRAMES) {
