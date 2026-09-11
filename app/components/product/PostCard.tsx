@@ -336,7 +336,10 @@ export function PostCard({
         <div className="product-post__badges">
           {post.author.mode === "ANONYMOUS" ? <Badge>Anonymous</Badge> : null}
           {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
-          <PostCategoryBadge slug={post.categorySlug} />
+          <PostCategoryBadge
+            slug={post.categorySlug}
+            linked={post.visibility === "PUBLIC" && post.status !== "ARCHIVED"}
+          />
           <Badge tone={statusTone(post.status)}>{post.status.toLowerCase()}</Badge>
           {menuItems.length ? (
             <Dropdown
