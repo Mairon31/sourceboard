@@ -177,9 +177,7 @@ test("reduced motion keeps representative cosmetics static and visible", async (
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/u/e2e-cosmetics-orbit");
 
-  const orbit = page.locator(
-    '.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]',
-  );
+  const orbit = page.locator('.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]');
   await expect(orbit).toBeVisible();
   const orbitStyle = await orbit.evaluate((element) => {
     const style = getComputedStyle(element, "::before");
