@@ -1,4 +1,5 @@
-import { Form, Link, useLoaderData, type MetaFunction } from "react-router";
+import { useEffect } from "react";
+import { Form, Link, useLoaderData, useNavigate, type MetaFunction } from "react-router";
 import { getPostCategory } from "../../shared/posts/categories";
 import type { SearchResult } from "../../worker/search/service";
 import { createSearchService } from "../../worker/search/service";
@@ -8,7 +9,12 @@ import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { SearchPostResults } from "../components/product/SearchPostResults";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
 import { Card, SearchIcon } from "../components/ui";
-import { buildSearchHref, parseSearchState, type SearchRouteState } from "../data/search-state";
+import {
+  buildSearchHref,
+  parseSearchState,
+  readSearchViewPreference,
+  type SearchRouteState,
+} from "../data/search-state";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 type LoaderArgs = ServerLoaderArgs;
@@ -173,6 +179,31 @@ function SearchSummary({ state, result }: { state: SearchRouteState; result: Sea
 
 export default function SearchRoute() {
   const { unavailable, state, result } = useLoaderData<LoaderData>();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (state.kind === "profiles" || state.hasExplicitView) return;
+
+    let storage: Storage;
+    try {
+      storage = window.localStorage;
+    } catch {
+      return;
+    }
+
+    const preferredView = readSearchViewPreference(storage);
+    if (!preferredView) return;
+    navigate(buildSearchHref(state, { view: preferredView }), { replace: true });
+  }, [
+    navigate,
+    state.categorySlug,
+    state.filter,
+    state.hasExplicitView,
+    state.kind,
+    state.query,
+    state.view,
+  ]);
+
   return (
     <ProductShell wide>
       <div className="product-search-heading">
