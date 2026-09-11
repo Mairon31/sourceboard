@@ -142,11 +142,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
             </div>
             <p>Help people discover the request in the most relevant topic.</p>
           </div>
-          <CategoryPicker
-            value={category}
-            onChange={setCategory}
-            disabled={unavailable || busy}
-          />
+          <CategoryPicker value={category} onChange={setCategory} disabled={unavailable || busy} />
         </section>
 
         <section className="product-post-composer__section" aria-labelledby="post-audience-heading">
