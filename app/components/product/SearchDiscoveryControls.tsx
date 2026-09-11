@@ -1,7 +1,12 @@
 import { Link } from "react-router";
 import { POST_CATEGORIES, getPostCategory } from "../../../shared/posts/categories";
 import type { SearchFilter, SearchKind } from "../../../worker/search/service";
-import { buildSearchHref, type SearchRouteState, type SearchView } from "../../data/search-state";
+import {
+  buildSearchHref,
+  writeSearchViewPreference,
+  type SearchRouteState,
+  type SearchView,
+} from "../../data/search-state";
 import { GalleryIcon, GridIcon, ListIcon } from "../ui";
 
 const KINDS: Array<{ value: SearchKind; label: string }> = [
@@ -24,6 +29,14 @@ const VIEWS: Array<{ value: SearchView; label: string; icon: typeof ListIcon }> 
   { value: "gallery", label: "Gallery view", icon: GalleryIcon },
   { value: "grid", label: "Detailed Grid view", icon: GridIcon },
 ];
+
+function persistSearchView(view: SearchView) {
+  try {
+    writeSearchViewPreference(window.localStorage, view);
+  } catch {
+    // URL state remains sufficient when local storage is unavailable.
+  }
+}
 
 export function SearchDiscoveryControls({ state }: { state: SearchRouteState }) {
   const postBearing = state.kind !== "profiles";
@@ -97,6 +110,7 @@ export function SearchDiscoveryControls({ state }: { state: SearchRouteState }) 
                     aria-label={item.label}
                     aria-current={state.view === item.value ? "page" : undefined}
                     title={item.label}
+                    onClick={() => persistSearchView(item.value)}
                   >
                     <Icon width="18" height="18" />
                   </Link>
