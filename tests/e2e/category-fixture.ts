@@ -18,6 +18,7 @@ function executeLocalSql(sql: string) {
 
 export function seedCategoryBadgeFixture() {
   const now = Date.now();
+  const editDeadline = now + 7 * 24 * 60 * 60 * 1000;
   const sql = `
     INSERT OR IGNORE INTO users
       (id, username, username_normalized, email_lookup_hash, email_encrypted, email_key_version,
@@ -39,8 +40,23 @@ export function seedCategoryBadgeFixture() {
     VALUES
       ('e2e-category-user', 1, 1, 0, 1, 1, 1, ${now}, ${now});
 
-    DELETE FROM posts WHERE id = 'e2e-category-anime-post';
-    DELETE FROM media_assets WHERE id = 'e2e-category-anime-media';
+    DELETE FROM posts
+    WHERE id IN (
+      'e2e-category-anime-post',
+      'e2e-category-space-post',
+      'e2e-category-private-anime-post',
+      'e2e-category-friends-anime-post',
+      'e2e-category-answered-anime-post'
+    );
+
+    DELETE FROM media_assets
+    WHERE id IN (
+      'e2e-category-anime-media',
+      'e2e-category-space-media',
+      'e2e-category-private-anime-media',
+      'e2e-category-friends-anime-media',
+      'e2e-category-answered-anime-media'
+    );
 
     INSERT INTO media_assets
       (id, owner_user_id, purpose, r2_key, content_type, byte_size, checksum_sha256,
@@ -48,7 +64,19 @@ export function seedCategoryBadgeFixture() {
     VALUES
       ('e2e-category-anime-media', 'e2e-category-user', 'POST_IMAGE',
        'e2e/category-anime.webp', 'image/webp', 1, 'e2e-category-anime-checksum',
-       'ACTIVE', ${now}, NULL, 640, 480);
+       'ACTIVE', ${now}, NULL, 640, 480),
+      ('e2e-category-space-media', 'e2e-category-user', 'POST_IMAGE',
+       'e2e/category-space.webp', 'image/webp', 1, 'e2e-category-space-checksum',
+       'ACTIVE', ${now - 1}, NULL, 640, 480),
+      ('e2e-category-private-anime-media', 'e2e-category-user', 'POST_IMAGE',
+       'e2e/category-private-anime.webp', 'image/webp', 1, 'e2e-category-private-anime-checksum',
+       'ACTIVE', ${now - 2}, NULL, 640, 480),
+      ('e2e-category-friends-anime-media', 'e2e-category-user', 'POST_IMAGE',
+       'e2e/category-friends-anime.webp', 'image/webp', 1, 'e2e-category-friends-anime-checksum',
+       'ACTIVE', ${now - 3}, NULL, 640, 480),
+      ('e2e-category-answered-anime-media', 'e2e-category-user', 'POST_IMAGE',
+       'e2e/category-answered-anime.webp', 'image/webp', 1,
+       'e2e-category-answered-anime-checksum', 'ACTIVE', ${now - 4}, NULL, 640, 480);
 
     INSERT INTO posts
       (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
@@ -59,7 +87,25 @@ export function seedCategoryBadgeFixture() {
       ('e2e-category-anime-post', 'e2e-category-user', 'IDENTIFIED', 0, NULL, NULL,
        'E2E Anime category post', 'e2e-anime-category-post', 'Category navigation fixture.',
        'anime', 'e2e-category-anime-media', 'PUBLIC', 'OPEN', 0, 0, NULL, NULL,
-       ${now}, ${now}, ${now + 7 * 24 * 60 * 60 * 1000}, NULL, NULL, NULL, NULL);
+       ${now}, ${now}, ${editDeadline}, NULL, NULL, NULL, NULL),
+      ('e2e-category-space-post', 'e2e-category-user', 'IDENTIFIED', 0, NULL, NULL,
+       'E2E Space category post', 'e2e-space-category-post', 'Different category fixture.',
+       'space', 'e2e-category-space-media', 'PUBLIC', 'OPEN', 0, 0, NULL, NULL,
+       ${now - 1}, ${now - 1}, ${editDeadline}, NULL, NULL, NULL, NULL),
+      ('e2e-category-private-anime-post', 'e2e-category-user', 'IDENTIFIED', 0, NULL, NULL,
+       'E2E Private Anime category post', 'e2e-private-anime-category-post',
+       'Private category fixture.', 'anime', 'e2e-category-private-anime-media', 'PRIVATE', 'OPEN',
+       0, 0, NULL, NULL, ${now - 2}, ${now - 2}, ${editDeadline}, NULL, NULL, NULL, NULL),
+      ('e2e-category-friends-anime-post', 'e2e-category-user', 'IDENTIFIED', 0, NULL, NULL,
+       'E2E Friends Anime category post', 'e2e-friends-anime-category-post',
+       'Friends-only category fixture.', 'anime', 'e2e-category-friends-anime-media',
+       'FRIENDS_ONLY', 'OPEN', 0, 0, NULL, NULL, ${now - 3}, ${now - 3}, ${editDeadline},
+       NULL, NULL, NULL, NULL),
+      ('e2e-category-answered-anime-post', 'e2e-category-user', 'IDENTIFIED', 0, NULL, NULL,
+       'E2E Answered Anime category post', 'e2e-answered-anime-category-post',
+       'Answered category fixture.', 'anime', 'e2e-category-answered-anime-media', 'PUBLIC',
+       'ANSWERED', 0, 0, NULL, NULL, ${now - 4}, ${now - 4}, ${editDeadline},
+       NULL, NULL, NULL, NULL);
   `;
   executeLocalSql(sql);
 }
