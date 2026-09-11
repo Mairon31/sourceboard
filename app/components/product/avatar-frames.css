@@ -371,7 +371,14 @@
   z-index: -1;
   inset: -13px;
   border-radius: 999px;
-  background: conic-gradient(from 40deg, transparent, #7b4dff4f, transparent 35%, #44d8ff38, transparent 70%);
+  background: conic-gradient(
+    from 40deg,
+    transparent,
+    #7b4dff4f,
+    transparent 35%,
+    #44d8ff38,
+    transparent 70%
+  );
   filter: blur(2px);
   animation: avatar-frame-spin 9s linear infinite reverse;
 }

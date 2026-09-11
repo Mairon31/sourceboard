@@ -77,16 +77,18 @@ test("structural fox ears stay on the avatar shell", async ({ page }) => {
   await expect(shell).toHaveClass(/product-avatar-frame--decorative/);
   await expect(shell.locator(".sb-avatar--frame-fox-ears")).toHaveCount(1);
 
-  const before = await shell.evaluate((element) => getComputedStyle(element, "::before").backgroundImage);
+  const before = await shell.evaluate(
+    (element) => getComputedStyle(element, "::before").backgroundImage,
+  );
   expect(before).not.toBe("none");
 });
 
-test("orbit animation decorates the shell without transforming the avatar image", async ({ page }) => {
+test("orbit animation decorates the shell without transforming the avatar image", async ({
+  page,
+}) => {
   await page.goto("/u/e2e-cosmetics-orbit");
 
-  const shell = page.locator(
-    '.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]',
-  );
+  const shell = page.locator('.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]');
   const avatar = shell.locator(".sb-avatar--frame-orbit-planets");
   await expect(shell).toHaveCount(1);
   await expect(avatar).toHaveCount(1);
