@@ -218,8 +218,18 @@ describe("Cosmetic presentation overhaul", () => {
     const reducedMotion = effectCss.slice(
       effectCss.lastIndexOf("@media (prefers-reduced-motion: reduce)"),
     );
+    expect(reducedMotion).toContain(".product-profile-effect-layer::before");
+    expect(reducedMotion).toContain(".product-profile-effect-layer::after");
+    expect(reducedMotion).toContain(".product-profile-effect-layer__node::before");
+    expect(reducedMotion).toContain(".product-profile-effect-layer__node::after");
     expect(reducedMotion).toMatch(
       /\.product-profile-effect-layer__node\s*\{[^}]*opacity:\s*(?:0\.[1-9]\d*|1(?:\.0+)?)\s*!important;/s,
     );
+
+    const reducedFrameMotion = frameCss.slice(
+      frameCss.lastIndexOf("@media (prefers-reduced-motion: reduce)"),
+    );
+    expect(reducedFrameMotion).toContain(".product-avatar-frame--decorative::before");
+    expect(reducedFrameMotion).toContain(".product-avatar-frame--decorative::after");
   });
 });
