@@ -1,0 +1,35 @@
+name: Post detail schema smoke Sep 11
+
+on:
+  push:
+    branches:
+      - diagnostic/post-detail-schema-smoke-sep11
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe real post detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(mktemp)"
+          detail="$(mktemp)"
+          curl --retry 4 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 -L -sS https://srcboard.me/ -o "$home"
+          path="$(grep -Eo 'href="/posts/[^"?#]+' "$home" | head -1 | sed 's/^href="//' || true)"
+          echo "post_path=${path}"
+          if [ -z "$path" ]; then
+            echo "No post detail link found on Home"
+            exit 2
+          fi
+          code="$(curl --retry 4 --retry-delay 3 --retry-all-errors --connect-timeout 10 --max-time 30 -L -sS -o "$detail" -w '%{http_code}' "https://srcboard.me${path}" || true)"
+          echo "${path} -> HTTP ${code}"
+          if grep -Eqi 'Application Error|Internal Server Error|Unexpected Server Error' "$detail"; then
+            echo "Application error marker found"
+            grep -Eo 'Application Error|Internal Server Error|Unexpected Server Error' "$detail" | head -5 || true
+          fi
+          test "$code" = "200"
+          ! grep -Eqi 'Application Error|Internal Server Error|Unexpected Server Error' "$detail"
