@@ -1,4 +1,4 @@
-const BUILTIN_STORE_VERSION = "2026-09-08-store-v2";
+const BUILTIN_STORE_VERSION = "2026-09-10-cosmetics-v3";
 const BUILTIN_STORE_VERSION_KEY = "store.catalog.version";
 
 const STORE_SEED_SQL = `
@@ -46,7 +46,19 @@ VALUES
 ('store-banner-sunset-noir', 'PROFILE_BANNER', 'Sunset Noir', 'Dark plum shadows cut by a warm sunset glow.', 3600, '{"preset":"sunset-noir"}', 1, 580, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-banner-prism-grid', 'PROFILE_BANNER', 'Prism Grid', 'A geometric grid over a prismatic cyber gradient.', 5200, '{"preset":"prism-grid"}', 1, 590, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-banner-forest-ink', 'PROFILE_BANNER', 'Forest Ink', 'Dark botanical greens with an ink-like finish.', 3000, '{"preset":"forest-ink"}', 1, 600, unixepoch('now') * 1000, unixepoch('now') * 1000),
-('store-banner-silver-wave', 'PROFILE_BANNER', 'Silver Wave', 'Metallic silver layers with a polished light sweep.', 6800, '{"preset":"silver-wave"}', 1, 610, unixepoch('now') * 1000, unixepoch('now') * 1000);
+('store-banner-silver-wave', 'PROFILE_BANNER', 'Silver Wave', 'Metallic silver layers with a polished light sweep.', 6800, '{"preset":"silver-wave"}', 1, 610, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-falling-stars', 'PROFILE_EFFECT', 'Falling Stars', 'Diagonal falling stars crossing the profile card.', 3600, '{"preset":"falling-stars"}', 1, 700, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-cherry-blossom', 'PROFILE_EFFECT', 'Cherry Blossom', 'Soft drifting cherry blossom petals.', 3800, '{"preset":"cherry-blossom"}', 1, 710, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-neon-rain', 'PROFILE_EFFECT', 'Neon Rain', 'Cyan and magenta neon rain across the profile.', 4200, '{"preset":"neon-rain"}', 1, 720, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-matrix-rain', 'PROFILE_EFFECT', 'Matrix Rain', 'Restrained green digital rain for the profile card.', 4500, '{"preset":"matrix-rain"}', 1, 730, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-pixel-spark', 'PROFILE_EFFECT', 'Pixel Spark', 'Small pixel sparks drifting through the card.', 3000, '{"preset":"pixel-spark"}', 1, 740, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-cosmic-rift', 'PROFILE_EFFECT', 'Cosmic Rift', 'A violet and cyan energy rift across the profile.', 7000, '{"preset":"cosmic-rift"}', 1, 750, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-ocean-bubbles', 'PROFILE_EFFECT', 'Ocean Bubbles', 'Translucent bubbles rising through the profile card.', 2800, '{"preset":"ocean-bubbles"}', 1, 760, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-ghost-flames', 'PROFILE_EFFECT', 'Ghost Flames', 'Cool blue-violet ghost flames along the lower edge.', 5200, '{"preset":"ghost-flames"}', 1, 770, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-confetti', 'PROFILE_EFFECT', 'Confetti', 'Bounded celebratory confetti distributed across the card.', 2600, '{"preset":"confetti"}', 1, 780, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-love-letter', 'PROFILE_EFFECT', 'Love Letter', 'Heart and envelope motifs floating across the profile.', 3200, '{"preset":"love-letter"}', 1, 790, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-meteor-shower', 'PROFILE_EFFECT', 'Meteor Shower', 'Bright angled meteor streaks crossing the card.', 6200, '{"preset":"meteor-shower"}', 1, 800, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-digital-scan', 'PROFILE_EFFECT', 'Digital Scan', 'A restrained scanner line and digital grid overlay.', 4000, '{"preset":"digital-scan"}', 1, 810, unixepoch('now') * 1000, unixepoch('now') * 1000);
 `;
 
 export async function ensureBuiltInStoreCatalog(db: D1Database): Promise<void> {
