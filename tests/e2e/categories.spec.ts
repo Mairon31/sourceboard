@@ -76,8 +76,12 @@ test("category feeds filter server-side without leaking non-public posts", async
   await expect(page.getByText("E2E Anime category post", { exact: true })).toBeVisible();
   await expect(page.getByText("E2E Answered Anime category post", { exact: true })).toBeVisible();
   await expect(page.getByText("E2E Space category post", { exact: true })).not.toBeVisible();
-  await expect(page.getByText("E2E Private Anime category post", { exact: true })).not.toBeVisible();
-  await expect(page.getByText("E2E Friends Anime category post", { exact: true })).not.toBeVisible();
+  await expect(
+    page.getByText("E2E Private Anime category post", { exact: true }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByText("E2E Friends Anime category post", { exact: true }),
+  ).not.toBeVisible();
 });
 
 test("Home keeps the canonical category while switching feed modes", async ({ page }) => {
