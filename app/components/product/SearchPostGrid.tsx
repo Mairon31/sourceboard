@@ -23,11 +23,7 @@ export function SearchPostGrid({
         const detailHref = postDetailHref(post);
         const mediaRestricted = post.isNsfw && post.nsfwPresentation !== "VISIBLE";
         return (
-          <article
-            className="product-search-grid-card"
-            key={post.id}
-            data-search-post-id={post.id}
-          >
+          <article className="product-search-grid-card" key={post.id} data-search-post-id={post.id}>
             <Link
               to={detailHref}
               className="product-search-grid-card__media"
