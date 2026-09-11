@@ -9,9 +9,7 @@ test("profile theme remains card-wide while uploaded banner stays independent", 
   await page.goto("/u/e2e-cosmetics");
 
   const card = page.locator(".product-profile-identity-card");
-  const theme = card.locator(
-    ':scope > .product-profile-theme-layer[data-profile-theme="nebula"]',
-  );
+  const theme = card.locator(':scope > .product-profile-theme-layer[data-profile-theme="nebula"]');
   const cover = card.locator(":scope > .product-profile-cover");
   const photo = cover.locator(":scope > .product-profile-theme-photo");
   const surface = card.locator(":scope > .product-profile-card-surface");
@@ -42,8 +40,5 @@ test("profile theme remains card-wide while uploaded banner stays independent", 
   ]);
   expect(layers).toEqual([0, 1, 3]);
   await expect(photo).toHaveCSS("opacity", "0.92");
-  await expect(photo).toHaveCSS(
-    "background-image",
-    /\/api\/media\/profile\/e2e-cosmetics-banner/,
-  );
+  await expect(photo).toHaveCSS("background-image", /\/api\/media\/profile\/e2e-cosmetics-banner/);
 });
