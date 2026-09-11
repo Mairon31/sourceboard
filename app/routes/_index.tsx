@@ -190,7 +190,17 @@ export default function HomeRoute() {
     if (!data.unavailable && !loadedKeys.has(activeKey) && loadingKey !== activeKey) {
       void loadFeed(feed, categorySlug);
     }
-  }, [activeKey, categorySlug, data.unavailable, feed, loadedKeys, loadingKey, rawCategory, searchParams, setSearchParams]);
+  }, [
+    activeKey,
+    categorySlug,
+    data.unavailable,
+    feed,
+    loadedKeys,
+    loadingKey,
+    rawCategory,
+    searchParams,
+    setSearchParams,
+  ]);
 
   function selectFeed(nextFeed: FeedMode) {
     setFeed(nextFeed);
@@ -201,7 +211,6 @@ export default function HomeRoute() {
   function selectCategory(value: string) {
     const nextCategory = value ? parsePostCategorySlug(value) : null;
     const next = new URLSearchParams(searchParams);
-    if (nextCategory) searchParams.set("category", nextCategory);
     if (nextCategory) next.set("category", nextCategory);
     else next.delete("category");
     setSearchParams(next);
