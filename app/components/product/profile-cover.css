@@ -1,0 +1,24 @@
+.product-profile-identity-card .product-profile-cover {
+  position: relative;
+  z-index: 1;
+  min-height: 136px;
+  overflow: hidden;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
+  background: var(--bg-app-secondary);
+}
+
+.product-profile-identity-card .product-profile-cover .product-profile-theme-photo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-position: center;
+  background-size: cover;
+  opacity: 0.92;
+  filter: saturate(0.96) contrast(0.98);
+}
+
+@media (max-width: 760px) {
+  .product-profile-identity-card .product-profile-cover {
+    min-height: 110px;
+  }
+}

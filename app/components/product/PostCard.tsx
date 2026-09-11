@@ -4,6 +4,7 @@ import type { PostDetail, PostSummary } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
 import { markNavigationStart } from "../../data/performance-metrics";
 import { CosmeticIdentity } from "./CosmeticIdentity";
+import { PostCategoryBadge } from "./PostCategoryBadge";
 import { ShareAction } from "./ShareAction";
 import {
   Avatar,
@@ -313,7 +314,6 @@ export function PostCard({
               displayName={post.author.displayName}
               avatarUrl={post.author.avatarUrl}
               avatarFrame={post.author.avatarFrame}
-              profileEffect={post.author.profileEffect}
               nameFont={post.author.nameFont}
               nameEffect={post.author.nameEffect}
               visuals={post.author.visuals}
@@ -335,6 +335,10 @@ export function PostCard({
         <div className="product-post__badges">
           {post.author.mode === "ANONYMOUS" ? <Badge>Anonymous</Badge> : null}
           {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
+          <PostCategoryBadge
+            slug={post.categorySlug}
+            linked={post.visibility === "PUBLIC" && post.status !== "ARCHIVED"}
+          />
           <Badge tone={statusTone(post.status)}>{post.status.toLowerCase()}</Badge>
           {menuItems.length ? (
             <Dropdown
@@ -450,9 +454,6 @@ export function PostCard({
       <div className="product-post__engagement">
         <div className="product-post__meta">
           <span>
-            <strong>{likes}</strong> {likes === 1 ? "like" : "likes"}
-          </span>
-          <span>
             <strong>{post.commentCount}</strong> {post.commentCount === 1 ? "comment" : "comments"}
           </span>
           {post.acceptedSource ? (
@@ -465,14 +466,14 @@ export function PostCard({
         <footer className="product-post__actions">
           <button
             type="button"
-            className={`product-post__action${liked ? " product-post__action--liked" : ""}`}
+            className={`product-post__action product-post__action--like${liked ? " product-post__action--liked" : ""}`}
             aria-pressed={liked}
             aria-label={liked ? "Unlike post" : "Like post"}
             disabled={reactionBusy}
             onClick={() => void toggleLike()}
           >
-            <HeartIcon />
-            <span>{liked ? "Liked" : "Like"}</span>
+            <HeartIcon fill={liked ? "currentColor" : "none"} />
+            <span>{likes}</span>
           </button>
           <Link
             className="product-post__action"

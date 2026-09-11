@@ -1,0 +1,86 @@
+.product-profile-theme-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--accent) 8%, var(--surface-solid)),
+    var(--surface-solid)
+  );
+}
+
+.product-profile-theme-layer.sb-custom-cosmetic {
+  background: var(--sb-cosmetic-bg, var(--surface-solid));
+  border-color: var(--sb-cosmetic-border, transparent);
+  opacity: var(--sb-cosmetic-opacity, 1);
+}
+
+.product-profile-theme-layer[data-profile-theme="nebula"] {
+  background:
+    radial-gradient(circle at 18% 12%, #7c5cff55, transparent 38%),
+    linear-gradient(145deg, #17182f, #242041 52%, #121a2a);
+}
+
+.product-profile-theme-layer[data-profile-theme="aurora"] {
+  background:
+    radial-gradient(circle at 12% 18%, #55e6bd66, transparent 40%),
+    radial-gradient(circle at 82% 20%, #8d71ff55, transparent 42%),
+    linear-gradient(150deg, #112527, #1d263e);
+}
+
+.product-profile-theme-layer[data-profile-theme="ember"],
+.product-profile-theme-layer[data-profile-theme="golden-hour"] {
+  background:
+    radial-gradient(circle at 78% 14%, #ffcc6670, transparent 35%),
+    linear-gradient(145deg, #2e1715, #492319 48%, #211719);
+}
+
+.product-profile-theme-layer[data-profile-theme="ocean-glass"] {
+  background:
+    radial-gradient(circle at 20% 12%, #74ddff55, transparent 38%),
+    linear-gradient(145deg, #0d2533, #123d4e 52%, #10263b);
+}
+
+.product-profile-theme-layer[data-profile-theme="sunset-noir"] {
+  background:
+    radial-gradient(circle at 76% 8%, #ff7b7255, transparent 34%),
+    linear-gradient(145deg, #211827, #34203b 50%, #161724);
+}
+
+.product-profile-theme-layer[data-profile-theme="prism-grid"],
+.product-profile-theme-layer[data-profile-theme="terminal-grid"] {
+  background-image:
+    linear-gradient(#6f7cff18 1px, transparent 1px),
+    linear-gradient(90deg, #6f7cff18 1px, transparent 1px),
+    linear-gradient(145deg, #151828, #1b2132);
+  background-size:
+    24px 24px,
+    24px 24px,
+    auto;
+}
+
+.product-profile-theme-layer[data-profile-theme="forest-ink"] {
+  background:
+    radial-gradient(circle at 18% 12%, #80d59a44, transparent 35%),
+    linear-gradient(145deg, #14241c, #203126 52%, #111b17);
+}
+
+.product-profile-theme-layer[data-profile-theme="silver-wave"] {
+  background:
+    radial-gradient(ellipse at 12% 20%, #ffffff26, transparent 42%),
+    linear-gradient(145deg, #222731, #343d4a 55%, #1b2029);
+}
+
+.product-profile-theme-layer[data-profile-theme="cosmic-dusk"] {
+  background:
+    radial-gradient(circle at 72% 14%, #dd7bff55, transparent 36%),
+    radial-gradient(circle at 18% 78%, #5b7cff44, transparent 42%),
+    linear-gradient(150deg, #181527, #29203c);
+}
+
+.product-profile-theme-layer[data-profile-theme="sakura-night"] {
+  background:
+    radial-gradient(circle at 75% 18%, #ff9ecb4d, transparent 34%),
+    linear-gradient(145deg, #211827, #352036 54%, #171621);
+}

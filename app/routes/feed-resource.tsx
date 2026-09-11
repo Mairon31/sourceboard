@@ -1,3 +1,4 @@
+import { parsePostCategorySlug } from "../../shared/posts/categories";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
@@ -20,6 +21,12 @@ export async function loader({ request, context, params }: LoaderArgs) {
   if (!kind) {
     return Response.json({ error: "Invalid feed." }, { status: 400 });
   }
+  const url = new URL(request.url);
+  const rawCategory = url.searchParams.get("category");
+  const categorySlug = rawCategory ? parsePostCategorySlug(rawCategory) : null;
+  if (rawCategory && !categorySlug) {
+    return Response.json({ error: "Invalid category." }, { status: 400 });
+  }
 
   const result = await withOptionalServerSession(
     request,
@@ -30,7 +37,13 @@ export async function loader({ request, context, params }: LoaderArgs) {
         store: createD1PostStore(runtime.db),
         profileStore: createD1ProfileStore(runtime.db),
       });
-      const feed = await service.listFeed({ viewerId: userId, kind, cursor: null, limit: 20 });
+      const feed = await service.listFeed({
+        viewerId: userId,
+        kind,
+        categorySlug,
+        cursor: null,
+        limit: 20,
+      });
       const likedIds = await readViewerLikedPostIds(
         runtime.db,
         userId,

@@ -3,17 +3,37 @@ import type {
   AvatarFramePreset,
   NameEffectPreset,
   NameFontFamily,
-  ProfileEffectPreset,
 } from "../../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { Avatar } from "../ui";
 import { cosmeticVisualClass, cosmeticVisualStyle, mergeCosmeticVisuals } from "./cosmetic-visual";
+import "./avatar-frames.css";
+
+const STRUCTURAL_AVATAR_FRAMES = new Set<AvatarFramePreset>([
+  "cat-ears",
+  "wings",
+  "glitch-ring",
+  "neko-neon",
+  "pixel-glitch",
+  "devil-horns",
+  "angel-halo",
+  "cyber-wings",
+  "crown",
+  "electric-coils",
+  "orbit-planets",
+  "sakura-petals",
+  "black-hole",
+  "slime",
+  "retro-arcade",
+  "cat-ears-black",
+  "cat-ears-white",
+  "fox-ears",
+]);
 
 export interface CosmeticIdentityProps {
   displayName: string;
   avatarUrl?: string;
   avatarFrame?: AvatarFramePreset;
-  profileEffect?: ProfileEffectPreset;
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
   visuals?: CosmeticIdentityVisuals;
@@ -26,7 +46,6 @@ export function CosmeticIdentity({
   displayName,
   avatarUrl,
   avatarFrame,
-  profileEffect,
   nameFont,
   nameEffect,
   visuals,
@@ -35,20 +54,15 @@ export function CosmeticIdentity({
   nameAs = "span",
 }: CosmeticIdentityProps) {
   const NameTag = nameAs;
-  const effectClass =
-    profileEffect && profileEffect !== "none" ? ` cosmetic-identity--effect-${profileEffect}` : "";
   const nameVisual = mergeCosmeticVisuals(visuals?.nameFont, visuals?.nameEffect);
   const nameStyle: CSSProperties = {
     ...(nameFont ? { fontFamily: nameFont } : {}),
     ...(cosmeticVisualStyle(nameVisual) ?? {}),
   };
-  const decorativeFrame = avatarFrame === "cat-ears" || avatarFrame === "wings";
+  const decorativeFrame = avatarFrame ? STRUCTURAL_AVATAR_FRAMES.has(avatarFrame) : false;
 
   return (
-    <div
-      className={`cosmetic-identity cosmetic-identity--${mode}${effectClass}${cosmeticVisualClass(visuals?.profileEffect)}`}
-      style={cosmeticVisualStyle(visuals?.profileEffect)}
-    >
+    <div className={`cosmetic-identity cosmetic-identity--${mode}`}>
       <span
         className={`cosmetic-identity__avatar-shell profile-avatar-area${decorativeFrame ? " product-avatar-frame--decorative" : ""}${cosmeticVisualClass(visuals?.avatarFrame)}`}
         style={cosmeticVisualStyle(visuals?.avatarFrame)}

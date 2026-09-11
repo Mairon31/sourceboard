@@ -6,8 +6,12 @@ import type {
 } from "../../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { Card } from "../ui";
-import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
+import { ProfileEffectLayer } from "./ProfileEffectLayer";
+import { ProfileThemeLayer } from "./ProfileThemeLayer";
 import "./profile-identity-card.css";
+import "./profile-cover.css";
+import "./profile-effects.css";
+import "./profile-themes.css";
 
 export interface ProfileIdentityCardProps {
   children: ReactNode;
@@ -31,9 +35,6 @@ export function ProfileIdentityCard({
   communityStyles,
 }: ProfileIdentityCardProps) {
   const theme = profileTheme ?? legacyProfileBanner;
-  const themeVisual = visuals?.profileBanner;
-  const effectVisual = visuals?.profileEffect;
-  const hasEffect = Boolean((profileEffect && profileEffect !== "none") || effectVisual);
 
   return (
     <Card
@@ -44,25 +45,16 @@ export function ProfileIdentityCard({
       {communityStyles?.map((communityStyle) => (
         <style key={communityStyle.id}>{communityStyle.css}</style>
       ))}
-      <div
-        className={`product-profile-theme-layer${cosmeticVisualClass(themeVisual)}`}
-        style={cosmeticVisualStyle(themeVisual)}
-        aria-hidden="true"
-      />
-      {bannerUrl ? (
-        <div
-          className="product-profile-theme-photo"
-          style={{ backgroundImage: `url("${bannerUrl}")` }}
-          aria-hidden="true"
-        />
-      ) : null}
-      {hasEffect ? (
-        <div
-          className={`product-profile-effect-layer${profileEffect && profileEffect !== "none" ? ` product-profile-effect-layer--${profileEffect}` : ""}${cosmeticVisualClass(effectVisual)}`}
-          style={cosmeticVisualStyle(effectVisual)}
-          aria-hidden="true"
-        />
-      ) : null}
+      <ProfileThemeLayer preset={theme} visual={visuals?.profileBanner} />
+      <div className="product-profile-cover" aria-hidden="true">
+        {bannerUrl ? (
+          <div
+            className="product-profile-theme-photo"
+            style={{ backgroundImage: `url("${bannerUrl}")` }}
+          />
+        ) : null}
+      </div>
+      <ProfileEffectLayer preset={profileEffect} visual={visuals?.profileEffect} />
       <div className="product-profile-card-surface profile-card">{children}</div>
     </Card>
   );

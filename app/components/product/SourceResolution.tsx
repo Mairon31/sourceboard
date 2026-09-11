@@ -28,7 +28,6 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
             displayName={comment.author.displayName}
             avatarUrl={comment.author.avatarUrl}
             avatarFrame={comment.author.avatarFrame}
-            profileEffect={comment.author.profileEffect}
             nameFont={comment.author.nameFont}
             nameEffect={comment.author.nameEffect}
             visuals={comment.author.visuals}

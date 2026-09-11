@@ -45,7 +45,7 @@ describe("public cosmetic identity contracts", () => {
 
   it("provides one reusable cosmetic identity primitive", () => {
     expect(identity).toContain('"profile" | "compact" | "preview"');
-    expect(identity).toContain("profileEffect");
+    expect(identity).not.toContain("profileEffect");
     expect(identityCss).toContain(".cosmetic-identity--compact");
     expect(identityCss).toContain("prefers-reduced-motion: reduce");
     expect(root).toContain("cosmetic-identity.css");

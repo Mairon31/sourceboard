@@ -104,6 +104,47 @@ export function MessageIcon(props: IconProps) {
   );
 }
 
+export function GifIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="2.5" y="5" width="19" height="14" rx="3" />
+      <path d="M8.2 10.1H6.7a1.7 1.7 0 0 0-1.7 1.7v.4a1.7 1.7 0 0 0 1.7 1.7h1.5v-1.8H7" />
+      <path d="M11 10.1v3.8" />
+      <path d="M14 13.9v-3.8h3" />
+      <path d="M14 12h2.4" />
+    </IconBase>
+  );
+}
+
+export function StickerIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 3h7.5L20 9.5V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z" />
+      <path d="M13 3v5a2 2 0 0 0 2 2h5" />
+      <path d="M8 14.5c1.1 1.2 2.2 1.8 4 1.8s2.9-.6 4-1.8" />
+    </IconBase>
+  );
+}
+
+export function SmileIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 14.5c.9 1.2 2 1.8 3.5 1.8s2.6-.6 3.5-1.8" />
+      <path d="M9 9.5h.01M15 9.5h.01" />
+    </IconBase>
+  );
+}
+
+export function LinkIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 13a5 5 0 0 0 7.1.1l2-2A5 5 0 0 0 12 4l-1.1 1.1" />
+      <path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1" />
+    </IconBase>
+  );
+}
+
 export function ShareIcon(props: IconProps) {
   return (
     <IconBase {...props}>
@@ -208,6 +249,36 @@ export function InfoIcon(props: IconProps) {
     <IconBase {...props}>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v5M12 8h.01" />
+    </IconBase>
+  );
+}
+
+export function ListIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M8 6h13M8 12h13M8 18h13" />
+      <path d="M3 6h1M3 12h1M3 18h1" />
+    </IconBase>
+  );
+}
+
+export function GalleryIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m4 18 5-5 3 3 3-4 5 6" />
+    </IconBase>
+  );
+}
+
+export function GridIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
     </IconBase>
   );
 }

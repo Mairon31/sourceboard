@@ -1,4 +1,4 @@
-const BUILTIN_STORE_VERSION = "2026-09-08-store-v2";
+const BUILTIN_STORE_VERSION = "2026-09-10-cosmetics-v3";
 const BUILTIN_STORE_VERSION_KEY = "store.catalog.version";
 
 const STORE_SEED_SQL = `
@@ -46,7 +46,35 @@ VALUES
 ('store-banner-sunset-noir', 'PROFILE_BANNER', 'Sunset Noir', 'Dark plum shadows cut by a warm sunset glow.', 3600, '{"preset":"sunset-noir"}', 1, 580, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-banner-prism-grid', 'PROFILE_BANNER', 'Prism Grid', 'A geometric grid over a prismatic cyber gradient.', 5200, '{"preset":"prism-grid"}', 1, 590, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-banner-forest-ink', 'PROFILE_BANNER', 'Forest Ink', 'Dark botanical greens with an ink-like finish.', 3000, '{"preset":"forest-ink"}', 1, 600, unixepoch('now') * 1000, unixepoch('now') * 1000),
-('store-banner-silver-wave', 'PROFILE_BANNER', 'Silver Wave', 'Metallic silver layers with a polished light sweep.', 6800, '{"preset":"silver-wave"}', 1, 610, unixepoch('now') * 1000, unixepoch('now') * 1000);
+('store-banner-silver-wave', 'PROFILE_BANNER', 'Silver Wave', 'Metallic silver layers with a polished light sweep.', 6800, '{"preset":"silver-wave"}', 1, 610, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-falling-stars', 'PROFILE_EFFECT', 'Falling Stars', 'Diagonal falling stars crossing the profile card.', 3600, '{"preset":"falling-stars"}', 1, 700, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-cherry-blossom', 'PROFILE_EFFECT', 'Cherry Blossom', 'Soft drifting cherry blossom petals.', 3800, '{"preset":"cherry-blossom"}', 1, 710, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-neon-rain', 'PROFILE_EFFECT', 'Neon Rain', 'Cyan and magenta neon rain across the profile.', 4200, '{"preset":"neon-rain"}', 1, 720, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-matrix-rain', 'PROFILE_EFFECT', 'Matrix Rain', 'Restrained green digital rain for the profile card.', 4500, '{"preset":"matrix-rain"}', 1, 730, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-pixel-spark', 'PROFILE_EFFECT', 'Pixel Spark', 'Small pixel sparks drifting through the card.', 3000, '{"preset":"pixel-spark"}', 1, 740, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-cosmic-rift', 'PROFILE_EFFECT', 'Cosmic Rift', 'A violet and cyan energy rift across the profile.', 7000, '{"preset":"cosmic-rift"}', 1, 750, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-ocean-bubbles', 'PROFILE_EFFECT', 'Ocean Bubbles', 'Translucent bubbles rising through the profile card.', 2800, '{"preset":"ocean-bubbles"}', 1, 760, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-ghost-flames', 'PROFILE_EFFECT', 'Ghost Flames', 'Cool blue-violet ghost flames along the lower edge.', 5200, '{"preset":"ghost-flames"}', 1, 770, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-confetti', 'PROFILE_EFFECT', 'Confetti', 'Bounded celebratory confetti distributed across the card.', 2600, '{"preset":"confetti"}', 1, 780, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-love-letter', 'PROFILE_EFFECT', 'Love Letter', 'Heart and envelope motifs floating across the profile.', 3200, '{"preset":"love-letter"}', 1, 790, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-meteor-shower', 'PROFILE_EFFECT', 'Meteor Shower', 'Bright angled meteor streaks crossing the card.', 6200, '{"preset":"meteor-shower"}', 1, 800, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-effect-digital-scan', 'PROFILE_EFFECT', 'Digital Scan', 'A restrained scanner line and digital grid overlay.', 4000, '{"preset":"digital-scan"}', 1, 810, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-glitch-ring', 'AVATAR_FRAME', 'Glitch Ring', 'A broken chromatic ring with restrained digital movement.', 4800, '{"preset":"glitch-ring"}', 1, 820, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-neko-neon', 'AVATAR_FRAME', 'Neko Neon', 'Neon cat ears with cyan-magenta glow.', 5200, '{"preset":"neko-neon"}', 1, 830, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-pixel-glitch', 'AVATAR_FRAME', 'Pixel Glitch', 'Pixel fragments flickering around the avatar rim.', 4000, '{"preset":"pixel-glitch"}', 1, 840, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-devil-horns', 'AVATAR_FRAME', 'Devil Horns', 'Dark red horns rising above the avatar.', 5000, '{"preset":"devil-horns"}', 1, 850, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-angel-halo', 'AVATAR_FRAME', 'Angel Halo', 'A floating warm halo above the avatar.', 5400, '{"preset":"angel-halo"}', 1, 860, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-cyber-wings', 'AVATAR_FRAME', 'Cyber Wings', 'Angular neon wings extending from the avatar.', 6500, '{"preset":"cyber-wings"}', 1, 870, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-crown', 'AVATAR_FRAME', 'Crown', 'A polished golden crown above the avatar.', 7000, '{"preset":"crown"}', 1, 880, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-electric-coils', 'AVATAR_FRAME', 'Electric Coils', 'Counter-rotating electric rings around the avatar.', 6200, '{"preset":"electric-coils"}', 1, 890, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-orbit-planets', 'AVATAR_FRAME', 'Orbit Planets', 'A bounded planetary orbit around the avatar.', 7500, '{"preset":"orbit-planets"}', 1, 900, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-sakura-petals', 'AVATAR_FRAME', 'Sakura Petals', 'Soft sakura petals drifting around the avatar.', 4600, '{"preset":"sakura-petals"}', 1, 910, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-black-hole', 'AVATAR_FRAME', 'Black Hole', 'A violet accretion ring surrounding the avatar.', 9000, '{"preset":"black-hole"}', 1, 920, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-slime', 'AVATAR_FRAME', 'Slime', 'A bright green slime rim with bounded drips.', 3000, '{"preset":"slime"}', 1, 930, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-retro-arcade', 'AVATAR_FRAME', 'Retro Arcade', 'A crisp pixel-art arcade border.', 4200, '{"preset":"retro-arcade"}', 1, 940, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-cat-ears-black', 'AVATAR_FRAME', 'Cat Ears Black', 'Black cat ears with a restrained shadow edge.', 3400, '{"preset":"cat-ears-black"}', 1, 950, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-cat-ears-white', 'AVATAR_FRAME', 'Cat Ears White', 'White cat ears with a cool luminous edge.', 3400, '{"preset":"cat-ears-white"}', 1, 960, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-fox-ears', 'AVATAR_FRAME', 'Fox Ears', 'Tall orange and cream fox ears above the avatar.', 3800, '{"preset":"fox-ears"}', 1, 970, unixepoch('now') * 1000, unixepoch('now') * 1000);
 `;
 
 export async function ensureBuiltInStoreCatalog(db: D1Database): Promise<void> {

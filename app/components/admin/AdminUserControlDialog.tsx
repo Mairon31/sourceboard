@@ -203,7 +203,6 @@ export function AdminUserControlDialog({
               displayName={user.displayName}
               avatarUrl={user.avatarUrl}
               avatarFrame={user.cosmetics?.avatarFrame}
-              profileEffect={user.cosmetics?.profileEffect}
               nameFont={user.cosmetics?.nameFont}
               nameEffect={user.cosmetics?.nameEffect}
               visuals={user.cosmetics?.visuals}

@@ -82,6 +82,23 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(commentActionsCss).toContain("product-comment__action");
   });
 
+  it("uses accessible Discord-style icon controls for GIF, sticker and emote", () => {
+    for (const icon of ["GifIcon", "StickerIcon", "SmileIcon"]) {
+      expect(icons).toContain(`function ${icon}`);
+      expect(thread).toContain(`<${icon}`);
+    }
+    expect(thread).toContain('aria-label="GIF"');
+    expect(thread).toContain('aria-label="Sticker"');
+    expect(thread).toContain('aria-label="Emote"');
+    expect(thread).toContain('title="GIF"');
+    expect(thread).toContain('title="Sticker"');
+    expect(thread).toContain('title="Emote"');
+    expect(thread).toContain("product-comment-composer__media-action");
+    expect(commentActionsCss).toContain(".product-comment-composer__media-action");
+    expect(commentActionsCss).toContain("min-width: 40px");
+    expect(commentActionsCss).toContain("min-height: 40px");
+  });
+
   it("keeps animated media URLs and applies the requested compact comment sizes", () => {
     expect(picker).toContain("item.url");
     expect(css).toContain("width: min(100%, 220px)");

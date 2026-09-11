@@ -1,3 +1,4 @@
+import type { PostCategorySlug } from "../../shared/posts/categories";
 import { encodePostCursor } from "./pagination";
 import type {
   FeedKind,
@@ -20,6 +21,7 @@ export interface PostStore {
   listFeed(input: {
     viewerId: string | null;
     kind: FeedKind;
+    categorySlug?: PostCategorySlug | null;
     cursor: PostCursor | null;
     limit: number;
   }): Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }>;
@@ -64,6 +66,7 @@ interface PostWithAuthorRow {
   title: string;
   slug: string;
   description: string;
+  category_slug: string;
   image_asset_id: string;
   visibility: string;
   status: string;
@@ -128,7 +131,7 @@ interface MediaRow {
 
 const POST_COLUMNS = `
   p.id, p.author_id, p.author_mode, p.is_nsfw, p.nsfw_marked_by, p.nsfw_marked_at,
-  p.title, p.slug, p.description, p.image_asset_id, p.visibility, p.status,
+  p.title, p.slug, p.description, p.category_slug, p.image_asset_id, p.visibility, p.status,
   p.comment_count, p.like_count, p.accepted_comment_id, p.verified_source_id,
   p.created_at, p.updated_at, p.edit_deadline_at, p.archived_at, p.deleted_at,
   p.hidden_at, p.locked_at, p.comments_closed, p.comments_closed_at,
@@ -161,6 +164,7 @@ function toPost(row: PostWithAuthorRow): PostWithAuthor {
       title: row.title,
       slug: row.slug,
       description: row.description,
+      categorySlug: row.category_slug as PostCategorySlug,
       imageAssetId: row.image_asset_id,
       visibility: toVisibility(row.visibility),
       status: toStatus(row.status),
@@ -284,11 +288,11 @@ export function createD1PostStore(db: D1Database): PostStore {
           .prepare(
             `INSERT INTO posts
                (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
-                title, slug, description, image_asset_id, visibility, status,
+                title, slug, description, category_slug, image_asset_id, visibility, status,
                 comment_count, like_count, accepted_comment_id, verified_source_id,
                 created_at, updated_at, edit_deadline_at, archived_at, deleted_at, hidden_at, locked_at,
                 comments_closed, comments_closed_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', 0, 0, NULL, NULL, ?, ?, ?, NULL, NULL, NULL, NULL, 0, NULL)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', 0, 0, NULL, NULL, ?, ?, ?, NULL, NULL, NULL, NULL, 0, NULL)`,
           )
           .bind(
             input.id,
@@ -300,6 +304,7 @@ export function createD1PostStore(db: D1Database): PostStore {
             input.title,
             input.slug,
             input.description,
+            input.categorySlug,
             input.image.id,
             input.visibility,
             input.createdAt,
@@ -340,7 +345,7 @@ export function createD1PostStore(db: D1Database): PostStore {
         : null;
     },
 
-    async listFeed({ viewerId, kind, cursor, limit }) {
+    async listFeed({ viewerId, kind, categorySlug, cursor, limit }) {
       const conditions = [
         "p.deleted_at IS NULL",
         "p.hidden_at IS NULL",
@@ -367,6 +372,11 @@ export function createD1PostStore(db: D1Database): PostStore {
         conditions.push("p.visibility = 'PUBLIC'");
         if (kind === "answered") conditions.push("p.status IN ('ANSWERED', 'VERIFIED')");
         if (kind === "verified") conditions.push("p.status = 'VERIFIED'");
+      }
+
+      if (categorySlug) {
+        conditions.push("p.category_slug = ?");
+        bindings.push(categorySlug);
       }
 
       if (viewerId) {

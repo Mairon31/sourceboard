@@ -419,6 +419,7 @@ export const posts = sqliteTable(
     title: text("title").notNull(),
     slug: text("slug").notNull(),
     description: text("description").notNull().default(""),
+    categorySlug: text("category_slug").notNull().default("other"),
     imageAssetId: text("image_asset_id")
       .notNull()
       .references(() => mediaAssets.id, { onDelete: "restrict" }),
@@ -443,6 +444,7 @@ export const posts = sqliteTable(
     index("posts_author_created_index").on(table.authorId, table.createdAt, table.id),
     index("posts_slug_index").on(table.slug),
     index("posts_image_asset_index").on(table.imageAssetId),
+    index("posts_category_created_idx").on(table.categorySlug, table.createdAt, table.id),
     check("posts_author_mode_check", sql`${table.authorMode} IN ('IDENTIFIED', 'ANONYMOUS')`),
     check(
       "posts_visibility_check",
@@ -767,6 +769,29 @@ export const comments = sqliteTable(
     ),
     index("comments_author_created_index").on(table.authorId, table.createdAt),
     check("comments_state_check", sql`${table.state} IN ('VISIBLE', 'HIDDEN', 'DELETED')`),
+  ],
+);
+
+export const commentLinkPreviews = sqliteTable(
+  "comment_link_previews",
+  {
+    commentId: text("comment_id")
+      .primaryKey()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    canonicalUrl: text("canonical_url").notNull(),
+    siteName: text("site_name"),
+    title: text("title"),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    fetchedAt: integer("fetched_at", { mode: "number" }).notNull(),
+    metadataStatus: text("metadata_status").notNull(),
+  },
+  (table) => [
+    index("comment_link_previews_fetched_at_idx").on(table.fetchedAt),
+    check(
+      "comment_link_previews_metadata_status_check",
+      sql`${table.metadataStatus} IN ('COMPLETE', 'PARTIAL', 'URL_ONLY')`,
+    ),
   ],
 );
 

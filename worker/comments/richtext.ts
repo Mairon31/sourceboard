@@ -214,6 +214,7 @@ export function normalizeCommentBody(input: {
   plaintext?: unknown;
   markdown?: unknown;
   attachment?: unknown;
+  allowEmpty?: boolean;
 }): NormalizedCommentBody {
   const nodes = Array.isArray(input.richtext)
     ? input.richtext
@@ -222,7 +223,7 @@ export function normalizeCommentBody(input: {
       : typeof input.plaintext === "string"
         ? [{ type: "text", text: input.plaintext }]
         : [];
-  if (nodes.length > MAX_NODES || (!nodes.length && input.attachment == null))
+  if (nodes.length > MAX_NODES || (!nodes.length && input.attachment == null && !input.allowEmpty))
     invalid("A comment must contain text or an attachment.");
   const richtext = nodes.map(normalizeNode);
   const plaintext = richtext
@@ -237,18 +238,21 @@ export function normalizeCommentBody(input: {
     .trim();
   if (plaintext.length > MAX_TEXT_LENGTH) invalid("Comments are limited to 5,000 characters.");
   const attachment = normalizeAttachment(input.attachment);
-  if (!plaintext && !attachment) invalid("A comment must contain text or an attachment.");
+  if (!plaintext && !attachment && !input.allowEmpty)
+    invalid("A comment must contain text or an attachment.");
   return { richtext, plaintext, attachment };
 }
 
 export function parseStoredCommentBody(
   richtextJson: string,
   attachmentJson: string | null,
+  allowEmpty = false,
 ): NormalizedCommentBody {
   try {
     return normalizeCommentBody({
       richtext: upgradeLegacyMarkdownNodes(JSON.parse(richtextJson)),
       attachment: attachmentJson ? JSON.parse(attachmentJson) : null,
+      allowEmpty,
     });
   } catch (error) {
     if (error instanceof PostError) throw error;

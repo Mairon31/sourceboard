@@ -148,7 +148,6 @@ function FriendIdentity({ friend }: { friend: Friend }) {
       displayName={friend.displayName}
       avatarUrl={friend.avatarUrl}
       avatarFrame={friend.cosmetics?.avatarFrame}
-      profileEffect={friend.cosmetics?.profileEffect}
       nameFont={friend.cosmetics?.nameFont}
       nameEffect={friend.cosmetics?.nameEffect}
       visuals={friend.cosmetics?.visuals}

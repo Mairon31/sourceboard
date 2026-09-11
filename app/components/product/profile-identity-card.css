@@ -5,39 +5,11 @@
   min-height: 0;
 }
 
-.product-profile-theme-layer,
-.product-profile-theme-photo,
 .product-profile-effect-layer {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-}
-
-.product-profile-theme-layer {
-  z-index: 0;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--accent) 8%, var(--surface-solid)),
-    var(--surface-solid)
-  );
-}
-
-.product-profile-theme-layer.sb-custom-cosmetic {
-  background: var(--sb-cosmetic-bg, var(--surface-solid));
-  border-color: var(--sb-cosmetic-border, transparent);
-  opacity: var(--sb-cosmetic-opacity, 1);
-}
-
-.product-profile-theme-photo {
-  z-index: 1;
-  background-position: center;
-  background-size: cover;
-  opacity: 0.24;
-  filter: saturate(0.9) contrast(0.95);
-}
-
-.product-profile-effect-layer {
   z-index: 2;
+  pointer-events: none;
   opacity: 0.62;
   mix-blend-mode: screen;
 }
@@ -46,204 +18,28 @@
   position: relative;
   z-index: 3;
   min-width: 0;
+  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
 }
 
 .product-profile-identity-card .product-profile-content {
-  background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
+  background: transparent;
   backdrop-filter: blur(6px);
 }
 
-.product-profile-identity-card[data-profile-theme="nebula"] .product-profile-theme-layer {
-  background:
-    radial-gradient(circle at 18% 12%, #7c5cff55, transparent 38%),
-    linear-gradient(145deg, #17182f, #242041 52%, #121a2a);
-}
-.product-profile-identity-card[data-profile-theme="aurora"] .product-profile-theme-layer {
-  background:
-    radial-gradient(circle at 12% 18%, #55e6bd66, transparent 40%),
-    radial-gradient(circle at 82% 20%, #8d71ff55, transparent 42%),
-    linear-gradient(150deg, #112527, #1d263e);
-}
-.product-profile-identity-card[data-profile-theme="ember"] .product-profile-theme-layer,
-.product-profile-identity-card[data-profile-theme="golden-hour"] .product-profile-theme-layer {
-  background:
-    radial-gradient(circle at 78% 14%, #ffcc6670, transparent 35%),
-    linear-gradient(145deg, #2e1715, #492319 48%, #211719);
-}
-.product-profile-identity-card[data-profile-theme="ocean-glass"] .product-profile-theme-layer {
-  background:
-    radial-gradient(circle at 20% 12%, #74ddff55, transparent 38%),
-    linear-gradient(145deg, #0d2533, #123d4e 52%, #10263b);
-}
-.product-profile-identity-card[data-profile-theme="sunset-noir"] .product-profile-theme-layer {
-  background:
-    radial-gradient(circle at 76% 8%, #ff7b7255, transparent 34%),
-    linear-gradient(145deg, #211827, #34203b 50%, #161724);
-}
-.product-profile-identity-card[data-profile-theme="prism-grid"] .product-profile-theme-layer,
-.product-profile-identity-card[data-profile-theme="terminal-grid"] .product-profile-theme-layer {
-  background-image:
-    linear-gradient(#6f7cff18 1px, transparent 1px),
-    linear-gradient(90deg, #6f7cff18 1px, transparent 1px),
-    linear-gradient(145deg, #151828, #1b2132);
-  background-size:
-    24px 24px,
-    24px 24px,
-    auto;
-}
-.product-profile-identity-card[data-profile-theme="forest-ink"] .product-profile-theme-layer {
-  background:
-    radial-gradient(circle at 18% 12%, #80d59a44, transparent 35%),
-    linear-gradient(145deg, #14241c, #203126 52%, #111b17);
-}
-.product-profile-identity-card[data-profile-theme="silver-wave"] .product-profile-theme-layer {
-  background:
-    radial-gradient(ellipse at 12% 20%, #ffffff26, transparent 42%),
-    linear-gradient(145deg, #222731, #343d4a 55%, #1b2029);
-}
-.product-profile-identity-card[data-profile-theme="cosmic-dusk"] .product-profile-theme-layer {
-  background:
-    radial-gradient(circle at 72% 14%, #dd7bff55, transparent 36%),
-    radial-gradient(circle at 18% 78%, #5b7cff44, transparent 42%),
-    linear-gradient(150deg, #181527, #29203c);
-}
-.product-profile-identity-card[data-profile-theme="sakura-night"] .product-profile-theme-layer {
-  background:
-    radial-gradient(circle at 75% 18%, #ff9ecb4d, transparent 34%),
-    linear-gradient(145deg, #211827, #352036 54%, #171621);
+.product-profile-identity-card .product-profile-name .cosmetic-identity--profile {
+  align-items: flex-end;
 }
 
-.product-profile-effect-layer--soft-glow,
-.product-profile-effect-layer--holy-glow {
-  background: radial-gradient(circle at 50% 34%, #ffffff45, transparent 52%);
-}
-.product-profile-effect-layer--paper-grain {
-  background-image: repeating-radial-gradient(
-    circle at 30% 20%,
-    #ffffff12 0 1px,
-    transparent 1px 4px
-  );
-  mix-blend-mode: soft-light;
-}
-.product-profile-effect-layer--star-dust,
-.product-profile-effect-layer--snow-drift {
-  background-image:
-    radial-gradient(circle at 12% 20%, #fff 0 1px, transparent 2px),
-    radial-gradient(circle at 70% 32%, #fff 0 1px, transparent 2px),
-    radial-gradient(circle at 38% 76%, #fff 0 1px, transparent 2px);
-  background-size:
-    72px 72px,
-    96px 96px,
-    120px 120px;
-  animation: profile-particles 14s linear infinite;
-}
-.product-profile-effect-layer--blue-energy,
-.product-profile-effect-layer--electric-burst {
-  background:
-    radial-gradient(circle at 78% 18%, #4bbcff66, transparent 30%),
-    radial-gradient(circle at 18% 78%, #7289ff44, transparent 34%);
-  animation: profile-pulse 3.6s ease-in-out infinite;
-}
-.product-profile-effect-layer--fire-pulse {
-  background: radial-gradient(ellipse at 50% 100%, #ff873d66, transparent 45%);
-  animation: profile-pulse 2.8s ease-in-out infinite;
-}
-.product-profile-effect-layer--pink-hearts {
-  background:
-    radial-gradient(circle at 20% 20%, #ff7eb955 0 3px, transparent 4px),
-    radial-gradient(circle at 82% 38%, #ff9ac855 0 3px, transparent 4px);
-  background-size:
-    72px 72px,
-    96px 96px;
-  animation: profile-particles 11s linear infinite;
-}
-.product-profile-effect-layer--dark-smoke,
-.product-profile-effect-layer--moon-mist {
-  background:
-    radial-gradient(ellipse at 20% 70%, #7c7f9a38, transparent 45%),
-    radial-gradient(ellipse at 78% 30%, #aeb5c433, transparent 42%);
-  mix-blend-mode: soft-light;
-  animation: profile-drift 9s ease-in-out infinite alternate;
-}
-.product-profile-effect-layer--butterfly,
-.product-profile-effect-layer--leaf-drift {
-  background:
-    radial-gradient(ellipse at 18% 20%, #fff4 0 3px, transparent 4px),
-    radial-gradient(ellipse at 78% 58%, #fff3 0 4px, transparent 5px);
-  animation: profile-drift 8s ease-in-out infinite alternate;
-}
-.product-profile-effect-layer--rgb-glitch {
-  background: linear-gradient(90deg, #ff375f22, transparent 32%, #48d7ff22 68%, transparent);
-  animation: profile-glitch 3s steps(2, end) infinite;
-}
-
-.sb-avatar--frame-holographic {
-  box-shadow:
-    0 0 0 3px #6ae4ff,
-    0 0 0 6px #ff7edb88,
-    0 0 20px #7b8cff66;
-}
-.sb-avatar--frame-fire {
-  box-shadow:
-    0 0 0 3px #ff8a3d,
-    0 0 14px #ff5d3566,
-    0 0 26px #ffc25b44;
-}
-.sb-avatar--frame-ice {
-  box-shadow:
-    0 0 0 3px #9fe7ff,
-    0 0 0 6px #dff8ff99,
-    0 0 20px #69c7ff55;
-}
-.sb-avatar--frame-electric {
-  box-shadow:
-    0 0 0 3px #7f8cff,
-    0 0 12px #71d7ff88,
-    0 0 24px #8c6cff55;
-}
-
-.product-avatar-frame--decorative {
-  position: relative;
-  isolation: isolate;
-}
-.product-avatar-frame--decorative[data-avatar-frame="cat-ears"]::before,
-.product-avatar-frame--decorative[data-avatar-frame="cat-ears"]::after {
-  content: "";
-  position: absolute;
-  z-index: 3;
-  top: -7px;
-  width: 17px;
-  height: 17px;
-  background: linear-gradient(135deg, #ffb4d4, #765eff);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-}
-.product-avatar-frame--decorative[data-avatar-frame="cat-ears"]::before {
-  left: 7px;
-  transform: rotate(-12deg);
-}
-.product-avatar-frame--decorative[data-avatar-frame="cat-ears"]::after {
-  right: 7px;
-  transform: rotate(12deg);
-}
-.product-avatar-frame--decorative[data-avatar-frame="wings"]::before,
-.product-avatar-frame--decorative[data-avatar-frame="wings"]::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 28%;
-  width: 24px;
-  height: 38px;
-  border: 2px solid #cdd8ff;
-  background: linear-gradient(145deg, #ffffff55, #8aa4ff22);
-  border-radius: 75% 25% 65% 35%;
-}
-.product-avatar-frame--decorative[data-avatar-frame="wings"]::before {
-  left: -15px;
-  transform: rotate(-24deg);
-}
-.product-avatar-frame--decorative[data-avatar-frame="wings"]::after {
-  right: -15px;
-  transform: scaleX(-1) rotate(-24deg);
+.product-profile-identity-card
+  .product-profile-name
+  .cosmetic-identity--profile
+  .cosmetic-identity__avatar-shell {
+  z-index: 5;
+  margin-top: -50px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-solid);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-subtle) 78%, transparent);
 }
 
 .product-profile-theme-edit {
@@ -285,55 +81,12 @@
   z-index: 0;
 }
 
-@keyframes profile-particles {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(12px, -18px, 0);
-  }
-}
-@keyframes profile-pulse {
-  0%,
-  100% {
-    opacity: 0.42;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.72;
-    transform: scale(1.025);
-  }
-}
-@keyframes profile-drift {
-  from {
-    transform: translate3d(-1.5%, 1%, 0) scale(1.02);
-  }
-  to {
-    transform: translate3d(1.5%, -1%, 0) scale(1.04);
-  }
-}
-@keyframes profile-glitch {
-  0%,
-  82%,
-  100% {
-    transform: translateX(0);
-    opacity: 0.38;
-  }
-  86% {
-    transform: translateX(2px);
-    opacity: 0.6;
-  }
-  90% {
-    transform: translateX(-2px);
-    opacity: 0.5;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .product-profile-effect-layer,
-  .product-avatar-frame--decorative::before,
-  .product-avatar-frame--decorative::after {
-    animation: none !important;
-    transition: none !important;
+@media (max-width: 760px) {
+  .product-profile-identity-card
+    .product-profile-name
+    .cosmetic-identity--profile
+    .cosmetic-identity__avatar-shell {
+    margin-top: -38px;
+    padding: 3px;
   }
 }

@@ -6,6 +6,7 @@ import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { hasSourceEligibleCommentContent } from "../../shared/richtext/comment-content";
 import { PostError } from "../posts/errors";
 import type { NotificationEvent } from "../notifications/service";
 
@@ -104,6 +105,27 @@ function reason(value: unknown): string {
       "A reason between 10 and 500 characters is required.",
     );
   return value.trim();
+}
+
+function storedCommentRichtext(value: unknown): unknown[] | undefined {
+  if (typeof value !== "string") return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function storedPreviewUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 2048) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 async function revokeResolution(
@@ -220,7 +242,15 @@ export async function handleSourceRequest(
     const database = db(env);
     const target = await database
       .prepare(
-        `SELECT p.author_id AS post_author_id, p.accepted_comment_id, p.verified_source_id, c.id AS comment_id, c.author_id AS comment_author_id, c.state AS comment_state FROM posts p LEFT JOIN comments c ON c.id = ? AND c.post_id = p.id WHERE p.id = ?`,
+        `SELECT p.author_id AS post_author_id, p.accepted_comment_id, p.verified_source_id,
+                c.id AS comment_id, c.author_id AS comment_author_id, c.state AS comment_state,
+                c.body_richtext_json AS comment_richtext_json,
+                c.body_plaintext AS comment_plaintext,
+                lp.canonical_url AS comment_preview_url
+         FROM posts p
+         LEFT JOIN comments c ON c.id = ? AND c.post_id = p.id
+         LEFT JOIN comment_link_previews lp ON lp.comment_id = c.id
+         WHERE p.id = ?`,
       )
       .bind(String(body.commentId ?? ""), id)
       .first<Record<string, unknown>>();
@@ -230,18 +260,33 @@ export async function handleSourceRequest(
         "INVALID_SOURCE_COMMENT",
         "The comment must belong to this post and be visible.",
       );
+    const commentPreviewUrl = storedPreviewUrl(target.comment_preview_url);
     const capability = requiredSourceCapability(kind);
     const current = await actor(request, requestId, env, capability);
     if (!capability && current.id !== target.post_author_id)
       throw new PostError(403, "POST_AUTHOR_REQUIRED", "Only the post author can accept a source.");
+    if (
+      kind === "accept" &&
+      !hasSourceEligibleCommentContent(
+        storedCommentRichtext(target.comment_richtext_json),
+        typeof target.comment_plaintext === "string" ? target.comment_plaintext : "",
+        commentPreviewUrl,
+      )
+    ) {
+      throw new PostError(
+        400,
+        "SOURCE_TEXT_REQUIRED",
+        "Accepted sources must include text or a link; media-only comments cannot be accepted.",
+      );
+    }
     if (kind === "accept") {
       const resolvedAt = Date.now();
       const results = await database.batch([
         database
           .prepare(
             `INSERT INTO source_resolutions
-             (id, post_id, comment_id, resolution_type, state, actor_user_id, created_at)
-             SELECT ?, ?, ?, 'ACCEPTED', 'ACTIVE', ?, ?
+             (id, post_id, comment_id, resolution_type, state, canonical_source_url, actor_user_id, created_at)
+             SELECT ?, ?, ?, 'ACCEPTED', 'ACTIVE', ?, ?, ?
              WHERE EXISTS (
                SELECT 1 FROM posts
                WHERE id = ? AND accepted_comment_id IS NULL
@@ -251,7 +296,16 @@ export async function handleSourceRequest(
                  WHERE post_id = ? AND resolution_type = 'ACCEPTED' AND state = 'ACTIVE'
                )`,
           )
-          .bind(createIdentifier(), id, target.comment_id, current.id, resolvedAt, id, id),
+          .bind(
+            createIdentifier(),
+            id,
+            target.comment_id,
+            commentPreviewUrl,
+            current.id,
+            resolvedAt,
+            id,
+            id,
+          ),
         database
           .prepare(
             `UPDATE posts

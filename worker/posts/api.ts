@@ -12,6 +12,7 @@ import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { parsePostCategorySlug, type PostCategorySlug } from "../../shared/posts/categories";
 import { createD1ProfileStore } from "../profile/store";
 import { createMediaService } from "../media/r2";
 import { PostError, isPostError } from "./errors";
@@ -179,6 +180,13 @@ function parseAuthorMode(value: unknown): PostAuthorMode {
   throw new PostError(400, "INVALID_AUTHOR_MODE", "The post author mode is invalid.");
 }
 
+function parseCreatePostCategory(value: FormDataEntryValue | null): PostCategorySlug {
+  if (value === null) return "other";
+  const categorySlug = parsePostCategorySlug(String(value));
+  if (categorySlug) return categorySlug;
+  throw new PostError(400, "INVALID_POST_CATEGORY", "Choose a valid post category.");
+}
+
 function requireContentRateLimit(
   env: SourceBoardEnvironment,
   viewerId: string,
@@ -256,6 +264,7 @@ async function createPostFromForm(
       isNsfw: parseBoolean(form.get("isNsfw")),
       title: String(form.get("title") ?? ""),
       description: String(form.get("description") ?? ""),
+      categorySlug: parseCreatePostCategory(form.get("category")),
       visibility: parsePostVisibility(String(form.get("visibility") ?? "PUBLIC")),
       image: {
         id: assetId,

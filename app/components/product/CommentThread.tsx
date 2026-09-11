@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import type { CommentAttachmentView, CommentView } from "../../../shared/ui/contracts";
+import { useLocation, useNavigate } from "react-router";
+import type {
+  CommentAttachmentView,
+  CommentLinkPreviewView,
+  CommentView,
+  PublicPostAuthor,
+} from "../../../shared/ui/contracts";
+import {
+  classifyCommentContent,
+  hasSourceEligibleCommentContent,
+} from "../../../shared/richtext/comment-content";
 import {
   formatEmoteMarkdown,
   normalizeEmoteShortcode,
@@ -8,12 +18,14 @@ import {
   type SafeInlineRichTextNode,
   type SafeRichTextNode,
 } from "../../../shared/richtext/markdown";
+import type { CommentSort } from "../../../worker/comments/types";
 import { readCsrfToken } from "../../data/csrf";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { RichText } from "./RichText";
 import { ShareAction } from "./ShareAction";
 import { MediaPicker, type MediaPickerKind } from "./MediaPicker";
+import { LinkPreviewCard } from "./LinkPreviewCard";
 import {
   Avatar,
   Badge,
@@ -23,9 +35,14 @@ import {
   Dropdown,
   EditIcon,
   FlagIcon,
+  GifIcon,
   HeartIcon,
+  Input,
+  LinkIcon,
   MessageIcon,
   MoreIcon,
+  SmileIcon,
+  StickerIcon,
   Textarea,
   TrashIcon,
 } from "../ui";
@@ -205,6 +222,25 @@ function CommentItem({
   const [busy, setBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const hidden = comment.state !== "VISIBLE";
+  const content = classifyCommentContent({
+    richtext: comment.richtext,
+    body: comment.body,
+    attachment: comment.attachment,
+  });
+  const sourceEligible = hasSourceEligibleCommentContent(
+    comment.richtext?.length ? comment.richtext : undefined,
+    comment.body,
+    comment.linkPreview?.canonicalUrl,
+  );
+  const bubbleClassName = [
+    "product-comment__bubble",
+    hidden ? "product-comment__bubble--muted" : "",
+    !hidden && content.visualOnly ? "product-comment__bubble--visual-only" : "",
+    !hidden && content.emoteOnly ? "product-comment__bubble--emote-only" : "",
+    !hidden && content.mixed ? "product-comment__bubble--mixed" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   useEffect(() => {
     authoritativeLikeRef.current = {
@@ -302,6 +338,7 @@ function CommentItem({
   return (
     <article
       id={`comment-${comment.id}`}
+      tabIndex={-1}
       className={`product-comment${depth ? " product-comment--reply" : ""}`}
     >
       <div className="product-comment__body">
@@ -318,7 +355,6 @@ function CommentItem({
                 displayName={comment.author.displayName}
                 avatarUrl={comment.author.avatarUrl}
                 avatarFrame={comment.author.avatarFrame}
-                profileEffect={comment.author.profileEffect}
                 nameFont={comment.author.nameFont}
                 nameEffect={comment.author.nameEffect}
                 visuals={comment.author.visuals}
@@ -327,6 +363,7 @@ function CommentItem({
                 nameAs="strong"
               />
             )}
+            {comment.isPostAuthor ? <Badge tone="accent">Author</Badge> : null}
           </div>
           <a
             className="product-comment__date"
@@ -382,13 +419,7 @@ function CommentItem({
             />
           ) : null}
         </div>
-        <div
-          className={
-            hidden
-              ? "product-comment__bubble product-comment__bubble--muted"
-              : "product-comment__bubble"
-          }
-        >
+        <div className={bubbleClassName}>
           {editing ? (
             <>
               <div
@@ -452,6 +483,7 @@ function CommentItem({
           ) : (
             <RichText nodes={commentNodes(comment)} />
           )}
+          {comment.linkPreview ? <LinkPreviewCard preview={comment.linkPreview} /> : null}
           {comment.attachment ? <CommentAttachment attachment={comment.attachment} /> : null}
         </div>
         {reporting ? (
@@ -459,15 +491,15 @@ function CommentItem({
         ) : null}
         <div className="product-comment__actions">
           <button
-            className={`product-comment__action${liked ? " is-active" : ""}`}
+            className={`product-comment__action product-comment__action--like${liked ? " is-active" : ""}`}
             type="button"
             aria-pressed={liked}
+            aria-label={liked ? "Unlike comment" : "Like comment"}
             disabled={likeBusy}
             onClick={() => void toggleLike()}
           >
             <HeartIcon width="15" height="15" fill={liked ? "currentColor" : "none"} />
-            <span>{liked ? "Liked" : "Like"}</span>
-            {likes ? <span className="product-comment__action-count">{likes}</span> : null}
+            <span className="product-comment__action-count">{likes}</span>
           </button>
           <button
             className="product-comment__action"
@@ -477,7 +509,7 @@ function CommentItem({
             <MessageIcon width="15" height="15" />
             <span>Reply</span>
           </button>
-          {canAcceptSource && comment.state === "VISIBLE" ? (
+          {canAcceptSource && comment.state === "VISIBLE" && sourceEligible ? (
             <button
               className="product-comment__action product-comment__action--accept"
               type="button"
@@ -491,7 +523,12 @@ function CommentItem({
             url={comment.commentHref ?? `#comment-${comment.id}`}
             title="SourceBoard comment"
           />
-          {comment.editedAt ? <span className="product-comment__action-meta">Edited</span> : null}
+          {comment.editedAt ? (
+            <span className="product-comment__edited" title="This comment was edited">
+              <EditIcon width="13" height="13" />
+              <span>Edited</span>
+            </span>
+          ) : null}
           {hidden ? (
             <span className="product-comment__action-meta">
               {comment.state === "HIDDEN" ? "Moderated" : "Deleted"}
@@ -565,33 +602,145 @@ function appendComment(comments: CommentView[], next: CommentView): CommentView[
   );
 }
 
+function insertRootComment(
+  items: CommentView[],
+  next: CommentView,
+  sort: CommentSort,
+): CommentView[] {
+  if (next.parentCommentId) return appendComment(items, next);
+  if (sort === "oldest") return [...items, next];
+  if (sort === "recent") return [next, ...items];
+  return [...items, next].sort(
+    (a, b) =>
+      b.reaction.count - a.reaction.count ||
+      b.createdAt.localeCompare(a.createdAt) ||
+      b.id.localeCompare(a.id),
+  );
+}
+
+const COMPOSER_FALLBACK_NAME = "SourceBoard member";
+
 export function CommentThread({
   postId,
   comments,
+  sort,
   authenticated = true,
+  viewerIdentity,
   commentsClosed = false,
   canAcceptSource,
   onAcceptSource,
 }: {
   postId: string;
   comments: CommentView[];
+  sort: CommentSort;
   authenticated?: boolean;
+  viewerIdentity?: PublicPostAuthor | null;
   commentsClosed?: boolean;
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
 }) {
   const submitInFlightRef = useRef(false);
+  const pendingFocusIdRef = useRef<string | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [items, setItems] = useState(comments);
   const [body, setBody] = useState("");
   const [status, setStatus] = useState<string>();
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [mediaKind, setMediaKind] = useState<MediaPickerKind | null>(null);
   const [attachment, setAttachment] = useState<CommentAttachmentView | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkPreview, setLinkPreview] = useState<CommentLinkPreviewView | null>(null);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkStatus, setLinkStatus] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   useEffect(() => setItems(comments), [comments]);
 
+  function changeSort(nextSort: CommentSort) {
+    if (nextSort === sort) return;
+    const params = new URLSearchParams(location.search);
+    params.set("comments", nextSort);
+    navigate(`${location.pathname}?${params.toString()}`);
+  }
+
+  useEffect(() => {
+    const id = pendingFocusIdRef.current;
+    if (!id) return;
+
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        const target = document.getElementById(`comment-${id}`);
+        if (!(target instanceof HTMLElement)) return;
+        pendingFocusIdRef.current = null;
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+        target.focus({ preventScroll: true });
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${window.location.pathname}${window.location.search}#comment-${encodeURIComponent(id)}`,
+        );
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [items]);
+
+  function clearLinkPreview() {
+    setLinkPreview(null);
+    setLinkUrl("");
+    setLinkStatus(undefined);
+  }
+
+  function changeMediaKind(nextKind: MediaPickerKind | null) {
+    if (nextKind && nextKind !== "EMOTE") {
+      clearLinkPreview();
+      setLinkOpen(false);
+    }
+    setMediaKind(nextKind);
+  }
+
+  async function previewLink() {
+    const candidate = linkUrl.trim();
+    if (!candidate) {
+      setLinkStatus("Enter a link to preview.");
+      return;
+    }
+    setLinkBusy(true);
+    setLinkStatus(undefined);
+    try {
+      const response = await fetch("/api/comments/link-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({ url: candidate }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        preview?: CommentLinkPreviewView;
+      } | null;
+      if (!response.ok || !payload?.preview) {
+        if (response.status === 429) throw new Error("Too many link previews. Try again later.");
+        if (response.status === 400) throw new Error("That link is invalid or not allowed.");
+        throw new Error("Link metadata is unavailable right now.");
+      }
+      setLinkPreview(payload.preview);
+      setLinkUrl(payload.preview.canonicalUrl);
+      setAttachment(null);
+      setMediaKind(null);
+    } catch (cause) {
+      setLinkPreview(null);
+      setLinkStatus(cause instanceof Error ? cause.message : "Link preview unavailable.");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
   async function submit() {
-    if (submitInFlightRef.current || (!body.trim() && !attachment)) return;
+    if (submitInFlightRef.current || (!body.trim() && !attachment && !linkPreview)) return;
     submitInFlightRef.current = true;
     setSubmitting(true);
     setStatus(undefined);
@@ -599,15 +748,26 @@ export function CommentThread({
       const response = await fetch(`/api/posts/${encodeURIComponent(postId)}/comments`, {
         method: "POST",
         headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({ markdown: body, parentCommentId: replyTo, attachment }),
+        body: JSON.stringify({
+          markdown: body,
+          parentCommentId: replyTo,
+          attachment,
+          linkPreviewUrl: linkPreview?.canonicalUrl,
+        }),
       });
       const payload = (await response.json().catch(() => null)) as { comment?: CommentView } | null;
       if (!response.ok || !payload?.comment)
         throw new Error(response.status === 401 ? "Sign in to comment." : "Comment unavailable.");
-      setItems((current) => appendComment(current, payload.comment!));
+      const created = payload.comment;
+      pendingFocusIdRef.current = created.id;
+      setItems((current) => insertRootComment(current, created, sort));
       setBody("");
       setAttachment(null);
       setMediaKind(null);
+      setLinkOpen(false);
+      setLinkUrl("");
+      setLinkPreview(null);
+      setLinkStatus(undefined);
       setReplyTo(null);
       setStatus("Comment posted.");
     } catch (cause) {
@@ -625,7 +785,19 @@ export function CommentThread({
           <span className="product-eyebrow">Discussion</span>
           <h2 id="comments-heading">Comments</h2>
         </div>
-        <span>{items.length} top-level</span>
+        <div className="product-comments__heading-actions">
+          <span>{items.length} top-level</span>
+          <select
+            className="product-comments__sort"
+            aria-label="Sort comments"
+            value={sort}
+            onChange={(event) => changeSort(event.target.value as CommentSort)}
+          >
+            <option value="recent">Recent</option>
+            <option value="popular">Popular</option>
+            <option value="oldest">Oldest</option>
+          </select>
+        </div>
       </header>
       {!authenticated ? (
         <AuthRequiredCard
@@ -642,7 +814,21 @@ export function CommentThread({
         </div>
       ) : (
         <div className="product-comment-composer glass-panel">
-          <Avatar name="SourceBoard member" size="sm" />
+          {viewerIdentity?.mode === "IDENTIFIED" ? (
+            <CosmeticIdentity
+              displayName={viewerIdentity.displayName}
+              avatarUrl={viewerIdentity.avatarUrl}
+              avatarFrame={viewerIdentity.avatarFrame}
+              nameFont={viewerIdentity.nameFont}
+              nameEffect={viewerIdentity.nameEffect}
+              visuals={viewerIdentity.visuals}
+              mode="compact"
+              avatarSize="sm"
+              nameAs="strong"
+            />
+          ) : (
+            <Avatar name={viewerIdentity?.displayName ?? COMPOSER_FALLBACK_NAME} size="sm" />
+          )}
           <div className="product-comment-composer__field">
             <Textarea
               id="comment-composer"
@@ -655,25 +841,48 @@ export function CommentThread({
             <div className="product-comment-composer__toolbar">
               <div>
                 <button
+                  className={`product-comment-composer__media-action${mediaKind === "GIF" ? " is-active" : ""}`}
                   type="button"
+                  aria-label="GIF"
+                  title="GIF"
                   aria-expanded={mediaKind === "GIF"}
-                  onClick={() => setMediaKind(mediaKind === "GIF" ? null : "GIF")}
+                  onClick={() => changeMediaKind(mediaKind === "GIF" ? null : "GIF")}
                 >
-                  GIF
+                  <GifIcon width="20" height="20" />
                 </button>
                 <button
+                  className={`product-comment-composer__media-action${mediaKind === "STICKER" ? " is-active" : ""}`}
                   type="button"
+                  aria-label="Sticker"
+                  title="Sticker"
                   aria-expanded={mediaKind === "STICKER"}
-                  onClick={() => setMediaKind(mediaKind === "STICKER" ? null : "STICKER")}
+                  onClick={() => changeMediaKind(mediaKind === "STICKER" ? null : "STICKER")}
                 >
-                  Sticker
+                  <StickerIcon width="20" height="20" />
                 </button>
                 <button
+                  className={`product-comment-composer__media-action${mediaKind === "EMOTE" ? " is-active" : ""}`}
                   type="button"
+                  aria-label="Emote"
+                  title="Emote"
                   aria-expanded={mediaKind === "EMOTE"}
-                  onClick={() => setMediaKind(mediaKind === "EMOTE" ? null : "EMOTE")}
+                  onClick={() => changeMediaKind(mediaKind === "EMOTE" ? null : "EMOTE")}
                 >
-                  Emote
+                  <SmileIcon width="20" height="20" />
+                </button>
+                <button
+                  className={`product-comment-composer__media-action${linkOpen ? " is-active" : ""}`}
+                  type="button"
+                  aria-label="Link"
+                  title="Link"
+                  aria-expanded={linkOpen}
+                  onClick={() => {
+                    const nextOpen = !linkOpen;
+                    setLinkOpen(nextOpen);
+                    if (nextOpen) setMediaKind(null);
+                  }}
+                >
+                  <LinkIcon width="20" height="20" />
                 </button>
                 {attachment ? (
                   <button type="button" onClick={() => setAttachment(null)}>
@@ -684,7 +893,7 @@ export function CommentThread({
               <Button
                 size="sm"
                 loading={submitting}
-                disabled={submitting || (!body.trim() && !attachment)}
+                disabled={submitting || (!body.trim() && !attachment && !linkPreview)}
                 onClick={() => void submit()}
               >
                 {replyTo ? "Reply" : "Comment"}
@@ -698,7 +907,7 @@ export function CommentThread({
             {mediaKind ? (
               <MediaPicker
                 kind={mediaKind}
-                onKindChange={setMediaKind}
+                onKindChange={changeMediaKind}
                 onSelect={(item) => {
                   if (item.type === "EMOTE") {
                     setBody(
@@ -706,6 +915,8 @@ export function CommentThread({
                         `${current}${current && !/\s$/.test(current) ? " " : ""}${formatEmoteMarkdown(item.shortcode)}`,
                     );
                   } else {
+                    clearLinkPreview();
+                    setLinkOpen(false);
                     setAttachment({
                       type: item.type,
                       id: item.id,
@@ -715,10 +926,44 @@ export function CommentThread({
                       preview: item.preview,
                     });
                   }
-                  setMediaKind(null);
+                  changeMediaKind(null);
                 }}
-                onClose={() => setMediaKind(null)}
+                onClose={() => changeMediaKind(null)}
               />
+            ) : null}
+            {linkOpen ? (
+              <div className="product-comment-composer__link-panel">
+                <Input
+                  label="Link URL"
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://example.com/source"
+                  value={linkUrl}
+                  onChange={(event) => {
+                    setLinkUrl(event.target.value);
+                    setLinkPreview(null);
+                    setLinkStatus(undefined);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void previewLink();
+                    }
+                  }}
+                />
+                <div className="product-comment-composer__link-actions">
+                  <Button size="sm" loading={linkBusy} onClick={() => void previewLink()}>
+                    Preview link
+                  </Button>
+                  {linkPreview ? (
+                    <Button size="sm" variant="ghost" onClick={clearLinkPreview}>
+                      Remove link
+                    </Button>
+                  ) : null}
+                </div>
+                {linkPreview ? <LinkPreviewCard preview={linkPreview} /> : null}
+                {linkStatus ? <small role="status">{linkStatus}</small> : null}
+              </div>
             ) : null}
             {status ? <small role="status">{status}</small> : null}
           </div>

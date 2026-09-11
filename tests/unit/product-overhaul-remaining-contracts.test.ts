@@ -82,17 +82,15 @@ describe("remaining product overhaul contracts", () => {
     const routes = read("../../app/routes.ts");
 
     expect(home).toContain("const recent = await service.listFeed");
-    expect(home).toContain("friends: []");
-    expect(home).toContain("answered: []");
-    expect(home).toContain("verified: []");
-    expect(home).toContain("loadedFeeds.has(nextFeed)");
+    expect(home).toContain("feedCacheKey");
+    expect(home).toContain("loadedKeys.has(key)");
     expect(home).toContain("/resources/feed/${encodeURIComponent(nextFeed)}");
     expect(home).toContain('role="tablist"');
     expect(home).toContain('role="tab"');
     expect(home).toContain("aria-selected={feed === option.value}");
     expect(home).toContain("handleFeedKeyDown");
     expect(home).toContain('role="tabpanel"');
-    expect(feedResource).toContain("service.listFeed({ viewerId: userId, kind");
+    expect(feedResource).toContain("service.listFeed({");
     expect(routes).toContain('route("resources/feed/:kind", "routes/feed-resource.tsx")');
   });
 });

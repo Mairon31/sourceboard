@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { seedCategoryBadgeFixture } from "./category-fixture";
 import { friendsFixture, installFriendsFixture } from "./friends-fixture";
 import { installAdminStoreFixture, waitForUiReady } from "./test-helpers";
 
@@ -117,19 +118,51 @@ test("friends workspace keeps incoming requests and discovery contained on mobil
 test("Store effect previews animate normally and stop under reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/store");
-  const preview = page.locator(".product-store-preview--star-dust").first();
+  const preview = page.locator('[data-profile-effect="star-dust"]').first();
   await expect(preview).toBeVisible();
+  const animatedNode = preview.locator(".product-profile-effect-layer__node").first();
+  await expect(animatedNode).toBeAttached();
 
-  const normalAnimation = await preview.evaluate(
-    (element) => getComputedStyle(element, "::before").animationName,
+  const normalAnimation = await animatedNode.evaluate(
+    (element) => getComputedStyle(element).animationName,
   );
   expect(normalAnimation).not.toBe("none");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const reducedAnimation = await preview.evaluate(
-    (element) => getComputedStyle(element, "::before").animationName,
+  const reducedAnimation = await animatedNode.evaluate(
+    (element) => getComputedStyle(element).animationName,
   );
   expect(["", "none"]).toContain(reducedAnimation);
+});
+
+test("Discovery Gallery stays two-column and contained at 390px", async ({ page }) => {
+  seedCategoryBadgeFixture();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/search?q=E2E&kind=posts&category=anime&view=gallery");
+  await waitForUiReady(page);
+
+  const gallery = page.locator(".product-search-gallery");
+  await expect(gallery).toBeVisible();
+  const geometry = await gallery.evaluate((element) => ({
+    columns: getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  }));
+  expect(geometry.columns).toBe(2);
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+});
+
+test("Discovery Gallery removes overlay transitions under reduced motion", async ({ page }) => {
+  seedCategoryBadgeFixture();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/search?q=E2E&kind=posts&category=anime&view=gallery");
+  await waitForUiReady(page);
+
+  const overlay = page.locator(".product-search-gallery__overlay").first();
+  await expect(overlay).toBeAttached();
+  const transitionDuration = await overlay.evaluate(
+    (element) => getComputedStyle(element).transitionDuration,
+  );
+  expect(Number.parseFloat(transitionDuration)).toBeLessThanOrEqual(0.001);
 });
 
 test("reduced motion remains active on product surfaces", async ({ page }) => {

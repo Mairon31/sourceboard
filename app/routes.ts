@@ -7,6 +7,8 @@ export default [
   route("forgot-password", "routes/forgot-password.tsx"),
   route("verify-email", "routes/verify-email.tsx"),
   route("search", "routes/search.tsx"),
+  route("category", "routes/category-index.tsx"),
+  route("category/:categorySlug", "routes/category.tsx"),
   route("resources/feed/:kind", "routes/feed-resource.tsx"),
   route("post/new", "routes/post-new.tsx"),
   route("posts/:postId", "routes/post-detail.tsx"),

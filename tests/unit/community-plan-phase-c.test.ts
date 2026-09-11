@@ -24,7 +24,8 @@ describe("community plan phase C profile cosmetics", () => {
     const editor = read("../../app/components/product/ProfileEditor.tsx");
     expect(card).toContain("data-profile-theme");
     expect(card).toContain("profileEffect");
-    expect(card).toContain("product-profile-theme-layer");
+    expect(card).toContain("<ProfileThemeLayer");
+    expect(card).toContain("<ProfileEffectLayer");
     expect(hero).toContain("ProfileIdentityCard");
     expect(editor).toContain("ProfileIdentityCard");
   });
@@ -56,10 +57,13 @@ describe("community plan phase C profile cosmetics", () => {
     }
   });
 
-  it("keeps profile effects inside the profile card and respects reduced motion", () => {
-    const css = read("../../app/components/product/profile-identity-card.css");
-    expect(css).toContain("product-profile-effect-layer");
-    expect(css).toContain("prefers-reduced-motion: reduce");
-    expect(css).toContain("product-avatar-frame--decorative");
+  it("keeps profile effects and structural frames scoped with reduced motion", () => {
+    const cardCss = read("../../app/components/product/profile-identity-card.css");
+    const effectCss = read("../../app/components/product/profile-effects.css");
+    const frameCss = read("../../app/components/product/avatar-frames.css");
+    expect(cardCss).toContain("product-profile-effect-layer");
+    expect(effectCss).toContain("prefers-reduced-motion: reduce");
+    expect(frameCss).toContain("prefers-reduced-motion: reduce");
+    expect(frameCss).toContain("product-avatar-frame--decorative");
   });
 });
