@@ -450,9 +450,6 @@ export function PostCard({
       <div className="product-post__engagement">
         <div className="product-post__meta">
           <span>
-            <strong>{likes}</strong> {likes === 1 ? "like" : "likes"}
-          </span>
-          <span>
             <strong>{post.commentCount}</strong> {post.commentCount === 1 ? "comment" : "comments"}
           </span>
           {post.acceptedSource ? (
@@ -465,14 +462,14 @@ export function PostCard({
         <footer className="product-post__actions">
           <button
             type="button"
-            className={`product-post__action${liked ? " product-post__action--liked" : ""}`}
+            className={`product-post__action product-post__action--like${liked ? " product-post__action--liked" : ""}`}
             aria-pressed={liked}
             aria-label={liked ? "Unlike post" : "Like post"}
             disabled={reactionBusy}
             onClick={() => void toggleLike()}
           >
-            <HeartIcon />
-            <span>{liked ? "Liked" : "Like"}</span>
+            <HeartIcon fill={liked ? "currentColor" : "none"} />
+            <span>{likes}</span>
           </button>
           <Link
             className="product-post__action"

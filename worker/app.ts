@@ -19,15 +19,30 @@ const requestHandler = createRequestHandler(
   import.meta.env.MODE,
 );
 
+function preventHtmlTransforms(response: Response): Response {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("text/html")) return response;
+  const headers = new Headers(response.headers);
+  const cacheControl = headers.get("cache-control");
+  if (!cacheControl) {
+    headers.set("cache-control", "private, no-store, no-transform");
+  } else if (!/(?:^|,)\s*no-transform(?:\s*,|$)/i.test(cacheControl)) {
+    headers.set("cache-control", `${cacheControl}, no-transform`);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request, env) {
     const startedAt = Date.now();
     const cspNonce = crypto.randomUUID().replaceAll("-", "");
     const finish = (response: Response): Response => {
-      const secured = withSecurityHeaders(
-        response,
-        new URL(request.url).protocol === "https:",
-        cspNonce,
+      const secured = preventHtmlTransforms(
+        withSecurityHeaders(response, new URL(request.url).protocol === "https:", cspNonce),
       );
       observeRequest(request, secured, startedAt);
       return secured;
