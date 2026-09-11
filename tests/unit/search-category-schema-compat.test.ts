@@ -29,7 +29,9 @@ function createService(db: D1Database) {
   return createSearchService({
     db,
     profileStore: {
-      getPreferences: vi.fn(async () => null),
+      getPreferences: vi.fn(async () => {
+        throw new Error("preferences should not be loaded for anonymous search");
+      }),
       getEquippedCosmetics: vi.fn(async () => ({})),
     },
   });
