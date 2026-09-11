@@ -42,75 +42,6 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-subtle) 78%, transparent);
 }
 
-.sb-avatar--frame-holographic {
-  box-shadow:
-    0 0 0 3px #6ae4ff,
-    0 0 0 6px #ff7edb88,
-    0 0 20px #7b8cff66;
-}
-.sb-avatar--frame-fire {
-  box-shadow:
-    0 0 0 3px #ff8a3d,
-    0 0 14px #ff5d3566,
-    0 0 26px #ffc25b44;
-}
-.sb-avatar--frame-ice {
-  box-shadow:
-    0 0 0 3px #9fe7ff,
-    0 0 0 6px #dff8ff99,
-    0 0 20px #69c7ff55;
-}
-.sb-avatar--frame-electric {
-  box-shadow:
-    0 0 0 3px #7f8cff,
-    0 0 12px #71d7ff88,
-    0 0 24px #8c6cff55;
-}
-
-.product-avatar-frame--decorative {
-  position: relative;
-  isolation: isolate;
-}
-.product-avatar-frame--decorative[data-avatar-frame="cat-ears"]::before,
-.product-avatar-frame--decorative[data-avatar-frame="cat-ears"]::after {
-  content: "";
-  position: absolute;
-  z-index: 3;
-  top: -7px;
-  width: 17px;
-  height: 17px;
-  background: linear-gradient(135deg, #ffb4d4, #765eff);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-}
-.product-avatar-frame--decorative[data-avatar-frame="cat-ears"]::before {
-  left: 7px;
-  transform: rotate(-12deg);
-}
-.product-avatar-frame--decorative[data-avatar-frame="cat-ears"]::after {
-  right: 7px;
-  transform: rotate(12deg);
-}
-.product-avatar-frame--decorative[data-avatar-frame="wings"]::before,
-.product-avatar-frame--decorative[data-avatar-frame="wings"]::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 28%;
-  width: 24px;
-  height: 38px;
-  border: 2px solid #cdd8ff;
-  background: linear-gradient(145deg, #ffffff55, #8aa4ff22);
-  border-radius: 75% 25% 65% 35%;
-}
-.product-avatar-frame--decorative[data-avatar-frame="wings"]::before {
-  left: -15px;
-  transform: rotate(-24deg);
-}
-.product-avatar-frame--decorative[data-avatar-frame="wings"]::after {
-  right: -15px;
-  transform: scaleX(-1) rotate(-24deg);
-}
-
 .product-profile-theme-edit {
   position: absolute;
   z-index: 5;
@@ -157,13 +88,5 @@
     .cosmetic-identity__avatar-shell {
     margin-top: -38px;
     padding: 3px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .product-avatar-frame--decorative::before,
-  .product-avatar-frame--decorative::after {
-    animation: none !important;
-    transition: none !important;
   }
 }
