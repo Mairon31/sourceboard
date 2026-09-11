@@ -8,6 +8,7 @@ import {
 } from "../../app/data/search-state";
 
 const service = readFileSync(new URL("../../worker/search/service.ts", import.meta.url), "utf8");
+const searchRoute = readFileSync(new URL("../../app/routes/search.tsx", import.meta.url), "utf8");
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -120,5 +121,14 @@ describe("Discovery 2.0 route state", () => {
     } as unknown as Storage;
     expect(readSearchViewPreference(throwingStorage)).toBeNull();
     expect(() => writeSearchViewPreference(throwingStorage, "gallery")).not.toThrow();
+  });
+});
+
+describe("Discovery 2.0 route orchestration", () => {
+  it("uses centralized state, structured controls and a dedicated post-results boundary", () => {
+    expect(searchRoute).toContain("parseSearchState");
+    expect(searchRoute).toContain("categorySlug: state.categorySlug");
+    expect(searchRoute).toContain("<SearchDiscoveryControls");
+    expect(searchRoute).toContain("<SearchPostResults");
   });
 });
