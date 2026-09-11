@@ -16,9 +16,7 @@ const postStoreSource = readSource("../../worker/posts/store.ts");
 const postApiSource = readSource("../../worker/posts/api.ts");
 const composerSource = readSource("../../app/components/product/PostComposer.tsx");
 const postCardSource = readSource("../../app/components/product/PostCard.tsx");
-const categoryBadgeSource = readSource(
-  "../../app/components/product/PostCategoryBadge.tsx",
-);
+const categoryBadgeSource = readSource("../../app/components/product/PostCategoryBadge.tsx");
 const categoryMigrationSource = readSource("../../migrations/0028_post_categories.sql");
 
 describe("post categories", () => {
