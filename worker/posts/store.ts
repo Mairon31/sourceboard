@@ -152,6 +152,16 @@ const POST_COLUMNS = `
   (SELECT u2.username FROM source_resolutions sr JOIN users u2 ON u2.id = sr.actor_user_id WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_by_username
 `;
 
+const LEGACY_POST_COLUMNS = POST_COLUMNS.replace(
+  "p.title, p.slug, p.description, p.category_slug, p.image_asset_id, p.visibility, p.status,",
+  "p.title, p.slug, p.description, 'other' AS category_slug, p.image_asset_id, p.visibility, p.status,",
+);
+
+function isMissingPostCategoryColumn(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /no such column[^\n]*category_slug/i.test(message);
+}
+
 function toPost(row: PostWithAuthorRow): PostWithAuthor {
   return {
     post: {
@@ -235,8 +245,9 @@ function toStatus(value: string): PostRecord["status"] {
     : "OPEN";
 }
 
-function postQuery(where: string): string {
-  return `SELECT ${POST_COLUMNS}
+function postQuery(where: string, legacyCategory = false): string {
+  const columns = legacyCategory ? LEGACY_POST_COLUMNS : POST_COLUMNS;
+  return `SELECT ${columns}
     FROM posts p
     JOIN users u ON u.id = p.author_id
     LEFT JOIN user_profiles up ON up.user_id = p.author_id
@@ -315,19 +326,33 @@ export function createD1PostStore(db: D1Database): PostStore {
     },
 
     async getPost(postId) {
-      const row = await db
-        .prepare(postQuery("p.id = ? AND m.purpose = 'POST_IMAGE'"))
-        .bind(postId)
-        .first<PostWithAuthorRow>();
-      return row ? toPost(row) : null;
+      const where = "p.id = ? AND m.purpose = 'POST_IMAGE'";
+      try {
+        const row = await db.prepare(postQuery(where)).bind(postId).first<PostWithAuthorRow>();
+        return row ? toPost(row) : null;
+      } catch (error) {
+        if (!isMissingPostCategoryColumn(error)) throw error;
+        const row = await db
+          .prepare(postQuery(where, true))
+          .bind(postId)
+          .first<PostWithAuthorRow>();
+        return row ? toPost(row) : null;
+      }
     },
 
     async getPostForMedia(assetId) {
-      const row = await db
-        .prepare(postQuery("p.image_asset_id = ? AND m.purpose = 'POST_IMAGE'"))
-        .bind(assetId)
-        .first<PostWithAuthorRow>();
-      return row ? toPost(row) : null;
+      const where = "p.image_asset_id = ? AND m.purpose = 'POST_IMAGE'";
+      try {
+        const row = await db.prepare(postQuery(where)).bind(assetId).first<PostWithAuthorRow>();
+        return row ? toPost(row) : null;
+      } catch (error) {
+        if (!isMissingPostCategoryColumn(error)) throw error;
+        const row = await db
+          .prepare(postQuery(where, true))
+          .bind(assetId)
+          .first<PostWithAuthorRow>();
+        return row ? toPost(row) : null;
+      }
     },
 
     async getNsfwPost(postId) {
@@ -374,7 +399,9 @@ export function createD1PostStore(db: D1Database): PostStore {
         if (kind === "verified") conditions.push("p.status = 'VERIFIED'");
       }
 
+      let categoryBindingIndex: number | null = null;
       if (categorySlug) {
+        categoryBindingIndex = bindings.length;
         conditions.push("p.category_slug = ?");
         bindings.push(categorySlug);
       }
@@ -393,12 +420,30 @@ export function createD1PostStore(db: D1Database): PostStore {
         bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
       }
 
-      const result = await db
-        .prepare(
-          `${postQuery(conditions.join(" AND "))} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
-        )
-        .bind(...bindings, limit + 1)
-        .all<PostWithAuthorRow>();
+      const runFeedQuery = (
+        queryConditions: string[],
+        queryBindings: unknown[],
+        legacyCategory = false,
+      ) =>
+        db
+          .prepare(
+            `${postQuery(queryConditions.join(" AND "), legacyCategory)} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
+          )
+          .bind(...queryBindings, limit + 1)
+          .all<PostWithAuthorRow>();
+      let result: D1Result<PostWithAuthorRow>;
+      try {
+        result = await runFeedQuery(conditions, bindings);
+      } catch (error) {
+        if (!isMissingPostCategoryColumn(error)) throw error;
+        if (categorySlug && categorySlug !== "other") return { posts: [], nextCursor: null };
+        const legacyConditions = conditions.filter(
+          (condition) => condition !== "p.category_slug = ?",
+        );
+        const legacyBindings = [...bindings];
+        if (categoryBindingIndex !== null) legacyBindings.splice(categoryBindingIndex, 1);
+        result = await runFeedQuery(legacyConditions, legacyBindings, true);
+      }
       const hasNextPage = result.results.length > limit;
       const rows = hasNextPage ? result.results.slice(0, limit) : result.results;
       const last = rows.at(-1);
@@ -424,12 +469,20 @@ export function createD1PostStore(db: D1Database): PostStore {
         conditions.push("(p.created_at < ? OR (p.created_at = ? AND p.id < ?))");
         bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
       }
-      const result = await db
-        .prepare(
-          `${postQuery(conditions.join(" AND "))} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
-        )
-        .bind(...bindings, limit + 1)
-        .all<PostWithAuthorRow>();
+      const runByAuthorQuery = (legacyCategory = false) =>
+        db
+          .prepare(
+            `${postQuery(conditions.join(" AND "), legacyCategory)} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
+          )
+          .bind(...bindings, limit + 1)
+          .all<PostWithAuthorRow>();
+      let result: D1Result<PostWithAuthorRow>;
+      try {
+        result = await runByAuthorQuery();
+      } catch (error) {
+        if (!isMissingPostCategoryColumn(error)) throw error;
+        result = await runByAuthorQuery(true);
+      }
       const hasNextPage = result.results.length > limit;
       const rows = hasNextPage ? result.results.slice(0, limit) : result.results;
       const last = rows.at(-1);
@@ -462,12 +515,20 @@ export function createD1PostStore(db: D1Database): PostStore {
         conditions.push("(p.created_at < ? OR (p.created_at = ? AND p.id < ?))");
         bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
       }
-      const result = await db
-        .prepare(
-          `${postQuery(conditions.join(" AND "))} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
-        )
-        .bind(...bindings, limit + 1)
-        .all<PostWithAuthorRow>();
+      const runAcceptedQuery = (legacyCategory = false) =>
+        db
+          .prepare(
+            `${postQuery(conditions.join(" AND "), legacyCategory)} ORDER BY p.created_at DESC, p.id DESC LIMIT ?`,
+          )
+          .bind(...bindings, limit + 1)
+          .all<PostWithAuthorRow>();
+      let result: D1Result<PostWithAuthorRow>;
+      try {
+        result = await runAcceptedQuery();
+      } catch (error) {
+        if (!isMissingPostCategoryColumn(error)) throw error;
+        result = await runAcceptedQuery(true);
+      }
       const hasNextPage = result.results.length > limit;
       const rows = hasNextPage ? result.results.slice(0, limit) : result.results;
       const last = rows.at(-1);
