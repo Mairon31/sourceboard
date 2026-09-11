@@ -36,7 +36,10 @@ function previewVisuals(
   return { avatarFrame: visual };
 }
 
-function validTheme(type: ProfileCosmeticPreviewType, preset?: string): ProfileThemePreset | undefined {
+function validTheme(
+  type: ProfileCosmeticPreviewType,
+  preset?: string,
+): ProfileThemePreset | undefined {
   return type === "PROFILE_BANNER" && isProfileThemePreset(preset) ? preset : undefined;
 }
 
@@ -47,7 +50,10 @@ function validEffect(
   return type === "PROFILE_EFFECT" && isProfileEffectPreset(preset) ? preset : undefined;
 }
 
-function validFrame(type: ProfileCosmeticPreviewType, preset?: string): AvatarFramePreset | undefined {
+function validFrame(
+  type: ProfileCosmeticPreviewType,
+  preset?: string,
+): AvatarFramePreset | undefined {
   return type === "AVATAR_FRAME" && isAvatarFramePreset(preset) ? preset : undefined;
 }
 
@@ -66,7 +72,9 @@ export function ProfileCosmeticPreview({
 
   if (type === "AVATAR_FRAME") {
     return (
-      <div className={`product-cosmetic-preview product-cosmetic-preview--frame cosmetic-root${className ? ` ${className}` : ""}`}>
+      <div
+        className={`product-cosmetic-preview product-cosmetic-preview--frame cosmetic-root${className ? ` ${className}` : ""}`}
+      >
         {communityStyles?.map((style) => (
           <style key={style.id}>{style.css}</style>
         ))}
@@ -94,12 +102,7 @@ export function ProfileCosmeticPreview({
       communityStyles={communityStyles}
     >
       <div className="profile-header product-cosmetic-preview__header">
-        <CosmeticIdentity
-          displayName={name}
-          avatarUrl={avatarUrl}
-          mode="preview"
-          nameAs="strong"
-        />
+        <CosmeticIdentity displayName={name} avatarUrl={avatarUrl} mode="preview" nameAs="strong" />
       </div>
     </ProfileIdentityCard>
   );

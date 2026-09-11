@@ -18,11 +18,7 @@ import { ProfileCosmeticPreview } from "./ProfileCosmeticPreview";
 import "./community-cosmetics.css";
 
 type CosmeticType =
-  | "AVATAR_FRAME"
-  | "PROFILE_BANNER"
-  | "PROFILE_EFFECT"
-  | "NAME_EFFECT"
-  | "NAME_FONT";
+  "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_EFFECT" | "NAME_FONT";
 type ProfilePreviewType = "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT";
 type CommunityState = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
 type Submission = {

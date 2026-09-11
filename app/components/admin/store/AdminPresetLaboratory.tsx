@@ -14,13 +14,7 @@ import type { AdminStoreItem, EmotePackSummary } from "./types";
 import "./admin-store-labs.css";
 
 type PresetCategory =
-  | "AVATAR_FRAMES"
-  | "PROFILE_STYLES"
-  | "NAME_EFFECTS"
-  | "FONTS"
-  | "EFFECTS"
-  | "STICKERS"
-  | "EMOTES";
+  "AVATAR_FRAMES" | "PROFILE_STYLES" | "NAME_EFFECTS" | "FONTS" | "EFFECTS" | "STICKERS" | "EMOTES";
 
 type PresetDescriptor = {
   category: PresetCategory;
