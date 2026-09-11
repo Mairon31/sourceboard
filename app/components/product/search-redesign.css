@@ -472,6 +472,12 @@
   color: var(--text-primary);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .product-search-gallery__overlay {
+    transition: none;
+  }
+}
+
 @media (hover: none), (max-width: 680px) {
   .product-search-gallery__overlay {
     visibility: visible;
