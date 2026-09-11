@@ -7,7 +7,7 @@ import { persistNotification, type NotificationEvent } from "./notifications/ser
 import { NotificationHub } from "./notifications/hub";
 import { createAuthService } from "./auth/service";
 import { createD1AuthStore } from "./auth/store";
-import { withSecurityHeaders } from "./security/headers";
+import { preventHtmlTransforms, withSecurityHeaders } from "./security/headers";
 import { runMaintenance } from "./maintenance/service";
 import { observeBackgroundFailure, observeRequest } from "./observability";
 import { handlePublicSeoRequest } from "./seo/public";
@@ -18,23 +18,6 @@ const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
   import.meta.env.MODE,
 );
-
-function preventHtmlTransforms(response: Response): Response {
-  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-  if (!contentType.includes("text/html")) return response;
-  const headers = new Headers(response.headers);
-  const cacheControl = headers.get("cache-control");
-  if (!cacheControl) {
-    headers.set("cache-control", "private, no-store, no-transform");
-  } else if (!/(?:^|,)\s*no-transform(?:\s*,|$)/i.test(cacheControl)) {
-    headers.set("cache-control", `${cacheControl}, no-transform`);
-  }
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
 
 export default {
   async fetch(request, env) {
