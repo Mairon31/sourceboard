@@ -7,7 +7,10 @@ import {
 } from "../../shared/posts/categories";
 import type { PostSummary } from "../../shared/ui/contracts";
 
-const postStoreSource = readFileSync(new URL("../../worker/posts/store.ts", import.meta.url), "utf8");
+const postStoreSource = readFileSync(
+  new URL("../../worker/posts/store.ts", import.meta.url),
+  "utf8",
+);
 const postApiSource = readFileSync(new URL("../../worker/posts/api.ts", import.meta.url), "utf8");
 
 describe("post categories", () => {
