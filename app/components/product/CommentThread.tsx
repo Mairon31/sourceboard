@@ -230,6 +230,7 @@ function CommentItem({
   const sourceEligible = hasSourceEligibleCommentContent(
     comment.richtext?.length ? comment.richtext : undefined,
     comment.body,
+    comment.linkPreview?.canonicalUrl,
   );
   const bubbleClassName = [
     "product-comment__bubble",
