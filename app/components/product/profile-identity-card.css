@@ -42,70 +42,6 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-subtle) 78%, transparent);
 }
 
-.product-profile-effect-layer--soft-glow,
-.product-profile-effect-layer--holy-glow {
-  background: radial-gradient(circle at 50% 34%, #ffffff45, transparent 52%);
-}
-.product-profile-effect-layer--paper-grain {
-  background-image: repeating-radial-gradient(
-    circle at 30% 20%,
-    #ffffff12 0 1px,
-    transparent 1px 4px
-  );
-  mix-blend-mode: soft-light;
-}
-.product-profile-effect-layer--star-dust,
-.product-profile-effect-layer--snow-drift {
-  background-image:
-    radial-gradient(circle at 12% 20%, #fff 0 1px, transparent 2px),
-    radial-gradient(circle at 70% 32%, #fff 0 1px, transparent 2px),
-    radial-gradient(circle at 38% 76%, #fff 0 1px, transparent 2px);
-  background-size:
-    72px 72px,
-    96px 96px,
-    120px 120px;
-  animation: profile-particles 14s linear infinite;
-}
-.product-profile-effect-layer--blue-energy,
-.product-profile-effect-layer--electric-burst {
-  background:
-    radial-gradient(circle at 78% 18%, #4bbcff66, transparent 30%),
-    radial-gradient(circle at 18% 78%, #7289ff44, transparent 34%);
-  animation: profile-pulse 3.6s ease-in-out infinite;
-}
-.product-profile-effect-layer--fire-pulse {
-  background: radial-gradient(ellipse at 50% 100%, #ff873d66, transparent 45%);
-  animation: profile-pulse 2.8s ease-in-out infinite;
-}
-.product-profile-effect-layer--pink-hearts {
-  background:
-    radial-gradient(circle at 20% 20%, #ff7eb955 0 3px, transparent 4px),
-    radial-gradient(circle at 82% 38%, #ff9ac855 0 3px, transparent 4px);
-  background-size:
-    72px 72px,
-    96px 96px;
-  animation: profile-particles 11s linear infinite;
-}
-.product-profile-effect-layer--dark-smoke,
-.product-profile-effect-layer--moon-mist {
-  background:
-    radial-gradient(ellipse at 20% 70%, #7c7f9a38, transparent 45%),
-    radial-gradient(ellipse at 78% 30%, #aeb5c433, transparent 42%);
-  mix-blend-mode: soft-light;
-  animation: profile-drift 9s ease-in-out infinite alternate;
-}
-.product-profile-effect-layer--butterfly,
-.product-profile-effect-layer--leaf-drift {
-  background:
-    radial-gradient(ellipse at 18% 20%, #fff4 0 3px, transparent 4px),
-    radial-gradient(ellipse at 78% 58%, #fff3 0 4px, transparent 5px);
-  animation: profile-drift 8s ease-in-out infinite alternate;
-}
-.product-profile-effect-layer--rgb-glitch {
-  background: linear-gradient(90deg, #ff375f22, transparent 32%, #48d7ff22 68%, transparent);
-  animation: profile-glitch 3s steps(2, end) infinite;
-}
-
 .sb-avatar--frame-holographic {
   box-shadow:
     0 0 0 3px #6ae4ff,
@@ -214,50 +150,6 @@
   z-index: 0;
 }
 
-@keyframes profile-particles {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(12px, -18px, 0);
-  }
-}
-@keyframes profile-pulse {
-  0%,
-  100% {
-    opacity: 0.42;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.72;
-    transform: scale(1.025);
-  }
-}
-@keyframes profile-drift {
-  from {
-    transform: translate3d(-1.5%, 1%, 0) scale(1.02);
-  }
-  to {
-    transform: translate3d(1.5%, -1%, 0) scale(1.04);
-  }
-}
-@keyframes profile-glitch {
-  0%,
-  82%,
-  100% {
-    transform: translateX(0);
-    opacity: 0.38;
-  }
-  86% {
-    transform: translateX(2px);
-    opacity: 0.6;
-  }
-  90% {
-    transform: translateX(-2px);
-    opacity: 0.5;
-  }
-}
-
 @media (max-width: 760px) {
   .product-profile-identity-card
     .product-profile-name
@@ -269,7 +161,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .product-profile-effect-layer,
   .product-avatar-frame--decorative::before,
   .product-avatar-frame--decorative::after {
     animation: none !important;
