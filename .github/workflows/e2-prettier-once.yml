@@ -1,0 +1,35 @@
+name: E2 prettier cleanup
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+    paths:
+      - .github/workflows/e2-prettier-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/profile-comments-categories-discovery
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Format E2 browser test and remove workflow
+        run: |
+          npx prettier --write tests/e2e/cosmetics-overhaul.spec.ts
+          rm .github/workflows/e2-prettier-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "style: format cosmetics overhaul browser test"
+          git push origin HEAD:feature/profile-comments-categories-discovery
