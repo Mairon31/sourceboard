@@ -15,6 +15,25 @@ function contentSecurityPolicy(cspNonce?: string): string {
   ].join("; ");
 }
 
+export function preventHtmlTransforms(response: Response): Response {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("text/html")) return response;
+
+  const headers = new Headers(response.headers);
+  const cacheControl = headers.get("cache-control");
+  if (!cacheControl) {
+    headers.set("cache-control", "private, no-store, no-transform");
+  } else if (!/(?:^|,)\s*no-transform(?:\s*,|$)/i.test(cacheControl)) {
+    headers.set("cache-control", `${cacheControl}, no-transform`);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 /**
  * Applies the response boundary shared by API, SSR and media responses.
  *

@@ -1,6 +1,6 @@
 import type { StoreItemType, StoreItemView } from "../../../shared/ui/contracts";
-import { Avatar, Card } from "../ui";
-import "./profile-identity-card.css";
+import { Card } from "../ui";
+import { ProfileCosmeticPreview } from "./ProfileCosmeticPreview";
 import "./community-cosmetics.css";
 
 function categoryLabel(type: StoreItemType): string {
@@ -29,6 +29,12 @@ function priceLabel(price: number): string {
   return price === 0 ? "Free" : `${price.toLocaleString("en-US")} pts`;
 }
 
+function isProfilePreviewType(
+  type: StoreItemType,
+): type is "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" {
+  return type === "AVATAR_FRAME" || type === "PROFILE_BANNER" || type === "PROFILE_EFFECT";
+}
+
 export function StorePreview({
   item,
   name,
@@ -39,42 +45,21 @@ export function StorePreview({
   avatarUrl?: string;
 }) {
   const { config, media } = item.preview;
-  if (item.type === "AVATAR_FRAME") {
+  if (isProfilePreviewType(item.type)) {
     return (
-      <div className="product-store-preview product-store-preview--avatar">
-        <Avatar
-          name={name}
-          src={avatarUrl}
-          size="xl"
-          className={config.preset ? `sb-avatar--frame-${config.preset}` : undefined}
-        />
-      </div>
-    );
-  }
-  if (item.type === "PROFILE_BANNER") {
-    return (
-      <div
-        className="product-store-preview product-store-preview--theme product-profile-identity-card"
-        data-profile-theme={config.preset ?? "default"}
-      >
-        <div className="product-profile-theme-layer" aria-hidden="true" />
-        <div className="product-store-preview__profile">
-          <Avatar name={name} src={avatarUrl} size="xl" />
-          <strong>{name}</strong>
-        </div>
-      </div>
-    );
-  }
-  if (item.type === "PROFILE_EFFECT") {
-    return (
-      <div
-        className={`product-store-preview product-store-preview--effect product-store-preview--${config.preset ?? "none"}`}
-      >
-        <div className="product-store-preview__profile">
-          <Avatar name={name} src={avatarUrl} size="xl" />
-          <strong>{name}</strong>
-        </div>
-      </div>
+      <ProfileCosmeticPreview
+        type={item.type}
+        preset={config.preset}
+        name={name}
+        avatarUrl={avatarUrl}
+        visual={config.visual}
+        communityStyles={
+          item.community?.css
+            ? [{ id: item.community.cosmeticId, css: item.community.css }]
+            : undefined
+        }
+        className={`product-store-preview product-store-preview--${item.type === "AVATAR_FRAME" ? "avatar" : item.type === "PROFILE_BANNER" ? "theme" : "effect"}`}
+      />
     );
   }
   if (item.type === "NAME_EFFECT") {
@@ -138,19 +123,7 @@ export function StoreItemCard({
 
   return (
     <Card className="product-store-item">
-      {item.community ? (
-        <div
-          className="product-community-store-preview cosmetic-root"
-          data-community-cosmetic={item.community.cosmeticId}
-        >
-          {item.community.css ? <style>{item.community.css}</style> : null}
-          <div className="profile-card">
-            <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
-          </div>
-        </div>
-      ) : (
-        <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
-      )}
+      <StorePreview item={item} name={previewName} avatarUrl={previewAvatarUrl} />
       <span className="product-store-item__category">{categoryLabel(item.type)}</span>
       <h3>{item.name}</h3>
       <p>{item.description}</p>

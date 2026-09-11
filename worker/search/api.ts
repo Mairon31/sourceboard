@@ -96,6 +96,7 @@ export async function handleSearchRequest(
       query: url.searchParams.get("q") ?? "",
       kind: parseKind(url.searchParams.get("kind")),
       filter: parseFilter(url.searchParams.get("filter")),
+      categorySlug: null,
       postCursor: url.searchParams.get("postCursor"),
       profileCursor: url.searchParams.get("profileCursor"),
       limit: Number(url.searchParams.get("limit") ?? 20),

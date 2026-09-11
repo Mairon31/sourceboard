@@ -1,5 +1,15 @@
 import type { CommentAttachment, RichTextNode } from "./richtext";
 
+export interface CommentLinkPreviewSnapshot {
+  canonicalUrl: string;
+  siteName: string | null;
+  title: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  fetchedAt: number;
+  metadataStatus: "COMPLETE" | "PARTIAL" | "URL_ONLY";
+}
+
 export interface CommentRecord {
   id: string;
   postId: string;
@@ -19,6 +29,7 @@ export interface CommentRecord {
 
 export interface CommentWithAuthor {
   comment: CommentRecord;
+  linkPreview: CommentLinkPreviewSnapshot | null;
   author: {
     userId: string;
     username: string;
@@ -35,7 +46,12 @@ export interface CommentWithAuthor {
   };
 }
 
-export interface CommentCursor {
-  createdAt: number;
-  id: string;
+export type CommentSort = "recent" | "popular" | "oldest";
+
+export type CommentCursor =
+  | { sort: "recent" | "oldest"; createdAt: number; id: string }
+  | { sort: "popular"; likeCount: number; createdAt: number; id: string };
+
+export function parseCommentSort(value: string | null): CommentSort {
+  return value === "popular" || value === "oldest" ? value : "recent";
 }

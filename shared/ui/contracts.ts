@@ -1,3 +1,4 @@
+import type { PostCategorySlug } from "../posts/categories";
 import type {
   AvatarFramePreset,
   NameEffectPreset,
@@ -103,6 +104,15 @@ export interface CommentEmotePackView {
   emotes: CommentEmoteView[];
 }
 
+export interface CommentLinkPreviewView {
+  canonicalUrl: string;
+  siteName?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  metadataStatus: "COMPLETE" | "PARTIAL" | "URL_ONLY";
+}
+
 export interface CommentView {
   id: string;
   parentCommentId?: string;
@@ -113,11 +123,13 @@ export interface CommentView {
   editedAt?: string;
   state: CommentState;
   reaction: ReactionSummary;
+  isPostAuthor?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
   canReport?: boolean;
   commentHref?: string;
   attachment?: CommentAttachmentView;
+  linkPreview?: CommentLinkPreviewView;
   replies: CommentView[];
 }
 
@@ -126,6 +138,7 @@ export interface PostSummary {
   slug?: string;
   title: string;
   description?: string;
+  categorySlug: PostCategorySlug;
   author: PublicPostAuthor;
   createdAt: string;
   updatedAt: string;

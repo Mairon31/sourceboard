@@ -5,12 +5,10 @@ import {
   NAME_FONT_FAMILIES,
   PROFILE_EFFECT_PRESETS,
   PROFILE_THEME_PRESETS,
-  type ProfileEffectPreset,
-  type ProfileThemePreset,
 } from "../../../../shared/store/cosmetics";
-import { Avatar, Badge, Button, Card } from "../../ui";
+import { Badge, Button, Card } from "../../ui";
 import { readCsrfToken } from "../../../data/csrf";
-import { ProfileIdentityCard } from "../../product/ProfileIdentityCard";
+import { ProfileCosmeticPreview } from "../../product/ProfileCosmeticPreview";
 import { AdminStoreEditor } from "./AdminStoreEditor";
 import type { AdminStoreItem, EmotePackSummary } from "./types";
 import "./admin-store-labs.css";
@@ -72,47 +70,24 @@ function errorMessage(payload: unknown, fallback: string): string {
 }
 
 function PresetPreview({ preset }: { preset: PresetDescriptor }) {
-  if (preset.category === "AVATAR_FRAMES") {
+  if (
+    preset.category === "AVATAR_FRAMES" ||
+    preset.category === "PROFILE_STYLES" ||
+    preset.category === "EFFECTS"
+  ) {
+    const type =
+      preset.category === "AVATAR_FRAMES"
+        ? "AVATAR_FRAME"
+        : preset.category === "PROFILE_STYLES"
+          ? "PROFILE_BANNER"
+          : "PROFILE_EFFECT";
     return (
-      <div className="admin-preset-preview admin-preset-preview--avatar">
-        <Avatar name="SourceBoard" size="xl" className={`sb-avatar--frame-${preset.id}`} />
-      </div>
-    );
-  }
-  if (preset.category === "PROFILE_STYLES") {
-    return (
-      <ProfileIdentityCard
+      <ProfileCosmeticPreview
+        type={type}
+        preset={preset.id}
+        name="SourceBoard"
         className="admin-preset-profile-preview"
-        profileTheme={preset.id as ProfileThemePreset}
-      >
-        <div className="profile-header admin-preset-profile-preview__header">
-          <div className="profile-avatar-area">
-            <Avatar name="SourceBoard" size="lg" />
-          </div>
-          <div className="profile-name-area">
-            <strong>SourceBoard</strong>
-            <span>{preset.label}</span>
-          </div>
-        </div>
-      </ProfileIdentityCard>
-    );
-  }
-  if (preset.category === "EFFECTS") {
-    return (
-      <ProfileIdentityCard
-        className="admin-preset-profile-preview"
-        profileEffect={preset.id as ProfileEffectPreset}
-      >
-        <div className="profile-header admin-preset-profile-preview__header">
-          <div className="profile-avatar-area">
-            <Avatar name="SourceBoard" size="lg" />
-          </div>
-          <div className="profile-name-area">
-            <strong>SourceBoard</strong>
-            <span>{preset.label}</span>
-          </div>
-        </div>
-      </ProfileIdentityCard>
+      />
     );
   }
   if (preset.category === "NAME_EFFECTS") {

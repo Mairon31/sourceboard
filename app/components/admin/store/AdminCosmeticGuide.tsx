@@ -7,8 +7,8 @@ import {
   COMMUNITY_CSS_MAX_RULES,
   sanitizeCommunityCosmeticCss,
 } from "../../../../shared/store/community-css";
-import { Avatar, Card, Textarea } from "../../ui";
-import { ProfileIdentityCard } from "../../product/ProfileIdentityCard";
+import { Card, Textarea } from "../../ui";
+import { ProfileCosmeticPreview } from "../../product/ProfileCosmeticPreview";
 import "./admin-store-labs.css";
 
 const PREVIEW_ID = "admin-guide-preview";
@@ -129,19 +129,14 @@ export function AdminCosmeticGuide() {
 
         <div className="admin-cosmetic-guide__preview">
           <span className="product-eyebrow">Live preview</span>
-          <ProfileIdentityCard
+          <ProfileCosmeticPreview
+            type="PROFILE_BANNER"
+            preset="nebula"
+            name="SourceBoard Creator"
             communityStyles={preview.error ? undefined : [{ id: PREVIEW_ID, css: preview.css }]}
-          >
-            <div className="profile-header admin-cosmetic-guide__profile-header">
-              <div className="profile-avatar-area">
-                <Avatar name="SourceBoard" size="xl" />
-              </div>
-              <div className="profile-name-area">
-                <strong>SourceBoard Creator</strong>
-                <span>Community cosmetic preview</span>
-              </div>
-            </div>
-          </ProfileIdentityCard>
+            className="admin-cosmetic-guide__profile-preview"
+          />
+          <small>Community cosmetic preview</small>
         </div>
       </div>
     </section>

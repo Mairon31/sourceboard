@@ -18,6 +18,7 @@ function post(overrides: Partial<PostWithAuthor["post"]> = {}): PostWithAuthor {
       title: "A source request",
       slug: "a-source-request",
       description: "Description",
+      categorySlug: "other",
       imageAssetId: "asset-1",
       visibility: "PUBLIC",
       status: "OPEN",
@@ -367,6 +368,7 @@ describe("Phase 4 post policy", () => {
         isNsfw: false,
         title: "Private identity",
         description: "Description",
+        categorySlug: "other",
         visibility: "FRIENDS_ONLY",
         image: {
           id: "asset-2",

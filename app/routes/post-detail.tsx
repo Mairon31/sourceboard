@@ -9,12 +9,13 @@ import {
   useRouteError,
   type MetaFunction,
 } from "react-router";
-import type { CommentView } from "../../shared/ui/contracts";
+import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
 import { createD1CommentStore } from "../../worker/comments/store";
 import { createCommentService } from "../../worker/comments/service";
+import { parseCommentSort } from "../../worker/comments/types";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { PostCard } from "../components/product/PostCard";
 import { CommentThread } from "../components/product/CommentThread";
@@ -29,6 +30,7 @@ interface LoaderArgs extends ServerLoaderArgs {
 
 export async function loader({ params, request, context, url }: LoaderArgs) {
   const requested = url;
+  const commentSort = parseCommentSort(requested.searchParams.get("comments"));
   const result = await withOptionalServerSession(
     request,
     context,
@@ -36,26 +38,56 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
       post: null,
       unavailable,
       authenticated: false,
+      viewerIdentity: null as PublicPostAuthor | null,
+      commentSort,
       canonicalUrl: requested.toString(),
     }),
     async (runtime, userId) => {
+      const profileStore = createD1ProfileStore(runtime.db);
+      const postStore = createD1PostStore(runtime.db);
       const service = createPostService({
-        store: createD1PostStore(runtime.db),
-        profileStore: createD1ProfileStore(runtime.db),
+        store: postStore,
+        profileStore,
       });
       const commentService = createCommentService({
         store: createD1CommentStore(runtime.db),
-        postStore: createD1PostStore(runtime.db),
-        profileStore: createD1ProfileStore(runtime.db),
+        postStore,
+        profileStore,
       });
       const postId = params.postId ?? "";
-      const commentsPromise = commentService.listForPost(postId, userId, null, 50).then(
-        (value) => ({ ok: true as const, value }),
-        (error: unknown) => ({ ok: false as const, error }),
-      );
-      const [post, commentsResult] = await Promise.all([
+      const commentsPromise = commentService
+        .listForPost(postId, userId, null, 50, commentSort)
+        .then(
+          (value) => ({ ok: true as const, value }),
+          (error: unknown) => ({ ok: false as const, error }),
+        );
+      const viewerIdentityPromise: Promise<PublicPostAuthor | null> = userId
+        ? Promise.all([
+            profileStore.getProfileByUserId(userId, Date.now()),
+            profileStore.getEquippedCosmetics(userId),
+          ]).then(([profile, cosmetics]) =>
+            profile
+              ? {
+                  mode: "IDENTIFIED" as const,
+                  displayName: profile.displayName,
+                  username: profile.username,
+                  avatarUrl: profile.avatarAssetId
+                    ? `/api/media/profile/${encodeURIComponent(profile.avatarAssetId)}`
+                    : undefined,
+                  profileUrl: `/u/${encodeURIComponent(profile.username)}`,
+                  avatarFrame: cosmetics.avatarFrame,
+                  profileEffect: cosmetics.profileEffect,
+                  nameFont: cosmetics.nameFont,
+                  nameEffect: cosmetics.nameEffect,
+                  visuals: cosmetics.visuals,
+                }
+              : null,
+          )
+        : Promise.resolve(null);
+      const [post, commentsResult, viewerIdentity] = await Promise.all([
         service.getPost(postId, userId),
         commentsPromise,
+        viewerIdentityPromise,
       ]);
       if (post && !commentsResult.ok) throw commentsResult.error;
       const comments = commentsResult.ok
@@ -65,6 +97,8 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
         post: post ? { ...post, comments: comments.comments } : post,
         unavailable: false,
         authenticated: Boolean(userId),
+        viewerIdentity,
+        commentSort,
         canonicalUrl: requested.toString(),
       };
     },
@@ -256,7 +290,8 @@ function UnavailablePost({ unavailable }: { unavailable: boolean }) {
 }
 
 export default function PostDetailRoute() {
-  const { post, unavailable, authenticated } = useLoaderData<LoaderData>();
+  const { post, unavailable, authenticated, viewerIdentity, commentSort } =
+    useLoaderData<LoaderData>();
   const location = useLocation();
   const revalidator = useRevalidator();
 
@@ -308,7 +343,9 @@ export default function PostDetailRoute() {
       <CommentThread
         postId={currentPost.id}
         comments={currentPost.comments}
+        sort={commentSort}
         authenticated={authenticated}
+        viewerIdentity={viewerIdentity}
         commentsClosed={currentPost.commentsClosed}
         canAcceptSource={currentPost.permissions.canAcceptSource}
         onAcceptSource={(commentId) => void acceptSource(commentId)}

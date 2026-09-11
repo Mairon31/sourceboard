@@ -1,3 +1,5 @@
+import type { PostCategorySlug } from "../../shared/posts/categories";
+
 export type PostAuthorMode = "IDENTIFIED" | "ANONYMOUS";
 export type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
 export type PostStatus = "OPEN" | "ANSWERED" | "VERIFIED" | "ARCHIVED" | "LOCKED";
@@ -13,6 +15,7 @@ export interface PostRecord {
   title: string;
   slug: string;
   description: string;
+  categorySlug: PostCategorySlug;
   imageAssetId: string;
   visibility: PostVisibility;
   status: PostStatus;
@@ -88,6 +91,7 @@ export interface PostCreateInput {
   title: string;
   slug: string;
   description: string;
+  categorySlug: PostCategorySlug;
   visibility: PostVisibility;
   image: {
     id: string;

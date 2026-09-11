@@ -52,3 +52,9 @@ Cloudflare D1 migrations are forward-only. Production rollback uses the
 approved backup/restore process or a reviewed corrective migration; no unsafe
 automatic `down` migration is implied. Local reset experiments must use a
 temporary local database only.
+
+Migration `0027` adds one server-derived link-preview snapshot per comment. The table stores only bounded metadata and the canonical/remote image URLs needed by the Worker; remote HTML is never persisted, and public preview images remain behind the same-origin comment image gateway.
+
+Migration `0028` adds the required canonical post category slug with an `other` default and a category/creation index for category feeds. Labels, descriptions and aliases remain application-owned in the shared typed catalog rather than D1 rows.
+
+Migration `0029` is a forward-only corrective backfill that explicitly assigns `other` to the pre-category post dataset. Keeping the backfill in its own migration ensures environments that have already recorded `0028` in the D1 migration ledger still receive the legacy-post correction before the category-aware Worker is deployed.

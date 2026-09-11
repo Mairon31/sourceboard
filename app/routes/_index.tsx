@@ -1,5 +1,10 @@
-import { useRef, useState, type KeyboardEvent } from "react";
-import { Link, useLoaderData } from "react-router";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Link, useLoaderData, useSearchParams } from "react-router";
+import {
+  POST_CATEGORIES,
+  parsePostCategorySlug,
+  type PostCategorySlug,
+} from "../../shared/posts/categories";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
@@ -19,14 +24,19 @@ const feedOptions: Array<{ value: FeedMode; label: string; description: string }
   { value: "verified", label: "Verified", description: "Sources verified by SourceBoard" },
 ];
 
+function feedCacheKey(feed: FeedMode, categorySlug: PostCategorySlug | null) {
+  return `${feed}:${categorySlug ?? "all"}`;
+}
+
 export async function loader({ request, context }: LoaderArgs) {
+  const url = new URL(request.url);
+  const rawCategory = url.searchParams.get("category");
+  const categorySlug = rawCategory ? parsePostCategorySlug(rawCategory) : null;
+
   return withOptionalServerSession(
     request,
     context,
-    (unavailable) => ({
-      unavailable,
-      feeds: { recent: [], friends: [], answered: [], verified: [] },
-    }),
+    (unavailable) => ({ unavailable, categorySlug, posts: [] }),
     async (runtime, userId) => {
       const service = createPostService({
         store: createD1PostStore(runtime.db),
@@ -35,6 +45,7 @@ export async function loader({ request, context }: LoaderArgs) {
       const recent = await service.listFeed({
         viewerId: userId,
         kind: "recent",
+        categorySlug,
         cursor: null,
         limit: 20,
       });
@@ -45,22 +56,18 @@ export async function loader({ request, context }: LoaderArgs) {
       );
       return {
         unavailable: false,
-        feeds: {
-          recent: recent.posts.map((post) => ({
-            ...post,
-            reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
-          })),
-          friends: [],
-          answered: [],
-          verified: [],
-        },
+        categorySlug,
+        posts: recent.posts.map((post) => ({
+          ...post,
+          reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
+        })),
       };
     },
   );
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
-type FeedPosts = LoaderData["feeds"]["recent"];
+type FeedPosts = LoaderData["posts"];
 
 type FeedResourceResponse = {
   unavailable: boolean;
@@ -106,7 +113,7 @@ function FeedCollection({
     return (
       <div className="product-empty-state product-empty-state--compact">
         <strong>No source requests here yet</strong>
-        <p>Try another feed or publish an image for the community to investigate.</p>
+        <p>Try another feed or category, or publish an image for the community to investigate.</p>
       </div>
     );
   }
@@ -121,13 +128,19 @@ function FeedCollection({
 
 export default function HomeRoute() {
   const data = useLoaderData<LoaderData>();
-  const [feeds, setFeeds] = useState(data.feeds);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawCategory = searchParams.get("category");
+  const categorySlug = rawCategory ? parsePostCategorySlug(rawCategory) : null;
+  const initialKey = feedCacheKey("recent", data.categorySlug);
+  const [feedCache, setFeedCache] = useState<Record<string, FeedPosts>>({
+    [initialKey]: data.posts,
+  });
   const [feed, setFeed] = useState<FeedMode>("recent");
-  const [loadedFeeds, setLoadedFeeds] = useState<Set<FeedMode>>(
-    () => new Set<FeedMode>(data.unavailable ? [] : ["recent"]),
+  const [loadedKeys, setLoadedKeys] = useState<Set<string>>(
+    () => new Set<string>(data.unavailable ? [] : [initialKey]),
   );
-  const [loadingFeed, setLoadingFeed] = useState<FeedMode | null>(null);
-  const [feedError, setFeedError] = useState<Partial<Record<FeedMode, string>>>({});
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [feedError, setFeedError] = useState<Record<string, string | undefined>>({});
   const feedTabRefs = useRef<Record<FeedMode, HTMLButtonElement | null>>({
     recent: null,
     friends: null,
@@ -135,14 +148,19 @@ export default function HomeRoute() {
     verified: null,
   });
   const active = feedOptions.find((option) => option.value === feed) ?? feedOptions[0];
-  const posts = feeds[feed];
+  const activeKey = feedCacheKey(feed, categorySlug);
+  const posts = feedCache[activeKey] ?? [];
 
-  async function loadFeed(nextFeed: FeedMode) {
-    if (data.unavailable || loadedFeeds.has(nextFeed) || loadingFeed === nextFeed) return;
-    setLoadingFeed(nextFeed);
-    setFeedError((current) => ({ ...current, [nextFeed]: undefined }));
+  async function loadFeed(nextFeed: FeedMode, nextCategory: PostCategorySlug | null) {
+    const key = feedCacheKey(nextFeed, nextCategory);
+    if (data.unavailable || loadedKeys.has(key) || loadingKey === key) return;
+    setLoadingKey(key);
+    setFeedError((current) => ({ ...current, [key]: undefined }));
     try {
-      const response = await fetch(`/resources/feed/${encodeURIComponent(nextFeed)}`, {
+      const resourceSearch = new URLSearchParams();
+      if (nextCategory) resourceSearch.set("category", nextCategory);
+      const suffix = resourceSearch.size ? `?${resourceSearch.toString()}` : "";
+      const response = await fetch(`/resources/feed/${encodeURIComponent(nextFeed)}${suffix}`, {
         headers: { accept: "application/json" },
         cache: "no-store",
       });
@@ -150,21 +168,54 @@ export default function HomeRoute() {
       if (!response.ok || !payload || payload.unavailable) {
         throw new Error("This feed could not be loaded. Try again.");
       }
-      setFeeds((current) => ({ ...current, [nextFeed]: payload.posts }));
-      setLoadedFeeds((current) => new Set(current).add(nextFeed));
+      setFeedCache((current) => ({ ...current, [key]: payload.posts }));
+      setLoadedKeys((current) => new Set(current).add(key));
     } catch (error) {
       setFeedError((current) => ({
         ...current,
-        [nextFeed]: error instanceof Error ? error.message : "This feed could not be loaded.",
+        [key]: error instanceof Error ? error.message : "This feed could not be loaded.",
       }));
     } finally {
-      setLoadingFeed((current) => (current === nextFeed ? null : current));
+      setLoadingKey((current) => (current === key ? null : current));
     }
   }
 
+  useEffect(() => {
+    if (rawCategory && !categorySlug) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("category");
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    if (!data.unavailable && !loadedKeys.has(activeKey) && loadingKey !== activeKey) {
+      void loadFeed(feed, categorySlug);
+    }
+  }, [
+    activeKey,
+    categorySlug,
+    data.unavailable,
+    feed,
+    loadedKeys,
+    loadingKey,
+    rawCategory,
+    searchParams,
+    setSearchParams,
+  ]);
+
   function selectFeed(nextFeed: FeedMode) {
     setFeed(nextFeed);
-    if (!loadedFeeds.has(nextFeed)) void loadFeed(nextFeed);
+    const key = feedCacheKey(nextFeed, categorySlug);
+    if (!loadedKeys.has(key)) void loadFeed(nextFeed, categorySlug);
+  }
+
+  function selectCategory(value: string) {
+    const nextCategory = value ? parsePostCategorySlug(value) : null;
+    const next = new URLSearchParams(searchParams);
+    if (nextCategory) next.set("category", nextCategory);
+    else next.delete("category");
+    setSearchParams(next);
+    const key = feedCacheKey(feed, nextCategory);
+    if (!loadedKeys.has(key)) void loadFeed(feed, nextCategory);
   }
 
   function handleFeedKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -205,6 +256,21 @@ export default function HomeRoute() {
             <h2 id="feed-heading">{active.label}</h2>
             <p>{active.description}</p>
           </div>
+          <label className="product-field-native product-home-category-filter">
+            <span>Category</span>
+            <select
+              aria-label="Category filter"
+              value={categorySlug ?? ""}
+              onChange={(event) => selectCategory(event.currentTarget.value)}
+            >
+              <option value="">All categories</option>
+              {POST_CATEGORIES.map((category) => (
+                <option key={category.slug} value={category.slug}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         <nav
           className="product-store-filter-bar product-feed-filter-tabs"
@@ -242,8 +308,8 @@ export default function HomeRoute() {
           <FeedCollection
             posts={posts}
             unavailable={data.unavailable}
-            loading={loadingFeed === feed}
-            error={feedError[feed] ?? null}
+            loading={loadingKey === activeKey}
+            error={feedError[activeKey] ?? null}
           />
         </div>
       </section>

@@ -4,10 +4,10 @@ import { canViewPost } from "../posts/service";
 import type { ProfileStore } from "../profile/store";
 import type { PostStore } from "../posts/store";
 import { PostError } from "../posts/errors";
-import { decodePostCursor } from "../posts/pagination";
+import { decodeCommentCursor } from "./pagination";
 import { normalizeCommentBody } from "./richtext";
 import type { CommentEmoteAsset, CommentStore } from "./store";
-import type { CommentCursor, CommentWithAuthor } from "./types";
+import type { CommentLinkPreviewSnapshot, CommentSort, CommentWithAuthor } from "./types";
 import { normalizeEmoteShortcode } from "../../shared/richtext/markdown";
 import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
 
@@ -22,6 +22,7 @@ export interface CommentServiceDependencies {
     userId: string,
     body: ReturnType<typeof normalizeCommentBody>,
   ) => Promise<void>;
+  previewLink?: (value: unknown) => Promise<CommentLinkPreviewSnapshot>;
   now?: () => number;
 }
 
@@ -31,6 +32,7 @@ export interface CommentService {
     viewerId: string | null,
     cursor: string | null,
     limit: number,
+    sort: CommentSort,
   ): Promise<{
     comments: CommentView[];
     nextCursor: string | null;
@@ -43,6 +45,7 @@ export interface CommentService {
     plaintext?: unknown;
     markdown?: unknown;
     attachment?: unknown;
+    linkPreviewUrl?: unknown;
   }): Promise<CommentView>;
   update(
     commentId: string,
@@ -123,19 +126,34 @@ async function toView(
         : undefined,
     state: record.comment.state,
     reaction: { type: "LIKE", count: record.comment.likeCount, viewerReacted },
+    isPostAuthor: record.comment.authorId === record.post.authorId,
     canEdit:
       record.comment.authorId === viewerId &&
       record.comment.state === "VISIBLE" &&
       record.comment.editDeadlineAt >= now(),
-    canDelete:
-      record.comment.authorId === viewerId &&
-      record.comment.state === "VISIBLE" &&
-      record.comment.editDeadlineAt >= now(),
+    canDelete: record.comment.authorId === viewerId && record.comment.state === "VISIBLE",
     canReport:
       Boolean(viewerId) &&
       record.comment.authorId !== viewerId &&
       record.comment.state === "VISIBLE",
     commentHref: `#comment-${encodeURIComponent(record.comment.id)}`,
+    linkPreview:
+      record.comment.state !== "DELETED" && record.linkPreview
+        ? {
+            canonicalUrl: record.linkPreview.canonicalUrl,
+            ...(record.linkPreview.siteName ? { siteName: record.linkPreview.siteName } : {}),
+            ...(record.linkPreview.title ? { title: record.linkPreview.title } : {}),
+            ...(record.linkPreview.description
+              ? { description: record.linkPreview.description }
+              : {}),
+            ...(record.linkPreview.imageUrl
+              ? {
+                  imageUrl: `/api/comments/${encodeURIComponent(record.comment.id)}/link-preview-image`,
+                }
+              : {}),
+            metadataStatus: record.linkPreview.metadataStatus,
+          }
+        : undefined,
     attachment: record.comment.attachment
       ? {
           type: record.comment.attachment.type,
@@ -180,12 +198,13 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
   }
 
   return {
-    async listForPost(postId, viewerId, cursor, limit) {
+    async listForPost(postId, viewerId, cursor, limit, sort) {
       await requireVisiblePost(postId, viewerId);
       const page = await dependencies.store.listForPost({
         postId,
-        cursor: decodePostCursor(cursor) as CommentCursor | null,
+        cursor: decodeCommentCursor(cursor, sort),
         limit: Math.min(Math.max(1, Math.floor(limit)), MAX_LIMIT),
+        sort,
       });
       const likedIds = viewerId
         ? dependencies.store.getLikedCommentIds
@@ -246,7 +265,29 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           throw new PostError(400, "INVALID_COMMENT_PARENT", "The reply target is invalid.");
         }
       }
-      const body = normalizeCommentBody(input);
+      const hasLinkPreview =
+        input.linkPreviewUrl !== undefined &&
+        input.linkPreviewUrl !== null &&
+        input.linkPreviewUrl !== "";
+      const body = normalizeCommentBody({ ...input, allowEmpty: hasLinkPreview });
+      if (hasLinkPreview && body.attachment) {
+        throw new PostError(
+          400,
+          "LINK_PREVIEW_ATTACHMENT_CONFLICT",
+          "A link preview cannot be combined with a GIF or sticker.",
+        );
+      }
+      let linkPreview: CommentLinkPreviewSnapshot | null = null;
+      if (hasLinkPreview) {
+        if (!dependencies.previewLink) {
+          throw new PostError(
+            503,
+            "LINK_PREVIEW_UNAVAILABLE",
+            "Link previews are temporarily unavailable.",
+          );
+        }
+        linkPreview = await dependencies.previewLink(input.linkPreviewUrl);
+      }
       await dependencies.assertEntitlements?.(input.authorId, body);
       const createdAt = now();
       const record = {
@@ -269,6 +310,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         comment: record,
         richtextJson: JSON.stringify(body.richtext),
         attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,
+        linkPreview,
       });
       const createdEmoteAssets = dependencies.store.getEmoteAssets
         ? await dependencies.store.getEmoteAssets(
@@ -278,24 +320,12 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
               .filter((shortcode): shortcode is string => Boolean(shortcode)),
           )
         : new Map<string, CommentEmoteAsset>();
+      const persisted = await dependencies.store.getComment(record.id);
+      if (!persisted) {
+        throw new PostError(500, "COMMENT_CREATE_READ_FAILED", "The comment could not be loaded.");
+      }
       return toView(
-        {
-          comment: record,
-          author: {
-            userId: input.authorId,
-            username: "SourceBoard member",
-            displayName: "SourceBoard member",
-            avatarAssetId: null,
-          },
-          post: {
-            authorId: post.post.authorId,
-            authorMode: post.post.authorMode,
-            visibility: post.post.visibility,
-            deletedAt: post.post.deletedAt,
-            hiddenAt: post.post.hiddenAt,
-            status: post.post.status,
-          },
-        },
+        persisted,
         input.authorId,
         dependencies.profileStore,
         now,

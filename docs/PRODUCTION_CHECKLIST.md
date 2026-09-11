@@ -82,6 +82,16 @@ successful responses.
 - [ ] Review the exact commit, generated Worker config, migration list and
       changed files.
 - [ ] Run Wrangler dry-run with the private production config.
+- [ ] Run `npm run db:migrations:list:remote` and reconcile every pending D1
+      migration before promoting Worker code that depends on the new schema.
+- [ ] Cloudflare Workers Builds uses `npm run deploy` as the production Deploy
+      command so remote D1 migrations run before `wrangler deploy`; do not use a
+      raw `npx wrangler deploy` command for SourceBoard production builds.
+- [ ] Non-production branch builds that depend on newer D1 schema use a separate
+      staging Worker/D1 environment, or the required forward-compatible migration
+      has been deliberately applied before testing the preview. The default
+      `wrangler versions upload` preview command does not run SourceBoard D1
+      migrations.
 - [x] Production deploy completed from `master` through Workers Build; the
       deployed Worker and migration state were recorded in the progress log.
 - [x] Record the deployed version and migration timestamp.

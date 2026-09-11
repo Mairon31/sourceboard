@@ -1,7 +1,13 @@
 import { isStoreLifecycleSchemaError } from "../store/service";
-import { encodePostCursor } from "../posts/pagination";
+import { encodeCommentCursor } from "./pagination";
 import { parseStoredCommentBody } from "./richtext";
-import type { CommentCursor, CommentRecord, CommentWithAuthor } from "./types";
+import type {
+  CommentCursor,
+  CommentLinkPreviewSnapshot,
+  CommentRecord,
+  CommentSort,
+  CommentWithAuthor,
+} from "./types";
 
 export interface CommentEmoteAsset {
   id: string;
@@ -15,12 +21,14 @@ export interface CommentStore {
     postId: string;
     cursor: CommentCursor | null;
     limit: number;
+    sort: CommentSort;
   }): Promise<{ comments: CommentWithAuthor[]; nextCursor: string | null }>;
   getComment(commentId: string): Promise<CommentWithAuthor | null>;
   createComment(input: {
     comment: CommentRecord;
     richtextJson: string;
     attachmentJson: string | null;
+    linkPreview?: CommentLinkPreviewSnapshot | null;
   }): Promise<void>;
   updateComment(input: {
     comment: CommentRecord;
@@ -62,6 +70,13 @@ interface CommentRow {
   edit_deadline_at: number;
   deleted_at: number | null;
   hidden_at: number | null;
+  link_preview_canonical_url: string | null;
+  link_preview_site_name: string | null;
+  link_preview_title: string | null;
+  link_preview_description: string | null;
+  link_preview_image_url: string | null;
+  link_preview_fetched_at: number | null;
+  link_preview_metadata_status: string | null;
   author_username: string;
   author_display_name: string | null;
   author_avatar_asset_id: string | null;
@@ -77,6 +92,10 @@ const COMMENT_COLUMNS = `
   c.id, c.post_id, c.author_id, c.parent_comment_id, c.body_richtext_json,
   c.body_plaintext, c.attachment_json, c.state, c.like_count, c.created_at,
   c.updated_at, c.edit_deadline_at, c.deleted_at, c.hidden_at,
+  lp.canonical_url AS link_preview_canonical_url, lp.site_name AS link_preview_site_name,
+  lp.title AS link_preview_title, lp.description AS link_preview_description,
+  lp.image_url AS link_preview_image_url, lp.fetched_at AS link_preview_fetched_at,
+  lp.metadata_status AS link_preview_metadata_status,
   u.username AS author_username, up.display_name AS author_display_name,
   up.avatar_asset_id AS author_avatar_asset_id,
   p.author_id AS post_author_id, p.author_mode AS post_author_mode,
@@ -88,6 +107,7 @@ function query(where: string): string {
     FROM comments c
     JOIN users u ON u.id = c.author_id
     LEFT JOIN user_profiles up ON up.user_id = c.author_id
+    LEFT JOIN comment_link_previews lp ON lp.comment_id = c.id
     JOIN posts p ON p.id = c.post_id
     WHERE ${where}`;
 }
@@ -97,7 +117,8 @@ function visibility(value: string): CommentWithAuthor["post"]["visibility"] {
 }
 
 function toRecord(row: CommentRow): CommentWithAuthor {
-  const body = parseStoredCommentBody(row.body_richtext_json, row.attachment_json);
+  const hasLinkPreview = Boolean(row.link_preview_canonical_url);
+  const body = parseStoredCommentBody(row.body_richtext_json, row.attachment_json, hasLinkPreview);
   const comment: CommentRecord = {
     id: row.id,
     postId: row.post_id,
@@ -114,8 +135,24 @@ function toRecord(row: CommentRow): CommentWithAuthor {
     deletedAt: row.deleted_at,
     hiddenAt: row.hidden_at,
   };
+  const linkPreview: CommentLinkPreviewSnapshot | null = row.link_preview_canonical_url
+    ? {
+        canonicalUrl: row.link_preview_canonical_url,
+        siteName: row.link_preview_site_name,
+        title: row.link_preview_title,
+        description: row.link_preview_description,
+        imageUrl: row.link_preview_image_url,
+        fetchedAt: row.link_preview_fetched_at ?? row.created_at,
+        metadataStatus:
+          row.link_preview_metadata_status === "COMPLETE" ||
+          row.link_preview_metadata_status === "PARTIAL"
+            ? row.link_preview_metadata_status
+            : "URL_ONLY",
+      }
+    : null;
   return {
     comment,
+    linkPreview,
     author: {
       userId: row.author_id,
       username: row.author_username,
@@ -131,6 +168,54 @@ function toRecord(row: CommentRow): CommentWithAuthor {
       status: row.post_status,
     },
   };
+}
+
+function addRootCursor(
+  conditions: string[],
+  bindings: unknown[],
+  cursor: CommentCursor | null,
+  sort: CommentSort,
+): void {
+  if (!cursor) return;
+  if (sort === "oldest") {
+    conditions.push("(c.created_at > ? OR (c.created_at = ? AND c.id > ?))");
+    bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
+    return;
+  }
+  if (sort === "popular") {
+    if (cursor.sort !== "popular") return;
+    conditions.push(
+      "(c.like_count < ? OR (c.like_count = ? AND c.created_at < ?) OR (c.like_count = ? AND c.created_at = ? AND c.id < ?))",
+    );
+    bindings.push(
+      cursor.likeCount,
+      cursor.likeCount,
+      cursor.createdAt,
+      cursor.likeCount,
+      cursor.createdAt,
+      cursor.id,
+    );
+    return;
+  }
+  conditions.push("(c.created_at < ? OR (c.created_at = ? AND c.id < ?))");
+  bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
+}
+
+function rootOrder(sort: CommentSort): string {
+  if (sort === "oldest") return "c.created_at ASC, c.id ASC";
+  if (sort === "popular") return "c.like_count DESC, c.created_at DESC, c.id DESC";
+  return "c.created_at DESC, c.id DESC";
+}
+
+function nextCursor(sort: CommentSort, row: CommentRow): string {
+  return sort === "popular"
+    ? encodeCommentCursor({
+        sort,
+        likeCount: row.like_count,
+        createdAt: row.created_at,
+        id: row.id,
+      })
+    : encodeCommentCursor({ sort, createdAt: row.created_at, id: row.id });
 }
 
 export function createD1CommentStore(db: D1Database): CommentStore {
@@ -176,24 +261,41 @@ export function createD1CommentStore(db: D1Database): CommentStore {
   }
 
   return {
-    async listForPost({ postId, cursor, limit }) {
-      const conditions = ["c.post_id = ?", "c.deleted_at IS NULL"];
+    async listForPost({ postId, cursor, limit, sort }) {
+      const conditions = ["c.post_id = ?", "c.deleted_at IS NULL", "c.parent_comment_id IS NULL"];
       const bindings: unknown[] = [postId];
-      if (cursor) {
-        conditions.push("(c.created_at > ? OR (c.created_at = ? AND c.id > ?))");
-        bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
-      }
-      const result = await db
-        .prepare(`${query(conditions.join(" AND "))} ORDER BY c.created_at ASC, c.id ASC LIMIT ?`)
+      addRootCursor(conditions, bindings, cursor, sort);
+      const rootResult = await db
+        .prepare(`${query(conditions.join(" AND "))} ORDER BY ${rootOrder(sort)} LIMIT ?`)
         .bind(...bindings, limit + 1)
         .all<CommentRow>();
-      const hasNext = result.results.length > limit;
-      const rows = hasNext ? result.results.slice(0, limit) : result.results;
-      const last = rows.at(-1);
+      const hasNext = rootResult.results.length > limit;
+      const rootRows = hasNext ? rootResult.results.slice(0, limit) : rootResult.results;
+      const rootIds = rootRows.map((row) => row.id);
+      let replyRows: CommentRow[] = [];
+      if (rootIds.length) {
+        const placeholders = rootIds.map(() => "?").join(", ");
+        const descendants = await db
+          .prepare(
+            `WITH RECURSIVE thread_ids(id) AS (
+               SELECT id FROM comments WHERE id IN (${placeholders}) AND deleted_at IS NULL
+               UNION ALL
+               SELECT child.id
+               FROM comments child
+               JOIN thread_ids parent ON child.parent_comment_id = parent.id
+               WHERE child.deleted_at IS NULL
+             )
+             ${query(`c.id IN (SELECT id FROM thread_ids) AND c.id NOT IN (${placeholders})`)}
+             ORDER BY c.created_at ASC, c.id ASC`,
+          )
+          .bind(...rootIds, ...rootIds)
+          .all<CommentRow>();
+        replyRows = descendants.results;
+      }
+      const last = rootRows.at(-1);
       return {
-        comments: rows.map(toRecord),
-        nextCursor:
-          hasNext && last ? encodePostCursor({ createdAt: last.created_at, id: last.id }) : null,
+        comments: [...rootRows, ...replyRows].map(toRecord),
+        nextCursor: hasNext && last ? nextCursor(sort, last) : null,
       };
     },
 
@@ -202,8 +304,8 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       return row ? toRecord(row) : null;
     },
 
-    async createComment({ comment, richtextJson, attachmentJson }) {
-      await db.batch([
+    async createComment({ comment, richtextJson, attachmentJson, linkPreview }) {
+      const statements = [
         db
           .prepare(
             `INSERT INTO comments
@@ -229,7 +331,29 @@ export function createD1CommentStore(db: D1Database): CommentStore {
             `UPDATE posts SET comment_count = comment_count + 1, updated_at = ? WHERE id = ?`,
           )
           .bind(comment.createdAt, comment.postId),
-      ]);
+      ];
+      if (linkPreview) {
+        statements.push(
+          db
+            .prepare(
+              `INSERT INTO comment_link_previews
+                (comment_id, canonical_url, site_name, title, description, image_url, fetched_at,
+                 metadata_status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            )
+            .bind(
+              comment.id,
+              linkPreview.canonicalUrl,
+              linkPreview.siteName,
+              linkPreview.title,
+              linkPreview.description,
+              linkPreview.imageUrl,
+              linkPreview.fetchedAt,
+              linkPreview.metadataStatus,
+            ),
+        );
+      }
+      await db.batch(statements);
     },
 
     async updateComment({ comment, richtextJson, attachmentJson, revisionId }) {
@@ -273,9 +397,9 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       const result = await db
         .prepare(
           `UPDATE comments SET state = 'DELETED', deleted_at = ?, updated_at = ?
-           WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND edit_deadline_at >= ?`,
+           WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND state = 'VISIBLE'`,
         )
-        .bind(now, now, commentId, authorId, now)
+        .bind(now, now, commentId, authorId)
         .run();
       if (result.meta.changes !== 1) return false;
       const comment = await db

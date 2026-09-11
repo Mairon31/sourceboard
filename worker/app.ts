@@ -7,7 +7,7 @@ import { persistNotification, type NotificationEvent } from "./notifications/ser
 import { NotificationHub } from "./notifications/hub";
 import { createAuthService } from "./auth/service";
 import { createD1AuthStore } from "./auth/store";
-import { withSecurityHeaders } from "./security/headers";
+import { preventHtmlTransforms, withSecurityHeaders } from "./security/headers";
 import { runMaintenance } from "./maintenance/service";
 import { observeBackgroundFailure, observeRequest } from "./observability";
 import { handlePublicSeoRequest } from "./seo/public";
@@ -24,10 +24,8 @@ export default {
     const startedAt = Date.now();
     const cspNonce = crypto.randomUUID().replaceAll("-", "");
     const finish = (response: Response): Response => {
-      const secured = withSecurityHeaders(
-        response,
-        new URL(request.url).protocol === "https:",
-        cspNonce,
+      const secured = preventHtmlTransforms(
+        withSecurityHeaders(response, new URL(request.url).protocol === "https:", cspNonce),
       );
       observeRequest(request, secured, startedAt);
       return secured;

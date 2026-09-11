@@ -1,6 +1,151 @@
-import { expect, test } from "@playwright/test";
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+import { expect, test, type Page } from "@playwright/test";
+import { hashOpaqueToken } from "../../worker/auth/crypto";
+import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/security";
 import { seedCommentMediaRegressionFixture } from "./comment-media-fixture";
 import { waitForUiReady } from "./test-helpers";
+
+function executeLocalSql(sql: string) {
+  const wranglerEntrypoint = resolve(
+    process.cwd(),
+    "node_modules",
+    "wrangler",
+    "bin",
+    "wrangler.js",
+  );
+  execFileSync(
+    process.execPath,
+    [wranglerEntrypoint, "d1", "execute", "DB", "--local", "--command", sql],
+    { cwd: process.cwd(), stdio: "pipe" },
+  );
+}
+
+async function installNavigationUserSession(page: Page, suffix: string) {
+  const now = Date.now();
+  const sessionId = `e2e-comment-${suffix}-session`;
+  const sessionToken = `sourceboard-e2e-comment-${suffix}-session`;
+  const csrfToken = `sourceboard-e2e-comment-${suffix}-csrf`;
+  const tokenHash = hashOpaqueToken(sessionToken);
+  const expiresAt = now + 24 * 60 * 60 * 1000;
+
+  executeLocalSql(`
+    DELETE FROM sessions WHERE id = '${sessionId}' OR token_hash = '${tokenHash}';
+    INSERT INTO sessions
+      (id, user_id, token_hash, created_at, last_used_at, expires_at, revoked_at,
+       ip_prefix_hash, user_agent_hash)
+    VALUES
+      ('${sessionId}', 'e2e-navigation-user', '${tokenHash}', ${now}, ${now},
+       ${expiresAt}, NULL, NULL, NULL);
+  `);
+
+  await page.context().addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: sessionToken,
+      url: "https://localhost:5173",
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    },
+    {
+      name: CSRF_COOKIE_NAME,
+      value: csrfToken,
+      url: "https://localhost:5173",
+      httpOnly: false,
+      secure: true,
+      sameSite: "Lax",
+    },
+  ]);
+}
+
+async function installExpiredCommentOwnerFixture(page: Page) {
+  const now = Date.now();
+  const createdAt = now - 48 * 60 * 60 * 1000;
+  const editDeadlineAt = now - 24 * 60 * 60 * 1000;
+  await installNavigationUserSession(page, "expired-owner");
+
+  executeLocalSql(`
+    DELETE FROM comments WHERE id = 'e2e-expired-owner-comment';
+    INSERT INTO comments
+      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+       deleted_at, hidden_at)
+    VALUES
+      ('e2e-expired-owner-comment', 'e2e-navigation-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Expired owner comment"}]', 'Expired owner comment', NULL,
+       'VISIBLE', 0, ${createdAt}, ${createdAt}, ${editDeadlineAt}, NULL, NULL);
+
+    UPDATE posts
+    SET comment_count = (
+      SELECT COUNT(*) FROM comments
+      WHERE post_id = 'e2e-navigation-post' AND deleted_at IS NULL
+    )
+    WHERE id = 'e2e-navigation-post';
+  `);
+}
+
+async function installAnonymousAuthorPostFixture(page: Page) {
+  const now = Date.now();
+  await installNavigationUserSession(page, "anonymous-author");
+  executeLocalSql(`
+    DELETE FROM comments WHERE post_id = 'e2e-anonymous-comment-post';
+    DELETE FROM posts WHERE id = 'e2e-anonymous-comment-post';
+    INSERT INTO posts
+      (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
+       title, slug, description, image_asset_id, visibility, status, comment_count, like_count,
+       accepted_comment_id, verified_source_id, created_at, updated_at, edit_deadline_at,
+       archived_at, deleted_at, hidden_at, locked_at)
+    VALUES
+      ('e2e-anonymous-comment-post', 'e2e-navigation-user', 'ANONYMOUS', 0, NULL, NULL,
+       'Anonymous comment identity', 'e2e-anonymous-comment-post',
+       'Anonymous author comment regression fixture.', 'e2e-navigation-media', 'PUBLIC', 'OPEN',
+       0, 0, NULL, NULL, ${now}, ${now}, ${now + 7 * 24 * 60 * 60 * 1000},
+       NULL, NULL, NULL, NULL);
+  `);
+}
+
+function installCommentSortingFixture() {
+  const now = Date.now();
+  const oldest = now - 30_000;
+  const popular = now - 20_000;
+  const newest = now - 10_000;
+  const reply = popular + 1_000;
+  const editDeadline = now + 24 * 60 * 60 * 1000;
+  executeLocalSql(`
+    DELETE FROM comments WHERE post_id = 'e2e-comment-sort-post';
+    DELETE FROM posts WHERE id = 'e2e-comment-sort-post';
+
+    INSERT INTO posts
+      (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
+       title, slug, description, image_asset_id, visibility, status, comment_count, like_count,
+       accepted_comment_id, verified_source_id, created_at, updated_at, edit_deadline_at,
+       archived_at, deleted_at, hidden_at, locked_at)
+    VALUES
+      ('e2e-comment-sort-post', 'e2e-navigation-user', 'IDENTIFIED', 0, NULL, NULL,
+       'Comment sorting fixture', 'e2e-comment-sort-post', 'Deterministic comment sorting fixture.',
+       'e2e-navigation-media', 'PUBLIC', 'OPEN', 4, 0, NULL, NULL, ${oldest - 10_000}, ${now},
+       ${editDeadline}, NULL, NULL, NULL, NULL);
+
+    INSERT INTO comments
+      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+       deleted_at, hidden_at)
+    VALUES
+      ('e2e-sort-oldest', 'e2e-comment-sort-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Oldest root"}]', 'Oldest root', NULL, 'VISIBLE', 1,
+       ${oldest}, ${oldest}, ${editDeadline}, NULL, NULL),
+      ('e2e-sort-popular', 'e2e-comment-sort-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Popular root"}]', 'Popular root', NULL, 'VISIBLE', 9,
+       ${popular}, ${popular}, ${editDeadline}, NULL, NULL),
+      ('e2e-sort-newest', 'e2e-comment-sort-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Newest root"}]', 'Newest root', NULL, 'VISIBLE', 0,
+       ${newest}, ${newest}, ${editDeadline}, NULL, NULL),
+      ('e2e-sort-reply', 'e2e-comment-sort-post', 'e2e-navigation-user', 'e2e-sort-popular',
+       '[{"type":"text","text":"Popular child reply"}]', 'Popular child reply', NULL,
+       'VISIBLE', 0, ${reply}, ${reply}, ${editDeadline}, NULL, NULL);
+  `);
+}
 
 test.beforeAll(() => {
   seedCommentMediaRegressionFixture();
@@ -62,4 +207,111 @@ test("legacy Markdown plus emote renders without address or page errors", async 
 
   expect(mediaRequestFailures).toEqual([]);
   expect(pageErrors).toEqual([]);
+});
+
+test("comment owner keeps Delete after the edit window expires", async ({ page }) => {
+  await installExpiredCommentOwnerFixture(page);
+  const response = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const comment = page.locator("#comment-e2e-expired-owner-comment");
+  await expect(comment).toBeVisible();
+  const more = comment.getByRole("button", { name: "More actions" });
+  await expect(more).toBeVisible();
+  await more.click();
+  await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Edit" })).toHaveCount(0);
+});
+
+test("new comment immediately shows the authenticated author's real identity", async ({ page }) => {
+  await installNavigationUserSession(page, "real-identity");
+  const response = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  await page.getByLabel("Add a comment").fill("Identity appears immediately");
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
+
+  const comment = page
+    .locator("article.product-comment")
+    .filter({ hasText: "Identity appears immediately" });
+  await expect(comment).toBeVisible();
+  await expect(comment.getByText("E2E Navigator", { exact: true })).toBeVisible();
+  await expect(comment.getByText("SourceBoard member", { exact: true })).toHaveCount(0);
+});
+
+test("anonymous post author stays anonymous when their new comment renders", async ({ page }) => {
+  await installAnonymousAuthorPostFixture(page);
+  const response = await page.goto("/posts/e2e-anonymous-comment-post/e2e-anonymous-comment-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  await page.getByLabel("Add a comment").fill("Anonymous identity remains private");
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
+
+  const comment = page
+    .locator("article.product-comment")
+    .filter({ hasText: "Anonymous identity remains private" });
+  await expect(comment).toBeVisible();
+  await expect(comment.getByText("Anonymous Author", { exact: true })).toBeVisible();
+  await expect(comment.getByText("E2E Navigator", { exact: true })).toHaveCount(0);
+});
+
+test("comment sort control changes URL and server root order while keeping replies grouped", async ({
+  page,
+}) => {
+  installCommentSortingFixture();
+  const response = await page.goto("/posts/e2e-comment-sort-post/e2e-comment-sort-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const roots = page.locator(".product-comments__list > article.product-comment");
+  const sort = page.getByLabel("Sort comments");
+  await expect(sort).toHaveValue("recent");
+  await expect(roots.nth(0)).toContainText("Newest root");
+  await expect(roots.nth(1)).toContainText("Popular root");
+  await expect(roots.nth(2)).toContainText("Oldest root");
+  await expect(page.locator("#comment-e2e-sort-popular #comment-e2e-sort-reply")).toContainText(
+    "Popular child reply",
+  );
+
+  await sort.selectOption("popular");
+  await expect(page).toHaveURL(/\?comments=popular$/);
+  await expect(roots.nth(0)).toContainText("Popular root");
+  await expect(page.locator("#comment-e2e-sort-popular #comment-e2e-sort-reply")).toContainText(
+    "Popular child reply",
+  );
+
+  await page.getByLabel("Sort comments").selectOption("oldest");
+  await expect(page).toHaveURL(/\?comments=oldest$/);
+  await expect(roots.nth(0)).toContainText("Oldest root");
+});
+
+test("freshly submitted root comment is placed by active sort and receives focus", async ({
+  page,
+}) => {
+  installCommentSortingFixture();
+  await installNavigationUserSession(page, "sorted-focus");
+  const response = await page.goto(
+    "/posts/e2e-comment-sort-post/e2e-comment-sort-post?comments=recent",
+  );
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  await page.getByLabel("Add a comment").fill("Fresh focused root");
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
+
+  const fresh = page
+    .locator(".product-comments__list > article.product-comment")
+    .filter({ hasText: "Fresh focused root" });
+  await expect(fresh).toHaveCount(1);
+  await expect(
+    page.locator(".product-comments__list > article.product-comment").first(),
+  ).toContainText("Fresh focused root");
+  await expect(fresh).toBeFocused();
+  await expect(page).toHaveURL(/\?comments=recent#comment-/);
 });
