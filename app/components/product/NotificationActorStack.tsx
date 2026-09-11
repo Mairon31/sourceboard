@@ -42,7 +42,6 @@ export function NotificationActorStack({
             displayName={entry.displayName}
             avatarUrl={entry.avatarUrl}
             avatarFrame={entry.cosmetics?.avatarFrame}
-            profileEffect={entry.cosmetics?.profileEffect}
             nameFont={entry.cosmetics?.nameFont}
             nameEffect={entry.cosmetics?.nameEffect}
             visuals={entry.cosmetics?.visuals}
