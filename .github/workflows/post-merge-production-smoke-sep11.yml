@@ -1,0 +1,44 @@
+name: Post-merge production smoke Sep 11
+
+on:
+  push:
+    branches:
+      - diagnostic/post-merge-production-smoke-sep11
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe production routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() {
+            local path="$1"
+            local expected="$2"
+            local body
+            local code
+            body="$(mktemp)"
+            code="$(curl --retry 6 --retry-delay 5 --retry-all-errors --connect-timeout 10 --max-time 30 -L -sS -o "$body" -w '%{http_code}' "https://srcboard.me${path}")"
+            echo "${path} -> HTTP ${code}"
+            if [ "$code" != "$expected" ]; then
+              echo "Unexpected status for ${path}"
+              cat "$body"
+              exit 1
+            fi
+            if grep -Eqi 'Application Error|Internal Server Error' "$body"; then
+              echo "Application error marker found on ${path}"
+              cat "$body"
+              exit 1
+            fi
+            rm -f "$body"
+          }
+
+          check "/api/health" "200"
+          check "/" "200"
+          check "/store" "200"
+          check "/search" "200"
+          check "/category" "200"
+          check "/category/other" "200"
+          check "/u/sourceboard-smoke-does-not-exist" "200"
