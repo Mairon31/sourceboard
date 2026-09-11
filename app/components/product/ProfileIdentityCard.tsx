@@ -10,6 +10,7 @@ import { ProfileEffectLayer } from "./ProfileEffectLayer";
 import { ProfileThemeLayer } from "./ProfileThemeLayer";
 import "./profile-identity-card.css";
 import "./profile-cover.css";
+import "./profile-effects.css";
 import "./profile-themes.css";
 
 export interface ProfileIdentityCardProps {
