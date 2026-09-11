@@ -115,6 +115,11 @@ test("signed-in source request composer previews, replaces and removes a validat
   });
   await expect(page.getByRole("button", { name: "Replace" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Remove" })).toBeVisible();
+  await expect(publish).toBeDisabled();
+
+  const category = page.getByRole("combobox", { name: "Category" });
+  await category.fill("other");
+  await page.getByRole("option", { name: /Other/ }).click();
   await expect(publish).toBeEnabled();
 
   await page.getByRole("button", { name: "Remove" }).click();
