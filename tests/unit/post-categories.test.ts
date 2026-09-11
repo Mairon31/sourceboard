@@ -48,9 +48,11 @@ describe("post categories", () => {
     expect(composerSource).toContain("!category");
   });
 
-  it("renders post categories as linked badges", () => {
+  it("renders post categories as linked badges with a non-linked mode", () => {
     expect(postCardSource).toContain("<PostCategoryBadge");
     expect(categoryBadgeSource).toContain("to={`/category/${category.slug}`}");
+    expect(categoryBadgeSource).toContain("linked");
+    expect(categoryBadgeSource).toContain("<span");
   });
 
   it("explicitly backfills legacy posts into Other", () => {
