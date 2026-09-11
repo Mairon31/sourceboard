@@ -14,6 +14,7 @@ function readSource(path: string): string {
 
 const service = readSource("../../worker/search/service.ts");
 const searchRoute = readSource("../../app/routes/search.tsx");
+const searchControls = readSource("../../app/components/product/SearchDiscoveryControls.tsx");
 const resultsSource = readSource("../../app/components/product/SearchPostResults.tsx");
 
 class MemoryStorage implements Storage {
@@ -136,6 +137,14 @@ describe("Discovery 2.0 route orchestration", () => {
     expect(searchRoute).toContain("categorySlug: state.categorySlug");
     expect(searchRoute).toContain("<SearchDiscoveryControls");
     expect(searchRoute).toContain("<SearchPostResults");
+  });
+
+  it("restores stored view preference after hydration and persists deliberate view changes", () => {
+    expect(searchRoute).toContain("useEffect");
+    expect(searchRoute).toContain("readSearchViewPreference");
+    expect(searchRoute).toContain("state.hasExplicitView");
+    expect(searchRoute).toContain("replace: true");
+    expect(searchControls).toContain("writeSearchViewPreference");
   });
 });
 
