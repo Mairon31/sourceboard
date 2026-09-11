@@ -1,0 +1,33 @@
+name: E5 prettier cleanup
+
+on:
+  push:
+    branches:
+      - feature/profile-comments-categories-discovery
+    paths:
+      - .github/workflows/e5-prettier-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/profile-comments-categories-discovery
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Format E5 files and remove workflow
+        run: |
+          npx prettier --write app/components/product/avatar-frames.css tests/e2e/cosmetics-overhaul.spec.ts
+          rm .github/workflows/e5-prettier-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/components/product/avatar-frames.css tests/e2e/cosmetics-overhaul.spec.ts .github/workflows/e5-prettier-once.yml
+          git commit -m "style(cosmetics): format E5 files"
+          git push origin HEAD:feature/profile-comments-categories-discovery
