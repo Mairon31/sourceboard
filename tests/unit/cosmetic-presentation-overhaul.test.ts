@@ -177,4 +177,18 @@ describe("Cosmetic presentation overhaul", () => {
       expect(frameCss).toContain(`[data-avatar-frame="${slug}"]`);
     }
   });
+
+  it("routes profile cosmetic preview surfaces through one shared renderer", () => {
+    for (const path of [
+      "../../app/components/product/StoreItemCard.tsx",
+      "../../app/components/admin/store/AdminPresetLaboratory.tsx",
+      "../../app/components/admin/store/AdminCosmeticGuide.tsx",
+      "../../app/components/product/CommunityCosmeticStudio.tsx",
+    ]) {
+      expect(read(path)).toContain("ProfileCosmeticPreview");
+    }
+    const store = read("../../app/components/product/StoreItemCard.tsx");
+    expect(store).not.toContain('<div className="product-profile-theme-layer"');
+    expect(store).not.toContain("product-store-preview--${config.preset");
+  });
 });
