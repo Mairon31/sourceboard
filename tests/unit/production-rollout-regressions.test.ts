@@ -6,6 +6,9 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 const storeService = read("../../worker/store/service.ts");
 const reputationAdmin = read("../../worker/reputation/admin.ts");
 const workerApp = read("../../worker/app.ts");
+const packageJson = JSON.parse(read("../../package.json")) as {
+  scripts?: Record<string, string>;
+};
 
 describe("production rollout regressions", () => {
   it("does not empty the public Store when community review tables are not deployed yet", () => {
@@ -21,5 +24,17 @@ describe("production rollout regressions", () => {
   it("prevents Cloudflare automatic Web Analytics beacon injection on HTML responses", () => {
     expect(workerApp).toContain("no-transform");
     expect(workerApp).toContain("content-type");
+  });
+
+  it("applies remote D1 migrations through the DB binding before deploying the Worker", () => {
+    expect(packageJson.scripts?.deploy).toBe(
+      "npm run db:migrations:apply:remote && wrangler deploy",
+    );
+    expect(packageJson.scripts?.["db:migrations:list:remote"]).toBe(
+      "wrangler d1 migrations list DB --remote",
+    );
+    expect(packageJson.scripts?.["db:migrations:apply:remote"]).toBe(
+      "wrangler d1 migrations apply DB --remote",
+    );
   });
 });
