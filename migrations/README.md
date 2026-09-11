@@ -54,3 +54,5 @@ automatic `down` migration is implied. Local reset experiments must use a
 temporary local database only.
 
 Migration `0027` adds one server-derived link-preview snapshot per comment. The table stores only bounded metadata and the canonical/remote image URLs needed by the Worker; remote HTML is never persisted, and public preview images remain behind the same-origin comment image gateway.
+
+Migration `0028` adds the required canonical post category slug with an `other` default for existing rows and a category/creation index for category feeds. Labels, descriptions and aliases remain application-owned in the shared typed catalog rather than D1 rows.
