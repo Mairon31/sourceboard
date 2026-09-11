@@ -39,7 +39,13 @@ describe("post category production schema compatibility", () => {
     const store = createD1PostStore(db);
 
     await expect(
-      store.listFeed({ viewerId: null, kind: "recent", categorySlug: null, cursor: null, limit: 20 }),
+      store.listFeed({
+        viewerId: null,
+        kind: "recent",
+        categorySlug: null,
+        cursor: null,
+        limit: 20,
+      }),
     ).resolves.toEqual({ posts: [], nextCursor: null });
 
     expect(queries.some((query) => query.includes("'other' AS category_slug"))).toBe(true);
@@ -50,10 +56,22 @@ describe("post category production schema compatibility", () => {
     const store = createD1PostStore(db);
 
     await expect(
-      store.listFeed({ viewerId: null, kind: "recent", categorySlug: "other", cursor: null, limit: 20 }),
+      store.listFeed({
+        viewerId: null,
+        kind: "recent",
+        categorySlug: "other",
+        cursor: null,
+        limit: 20,
+      }),
     ).resolves.toEqual({ posts: [], nextCursor: null });
     await expect(
-      store.listFeed({ viewerId: null, kind: "recent", categorySlug: "anime-manga", cursor: null, limit: 20 }),
+      store.listFeed({
+        viewerId: null,
+        kind: "recent",
+        categorySlug: "anime-manga",
+        cursor: null,
+        limit: 20,
+      }),
     ).resolves.toEqual({ posts: [], nextCursor: null });
 
     expect(queries.some((query) => query.includes("'other' AS category_slug"))).toBe(true);
@@ -64,7 +82,9 @@ describe("post category production schema compatibility", () => {
     const store = createD1PostStore(db);
 
     await expect(store.getPost("post-1")).resolves.toBeNull();
-    await expect(store.listByAuthor({ authorId: "user-1", cursor: null, limit: 20 })).resolves.toEqual({
+    await expect(
+      store.listByAuthor({ authorId: "user-1", cursor: null, limit: 20 }),
+    ).resolves.toEqual({
       posts: [],
       nextCursor: null,
     });
