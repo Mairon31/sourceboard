@@ -1,0 +1,15 @@
+.product-post-category-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.product-post-category-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.product-post-category-badge[href]:hover .sb-badge {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border-subtle));
+}
