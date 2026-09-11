@@ -7,56 +7,18 @@
   background: var(--bg-app-secondary);
 }
 
-.product-profile-identity-card .product-profile-cover .product-profile-theme-layer,
 .product-profile-identity-card .product-profile-cover .product-profile-theme-photo {
   position: absolute;
   inset: 0;
-}
-
-.product-profile-identity-card .product-profile-cover .product-profile-theme-photo {
+  pointer-events: none;
   background-position: center;
   background-size: cover;
   opacity: 0.92;
   filter: saturate(0.96) contrast(0.98);
 }
 
-.product-profile-identity-card .product-profile-card-surface {
-  position: relative;
-  z-index: 3;
-  background: var(--surface-solid);
-}
-
-.product-profile-identity-card .product-profile-content {
-  background: var(--surface-solid);
-  backdrop-filter: none;
-}
-
-.product-profile-identity-card .product-profile-name .cosmetic-identity--profile {
-  align-items: flex-end;
-}
-
-.product-profile-identity-card
-  .product-profile-name
-  .cosmetic-identity--profile
-  .cosmetic-identity__avatar-shell {
-  z-index: 5;
-  margin-top: -50px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--surface-solid);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-subtle) 78%, transparent);
-}
-
 @media (max-width: 760px) {
   .product-profile-identity-card .product-profile-cover {
     min-height: 110px;
-  }
-
-  .product-profile-identity-card
-    .product-profile-name
-    .cosmetic-identity--profile
-    .cosmetic-identity__avatar-shell {
-    margin-top: -38px;
-    padding: 3px;
   }
 }
