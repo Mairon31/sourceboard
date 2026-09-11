@@ -24,7 +24,8 @@ describe("community plan phase C profile cosmetics", () => {
     const editor = read("../../app/components/product/ProfileEditor.tsx");
     expect(card).toContain("data-profile-theme");
     expect(card).toContain("profileEffect");
-    expect(card).toContain("product-profile-theme-layer");
+    expect(card).toContain("<ProfileThemeLayer");
+    expect(card).toContain("<ProfileEffectLayer");
     expect(hero).toContain("ProfileIdentityCard");
     expect(editor).toContain("ProfileIdentityCard");
   });
