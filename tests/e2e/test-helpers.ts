@@ -115,18 +115,28 @@ export function seedCosmeticsProfileFixture() {
     VALUES
       ('e2e-cosmetics-theme', 'PROFILE_BANNER', 'E2E Nebula Theme',
        'Deterministic theme for cosmetic presentation E2E.', 0, NULL,
-       '{"preset":"nebula"}', 1, NULL, NULL, 999, ${now}, ${now}, 'PUBLISHED', 1, 0);
+       '{"preset":"nebula"}', 1, NULL, NULL, 999, ${now}, ${now}, 'PUBLISHED', 1, 0),
+      ('e2e-cosmetics-effect', 'PROFILE_EFFECT', 'E2E RGB Glitch Effect',
+       'Deterministic effect for cosmetic presentation E2E.', 0, NULL,
+       '{"preset":"rgb-glitch"}', 1, NULL, NULL, 998, ${now}, ${now}, 'PUBLISHED', 1, 0);
 
     UPDATE store_items
     SET config_json = '{"preset":"nebula"}', is_active = 1, lifecycle_state = 'PUBLISHED',
         is_enabled = 1, updated_at = ${now}
     WHERE id = 'e2e-cosmetics-theme';
 
+    UPDATE store_items
+    SET config_json = '{"preset":"rgb-glitch"}', is_active = 1,
+        lifecycle_state = 'PUBLISHED', is_enabled = 1, updated_at = ${now}
+    WHERE id = 'e2e-cosmetics-effect';
+
     DELETE FROM user_cosmetics
-    WHERE user_id = 'e2e-cosmetics-user' AND slot = 'PROFILE_BANNER';
+    WHERE user_id = 'e2e-cosmetics-user' AND slot IN ('PROFILE_BANNER', 'PROFILE_EFFECT');
 
     INSERT INTO user_cosmetics (user_id, slot, store_item_id, updated_at)
-    VALUES ('e2e-cosmetics-user', 'PROFILE_BANNER', 'e2e-cosmetics-theme', ${now});
+    VALUES
+      ('e2e-cosmetics-user', 'PROFILE_BANNER', 'e2e-cosmetics-theme', ${now}),
+      ('e2e-cosmetics-user', 'PROFILE_EFFECT', 'e2e-cosmetics-effect', ${now});
   `;
   executeLocalSql(sql);
 }
