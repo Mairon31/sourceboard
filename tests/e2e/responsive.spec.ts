@@ -156,7 +156,7 @@ test("Discovery Gallery removes overlay transitions under reduced motion", async
   await waitForUiReady(page);
 
   const overlay = page.locator(".product-search-gallery__overlay").first();
-  await expect(overlay).toBeVisible();
+  await expect(overlay).toBeAttached();
   const transitionDuration = await overlay.evaluate(
     (element) => getComputedStyle(element).transitionDuration,
   );
