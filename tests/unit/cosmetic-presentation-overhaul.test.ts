@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { PROFILE_EFFECT_PRESETS, isProfileEffectPreset } from "../../shared/store/cosmetics";
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, path), "utf8");
 
@@ -9,6 +10,21 @@ function jsxBlock(source: string, startMarker: string, endMarker: string): strin
   const end = source.indexOf(endMarker, start);
   return start >= 0 && end > start ? source.slice(start, end) : "";
 }
+
+const NEW_PROFILE_EFFECTS = [
+  "falling-stars",
+  "cherry-blossom",
+  "neon-rain",
+  "matrix-rain",
+  "pixel-spark",
+  "cosmic-rift",
+  "ocean-bubbles",
+  "ghost-flames",
+  "confetti",
+  "love-letter",
+  "meteor-shower",
+  "digital-scan",
+] as const;
 
 describe("Cosmetic presentation overhaul", () => {
   it("keeps profile effects out of avatar and name identity", () => {
@@ -95,5 +111,19 @@ describe("Cosmetic presentation overhaul", () => {
       expect(cardCss).not.toContain(`.product-profile-effect-layer--${slug}`);
     }
     expect(card).toContain('import "./profile-effects.css"');
+  });
+
+  it("exposes exactly 27 Profile Effect choices", () => {
+    expect(PROFILE_EFFECT_PRESETS).toHaveLength(27);
+    for (const slug of NEW_PROFILE_EFFECTS) {
+      expect(isProfileEffectPreset(slug)).toBe(true);
+    }
+  });
+
+  it("styles every approved new Profile Effect on the card layer", () => {
+    const effectCss = read("../../app/components/product/profile-effects.css");
+    for (const slug of NEW_PROFILE_EFFECTS) {
+      expect(effectCss).toContain(`.product-profile-effect-layer--${slug}`);
+    }
   });
 });
