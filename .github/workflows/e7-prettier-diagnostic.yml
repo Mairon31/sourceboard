@@ -1,0 +1,21 @@
+name: E7 Prettier Diagnostic
+
+on:
+  push:
+    branches: [diagnostic/e7-prettier-sep11]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - run: npx prettier tests/e2e/cosmetics-overhaul.spec.ts --write
+      - run: cat tests/e2e/cosmetics-overhaul.spec.ts
