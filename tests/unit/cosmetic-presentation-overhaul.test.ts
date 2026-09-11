@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -62,5 +62,38 @@ describe("Cosmetic presentation overhaul", () => {
       expect(themeCss).toContain(`data-profile-theme="${slug}"`);
     }
     expect(cardCss).not.toContain('data-profile-theme="');
+  });
+
+  it("renders every legacy effect through the dedicated card effect stylesheet", () => {
+    const effectPath = resolve(
+      import.meta.dirname,
+      "../../app/components/product/profile-effects.css",
+    );
+    expect(existsSync(effectPath)).toBe(true);
+    if (!existsSync(effectPath)) return;
+
+    const effectCss = read("../../app/components/product/profile-effects.css");
+    const cardCss = read("../../app/components/product/profile-identity-card.css");
+    const card = read("../../app/components/product/ProfileIdentityCard.tsx");
+    for (const slug of [
+      "soft-glow",
+      "paper-grain",
+      "star-dust",
+      "blue-energy",
+      "fire-pulse",
+      "pink-hearts",
+      "dark-smoke",
+      "snow-drift",
+      "electric-burst",
+      "holy-glow",
+      "butterfly",
+      "rgb-glitch",
+      "moon-mist",
+      "leaf-drift",
+    ]) {
+      expect(effectCss).toContain(`.product-profile-effect-layer--${slug}`);
+      expect(cardCss).not.toContain(`.product-profile-effect-layer--${slug}`);
+    }
+    expect(card).toContain('import "./profile-effects.css"');
   });
 });
