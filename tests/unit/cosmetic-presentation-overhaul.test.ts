@@ -198,4 +198,26 @@ describe("Cosmetic presentation overhaul", () => {
     expect(preview).toContain("isProfileEffectPreset");
     expect(preview).toContain("isAvatarFramePreset");
   });
+
+  it("bounds decorative motion and keeps a visible reduced-motion fallback", () => {
+    const effectComponent = read("../../app/components/product/ProfileEffectLayer.tsx");
+    const effectCss = read("../../app/components/product/profile-effects.css");
+    const frameCss = read("../../app/components/product/avatar-frames.css");
+    const cardCss = read("../../app/components/product/profile-identity-card.css");
+
+    expect(effectComponent).toContain("[0, 1, 2, 3, 4, 5]");
+    expect(effectCss).toContain("pointer-events: none");
+    expect(effectCss).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(frameCss).toContain("@media (prefers-reduced-motion: reduce)");
+    for (const token of ["setInterval", "setTimeout", "requestAnimationFrame"]) {
+      expect(effectComponent).not.toContain(token);
+    }
+
+    expect(cardCss).toContain("overflow: hidden");
+    expect(cardCss).toContain("isolation: isolate");
+    const reducedMotion = effectCss.slice(effectCss.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reducedMotion).toMatch(
+      /\.product-profile-effect-layer__node\s*\{[^}]*opacity:\s*(?:0\.[1-9]\d*|1(?:\.0+)?)\s*!important;/s,
+    );
+  });
 });
