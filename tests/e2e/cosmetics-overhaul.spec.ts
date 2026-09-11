@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { seedAvatarFrameFixtures } from "./cosmetics-fixture";
 import { seedCosmeticsProfileFixture } from "./test-helpers";
 
 test.beforeAll(() => {
   seedCosmeticsProfileFixture();
+  seedAvatarFrameFixtures();
 });
 
 test("profile theme remains card-wide while uploaded banner stays independent", async ({
@@ -65,4 +67,46 @@ test("legacy profile effect renders across the card and never inside the avatar"
   expect(geometry[1]).not.toBeNull();
   expect(Math.abs((geometry[1]?.width ?? 0) - (geometry[0]?.width ?? 0))).toBeLessThanOrEqual(2);
   expect(Math.abs((geometry[1]?.height ?? 0) - (geometry[0]?.height ?? 0))).toBeLessThanOrEqual(2);
+});
+
+test("structural fox ears stay on the avatar shell", async ({ page }) => {
+  await page.goto("/u/e2e-cosmetics");
+
+  const shell = page.locator('.cosmetic-identity__avatar-shell[data-avatar-frame="fox-ears"]');
+  await expect(shell).toHaveCount(1);
+  await expect(shell).toHaveClass(/product-avatar-frame--decorative/);
+  await expect(shell.locator(".sb-avatar--frame-fox-ears")).toHaveCount(1);
+
+  const before = await shell.evaluate((element) => getComputedStyle(element, "::before").backgroundImage);
+  expect(before).not.toBe("none");
+});
+
+test("orbit animation decorates the shell without transforming the avatar image", async ({ page }) => {
+  await page.goto("/u/e2e-cosmetics-orbit");
+
+  const shell = page.locator(
+    '.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]',
+  );
+  const avatar = shell.locator(".sb-avatar--frame-orbit-planets");
+  await expect(shell).toHaveCount(1);
+  await expect(avatar).toHaveCount(1);
+
+  const animationName = await shell.evaluate(
+    (element) => getComputedStyle(element, "::before").animationName,
+  );
+  expect(animationName).toContain("avatar-frame-orbit");
+  expect(await avatar.evaluate((element) => getComputedStyle(element).transform)).toBe("none");
+});
+
+test("structural avatar frames do not create mobile horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/u/e2e-cosmetics-orbit");
+
+  await expect(
+    page.locator('.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]'),
+  ).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
