@@ -754,10 +754,17 @@
 
 @media (prefers-reduced-motion: reduce) {
   .product-profile-effect-layer,
+  .product-profile-effect-layer::before,
+  .product-profile-effect-layer::after,
   .product-profile-effect-layer__node,
   .product-profile-effect-layer__node::before,
   .product-profile-effect-layer__node::after {
     animation: none !important;
     transition: none !important;
+  }
+
+  .product-profile-effect-layer__node {
+    opacity: 0.5 !important;
+    will-change: auto;
   }
 }
