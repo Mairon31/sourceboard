@@ -355,7 +355,13 @@
   width: 20px;
   height: 34px;
   border-radius: 60% 45% 55% 48%;
-  background: radial-gradient(ellipse at 50% 76%, #8be3ffcc, #7566ff88 48%, #b05cff33 68%, transparent 74%);
+  background: radial-gradient(
+    ellipse at 50% 76%,
+    #8be3ffcc,
+    #7566ff88 48%,
+    #b05cff33 68%,
+    transparent 74%
+  );
   filter: blur(0.6px);
   animation: profile-fx-ghost-flame 4.2s ease-in-out infinite;
   animation-delay: var(--fx-delay);
@@ -381,8 +387,7 @@
   border-radius: 3px;
   background:
     linear-gradient(32deg, transparent 49%, #ffd1e180 50% 53%, transparent 54%),
-    linear-gradient(-32deg, transparent 49%, #ffd1e180 50% 53%, transparent 54%),
-    #ff6fa833;
+    linear-gradient(-32deg, transparent 49%, #ffd1e180 50% 53%, transparent 54%), #ff6fa833;
   box-shadow: 0 0 8px #ff7eb944;
   animation: profile-fx-letter 8s ease-in-out infinite;
   animation-delay: var(--fx-delay);
