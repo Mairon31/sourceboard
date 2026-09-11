@@ -118,17 +118,19 @@ test("friends workspace keeps incoming requests and discovery contained on mobil
 test("Store effect previews animate normally and stop under reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/store");
-  const preview = page.locator(".product-store-preview--star-dust").first();
+  const preview = page.locator('[data-profile-effect="star-dust"]').first();
   await expect(preview).toBeVisible();
+  const animatedNode = preview.locator(".product-profile-effect-layer__node").first();
+  await expect(animatedNode).toBeAttached();
 
-  const normalAnimation = await preview.evaluate(
-    (element) => getComputedStyle(element, "::before").animationName,
+  const normalAnimation = await animatedNode.evaluate(
+    (element) => getComputedStyle(element).animationName,
   );
   expect(normalAnimation).not.toBe("none");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const reducedAnimation = await preview.evaluate(
-    (element) => getComputedStyle(element, "::before").animationName,
+  const reducedAnimation = await animatedNode.evaluate(
+    (element) => getComputedStyle(element).animationName,
   );
   expect(["", "none"]).toContain(reducedAnimation);
 });
