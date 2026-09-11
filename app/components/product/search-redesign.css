@@ -342,7 +342,7 @@
 }
 
 .product-search-gallery__item:hover .product-search-gallery__overlay,
-.product-search-gallery__item:focus-visible .product-search-gallery__overlay {
+.product-search-gallery__item:focus .product-search-gallery__overlay {
   visibility: visible;
   opacity: 1;
   transform: translateY(0);
