@@ -23,7 +23,11 @@ export function SearchPostGrid({
         const detailHref = postDetailHref(post);
         const mediaRestricted = post.isNsfw && post.nsfwPresentation !== "VISIBLE";
         return (
-          <article className="product-search-grid-card" key={post.id} data-search-post-id={post.id}>
+          <article
+            className="product-search-grid-card"
+            key={post.id}
+            data-search-post-id={post.id}
+          >
             <Link
               to={detailHref}
               className="product-search-grid-card__media"
@@ -42,7 +46,9 @@ export function SearchPostGrid({
                 <div
                   className="product-search-grid-card__placeholder"
                   role="img"
-                  aria-label={mediaRestricted ? `${post.imageAlt}. Sensitive media hidden.` : post.imageAlt}
+                  aria-label={
+                    mediaRestricted ? `${post.imageAlt}. Sensitive media hidden.` : post.imageAlt
+                  }
                 >
                   <span>{mediaRestricted ? "Sensitive media" : "Image unavailable"}</span>
                 </div>

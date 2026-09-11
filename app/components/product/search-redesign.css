@@ -328,7 +328,11 @@
   visibility: hidden;
   gap: 7px;
   padding: 38px 11px 11px;
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--bg-app) 88%, transparent));
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--bg-app) 88%, transparent)
+  );
   opacity: 0;
   transform: translateY(6px);
   transition:

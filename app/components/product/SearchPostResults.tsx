@@ -22,7 +22,10 @@ export function SearchPostResults({
   }
 
   return (
-    <div className="product-feed-list product-search-results product-search-results--list" data-search-view="list">
+    <div
+      className="product-feed-list product-search-results product-search-results--list"
+      data-search-view="list"
+    >
       {posts.map((post) => (
         <div key={post.id} data-search-post-id={post.id}>
           <PostCard post={post} />

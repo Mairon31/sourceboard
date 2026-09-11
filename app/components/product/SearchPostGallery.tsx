@@ -26,7 +26,9 @@ export function SearchPostGallery({
           <Link
             key={post.id}
             to={detailHref}
-            className={`product-search-gallery__item${mediaRestricted ? " product-search-gallery__item--restricted" : ""}`}
+            className={`product-search-gallery__item${
+              mediaRestricted ? " product-search-gallery__item--restricted" : ""
+            }`}
             data-search-post-id={post.id}
             aria-label={`Open ${post.title}, ${post.status.toLowerCase()}`}
             onClick={() => markNavigationStart(detailHref)}
@@ -44,7 +46,9 @@ export function SearchPostGallery({
                 <div
                   className="product-search-gallery__placeholder"
                   role="img"
-                  aria-label={mediaRestricted ? `${post.imageAlt}. Sensitive media hidden.` : post.imageAlt}
+                  aria-label={
+                    mediaRestricted ? `${post.imageAlt}. Sensitive media hidden.` : post.imageAlt
+                  }
                 >
                   <span>{mediaRestricted ? "Sensitive media" : "Image unavailable"}</span>
                 </div>
