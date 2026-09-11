@@ -143,7 +143,7 @@ test("Profile, Store and Admin expose the same canonical cosmetic preview attrib
     storeTheme.locator('.product-cosmetic-preview[data-profile-theme="nebula"]'),
   ).toBeVisible();
   await expect(
-    storeEffect.locator('.product-cosmetic-preview[data-profile-effect="rgb-glitch"]'),
+    storeEffect.locator('.product-cosmetic-preview [data-profile-effect="rgb-glitch"]'),
   ).toBeVisible();
   await expect(
     storeFrame.locator('.product-cosmetic-preview [data-avatar-frame="fox-ears"]'),
@@ -164,7 +164,7 @@ test("Profile, Store and Admin expose the same canonical cosmetic preview attrib
 
   await page.getByRole("button", { name: "Effects", exact: true }).click();
   await expect(
-    laboratory.locator('.product-cosmetic-preview[data-profile-effect="rgb-glitch"]'),
+    laboratory.locator('.product-cosmetic-preview [data-profile-effect="rgb-glitch"]'),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Avatar Frames", exact: true }).click();
