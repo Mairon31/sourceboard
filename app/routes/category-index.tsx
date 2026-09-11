@@ -24,7 +24,9 @@ export default function CategoryIndexRoute() {
         <div className="product-home-compact-lead__copy">
           <span className="product-eyebrow">Categories</span>
           <h1>Browse source requests by category</h1>
-          <p>Search by category name or alias, or choose one of the canonical categories below.</p>
+          <p>
+            Search by category name or alias, or choose one of the canonical categories below.
+          </p>
         </div>
       </section>
 
@@ -60,7 +62,11 @@ export default function CategoryIndexRoute() {
         </div>
         <div className="product-category-directory">
           {POST_CATEGORIES.map((category) => (
-            <Link key={category.slug} to={`/category/${category.slug}`} className="product-list-row">
+            <Link
+              key={category.slug}
+              to={`/category/${category.slug}`}
+              className="product-list-row"
+            >
               <div>
                 <strong>{category.label}</strong>
                 <p>{category.description}</p>
