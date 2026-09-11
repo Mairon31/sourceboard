@@ -90,7 +90,7 @@ function comment(): CommentRecord {
     postId: "post-1",
     authorId: "author-1",
     parentCommentId: null,
-    richtext: { type: "doc", content: [] },
+    richtext: [],
     plaintext: "Legacy comment",
     attachment: null,
     state: "VISIBLE",
@@ -112,7 +112,7 @@ describe("comment link-preview production schema compatibility", () => {
       postId: "post-1",
       cursor: null,
       limit: 50,
-      sort: "newest",
+      sort: "recent",
     });
     const fetched = await store.getComment("comment-1");
 
@@ -165,7 +165,7 @@ describe("comment link-preview production schema compatibility", () => {
     const store = createD1CommentStore(db);
 
     await expect(
-      store.listForPost({ postId: "post-1", cursor: null, limit: 50, sort: "newest" }),
+      store.listForPost({ postId: "post-1", cursor: null, limit: 50, sort: "recent" }),
     ).rejects.toThrow("database unavailable");
   });
 });
