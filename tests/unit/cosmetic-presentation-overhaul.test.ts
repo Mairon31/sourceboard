@@ -191,4 +191,11 @@ describe("Cosmetic presentation overhaul", () => {
     expect(store).not.toContain('<div className="product-profile-theme-layer"');
     expect(store).not.toContain("product-store-preview--${config.preset");
   });
+
+  it("validates shared preview presets through the canonical registries", () => {
+    const preview = read("../../app/components/product/ProfileCosmeticPreview.tsx");
+    expect(preview).toContain("isProfileThemePreset");
+    expect(preview).toContain("isProfileEffectPreset");
+    expect(preview).toContain("isAvatarFramePreset");
+  });
 });
