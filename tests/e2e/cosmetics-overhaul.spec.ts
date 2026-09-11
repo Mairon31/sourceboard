@@ -172,3 +172,75 @@ test("Profile, Store and Admin expose the same canonical cosmetic preview attrib
     laboratory.locator('.product-cosmetic-preview [data-avatar-frame="fox-ears"]'),
   ).toBeVisible();
 });
+
+test("reduced motion keeps representative cosmetics static and visible", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/u/e2e-cosmetics-orbit");
+
+  const orbit = page.locator(
+    '.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]',
+  );
+  await expect(orbit).toBeVisible();
+  const orbitStyle = await orbit.evaluate((element) => {
+    const style = getComputedStyle(element, "::before");
+    return { animationName: style.animationName, borderTopWidth: style.borderTopWidth };
+  });
+  expect(orbitStyle.animationName).toBe("none");
+  expect(Number.parseFloat(orbitStyle.borderTopWidth)).toBeGreaterThan(0);
+
+  await installAdminStoreFixture(page);
+  await page.goto("/admin/store");
+  await waitForUiReady(page);
+  await page.getByRole("tab", { name: "Presets" }).click();
+  await page.getByRole("button", { name: "Effects", exact: true }).click();
+
+  const meteor = page
+    .locator('.admin-preset-lab .product-cosmetic-preview [data-profile-effect="meteor-shower"]')
+    .first();
+  await expect(meteor).toBeVisible();
+  const meteorNode = meteor.locator(".product-profile-effect-layer__node").first();
+  const meteorStyle = await meteorNode.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      animationName: style.animationName,
+      opacity: Number.parseFloat(style.opacity),
+      backgroundImage: style.backgroundImage,
+    };
+  });
+  expect(meteorStyle.animationName).toBe("none");
+  expect(meteorStyle.opacity).toBeGreaterThan(0);
+  expect(meteorStyle.backgroundImage).not.toBe("none");
+});
+
+test("profile cosmetic layers stay contained and actions remain clickable", async ({ page }) => {
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/u/e2e-cosmetics");
+
+    const card = page.locator(".product-profile-identity-card");
+    const effect = card.locator(':scope > [data-profile-effect="rgb-glitch"]');
+    const share = page.getByRole("button", { name: "Share" }).first();
+    await expect(card).toBeVisible();
+    await expect(effect).toBeVisible();
+    await expect(share).toBeVisible();
+    await share.click({ trial: true });
+
+    const [cardBox, effectBox] = await Promise.all([card.boundingBox(), effect.boundingBox()]);
+    expect(cardBox).not.toBeNull();
+    expect(effectBox).not.toBeNull();
+    if (cardBox && effectBox) {
+      expect(effectBox.x).toBeGreaterThanOrEqual(cardBox.x - 1);
+      expect(effectBox.y).toBeGreaterThanOrEqual(cardBox.y - 1);
+      expect(effectBox.x + effectBox.width).toBeLessThanOrEqual(cardBox.x + cardBox.width + 1);
+      expect(effectBox.y + effectBox.height).toBeLessThanOrEqual(cardBox.y + cardBox.height + 1);
+    }
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
+});
