@@ -1,8 +1,5 @@
 import { Link } from "react-router";
-import {
-  getPostCategory,
-  type PostCategorySlug,
-} from "../../../shared/posts/categories";
+import { getPostCategory, type PostCategorySlug } from "../../../shared/posts/categories";
 import { Badge } from "../ui";
 
 export function PostCategoryBadge({ slug }: { slug: PostCategorySlug }) {
