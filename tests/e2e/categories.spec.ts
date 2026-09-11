@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { seedCategoryBadgeFixture } from "./category-fixture";
 import { installAdminStoreFixture, waitForUiReady } from "./test-helpers";
 
 const PNG_1X1 = Buffer.from(
@@ -49,4 +50,20 @@ test("post creation requires and submits a searchable canonical category", async
   await expect(page).toHaveURL(/\/posts\/e2e-category-post\/e2e-category-post$/);
   expect(submittedBody).toContain('name="category"');
   expect(submittedBody).toContain("manga-manhwa");
+});
+
+test("category badge navigates to its canonical category instead of opening the post", async ({
+  page,
+}) => {
+  seedCategoryBadgeFixture();
+  await page.goto("/");
+  await waitForUiReady(page);
+
+  await expect(page.getByText("E2E Anime category post", { exact: true })).toBeVisible();
+  const categoryLink = page.getByRole("link", { name: "Browse Anime posts" }).first();
+  await expect(categoryLink).toBeVisible();
+
+  await categoryLink.click();
+  await expect(page).toHaveURL(/\/category\/anime$/);
+  await expect(page).not.toHaveURL(/\/posts\/e2e-category-anime-post/);
 });
