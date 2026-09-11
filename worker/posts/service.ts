@@ -1,6 +1,8 @@
+import type { PostCategorySlug } from "../../shared/posts/categories";
+import type { PostDetail, PostSummary, PublicPostAuthor } from "../../shared/ui/contracts";
+import { createIdentifier } from "../auth/crypto";
 import { canViewNsfwPost, canViewUser } from "../privacy/policy";
 import type { ProfileStore } from "../profile/store";
-import { createIdentifier } from "../auth/crypto";
 import { PostError } from "./errors";
 import { decodePostCursor } from "./pagination";
 import type { PostStore } from "./store";
@@ -13,7 +15,6 @@ import type {
   PostVisibility,
   PostWithAuthor,
 } from "./types";
-import type { PostDetail, PostSummary, PublicPostAuthor } from "../../shared/ui/contracts";
 
 const MAX_TITLE_LENGTH = 160;
 const MAX_DESCRIPTION_LENGTH = 10_000;
@@ -39,6 +40,7 @@ export interface PostService {
   listFeed(input: {
     viewerId: string | null;
     kind: FeedKind;
+    categorySlug?: PostCategorySlug | null;
     cursor: string | null;
     limit: number;
   }): Promise<{ posts: PostSummary[]; nextCursor: string | null }>;
@@ -244,6 +246,7 @@ async function toPostSummary(
     slug: post.post.slug,
     title: post.post.title,
     description: post.post.description || undefined,
+    categorySlug: post.post.categorySlug,
     author: authorForPost(post, profileVisible, cosmetics),
     createdAt: new Date(post.post.createdAt).toISOString(),
     updatedAt: new Date(post.post.updatedAt).toISOString(),
@@ -346,7 +349,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
       return toPostDetail(post, viewerId, policyDependencies);
     },
 
-    async listFeed({ viewerId, kind, cursor, limit }) {
+    async listFeed({ viewerId, kind, categorySlug, cursor, limit }) {
       const safeLimit = Math.min(Math.max(1, Math.floor(limit)), MAX_FEED_LIMIT);
       let decodedCursor = decodePostCursor(cursor);
       const visible: PostSummary[] = [];
@@ -355,6 +358,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         const result = await dependencies.store.listFeed({
           viewerId,
           kind,
+          categorySlug,
           cursor: decodedCursor,
           limit: safeLimit * 2,
         });
