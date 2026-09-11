@@ -1,6 +1,6 @@
 .product-profile-identity-card .product-profile-cover {
   position: relative;
-  z-index: 0;
+  z-index: 1;
   min-height: 136px;
   overflow: hidden;
   border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
