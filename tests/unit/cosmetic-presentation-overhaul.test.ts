@@ -19,4 +19,10 @@ describe("Cosmetic presentation overhaul", () => {
       "data-profile-effect",
     );
   });
+
+  it("composes profile theme and effect layers at the profile card boundary", () => {
+    const card = read("../../app/components/product/ProfileIdentityCard.tsx");
+    expect(card).toContain("<ProfileThemeLayer");
+    expect(card).toContain("<ProfileEffectLayer");
+  });
 });
