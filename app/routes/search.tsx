@@ -1,12 +1,19 @@
 import { Form, Link, useLoaderData, type MetaFunction } from "react-router";
-import type { SearchFilter, SearchKind, SearchResult } from "../../worker/search/service";
+import { getPostCategory } from "../../shared/posts/categories";
+import type { SearchResult } from "../../worker/search/service";
 import { createSearchService } from "../../worker/search/service";
 import { createD1ProfileStore } from "../../worker/profile/store";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { SearchDiscoveryControls } from "../components/product/SearchDiscoveryControls";
 import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { PostCard } from "../components/product/PostCard";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
 import { Card, SearchIcon } from "../components/ui";
+import {
+  buildSearchHref,
+  parseSearchState,
+  type SearchRouteState,
+} from "../data/search-state";
+import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 type LoaderArgs = ServerLoaderArgs;
 
@@ -20,29 +27,12 @@ export const meta: MetaFunction = () => [
   { name: "robots", content: "noindex, follow" },
 ];
 
-function parseKind(value: string | null): SearchKind {
-  return value === "posts" || value === "profiles" || value === "sources" ? value : "all";
-}
-
-function parseFilter(value: string | null): SearchFilter {
-  if (
-    value === "relevant" ||
-    value === "open" ||
-    value === "unanswered" ||
-    value === "answered" ||
-    value === "verified"
-  ) {
-    return value;
-  }
-  return "recent";
-}
-
-function emptyResult(query: string, kind: SearchKind, filter: SearchFilter): SearchResult {
+function emptyResult(state: SearchRouteState): SearchResult {
   return {
-    query,
-    kind,
-    filter,
-    categorySlug: null,
+    query: state.query,
+    kind: state.kind,
+    filter: state.filter,
+    categorySlug: state.categorySlug,
     posts: [],
     profiles: [],
     nextPostCursor: null,
@@ -52,29 +42,27 @@ function emptyResult(query: string, kind: SearchKind, filter: SearchFilter): Sea
 
 export async function loader({ request, context }: LoaderArgs) {
   const url = new URL(request.url);
-  const query = url.searchParams.get("q") ?? "";
-  const kind = parseKind(url.searchParams.get("kind"));
-  const filter = parseFilter(url.searchParams.get("filter"));
+  const state = parseSearchState(url);
   return withOptionalServerSession(
     request,
     context,
     (unavailable) => ({
       unavailable,
-      query,
-      result: emptyResult(query, kind, filter),
+      state,
+      result: emptyResult(state),
     }),
     async (runtime, userId) => ({
       unavailable: false,
-      query,
+      state,
       result: await createSearchService({
         db: runtime.db,
         profileStore: createD1ProfileStore(runtime.db),
       }).search({
         viewerId: userId,
-        query,
-        kind,
-        filter,
-        categorySlug: null,
+        query: state.query,
+        kind: state.kind,
+        filter: state.filter,
+        categorySlug: state.categorySlug,
         postCursor: url.searchParams.get("postCursor"),
         profileCursor: url.searchParams.get("profileCursor"),
         limit: 20,
@@ -85,72 +73,17 @@ export async function loader({ request, context }: LoaderArgs) {
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
-function searchHref(
-  query: string,
-  options: {
-    kind?: SearchKind;
-    filter?: SearchFilter;
-    postCursor?: string;
-    profileCursor?: string;
-  },
+function cursorHref(
+  state: SearchRouteState,
+  cursor: { postCursor?: string; profileCursor?: string },
 ): string {
-  const params = new URLSearchParams();
-  if (query) params.set("q", query);
-  if (options.kind && options.kind !== "all") params.set("kind", options.kind);
-  if (options.filter && options.filter !== "recent") params.set("filter", options.filter);
-  if (options.postCursor) params.set("postCursor", options.postCursor);
-  if (options.profileCursor) params.set("profileCursor", options.profileCursor);
-  const queryString = params.toString();
-  return queryString ? `/search?${queryString}` : "/search";
+  const url = new URL(buildSearchHref(state, {}), "https://sourceboard.local");
+  if (cursor.postCursor) url.searchParams.set("postCursor", cursor.postCursor);
+  if (cursor.profileCursor) url.searchParams.set("profileCursor", cursor.profileCursor);
+  return `${url.pathname}${url.search}`;
 }
 
-function SearchFilters({ result, query }: { result: SearchResult; query: string }) {
-  const kinds: Array<{ value: SearchKind; label: string }> = [
-    { value: "all", label: "All" },
-    { value: "posts", label: "Posts" },
-    { value: "profiles", label: "Users" },
-    { value: "sources", label: "Accepted Sources" },
-  ];
-  const filters: Array<{ value: SearchFilter; label: string }> = [
-    { value: "relevant", label: "Relevant" },
-    { value: "recent", label: "Recent" },
-    { value: "unanswered", label: "Unanswered" },
-    { value: "answered", label: "Answered" },
-    { value: "verified", label: "Verified" },
-  ];
-  return (
-    <div className="product-search-filter-groups product-search-controls">
-      <nav className="product-store-filter-tabs" aria-label="Search result type">
-        {kinds.map((item) => (
-          <Link
-            key={item.value}
-            className={result.kind === item.value ? "is-active" : undefined}
-            to={searchHref(query, { kind: item.value, filter: result.filter })}
-            aria-current={result.kind === item.value ? "page" : undefined}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      {result.kind !== "profiles" ? (
-        <nav className="product-chip-row" aria-label="Search post filter">
-          {filters.map((item) => (
-            <Link
-              key={item.value}
-              className={`product-chip${result.filter === item.value ? " is-active" : ""}`}
-              to={searchHref(query, { kind: result.kind, filter: item.value })}
-              aria-current={result.filter === item.value ? "page" : undefined}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      ) : null}
-    </div>
-  );
-}
-
-function ProfileResults({ result }: { result: SearchResult }) {
+function ProfileResults({ result, state }: { result: SearchResult; state: SearchRouteState }) {
   if (result.kind === "posts" || result.kind === "sources" || !result.profiles.length) return null;
   return (
     <section className="product-search-section" aria-labelledby="search-people-heading">
@@ -193,11 +126,7 @@ function ProfileResults({ result }: { result: SearchResult }) {
       {result.nextProfileCursor ? (
         <Link
           className="product-text-action"
-          to={searchHref(result.query, {
-            kind: result.kind,
-            filter: result.filter,
-            profileCursor: result.nextProfileCursor,
-          })}
+          to={cursorHref(state, { profileCursor: result.nextProfileCursor })}
         >
           Load more users
         </Link>
@@ -206,7 +135,7 @@ function ProfileResults({ result }: { result: SearchResult }) {
   );
 }
 
-function PostResults({ result }: { result: SearchResult }) {
+function SearchPostResults({ result, state }: { result: SearchResult; state: SearchRouteState }) {
   if (result.kind === "profiles" || !result.posts.length) return null;
   const sourceMode = result.kind === "sources";
   return (
@@ -228,11 +157,7 @@ function PostResults({ result }: { result: SearchResult }) {
       {result.nextPostCursor ? (
         <Link
           className="product-text-action"
-          to={searchHref(result.query, {
-            kind: result.kind,
-            filter: result.filter,
-            postCursor: result.nextPostCursor,
-          })}
+          to={cursorHref(state, { postCursor: result.nextPostCursor })}
         >
           Load more {sourceMode ? "accepted sources" : "posts"}
         </Link>
@@ -241,16 +166,36 @@ function PostResults({ result }: { result: SearchResult }) {
   );
 }
 
-export default function SearchRoute() {
-  const { unavailable, query, result } = useLoaderData<LoaderData>();
+function SearchSummary({
+  state,
+  result,
+}: {
+  state: SearchRouteState;
+  result: SearchResult;
+}) {
   const total = result.posts.length + result.profiles.length;
+  const category = state.categorySlug ? getPostCategory(state.categorySlug) : null;
+  return (
+    <div className="product-search-query-summary" aria-live="polite">
+      <strong>{total}</strong> visible results for “{result.query}”
+      {state.kind === "sources" ? <span>Accepted sources</span> : null}
+      {state.filter !== "recent" ? <span>{state.filter}</span> : null}
+      {category ? <span>{category.label}</span> : null}
+    </div>
+  );
+}
+
+export default function SearchRoute() {
+  const { unavailable, state, result } = useLoaderData<LoaderData>();
   return (
     <ProductShell wide>
-      <PageHeader
-        eyebrow="Discovery"
-        title={query ? `Results for “${query}”` : "Search SourceBoard"}
-        description="Find public source requests, contributors and accepted-source provenance. Private and friends-only content is excluded server-side."
-      />
+      <div className="product-search-heading">
+        <PageHeader
+          eyebrow="Source search"
+          title="Discovery"
+          description="Find public source requests, contributors and accepted-source provenance."
+        />
+      </div>
       <Form
         className="product-search-form product-search-form--advanced"
         method="get"
@@ -264,30 +209,30 @@ export default function SearchRoute() {
               id="search-query"
               name="q"
               type="search"
-              defaultValue={query}
+              defaultValue={state.query}
               placeholder="Image source, creator, username or topic"
               autoComplete="off"
             />
           </div>
-          {result.kind !== "all" ? <input type="hidden" name="kind" value={result.kind} /> : null}
-          {result.filter !== "recent" ? (
-            <input type="hidden" name="filter" value={result.filter} />
+          {state.kind !== "all" ? <input type="hidden" name="kind" value={state.kind} /> : null}
+          {state.filter !== "recent" ? (
+            <input type="hidden" name="filter" value={state.filter} />
+          ) : null}
+          {state.kind !== "profiles" && state.categorySlug ? (
+            <input type="hidden" name="category" value={state.categorySlug} />
+          ) : null}
+          {state.kind !== "profiles" && state.hasExplicitView ? (
+            <input type="hidden" name="view" value={state.view} />
           ) : null}
           <button type="submit">Search</button>
         </div>
-        {query && !unavailable ? (
-          <div className="product-search-query-summary" aria-live="polite">
-            <strong>{total}</strong> visible results in this page
-            {result.kind === "sources" ? <span>Accepted sources only</span> : null}
-          </div>
-        ) : null}
       </Form>
       {unavailable ? (
         <Card className="product-empty-state">
           <strong>Search unavailable</strong>
           <p>The public search index is not available in this environment yet.</p>
         </Card>
-      ) : !query ? (
+      ) : !state.query ? (
         <Card className="product-empty-state product-search-empty">
           <SearchIcon width="24" height="24" aria-hidden="true" />
           <strong>Search public SourceBoard knowledge</strong>
@@ -295,9 +240,10 @@ export default function SearchRoute() {
         </Card>
       ) : (
         <>
-          <SearchFilters result={result} query={query} />
-          <PostResults result={result} />
-          <ProfileResults result={result} />
+          <SearchDiscoveryControls state={state} />
+          <SearchSummary state={state} result={result} />
+          <SearchPostResults result={result} state={state} />
+          <ProfileResults result={result} state={state} />
           {!result.posts.length && !result.profiles.length ? (
             <Card className="product-empty-state">
               <strong>No public matches</strong>
