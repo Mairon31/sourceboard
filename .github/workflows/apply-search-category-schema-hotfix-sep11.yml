@@ -1,0 +1,32 @@
+name: Apply search category schema-lag hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/search-category-schema-lag-sep11
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: hotfix/search-category-schema-lag-sep11
+      - name: Patch search compatibility
+        run: python .github/scripts/apply-search-category-schema-hotfix-sep11.py
+      - name: Format patched file
+        run: npx prettier --write worker/search/service.ts
+      - name: Commit patch when needed
+        run: |
+          if git diff --quiet -- worker/search/service.ts; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git add worker/search/service.ts
+          git commit -m "fix(search): tolerate missing category column"
+          git push origin HEAD:hotfix/search-category-schema-lag-sep11
