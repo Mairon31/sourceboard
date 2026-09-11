@@ -32,7 +32,12 @@ export default function CategoryIndexRoute() {
         <Form method="get" role="search" className="product-form-grid">
           <label className="product-field-native">
             <span>Category</span>
-            <input name="q" type="search" defaultValue={data.query} placeholder="Anime, manga, games…" />
+            <input
+              name="q"
+              type="search"
+              defaultValue={data.query}
+              placeholder="Anime, manga, games…"
+            />
           </label>
           <button className="sb-button sb-button--primary" type="submit">
             Find category
