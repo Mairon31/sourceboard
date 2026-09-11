@@ -40,4 +40,26 @@ describe("Cosmetic presentation overhaul", () => {
     expect(cover).not.toContain("ProfileThemeLayer");
     expect(coverCss).not.toContain(".product-profile-cover .product-profile-theme-layer");
   });
+
+  it("keeps all stable profile themes on the dedicated card layer", () => {
+    const themeCss = read("../../app/components/product/profile-themes.css");
+    const cardCss = read("../../app/components/product/profile-identity-card.css");
+    for (const slug of [
+      "nebula",
+      "aurora",
+      "ember",
+      "ocean-glass",
+      "sunset-noir",
+      "prism-grid",
+      "forest-ink",
+      "silver-wave",
+      "cosmic-dusk",
+      "terminal-grid",
+      "sakura-night",
+      "golden-hour",
+    ]) {
+      expect(themeCss).toContain(`data-profile-theme="${slug}"`);
+    }
+    expect(cardCss).not.toContain('data-profile-theme="');
+  });
 });
