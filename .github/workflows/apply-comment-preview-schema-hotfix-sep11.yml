@@ -1,0 +1,37 @@
+name: Apply comment preview schema-lag hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/comment-link-preview-schema-lag-sep11
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: hotfix/comment-link-preview-schema-lag-sep11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Apply compatibility patch
+        run: python .github/scripts/apply-comment-preview-schema-hotfix-sep11.py
+      - name: Format patched file
+        run: npx prettier --write worker/comments/store.ts
+      - name: Commit patch when needed
+        run: |
+          if git diff --quiet -- worker/comments/store.ts; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git add worker/comments/store.ts
+          git commit -m "fix(comments): tolerate missing preview table"
+          git push origin HEAD:hotfix/comment-link-preview-schema-lag-sep11
