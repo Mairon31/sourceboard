@@ -30,10 +30,22 @@ function nodeIsEmote(node: unknown): boolean {
   return asRecord(node)?.type === "emote";
 }
 
+function hasExplicitLinkPreview(value: string | null | undefined): boolean {
+  if (!value || value.length > 2048) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function hasSourceEligibleCommentContent(
   richtext: readonly unknown[] | null | undefined,
   fallbackBody = "",
+  explicitLinkPreviewUrl?: string | null,
 ): boolean {
+  if (hasExplicitLinkPreview(explicitLinkPreviewUrl)) return true;
   if (richtext) return richtext.some(nodeHasTextualContent);
   return fallbackBody.trim().length > 0;
 }
