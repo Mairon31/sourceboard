@@ -3,8 +3,11 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   AVATAR_FRAME_PRESETS,
+  PROFILE_BANNER_PRESETS,
   PROFILE_EFFECT_PRESETS,
+  PROFILE_THEME_PRESETS,
   isAvatarFramePreset,
+  isProfileBannerPreset,
   isProfileEffectPreset,
 } from "../../shared/store/cosmetics";
 
@@ -231,5 +234,25 @@ describe("Cosmetic presentation overhaul", () => {
     );
     expect(reducedFrameMotion).toContain(".product-avatar-frame--decorative::before");
     expect(reducedFrameMotion).toContain(".product-avatar-frame--decorative::after");
+  });
+
+  it("preserves legacy cosmetic preset compatibility", () => {
+    expect(PROFILE_BANNER_PRESETS).toBe(PROFILE_THEME_PRESETS);
+    expect(isProfileBannerPreset("nebula")).toBe(true);
+    expect(isProfileEffectPreset("star-dust")).toBe(true);
+    expect(isAvatarFramePreset("cat-ears")).toBe(true);
+  });
+
+  it("keeps card-wide effects out of compact feed, comment and navigation identity", () => {
+    for (const path of [
+      "../../app/components/product/PostCard.tsx",
+      "../../app/components/product/CommentThread.tsx",
+      "../../app/components/product/NotificationActorStack.tsx",
+    ]) {
+      const source = read(path);
+      expect(source).toContain("CosmeticIdentity");
+      expect(source).toContain('mode="compact"');
+      expect(source).not.toContain("ProfileEffectLayer");
+    }
   });
 });
