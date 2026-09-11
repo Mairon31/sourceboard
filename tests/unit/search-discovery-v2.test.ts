@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildSearchHref,
@@ -7,8 +7,14 @@ import {
   writeSearchViewPreference,
 } from "../../app/data/search-state";
 
-const service = readFileSync(new URL("../../worker/search/service.ts", import.meta.url), "utf8");
-const searchRoute = readFileSync(new URL("../../app/routes/search.tsx", import.meta.url), "utf8");
+function readSource(path: string): string {
+  const url = new URL(path, import.meta.url);
+  return existsSync(url) ? readFileSync(url, "utf8") : "";
+}
+
+const service = readSource("../../worker/search/service.ts");
+const searchRoute = readSource("../../app/routes/search.tsx");
+const resultsSource = readSource("../../app/components/product/SearchPostResults.tsx");
 
 class MemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -130,5 +136,15 @@ describe("Discovery 2.0 route orchestration", () => {
     expect(searchRoute).toContain("categorySlug: state.categorySlug");
     expect(searchRoute).toContain("<SearchDiscoveryControls");
     expect(searchRoute).toContain("<SearchPostResults");
+  });
+});
+
+describe("Discovery 2.0 post presentations", () => {
+  it("switches among list, gallery and detailed grid without changing result data", () => {
+    expect(resultsSource).toContain('view === "gallery"');
+    expect(resultsSource).toContain("<SearchPostGallery");
+    expect(resultsSource).toContain('view === "grid"');
+    expect(resultsSource).toContain("<SearchPostGrid");
+    expect(resultsSource).toContain("<PostCard");
   });
 });
