@@ -18,6 +18,22 @@ export const AVATAR_FRAME_PRESETS = [
   "electric",
   "cat-ears",
   "wings",
+  "glitch-ring",
+  "neko-neon",
+  "pixel-glitch",
+  "devil-horns",
+  "angel-halo",
+  "cyber-wings",
+  "crown",
+  "electric-coils",
+  "orbit-planets",
+  "sakura-petals",
+  "black-hole",
+  "slime",
+  "retro-arcade",
+  "cat-ears-black",
+  "cat-ears-white",
+  "fox-ears",
 ] as const;
 
 export type AvatarFramePreset = (typeof AVATAR_FRAME_PRESETS)[number];
