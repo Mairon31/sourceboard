@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 const storeService = read("../../worker/store/service.ts");
 const reputationAdmin = read("../../worker/reputation/admin.ts");
 const workerApp = read("../../worker/app.ts");
+const securityHeaders = read("../../worker/security/headers.ts");
 const packageJson = JSON.parse(read("../../package.json")) as {
   scripts?: Record<string, string>;
 };
@@ -22,8 +23,9 @@ describe("production rollout regressions", () => {
   });
 
   it("prevents Cloudflare automatic Web Analytics beacon injection on HTML responses", () => {
-    expect(workerApp).toContain("no-transform");
-    expect(workerApp).toContain("content-type");
+    expect(workerApp).toContain("preventHtmlTransforms");
+    expect(securityHeaders).toContain("no-transform");
+    expect(securityHeaders).toContain("content-type");
   });
 
   it("applies remote D1 migrations through the DB binding before deploying the Worker", () => {
