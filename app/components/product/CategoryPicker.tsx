@@ -106,11 +106,18 @@ export function CategoryPicker({ value, onChange, disabled = false }: CategoryPi
             <span>{selected.description}</span>
           </div>
         ) : (
-          <span className="product-category-picker__hint">Choose the closest match for this request.</span>
+          <span className="product-category-picker__hint">
+            Choose the closest match for this request.
+          </span>
         )}
       </div>
       {open && !disabled ? (
-        <div className="product-category-picker__list" id={listboxId} role="listbox" aria-label="Post categories">
+        <div
+          className="product-category-picker__list"
+          id={listboxId}
+          role="listbox"
+          aria-label="Post categories"
+        >
           {filtered.length ? (
             filtered.map((category, index) => (
               <button
