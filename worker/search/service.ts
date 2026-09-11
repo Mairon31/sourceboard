@@ -1,4 +1,4 @@
-import { parsePostCategorySlug } from "../../shared/posts/categories";
+import type { PostCategorySlug } from "../../shared/posts/categories";
 import type {
   AcceptedSourceView,
   PostSummary,
@@ -17,6 +17,7 @@ export interface SearchInput {
   query: string;
   kind: SearchKind;
   filter: SearchFilter;
+  categorySlug: PostCategorySlug | null;
   postCursor: string | null;
   profileCursor: string | null;
   limit: number;
@@ -35,6 +36,7 @@ export interface SearchResult {
   query: string;
   kind: SearchKind;
   filter: SearchFilter;
+  categorySlug: PostCategorySlug | null;
   posts: PostSummary[];
   profiles: ProfileSearchResult[];
   nextPostCursor: string | null;
@@ -63,7 +65,7 @@ interface PostSearchRow {
   title: string;
   slug: string;
   description: string;
-  category_slug: string;
+  category_slug: PostCategorySlug;
   visibility: string;
   status: string;
   comment_count: number;
@@ -188,7 +190,7 @@ function toPostSummary(
     slug: row.slug,
     title: row.title,
     description: row.description || undefined,
-    categorySlug: parsePostCategorySlug(row.category_slug) ?? "other",
+    categorySlug: row.category_slug,
     author,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
@@ -225,6 +227,7 @@ function postSearchQuery(
   viewerId: string | null,
   kind: SearchKind,
   filter: SearchFilter,
+  categorySlug: PostCategorySlug | null,
   cursor: ReturnType<typeof decodeCursor>,
   limit: number,
   hideNsfw: boolean,
@@ -256,6 +259,10 @@ function postSearchQuery(
   if (filter === "open" || filter === "unanswered") conditions.push("p.status = 'OPEN'");
   if (filter === "answered") conditions.push("p.status IN ('ANSWERED', 'VERIFIED')");
   if (filter === "verified") conditions.push("p.status = 'VERIFIED'");
+  if (categorySlug) {
+    conditions.push("p.category_slug = ?");
+    bindings.push(categorySlug);
+  }
   if (hideNsfw) conditions.push("p.is_nsfw = 0");
   if (viewerId) {
     conditions.push(`NOT EXISTS (
@@ -395,6 +402,7 @@ export function createSearchService(dependencies: SearchServiceDependencies): Se
         query: display,
         kind: input.kind,
         filter: input.filter,
+        categorySlug: input.categorySlug,
         posts: [],
         profiles: [],
         nextPostCursor: null,
@@ -417,6 +425,7 @@ export function createSearchService(dependencies: SearchServiceDependencies): Se
         input.viewerId,
         input.kind,
         input.filter,
+        input.categorySlug,
         postCursor,
         limit,
         hideNsfw,
