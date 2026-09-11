@@ -1,11 +1,12 @@
-import { decodePostCursor, encodePostCursor } from "../posts/pagination";
-import { isPostError } from "../posts/errors";
-import type { EquippedCosmetics, ProfileStore } from "../profile/store";
+import { parsePostCategorySlug } from "../../shared/posts/categories";
 import type {
   AcceptedSourceView,
   PostSummary,
   VerifiedSourceView,
 } from "../../shared/ui/contracts";
+import { isPostError } from "../posts/errors";
+import { decodePostCursor, encodePostCursor } from "../posts/pagination";
+import type { EquippedCosmetics, ProfileStore } from "../profile/store";
 import { SearchError } from "./errors";
 
 export type SearchKind = "posts" | "profiles" | "sources" | "all";
@@ -62,6 +63,7 @@ interface PostSearchRow {
   title: string;
   slug: string;
   description: string;
+  category_slug: string;
   visibility: string;
   status: string;
   comment_count: number;
@@ -186,6 +188,7 @@ function toPostSummary(
     slug: row.slug,
     title: row.title,
     description: row.description || undefined,
+    categorySlug: parsePostCategorySlug(row.category_slug) ?? "other",
     author,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
@@ -284,6 +287,7 @@ function postSearchQuery(
       p.title,
       p.slug,
       p.description,
+      p.category_slug,
       p.visibility,
       p.status,
       p.comment_count,
