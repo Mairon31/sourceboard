@@ -12,10 +12,7 @@ import "./post-composer.css";
 export interface PostComposerIdentity {
   displayName: string;
   avatarUrl?: string;
-  cosmetics: Pick<
-    CosmeticIdentityProps,
-    "avatarFrame" | "nameFont" | "nameEffect"
-  >;
+  cosmetics: Pick<CosmeticIdentityProps, "avatarFrame" | "nameFont" | "nameEffect">;
 }
 
 type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
