@@ -30,6 +30,7 @@ describe("Cosmetic presentation overhaul", () => {
     const card = read("../../app/components/product/ProfileIdentityCard.tsx");
     expect(card).toContain("<ProfileThemeLayer");
     expect(card).toContain("<ProfileEffectLayer");
+    expect(card).toContain('import "./profile-themes.css"');
   });
 
   it("keeps theme off the uploaded cover", () => {
