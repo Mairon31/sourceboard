@@ -1,0 +1,40 @@
+name: Production probe once
+
+on:
+  push:
+    branches:
+      - diagnostic/prod-probe-once
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe production once
+        shell: bash
+        run: |
+          set -u
+          urls=(
+            "https://srcboard.me/api/health"
+            "https://srcboard.me/"
+            "https://srcboard.me/u/sourceboard-smoke-does-not-exist"
+            "https://srcboard.me/store"
+          )
+          failed=0
+          for url in "${urls[@]}"; do
+            body="$(mktemp)"
+            headers="$(mktemp)"
+            code="$(curl --location --silent --show-error --connect-timeout 10 --max-time 20 --dump-header "$headers" --output "$body" --write-out '%{http_code}' "$url" || true)"
+            echo "===== ${url} ====="
+            echo "HTTP ${code}"
+            sed -n '1,25p' "$headers"
+            echo "--- body preview ---"
+            sed -n '1,80p' "$body"
+            if ! [[ "$code" =~ ^[23][0-9][0-9]$ ]]; then failed=1; fi
+            if grep -Eqi 'Application Error|Internal Server Error' "$body"; then failed=1; fi
+            rm -f "$body" "$headers"
+          done
+          exit "$failed"
