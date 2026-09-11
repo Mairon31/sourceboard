@@ -32,9 +32,7 @@ describe("Cosmetic built-in catalog", () => {
     for (const [slug, price] of NEW_PROFILE_EFFECTS) {
       expect(catalog).toContain(`'store-effect-${slug}'`);
       expect(catalog).toContain(`'{"preset":"${slug}"}'`);
-      expect(catalog).toMatch(
-        new RegExp(`'store-effect-${slug}'[^\\n]+${price}[^\\n]+'\\{\\"preset\\":\\"${slug}\\"\\}'`),
-      );
+      expect(catalog).toContain(`, ${price}, '{"preset":"${slug}"}'`);
     }
   });
 });
