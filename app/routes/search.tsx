@@ -5,7 +5,7 @@ import { createSearchService } from "../../worker/search/service";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { SearchDiscoveryControls } from "../components/product/SearchDiscoveryControls";
 import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
-import { PostCard } from "../components/product/PostCard";
+import { SearchPostResults } from "../components/product/SearchPostResults";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
 import { Card, SearchIcon } from "../components/ui";
 import { buildSearchHref, parseSearchState, type SearchRouteState } from "../data/search-state";
@@ -131,7 +131,7 @@ function ProfileResults({ result, state }: { result: SearchResult; state: Search
   );
 }
 
-function SearchPostResults({ result, state }: { result: SearchResult; state: SearchRouteState }) {
+function PostResultsSection({ result, state }: { result: SearchResult; state: SearchRouteState }) {
   if (result.kind === "profiles" || !result.posts.length) return null;
   const sourceMode = result.kind === "sources";
   return (
@@ -145,11 +145,7 @@ function SearchPostResults({ result, state }: { result: SearchResult; state: Sea
         </div>
         <span className="product-search-count">{result.posts.length} results</span>
       </div>
-      <div className="product-feed-list">
-        {result.posts.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-      </div>
+      <SearchPostResults posts={result.posts} view={state.view} sourceMode={sourceMode} />
       {result.nextPostCursor ? (
         <Link
           className="product-text-action"
@@ -232,7 +228,7 @@ export default function SearchRoute() {
         <>
           <SearchDiscoveryControls state={state} />
           <SearchSummary state={state} result={result} />
-          <SearchPostResults result={result} state={state} />
+          <PostResultsSection result={result} state={state} />
           <ProfileResults result={result} state={state} />
           {!result.posts.length && !result.profiles.length ? (
             <Card className="product-empty-state">
