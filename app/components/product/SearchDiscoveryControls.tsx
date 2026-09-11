@@ -1,11 +1,7 @@
 import { Link } from "react-router";
 import { POST_CATEGORIES, getPostCategory } from "../../../shared/posts/categories";
 import type { SearchFilter, SearchKind } from "../../../worker/search/service";
-import {
-  buildSearchHref,
-  type SearchRouteState,
-  type SearchView,
-} from "../../data/search-state";
+import { buildSearchHref, type SearchRouteState, type SearchView } from "../../data/search-state";
 import { GalleryIcon, GridIcon, ListIcon } from "../ui";
 
 const KINDS: Array<{ value: SearchKind; label: string }> = [
@@ -23,11 +19,7 @@ const FILTERS: Array<{ value: SearchFilter; label: string }> = [
   { value: "verified", label: "Verified" },
 ];
 
-const VIEWS: Array<{
-  value: SearchView;
-  label: string;
-  icon: typeof ListIcon;
-}> = [
+const VIEWS: Array<{ value: SearchView; label: string; icon: typeof ListIcon }> = [
   { value: "list", label: "List view", icon: ListIcon },
   { value: "gallery", label: "Gallery view", icon: GalleryIcon },
   { value: "grid", label: "Detailed Grid view", icon: GridIcon },
