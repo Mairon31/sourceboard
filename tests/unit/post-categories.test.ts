@@ -55,6 +55,12 @@ describe("post categories", () => {
     expect(categoryBadgeSource).toContain("<span");
   });
 
+  it("links category badges only for publicly discoverable posts", () => {
+    expect(postCardSource).toContain(
+      'linked={post.visibility === "PUBLIC" && post.status !== "ARCHIVED"}',
+    );
+  });
+
   it("explicitly backfills legacy posts into Other", () => {
     expect(categoryMigrationSource).toContain("UPDATE posts");
     expect(categoryMigrationSource).toContain("SET category_slug = 'other'");
