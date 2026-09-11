@@ -15,8 +15,6 @@ export function loader({ request }: { request: Request }) {
   return { query };
 }
 
-type LoaderData = ReturnType<typeof loader> extends Promise<infer Value> ? Value : never;
-
 export default function CategoryIndexRoute() {
   const data = useLoaderData<typeof loader>() as { query: string };
 
