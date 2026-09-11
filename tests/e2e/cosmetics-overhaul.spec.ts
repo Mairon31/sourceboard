@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { seedAvatarFrameFixtures } from "./cosmetics-fixture";
-import { seedCosmeticsProfileFixture } from "./test-helpers";
+import {
+  installAdminStoreFixture,
+  seedCosmeticsProfileFixture,
+  waitForUiReady,
+} from "./test-helpers";
 
 test.beforeAll(() => {
   seedCosmeticsProfileFixture();
@@ -111,4 +115,48 @@ test("structural avatar frames do not create mobile horizontal overflow", async 
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("Profile, Store and Admin expose the same canonical cosmetic preview attributes", async ({
+  page,
+}) => {
+  await page.goto("/u/e2e-cosmetics");
+  const profile = page.locator(".product-profile-identity-card");
+  await expect(profile.locator('[data-profile-theme="nebula"]')).toBeVisible();
+  await expect(profile.locator('[data-profile-effect="rgb-glitch"]')).toBeVisible();
+  await expect(profile.locator('[data-avatar-frame="fox-ears"]')).toBeVisible();
+
+  await page.goto("/store");
+  const storeTheme = page
+    .locator(".product-store-item")
+    .filter({ hasText: "E2E Nebula Theme" })
+    .first();
+  const storeEffect = page
+    .locator(".product-store-item")
+    .filter({ hasText: "E2E RGB Glitch Effect" })
+    .first();
+  const storeFrame = page
+    .locator(".product-store-item")
+    .filter({ hasText: "E2E Fox Ears" })
+    .first();
+  await expect(storeTheme.locator('[data-profile-theme="nebula"]')).toBeVisible();
+  await expect(storeEffect.locator('[data-profile-effect="rgb-glitch"]')).toBeVisible();
+  await expect(storeFrame.locator('[data-avatar-frame="fox-ears"]')).toBeVisible();
+
+  await installAdminStoreFixture(page);
+  await page.goto("/admin/store");
+  await waitForUiReady(page);
+  await page.getByRole("tab", { name: "Presets" }).click();
+
+  const laboratory = page.locator(".admin-preset-lab");
+  await expect(laboratory).toBeVisible();
+
+  await page.getByRole("button", { name: "Profile Styles", exact: true }).click();
+  await expect(laboratory.locator('[data-profile-theme="nebula"]')).toBeVisible();
+
+  await page.getByRole("button", { name: "Effects", exact: true }).click();
+  await expect(laboratory.locator('[data-profile-effect="rgb-glitch"]')).toBeVisible();
+
+  await page.getByRole("button", { name: "Avatar Frames", exact: true }).click();
+  await expect(laboratory.locator('[data-avatar-frame="fox-ears"]')).toBeVisible();
 });
