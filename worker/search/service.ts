@@ -222,6 +222,11 @@ function sourceJoins(): string {
     LEFT JOIN users verifier ON verifier.id = verified_source.actor_user_id`;
 }
 
+function isMissingPostCategoryColumn(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /no such column[^\n]*category_slug/i.test(message);
+}
+
 function postSearchQuery(
   ftsQuery: string,
   viewerId: string | null,
@@ -231,6 +236,7 @@ function postSearchQuery(
   cursor: ReturnType<typeof decodeCursor>,
   limit: number,
   hideNsfw: boolean,
+  legacyCategory = false,
 ): { sql: string; bindings: unknown[] } {
   const profileVisibility = viewerId
     ? `CASE
@@ -259,7 +265,7 @@ function postSearchQuery(
   if (filter === "open" || filter === "unanswered") conditions.push("p.status = 'OPEN'");
   if (filter === "answered") conditions.push("p.status IN ('ANSWERED', 'VERIFIED')");
   if (filter === "verified") conditions.push("p.status = 'VERIFIED'");
-  if (categorySlug) {
+  if (categorySlug && !legacyCategory) {
     conditions.push("p.category_slug = ?");
     bindings.push(categorySlug);
   }
@@ -294,7 +300,7 @@ function postSearchQuery(
       p.title,
       p.slug,
       p.description,
-      p.category_slug,
+      ${legacyCategory ? "'other' AS category_slug" : "p.category_slug"},
       p.visibility,
       p.status,
       p.comment_count,
@@ -441,10 +447,34 @@ export function createSearchService(dependencies: SearchServiceDependencies): Se
       const postPromise =
         input.kind === "profiles"
           ? Promise.resolve({ results: [] as PostSearchRow[] })
-          : dependencies.db
-              .prepare(postQuery.sql)
-              .bind(...postQuery.bindings)
-              .all<PostSearchRow>();
+          : (async () => {
+              try {
+                return await dependencies.db
+                  .prepare(postQuery.sql)
+                  .bind(...postQuery.bindings)
+                  .all<PostSearchRow>();
+              } catch (error) {
+                if (!isMissingPostCategoryColumn(error)) throw error;
+                if (input.categorySlug && input.categorySlug !== "other") {
+                  return { results: [] as PostSearchRow[] };
+                }
+                const legacyPostQuery = postSearchQuery(
+                  fts,
+                  input.viewerId,
+                  input.kind,
+                  input.filter,
+                  null,
+                  postCursor,
+                  limit,
+                  hideNsfw,
+                  true,
+                );
+                return dependencies.db
+                  .prepare(legacyPostQuery.sql)
+                  .bind(...legacyPostQuery.bindings)
+                  .all<PostSearchRow>();
+              }
+            })();
       const profilePromise =
         input.kind === "posts" || input.kind === "sources"
           ? Promise.resolve({ results: [] as ProfileSearchRow[] })
