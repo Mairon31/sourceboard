@@ -1,5 +1,8 @@
 import { Form, Link, redirect, useLoaderData } from "react-router";
-import { findPostCategory, POST_CATEGORIES } from "../../shared/posts/categories";
+import {
+  findPostCategory,
+  POST_CATEGORIES,
+} from "../../shared/posts/categories";
 import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
 
@@ -25,7 +28,8 @@ export default function CategoryIndexRoute() {
           <span className="product-eyebrow">Categories</span>
           <h1>Browse source requests by category</h1>
           <p>
-            Search by category name or alias, or choose one of the canonical categories below.
+            Search by category name or alias, or choose one of the canonical
+            categories below.
           </p>
         </div>
       </section>
@@ -46,14 +50,23 @@ export default function CategoryIndexRoute() {
           </button>
         </Form>
         {data.query ? (
-          <div className="product-empty-state product-empty-state--compact" role="status">
+          <div
+            className="product-empty-state product-empty-state--compact"
+            role="status"
+          >
             <strong>Category not found</strong>
-            <p>No canonical category matches “{data.query}”. Choose one from the list below.</p>
+            <p>
+              No canonical category matches “{data.query}”. Choose one from the
+              list below.
+            </p>
           </div>
         ) : null}
       </Card>
 
-      <section className="product-feed-workspace" aria-labelledby="category-list-heading">
+      <section
+        className="product-feed-workspace"
+        aria-labelledby="category-list-heading"
+      >
         <div className="product-feed-workspace__heading">
           <div>
             <span className="product-eyebrow">All categories</span>
