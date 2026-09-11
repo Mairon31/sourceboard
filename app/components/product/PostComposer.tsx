@@ -14,7 +14,7 @@ export interface PostComposerIdentity {
   avatarUrl?: string;
   cosmetics: Pick<
     CosmeticIdentityProps,
-    "avatarFrame" | "profileEffect" | "nameFont" | "nameEffect"
+    "avatarFrame" | "nameFont" | "nameEffect"
   >;
 }
 
@@ -189,7 +189,6 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
                 displayName={identity.displayName}
                 avatarUrl={identity.avatarUrl}
                 avatarFrame={identity.cosmetics.avatarFrame}
-                profileEffect={identity.cosmetics.profileEffect}
                 nameFont={identity.cosmetics.nameFont}
                 nameEffect={identity.cosmetics.nameEffect}
                 mode="preview"

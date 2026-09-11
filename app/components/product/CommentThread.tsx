@@ -355,7 +355,6 @@ function CommentItem({
                 displayName={comment.author.displayName}
                 avatarUrl={comment.author.avatarUrl}
                 avatarFrame={comment.author.avatarFrame}
-                profileEffect={comment.author.profileEffect}
                 nameFont={comment.author.nameFont}
                 nameEffect={comment.author.nameEffect}
                 visuals={comment.author.visuals}
@@ -820,7 +819,6 @@ export function CommentThread({
               displayName={viewerIdentity.displayName}
               avatarUrl={viewerIdentity.avatarUrl}
               avatarFrame={viewerIdentity.avatarFrame}
-              profileEffect={viewerIdentity.profileEffect}
               nameFont={viewerIdentity.nameFont}
               nameEffect={viewerIdentity.nameEffect}
               visuals={viewerIdentity.visuals}

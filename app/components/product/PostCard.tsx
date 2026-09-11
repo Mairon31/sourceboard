@@ -314,7 +314,6 @@ export function PostCard({
               displayName={post.author.displayName}
               avatarUrl={post.author.avatarUrl}
               avatarFrame={post.author.avatarFrame}
-              profileEffect={post.author.profileEffect}
               nameFont={post.author.nameFont}
               nameEffect={post.author.nameEffect}
               visuals={post.author.visuals}

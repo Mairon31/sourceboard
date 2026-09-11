@@ -110,7 +110,6 @@ function ProfileResults({ result, state }: { result: SearchResult; state: Search
                 displayName={profile.displayName}
                 avatarUrl={profile.avatarUrl}
                 avatarFrame={profile.cosmetics?.avatarFrame}
-                profileEffect={profile.cosmetics?.profileEffect}
                 nameFont={profile.cosmetics?.nameFont}
                 nameEffect={profile.cosmetics?.nameEffect}
                 visuals={profile.cosmetics?.visuals}
