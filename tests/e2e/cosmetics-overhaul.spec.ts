@@ -139,9 +139,15 @@ test("Profile, Store and Admin expose the same canonical cosmetic preview attrib
     .locator(".product-store-item")
     .filter({ hasText: "E2E Fox Ears" })
     .first();
-  await expect(storeTheme.locator('[data-profile-theme="nebula"]')).toBeVisible();
-  await expect(storeEffect.locator('[data-profile-effect="rgb-glitch"]')).toBeVisible();
-  await expect(storeFrame.locator('[data-avatar-frame="fox-ears"]')).toBeVisible();
+  await expect(
+    storeTheme.locator('.product-cosmetic-preview[data-profile-theme="nebula"]'),
+  ).toBeVisible();
+  await expect(
+    storeEffect.locator('.product-cosmetic-preview[data-profile-effect="rgb-glitch"]'),
+  ).toBeVisible();
+  await expect(
+    storeFrame.locator('.product-cosmetic-preview [data-avatar-frame="fox-ears"]'),
+  ).toBeVisible();
 
   await installAdminStoreFixture(page);
   await page.goto("/admin/store");
@@ -152,11 +158,17 @@ test("Profile, Store and Admin expose the same canonical cosmetic preview attrib
   await expect(laboratory).toBeVisible();
 
   await page.getByRole("button", { name: "Profile Styles", exact: true }).click();
-  await expect(laboratory.locator('[data-profile-theme="nebula"]')).toBeVisible();
+  await expect(
+    laboratory.locator('.product-cosmetic-preview[data-profile-theme="nebula"]'),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Effects", exact: true }).click();
-  await expect(laboratory.locator('[data-profile-effect="rgb-glitch"]')).toBeVisible();
+  await expect(
+    laboratory.locator('.product-cosmetic-preview[data-profile-effect="rgb-glitch"]'),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Avatar Frames", exact: true }).click();
-  await expect(laboratory.locator('[data-avatar-frame="fox-ears"]')).toBeVisible();
+  await expect(
+    laboratory.locator('.product-cosmetic-preview [data-avatar-frame="fox-ears"]'),
+  ).toBeVisible();
 });
