@@ -13,7 +13,9 @@ export function ProfileEffectLayer({ preset, visual }: ProfileEffectLayerProps) 
 
   return (
     <div
-      className={`product-profile-effect-layer${preset && preset !== "none" ? ` product-profile-effect-layer--${preset}` : ""}${cosmeticVisualClass(visual)}`}
+      className={`product-profile-effect-layer${
+        preset && preset !== "none" ? ` product-profile-effect-layer--${preset}` : ""
+      }${cosmeticVisualClass(visual)}`}
       style={cosmeticVisualStyle(visual)}
       data-profile-effect={preset ?? "custom"}
       aria-hidden="true"
