@@ -41,6 +41,7 @@ export const feedFixtures: PostSummary[] = [
     id: "post-public",
     title: "Where did this concert photo originally come from?",
     description: "I found this crop in an old repost and want the original upload.",
+    categorySlug: "music",
     author: auroraAuthor,
     createdAt: "2026-09-06T01:05:00Z",
     updatedAt: "2026-09-06T01:05:00Z",
@@ -56,6 +57,7 @@ export const feedFixtures: PostSummary[] = [
     id: "post-anonymous",
     title: "Trying to identify the original post behind this meme",
     description: "The public author identity is intentionally masked in this example.",
+    categorySlug: "memes",
     author: anonymousAuthor,
     createdAt: "2026-09-05T23:40:00Z",
     updatedAt: "2026-09-05T23:40:00Z",
@@ -72,6 +74,7 @@ export const feedFixtures: PostSummary[] = [
     id: "post-verified",
     title: "Original editorial photo found and verified",
     description: "A source verifier confirmed the canonical page and chronology.",
+    categorySlug: "photography",
     author: auroraAuthor,
     createdAt: "2026-09-05T18:12:00Z",
     updatedAt: "2026-09-05T18:12:00Z",
@@ -90,6 +93,7 @@ export const feedFixtures: PostSummary[] = [
     title: "Source request hidden by NSFW preference",
     description:
       "This fixture proves the hidden-content state without rendering sensitive imagery.",
+    categorySlug: "other",
     author: anonymousAuthor,
     createdAt: "2026-09-05T15:30:00Z",
     updatedAt: "2026-09-05T15:30:00Z",
@@ -104,6 +108,7 @@ export const feedFixtures: PostSummary[] = [
   {
     id: "post-archived",
     title: "Archived source request",
+    categorySlug: "other",
     author: auroraAuthor,
     createdAt: "2026-09-04T12:00:00Z",
     updatedAt: "2026-09-04T12:00:00Z",
@@ -118,6 +123,7 @@ export const feedFixtures: PostSummary[] = [
   {
     id: "post-locked",
     title: "Locked moderation example",
+    categorySlug: "other",
     author: auroraAuthor,
     createdAt: "2026-09-03T12:00:00Z",
     updatedAt: "2026-09-03T12:00:00Z",
