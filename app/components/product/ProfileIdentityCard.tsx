@@ -6,7 +6,8 @@ import type {
 } from "../../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { Card } from "../ui";
-import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
+import { ProfileEffectLayer } from "./ProfileEffectLayer";
+import { ProfileThemeLayer } from "./ProfileThemeLayer";
 import "./profile-identity-card.css";
 import "./profile-cover.css";
 
@@ -32,9 +33,6 @@ export function ProfileIdentityCard({
   communityStyles,
 }: ProfileIdentityCardProps) {
   const theme = profileTheme ?? legacyProfileBanner;
-  const themeVisual = visuals?.profileBanner;
-  const effectVisual = visuals?.profileEffect;
-  const hasEffect = Boolean((profileEffect && profileEffect !== "none") || effectVisual);
 
   return (
     <Card
@@ -45,25 +43,13 @@ export function ProfileIdentityCard({
       {communityStyles?.map((communityStyle) => (
         <style key={communityStyle.id}>{communityStyle.css}</style>
       ))}
-      <div className="product-profile-cover" aria-hidden="true">
-        <div
-          className={`product-profile-theme-layer${cosmeticVisualClass(themeVisual)}`}
-          style={cosmeticVisualStyle(themeVisual)}
-        />
-        {bannerUrl ? (
-          <div
-            className="product-profile-theme-photo"
-            style={{ backgroundImage: `url("${bannerUrl}")` }}
-          />
-        ) : null}
-      </div>
-      {hasEffect ? (
-        <div
-          className={`product-profile-effect-layer${profileEffect && profileEffect !== "none" ? ` product-profile-effect-layer--${profileEffect}` : ""}${cosmeticVisualClass(effectVisual)}`}
-          style={cosmeticVisualStyle(effectVisual)}
-          aria-hidden="true"
-        />
-      ) : null}
+      <ProfileThemeLayer
+        preset={profileTheme}
+        legacyPreset={legacyProfileBanner}
+        visual={visuals?.profileBanner}
+        bannerUrl={bannerUrl}
+      />
+      <ProfileEffectLayer preset={profileEffect} visual={visuals?.profileEffect} />
       <div className="product-profile-card-surface profile-card">{children}</div>
     </Card>
   );
