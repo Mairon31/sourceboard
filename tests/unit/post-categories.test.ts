@@ -50,7 +50,7 @@ describe("post categories", () => {
 
   it("renders post categories as linked badges", () => {
     expect(postCardSource).toContain("<PostCategoryBadge");
-    expect(categoryBadgeSource).toContain('to={`/category/${category.slug}`}');
+    expect(categoryBadgeSource).toContain("to={`/category/${category.slug}`}");
   });
 
   it("explicitly backfills legacy posts into Other", () => {
