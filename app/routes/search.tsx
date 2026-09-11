@@ -8,11 +8,7 @@ import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { PostCard } from "../components/product/PostCard";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
 import { Card, SearchIcon } from "../components/ui";
-import {
-  buildSearchHref,
-  parseSearchState,
-  type SearchRouteState,
-} from "../data/search-state";
+import { buildSearchHref, parseSearchState, type SearchRouteState } from "../data/search-state";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 type LoaderArgs = ServerLoaderArgs;
@@ -166,13 +162,7 @@ function SearchPostResults({ result, state }: { result: SearchResult; state: Sea
   );
 }
 
-function SearchSummary({
-  state,
-  result,
-}: {
-  state: SearchRouteState;
-  result: SearchResult;
-}) {
+function SearchSummary({ state, result }: { state: SearchRouteState; result: SearchResult }) {
   const total = result.posts.length + result.profiles.length;
   const category = state.categorySlug ? getPostCategory(state.categorySlug) : null;
   return (
