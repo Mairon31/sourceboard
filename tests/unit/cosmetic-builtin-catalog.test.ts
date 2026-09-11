@@ -35,4 +35,10 @@ describe("Cosmetic built-in catalog", () => {
       expect(catalog).toContain(`, ${price}, '{"preset":"${slug}"}'`);
     }
   });
+
+  it("does not mutate ownership, purchases, or equipped cosmetics while seeding", () => {
+    expect(catalog).not.toContain("UPDATE user_inventory");
+    expect(catalog).not.toContain("UPDATE store_purchases");
+    expect(catalog).not.toContain("UPDATE user_cosmetics");
+  });
 });
