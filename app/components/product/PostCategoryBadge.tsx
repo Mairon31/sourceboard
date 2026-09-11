@@ -7,11 +7,7 @@ type PostCategoryBadgeProps =
   | { categorySlug: PostCategorySlug; slug?: never; linked?: boolean }
   | { categorySlug?: never; slug: PostCategorySlug; linked?: boolean };
 
-export function PostCategoryBadge({
-  categorySlug,
-  slug,
-  linked = true,
-}: PostCategoryBadgeProps) {
+export function PostCategoryBadge({ categorySlug, slug, linked = true }: PostCategoryBadgeProps) {
   const category = getPostCategory(categorySlug ?? slug);
   const badge = <Badge>{category.label}</Badge>;
 
