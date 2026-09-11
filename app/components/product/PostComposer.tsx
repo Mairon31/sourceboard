@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import type { PostCategorySlug } from "../../../shared/posts/categories";
 import type { CosmeticIdentityProps } from "./CosmeticIdentity";
+import { CategoryPicker } from "./CategoryPicker";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ImageUploadField } from "./ImageUploadField";
 import { readCsrfToken } from "../../data/csrf";
@@ -27,6 +29,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
   const navigate = useNavigate();
   const [authorMode, setAuthorMode] = useState<"IDENTIFIED" | "ANONYMOUS">("IDENTIFIED");
   const [visibility, setVisibility] = useState<PostVisibility>("PUBLIC");
+  const [category, setCategory] = useState<PostCategorySlug | null>(null);
   const [isNsfw, setIsNsfw] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -38,6 +41,10 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
       setStatus("Add the main image before publishing.");
       return;
     }
+    if (!category) {
+      setStatus("Choose a category before publishing.");
+      return;
+    }
 
     setBusy(true);
     setStatus(null);
@@ -45,6 +52,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
     form.set("file", imageFile, imageFile.name);
     form.set("authorMode", authorMode);
     form.set("visibility", visibility);
+    form.set("category", category);
     form.set("isNsfw", String(isNsfw));
 
     try {
@@ -126,10 +134,25 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
           />
         </section>
 
-        <section className="product-post-composer__section" aria-labelledby="post-audience-heading">
+        <section className="product-post-composer__section" aria-labelledby="post-category-heading">
           <div className="product-post-composer__section-heading">
             <div>
               <span className="product-post-composer__step">3</span>
+              <h2 id="post-category-heading">Choose a category</h2>
+            </div>
+            <p>Help people discover the request in the most relevant topic.</p>
+          </div>
+          <CategoryPicker
+            value={category}
+            onChange={setCategory}
+            disabled={unavailable || busy}
+          />
+        </section>
+
+        <section className="product-post-composer__section" aria-labelledby="post-audience-heading">
+          <div className="product-post-composer__section-heading">
+            <div>
+              <span className="product-post-composer__step">4</span>
               <h2 id="post-audience-heading">Choose the audience</h2>
             </div>
             <p>Control who can find the request and how your identity appears.</p>
@@ -201,7 +224,12 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
             <strong>Ready to ask the community?</strong>
             <span>You can edit the post for seven days after publishing.</span>
           </div>
-          <Button type="submit" size="lg" loading={busy} disabled={unavailable || !imageFile}>
+          <Button
+            type="submit"
+            size="lg"
+            loading={busy}
+            disabled={unavailable || !imageFile || !category}
+          >
             Publish request
           </Button>
         </div>
