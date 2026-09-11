@@ -53,6 +53,12 @@ describe("comment content classification", () => {
     expect(eligible).toBe(true);
   });
 
+  it("accepts an explicit link preview as source evidence without prose", () => {
+    const eligible = hasSourceEligibleCommentContent([], "", "https://example.com/source");
+
+    expect(eligible).toBe(true);
+  });
+
   it("preserves legacy text comments when richtext is absent", () => {
     const eligible = hasSourceEligibleCommentContent(undefined, "Legacy source explanation");
     expect(eligible).toBe(true);
