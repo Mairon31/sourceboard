@@ -7,7 +7,10 @@ import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
 import { createD1CommentStore } from "../../worker/comments/store";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import {
+  withOptionalServerSession,
+  type ServerLoaderArgs,
+} from "../data/server-request";
 
 const SHARE_LOCALES = ["en", "es", "pt", "fr", "ru", "de"] as const;
 type ShareLocale = (typeof SHARE_LOCALES)[number];
@@ -62,7 +65,9 @@ function postCanonicalUrl(post: ResolverPost, requestUrl: URL): URL {
   return new URL(path, requestUrl.origin);
 }
 
-function localeFromRequest(requestUrl: URL): { locale: ShareLocale; explicit: boolean } {
+function localeFromRequest(
+  requestUrl: URL,
+): { locale: ShareLocale; explicit: boolean } {
   const candidate = requestUrl.searchParams.get("lang");
   if (candidate && (SHARE_LOCALES as readonly string[]).includes(candidate)) {
     return { locale: candidate as ShareLocale, explicit: true };
@@ -70,7 +75,11 @@ function localeFromRequest(requestUrl: URL): { locale: ShareLocale; explicit: bo
   return { locale: "en", explicit: false };
 }
 
-function applyLocale(canonicalUrl: URL, locale: ShareLocale, explicit: boolean): URL {
+function applyLocale(
+  canonicalUrl: URL,
+  locale: ShareLocale,
+  explicit: boolean,
+): URL {
   const targetUrl = new URL(canonicalUrl.toString());
   if (explicit) targetUrl.searchParams.set("lang", locale);
   return targetUrl;
@@ -97,7 +106,9 @@ export async function resolveShareTarget(
         post.description,
         "Find the original source of this image with SourceBoard.",
       ),
-      imageUrl: post.imageUrl ? new URL(post.imageUrl, input.requestUrl.origin).toString() : undefined,
+      imageUrl: post.imageUrl
+        ? new URL(post.imageUrl, input.requestUrl.origin).toString()
+        : undefined,
       resourceType: "POST",
       locale,
     };
@@ -123,7 +134,9 @@ export async function resolveShareTarget(
     canonicalUrl: canonical.toString(),
     title: `Comment on ${post.title}`,
     description: boundedDescription(comment.plaintext, "View this SourceBoard comment."),
-    imageUrl: post.imageUrl ? new URL(post.imageUrl, input.requestUrl.origin).toString() : undefined,
+    imageUrl: post.imageUrl
+      ? new URL(post.imageUrl, input.requestUrl.origin).toString()
+      : undefined,
     resourceType: "COMMENT",
     locale,
   };
@@ -145,7 +158,10 @@ export function buildShareResolverMeta(data?: ShareResolverData) {
     { property: "og:title", content: data.title },
     { property: "og:description", content: data.description },
     ...(data.imageUrl ? [{ property: "og:image", content: data.imageUrl }] : []),
-    { name: "twitter:card", content: data.imageUrl ? "summary_large_image" : "summary" },
+    {
+      name: "twitter:card",
+      content: data.imageUrl ? "summary_large_image" : "summary",
+    },
   ];
 }
 
@@ -154,7 +170,9 @@ function createResolverDependencies(db: D1Database): ShareResolverDependencies {
   const postStore = createD1PostStore(db);
   const postService = createPostService({ store: postStore, profileStore });
   const commentStore = createD1CommentStore(db);
-  const shareService = createShareLinkService({ store: createD1ShareLinkStore(db) });
+  const shareService = createShareLinkService({
+    store: createD1ShareLinkStore(db),
+  });
 
   return {
     resolveShortId: (shortId) => shareService.resolve(shortId),
@@ -188,7 +206,11 @@ interface LoaderArgs extends ServerLoaderArgs {
   params: { shortId?: string };
 }
 
-export async function loader({ params, request, context }: LoaderArgs): Promise<ShareResolverData> {
+export async function loader({
+  params,
+  request,
+  context,
+}: LoaderArgs): Promise<ShareResolverData> {
   return withOptionalServerSession(
     request,
     context,
