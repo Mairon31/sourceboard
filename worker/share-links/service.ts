@@ -85,11 +85,7 @@ export function createShareLinkService({
         if (winner) return winner;
       }
 
-      throw new ShareLinkError(
-        503,
-        "SHARE_LINK_UNAVAILABLE",
-        "Unable to create a share link.",
-      );
+      throw new ShareLinkError(503, "SHARE_LINK_UNAVAILABLE", "Unable to create a share link.");
     },
 
     async resolve(shortId: string): Promise<ShareLinkRecord | null> {
