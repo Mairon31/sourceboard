@@ -12,7 +12,7 @@ ON username_change_history (user_id, changed_at DESC);
 CREATE TRIGGER username_change_history_guard
 BEFORE INSERT ON username_change_history
 BEGIN
-  SELECT CASE
+  SELECT (CASE
     WHEN EXISTS (
       SELECT 1
       FROM username_change_history
@@ -21,9 +21,9 @@ BEGIN
         AND changed_at <= NEW.changed_at
     )
     THEN RAISE(ABORT, 'USERNAME_CHANGE_COOLDOWN')
-  END;
+  END);
 
-  SELECT CASE
+  SELECT (CASE
     WHEN (
       SELECT COUNT(*)
       FROM username_change_history
@@ -32,5 +32,5 @@ BEGIN
         AND changed_at <= NEW.changed_at
     ) >= 3
     THEN RAISE(ABORT, 'USERNAME_CHANGE_LIMIT')
-  END;
+  END);
 END;
