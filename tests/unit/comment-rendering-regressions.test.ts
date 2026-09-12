@@ -31,8 +31,6 @@ describe("comment rendering regressions", () => {
   });
 
   it("wires comments to stable short-link targets", () => {
-    expect(commentThread).toContain(
-      'target={{ resourceType: "COMMENT", resourceId: comment.id }}',
-    );
+    expect(commentThread).toContain('target={{ resourceType: "COMMENT", resourceId: comment.id }}');
   });
 });
