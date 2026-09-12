@@ -163,9 +163,11 @@ describe("Block B public profile access", () => {
         status: "ACTIVE",
         visibility: "PRIVATE",
       });
-      await expect(store.getProfileByUsernameNormalized("private-user", 10)).resolves.toMatchObject({
-        profileVisibility: "PRIVATE",
-      });
+      await expect(store.getProfileByUsernameNormalized("private-user", 10)).resolves.toMatchObject(
+        {
+          profileVisibility: "PRIVATE",
+        },
+      );
     } finally {
       sqlite.close();
     }
