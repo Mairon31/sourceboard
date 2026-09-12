@@ -23,17 +23,13 @@
   display: contents;
 }
 
-.product-profile-name
-  > .cosmetic-identity--profile
-  > .cosmetic-identity__avatar-shell {
+.product-profile-name > .cosmetic-identity--profile > .cosmetic-identity__avatar-shell {
   grid-area: avatar;
   align-self: start;
   margin-top: 0;
 }
 
-.product-profile-name
-  > .cosmetic-identity--profile
-  > .cosmetic-identity__name {
+.product-profile-name > .cosmetic-identity--profile > .cosmetic-identity__name {
   grid-area: name;
   min-width: 0;
   max-width: min(100%, 20ch);
@@ -231,9 +227,7 @@
     column-gap: 14px;
   }
 
-  .product-profile-name
-    > .cosmetic-identity--profile
-    > .cosmetic-identity__name {
+  .product-profile-name > .cosmetic-identity--profile > .cosmetic-identity__name {
     max-width: 100%;
   }
 
