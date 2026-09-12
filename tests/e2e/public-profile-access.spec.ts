@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { hashOpaqueToken } from "../../worker/auth/crypto";
-import { SESSION_COOKIE_NAME } from "../../worker/auth/security";
+import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/security";
 import { waitForUiReady } from "./test-helpers";
 
 const PUBLIC_USER_ID = "e2e-public-profile-user";
@@ -62,6 +62,30 @@ function seedUser(input: {
   `);
 }
 
+async function installSession(page: Page, userId: string, sessionId: string, token: string) {
+  const now = Date.now();
+  const tokenHash = hashOpaqueToken(token);
+  executeLocalSql(`
+    DELETE FROM sessions WHERE user_id = '${userId}' OR token_hash = '${tokenHash}';
+    INSERT INTO sessions
+      (id, user_id, token_hash, created_at, last_used_at, expires_at, revoked_at,
+       ip_prefix_hash, user_agent_hash)
+    VALUES
+      ('${sessionId}', '${userId}', '${tokenHash}', ${now}, ${now},
+       ${now + 24 * 60 * 60 * 1000}, NULL, NULL, NULL);
+  `);
+  await page.context().addCookies([
+    {
+      name: SESSION_COOKIE_NAME,
+      value: token,
+      url: "https://localhost:5173",
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    },
+  ]);
+}
+
 async function signInViewer(page: Page) {
   seedUser({
     id: VIEWER_USER_ID,
@@ -69,28 +93,33 @@ async function signInViewer(page: Page) {
     displayName: "Profile Viewer",
     visibility: "PUBLIC",
   });
-  const now = Date.now();
-  const sessionToken = "sourceboard-e2e-public-profile-viewer-session";
-  const tokenHash = hashOpaqueToken(sessionToken);
-  executeLocalSql(`
-    DELETE FROM sessions WHERE user_id = '${VIEWER_USER_ID}' OR token_hash = '${tokenHash}';
-    INSERT INTO sessions
-      (id, user_id, token_hash, created_at, last_used_at, expires_at, revoked_at,
-       ip_prefix_hash, user_agent_hash)
-    VALUES
-      ('e2e-public-profile-viewer-session', '${VIEWER_USER_ID}', '${tokenHash}', ${now}, ${now},
-       ${now + 24 * 60 * 60 * 1000}, NULL, NULL, NULL);
-  `);
+  await installSession(
+    page,
+    VIEWER_USER_ID,
+    "e2e-public-profile-viewer-session",
+    "sourceboard-e2e-public-profile-viewer-session",
+  );
+}
+
+async function signInPublicOwnerForMedia(page: Page) {
+  const csrfToken = "sourceboard-e2e-public-profile-media-csrf";
+  await installSession(
+    page,
+    PUBLIC_USER_ID,
+    "e2e-public-profile-media-session",
+    "sourceboard-e2e-public-profile-media-session",
+  );
   await page.context().addCookies([
     {
-      name: SESSION_COOKIE_NAME,
-      value: sessionToken,
+      name: CSRF_COOKIE_NAME,
+      value: csrfToken,
       url: "https://localhost:5173",
-      httpOnly: true,
+      httpOnly: false,
       secure: true,
       sameSite: "Lax",
     },
   ]);
+  return csrfToken;
 }
 
 test.beforeEach(() => {
@@ -149,4 +178,49 @@ test("blocked public profile resolves to the same 404 surface", async ({ page })
   expect(response?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "This page isn't available" })).toBeVisible();
   await expect(page.getByText("Public Profile User", { exact: true })).toHaveCount(0);
+});
+
+test("public profile media is anonymous only while current and publicly viewable", async ({ page }) => {
+  const csrfToken = await signInPublicOwnerForMedia(page);
+  await page.goto(`/u/${PUBLIC_USERNAME}`);
+  const upload = await page.evaluate(async (token) => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const form = new FormData();
+    form.set("purpose", "AVATAR");
+    form.set("file", new File([png], "avatar.png", { type: "image/png" }));
+    const response = await fetch("/api/profile/media", {
+      method: "POST",
+      headers: { "x-csrf-token": token },
+      body: form,
+    });
+    return {
+      status: response.status,
+      body: (await response.json()) as { assetId?: string; url?: string },
+    };
+  }, csrfToken);
+
+  expect(upload.status).toBe(201);
+  expect(upload.body.assetId).toBeTruthy();
+  expect(upload.body.url).toBeTruthy();
+  const assetId = upload.body.assetId as string;
+  const mediaUrl = upload.body.url as string;
+
+  await page.context().clearCookies();
+  let mediaResponse = await page.goto(mediaUrl);
+  expect(mediaResponse?.status()).toBe(200);
+  expect(mediaResponse?.headers()["content-type"]).toBe("image/png");
+
+  executeLocalSql(`
+    UPDATE user_profiles SET profile_visibility = 'PRIVATE' WHERE user_id = '${PUBLIC_USER_ID}';
+  `);
+  mediaResponse = await page.goto(mediaUrl);
+  expect(mediaResponse?.status()).toBe(404);
+
+  executeLocalSql(`
+    UPDATE user_profiles
+      SET profile_visibility = 'PUBLIC', avatar_asset_id = NULL
+      WHERE user_id = '${PUBLIC_USER_ID}' AND avatar_asset_id = '${assetId}';
+  `);
+  mediaResponse = await page.goto(mediaUrl);
+  expect(mediaResponse?.status()).toBe(404);
 });
