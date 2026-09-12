@@ -208,6 +208,7 @@ export function ProfileEditor({
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [initialFingerprint, setInitialFingerprint] = useState("");
   const [usernameStatus, setUsernameStatus] = useState<UsernameChangeStatus | null>(null);
+  const [usernameSettingsUnavailable, setUsernameSettingsUnavailable] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState(profile.username);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -223,10 +224,11 @@ export function ProfileEditor({
   const dirty = profileDirty || usernameDirty;
 
   useEffect(() => {
-    if (!editing || (draft && usernameStatus)) return;
+    if (!editing || draft) return;
     let cancelled = false;
     setStatus(null);
-    void Promise.all([
+    setUsernameSettingsUnavailable(false);
+    void Promise.allSettled([
       fetch("/api/profile/me", { cache: "no-store" }).then(async (response) => {
         if (!response.ok)
           throw new Error(await readErrorMessage(response, "Could not load your profile."));
@@ -237,24 +239,37 @@ export function ProfileEditor({
           throw new Error(await readErrorMessage(response, "Could not load username settings."));
         return (await response.json()) as UsernameResponse;
       }),
-    ])
-      .then(([data, usernameData]) => {
-        if (cancelled) return;
-        const nextDraft = createDraft(data);
-        setSource(data);
-        setDraft(nextDraft);
-        setInitialFingerprint(draftFingerprint(nextDraft));
-        setUsernameStatus(usernameData.username);
-        setUsernameDraft(usernameData.username.username);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled)
-          setStatus(error instanceof Error ? error.message : "Could not load your profile.");
-      });
+    ]).then(([profileResult, usernameResult]) => {
+      if (cancelled) return;
+      if (profileResult.status === "rejected") {
+        setStatus(
+          profileResult.reason instanceof Error
+            ? profileResult.reason.message
+            : "Could not load your profile.",
+        );
+        return;
+      }
+
+      const data = profileResult.value;
+      const nextDraft = createDraft(data);
+      setSource(data);
+      setDraft(nextDraft);
+      setInitialFingerprint(draftFingerprint(nextDraft));
+
+      if (usernameResult.status === "fulfilled") {
+        setUsernameStatus(usernameResult.value.username);
+        setUsernameDraft(usernameResult.value.username.username);
+        setUsernameSettingsUnavailable(false);
+      } else {
+        setUsernameStatus(null);
+        setUsernameDraft(profile.username);
+        setUsernameSettingsUnavailable(true);
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [draft, editing, usernameStatus]);
+  }, [draft, editing, profile.username]);
 
   const availablePlatforms = useMemo(() => {
     const selected = new Set(draft?.socialLinks.map((link) => link.platform) ?? []);
@@ -273,6 +288,7 @@ export function ProfileEditor({
     setDraft(null);
     setInitialFingerprint("");
     setUsernameStatus(null);
+    setUsernameSettingsUnavailable(false);
     setUsernameDraft(profile.username);
     setAvatarFile(null);
     setBannerFile(null);
@@ -450,7 +466,7 @@ export function ProfileEditor({
     );
   }
 
-  if (!draft || !usernameStatus) {
+  if (!draft) {
     return (
       <Card className="product-profile-hero product-profile-editor-inline">
         <div className="product-profile-editor-loading">
@@ -535,11 +551,15 @@ export function ProfileEditor({
               label="Username"
               value={usernameDraft}
               maxLength={32}
-              disabled={busy || !usernameStatus.canChange}
+              disabled={busy || usernameSettingsUnavailable || !usernameStatus?.canChange}
               onChange={(event) => setUsernameDraft(event.target.value)}
             />
             <small className="product-profile-editor-inline__username-policy">
-              {usernamePolicyMessage(usernameStatus)}
+              {usernameSettingsUnavailable
+                ? "Username changes are temporarily unavailable. You can still edit the rest of your profile."
+                : usernameStatus
+                  ? usernamePolicyMessage(usernameStatus)
+                  : "Loading username settings…"}
             </small>
           </div>
           <Input
