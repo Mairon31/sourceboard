@@ -157,6 +157,16 @@ async function expectSquareNonOverlapping(page: Page, selector: string) {
   }
 }
 
+async function expectPickerWithinViewport(page: Page, viewportHeight: number) {
+  const picker = page.locator(".product-comment-media-picker");
+  await expect
+    .poll(async () => {
+      const box = await picker.boundingBox();
+      return box ? box.y + box.height : Number.POSITIVE_INFINITY;
+    })
+    .toBeLessThanOrEqual(viewportHeight + 1);
+}
+
 async function openPost(page: Page) {
   const response = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
   expect(response?.status()).toBe(200);
@@ -181,12 +191,13 @@ for (const viewport of [
     await openPost(page);
 
     const composer = page.locator(".product-comment-composer");
-    const composerTop = (await composer.boundingBox())?.y;
 
     await page.getByRole("button", { name: "GIF", exact: true }).click();
     const picker = page.locator('.product-comment-media-picker [data-media-kind="gif"]');
     await expect(picker).toBeVisible();
     await expect(picker.locator("button").first()).toBeVisible();
+    await expectPickerWithinViewport(page, viewport.height);
+    const composerTopAfterOpen = (await composer.boundingBox())?.y;
     const gifBoxes = await picker.locator("button").evaluateAll((nodes) =>
       nodes.slice(0, 6).map((node) => {
         const rect = node.getBoundingClientRect();
@@ -195,17 +206,31 @@ for (const viewport of [
     );
     expect(gifBoxes.every((box) => box.width > 0 && box.height > 0)).toBe(true);
 
-    const pickerBox = await page.locator(".product-comment-media-picker").boundingBox();
-    expect(pickerBox).not.toBeNull();
-    expect((pickerBox?.y ?? 0) + (pickerBox?.height ?? 0)).toBeLessThanOrEqual(viewport.height + 1);
+    await picker
+      .locator("img")
+      .first()
+      .evaluate((image) => {
+        const element = image as HTMLImageElement;
+        if (element.complete) return;
+        return new Promise<void>((resolve) => {
+          element.addEventListener("load", () => resolve(), { once: true });
+          element.addEventListener("error", () => resolve(), { once: true });
+        });
+      });
     await page.waitForTimeout(100);
-    expect((await composer.boundingBox())?.y).toBeCloseTo(composerTop ?? 0, 0);
+    await expectPickerWithinViewport(page, viewport.height);
+    expect((await composer.boundingBox())?.y).toBeCloseTo(composerTopAfterOpen ?? 0, 0);
 
     await page.getByRole("tab", { name: "Stickers" }).click();
     const stickerSurface = page.locator(
       '.product-comment-media-picker [data-media-kind="sticker"]',
     );
     await expect(stickerSurface).toBeVisible();
+    const stickerButtons = stickerSurface.locator(
+      ".product-comment-media-picker__results--sticker button",
+    );
+    await expect(stickerButtons.first()).toBeVisible();
+    await expectPickerWithinViewport(page, viewport.height);
     await expectSquareNonOverlapping(
       page,
       '[data-media-kind="sticker"] .product-comment-media-picker__results--sticker button',
@@ -215,6 +240,9 @@ for (const viewport of [
     await page.getByRole("tab", { name: "Emotes" }).click();
     const emoteSurface = page.locator('.product-comment-media-picker [data-media-kind="emote"]');
     await expect(emoteSurface).toBeVisible();
+    const emoteButtons = emoteSurface.locator(".product-comment-media-picker__emote-grid button");
+    await expect(emoteButtons.first()).toBeVisible();
+    await expectPickerWithinViewport(page, viewport.height);
     await expectSquareNonOverlapping(
       page,
       '[data-media-kind="emote"] .product-comment-media-picker__emote-grid button',
