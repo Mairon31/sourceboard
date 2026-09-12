@@ -23,10 +23,8 @@ jobs:
         run: npm ci --strict-allow-scripts
       - name: Production dependency audit
         run: npm run audit:prod
-      - name: Print formatted share link E2E
-        run: |
-          npx prettier tests/e2e/share-links.spec.ts
-          exit 1
+      - name: Lint and format check
+        run: npm run lint
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
