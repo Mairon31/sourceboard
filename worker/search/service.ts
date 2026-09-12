@@ -251,7 +251,6 @@ function postSearchQuery(
          THEN 1 ELSE 0 END`
     : `CASE WHEN up.profile_visibility = 'PUBLIC' THEN 1 ELSE 0 END`;
   const conditions = [
-    "public_post_search MATCH ?",
     "p.visibility = 'PUBLIC'",
     "p.deleted_at IS NULL",
     "p.hidden_at IS NULL",
@@ -260,7 +259,8 @@ function postSearchQuery(
     "m.purpose = 'POST_IMAGE'",
     "u.status NOT IN ('DELETED', 'BANNED')",
   ];
-  const bindings: unknown[] = viewerId ? [viewerId, viewerId, viewerId, ftsQuery] : [ftsQuery];
+  const bindings: unknown[] = [ftsQuery];
+  if (viewerId) bindings.push(viewerId, viewerId, viewerId);
   if (kind === "sources") conditions.push("accepted_source.comment_id IS NOT NULL");
   if (filter === "open" || filter === "unanswered") conditions.push("p.status = 'OPEN'");
   if (filter === "answered") conditions.push("p.status IN ('ANSWERED', 'VERIFIED')");
@@ -283,12 +283,18 @@ function postSearchQuery(
     bindings.push(cursor.createdAt, cursor.createdAt, cursor.id);
   }
   bindings.push(limit + 1);
+  const searchRank = filter === "relevant" ? "bm25(public_post_search)" : "0.0";
   const orderBy =
     filter === "relevant"
-      ? "bm25(public_post_search) ASC, p.created_at DESC, p.id DESC"
+      ? "search_hits.search_rank ASC, p.created_at DESC, p.id DESC"
       : "p.created_at DESC, p.id DESC";
   return {
-    sql: `SELECT
+    sql: `WITH search_hits AS MATERIALIZED (
+      SELECT post_id, ${searchRank} AS search_rank
+      FROM public_post_search
+      WHERE public_post_search MATCH ?
+    )
+    SELECT
       p.id,
       p.author_id,
       p.author_mode,
@@ -318,8 +324,8 @@ function postSearchQuery(
       verified_source.evidence_note AS verified_evidence_note,
       verified_source.created_at AS verified_created_at,
       verifier.username AS verified_by_username
-    FROM public_post_search
-    JOIN posts p ON p.id = public_post_search.post_id
+    FROM search_hits
+    JOIN posts p ON p.id = search_hits.post_id
     JOIN users u ON u.id = p.author_id
     LEFT JOIN user_profiles up ON up.user_id = p.author_id
     JOIN media_assets m ON m.id = p.image_asset_id
