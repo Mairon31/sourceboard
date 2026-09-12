@@ -483,7 +483,12 @@ export function PostCard({
             <MessageIcon />
             <span>Comment</span>
           </Link>
-          <ShareAction url={shareUrl} title={displayTitle} text={displayDescription || undefined} />
+          <ShareAction
+            url={shareUrl}
+            title={displayTitle}
+            text={displayDescription || undefined}
+            target={{ resourceType: "POST", resourceId: post.id }}
+          />
         </footer>
         {reactionStatus ? (
           <small className="product-post__reaction-status" role="status">
