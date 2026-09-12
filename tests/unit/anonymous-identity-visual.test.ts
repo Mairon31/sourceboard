@@ -19,7 +19,9 @@ describe("anonymous identity visual privacy", () => {
     expect(anonymousAvatar).toContain('aria-hidden="true"');
     expect(anonymousAvatar).toContain("<svg");
     expect(anonymousAvatar).toContain("currentColor");
-    expect(anonymousAvatar).not.toMatch(/\b(?:username|avatarUrl|displayName|initials|seed|hash)\b/i);
+    expect(anonymousAvatar).not.toMatch(
+      /\b(?:username|avatarUrl|displayName|initials|seed|hash)\b/i,
+    );
     expect(anonymousAvatar).not.toContain(">AA<");
   });
 
