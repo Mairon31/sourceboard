@@ -1,3 +1,56 @@
+.product-profile-name {
+  display: grid;
+  min-width: 0;
+  width: 100%;
+  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-areas:
+    "avatar eyebrow"
+    "avatar name"
+    "avatar username";
+  align-items: start;
+  column-gap: clamp(14px, 2.4vw, 22px);
+  row-gap: 4px;
+  padding-top: 0;
+}
+
+.product-profile-name > .product-eyebrow {
+  grid-area: eyebrow;
+  min-width: 0;
+  align-self: end;
+}
+
+.product-profile-name > .cosmetic-identity--profile {
+  display: contents;
+}
+
+.product-profile-name
+  > .cosmetic-identity--profile
+  > .cosmetic-identity__avatar-shell {
+  grid-area: avatar;
+  align-self: start;
+  margin-top: 0;
+}
+
+.product-profile-name
+  > .cosmetic-identity--profile
+  > .cosmetic-identity__name {
+  grid-area: name;
+  min-width: 0;
+  max-width: min(100%, 20ch);
+  overflow-wrap: anywhere;
+}
+
+.product-profile-name > p {
+  grid-area: username;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.product-profile-identity {
+  min-width: 0;
+}
+
 .product-profile-secondary {
   display: grid;
   min-width: 0;
@@ -173,6 +226,17 @@
 }
 
 @media (max-width: 620px) {
+  .product-profile-name {
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 14px;
+  }
+
+  .product-profile-name
+    > .cosmetic-identity--profile
+    > .cosmetic-identity__name {
+    max-width: 100%;
+  }
+
   .product-profile-editor-inline__identity-copy small {
     display: none;
   }
