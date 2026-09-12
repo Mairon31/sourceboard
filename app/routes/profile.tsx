@@ -184,7 +184,8 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
 }
 
 export default function ProfileRoute() {
-  const { profile, activityPosts, acceptedSourcePosts, canAccessAdmin } = useLoaderData<LoaderData>();
+  const { profile, activityPosts, acceptedSourcePosts, canAccessAdmin } =
+    useLoaderData<LoaderData>();
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const [editingProfile, setEditingProfile] = useState(false);
   const isOwnProfile = Boolean(profile && rootData?.session?.user.id === profile.id);
