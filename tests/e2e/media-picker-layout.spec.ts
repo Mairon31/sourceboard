@@ -79,7 +79,11 @@ async function mockMediaApis(page: Page) {
       type: isSticker ? "STICKER" : "GIF",
       provider: "klipy",
     }));
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items }) });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items }),
+    });
   });
 
   await page.route("**/api/comments/stickers", async (route) => {
@@ -139,13 +143,18 @@ async function expectSquareNonOverlapping(page: Page, selector: string) {
     }),
   );
   expect(boxes.length).toBeGreaterThan(1);
-  for (const box of boxes) expect(Math.abs(box.width - box.height)).toBeLessThanOrEqual(1.5);
+  for (const box of boxes) {
+    expect(Math.abs(box.width - box.height)).toBeLessThanOrEqual(1.5);
+  }
   for (let index = 0; index < boxes.length; index += 1) {
     for (let other = index + 1; other < boxes.length; other += 1) {
       const a = boxes[index];
       const b = boxes[other];
       const overlaps =
-        a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y;
       expect(overlaps).toBe(false);
     }
   }
@@ -191,20 +200,32 @@ for (const viewport of [
 
     const pickerBox = await page.locator(".product-comment-media-picker").boundingBox();
     expect(pickerBox).not.toBeNull();
-    expect((pickerBox?.y ?? 0) + (pickerBox?.height ?? 0)).toBeLessThanOrEqual(viewport.height + 1);
+    expect((pickerBox?.y ?? 0) + (pickerBox?.height ?? 0)).toBeLessThanOrEqual(
+      viewport.height + 1,
+    );
     await page.waitForTimeout(100);
     expect((await composer.boundingBox())?.y).toBeCloseTo(composerTop ?? 0, 0);
 
     await page.getByRole("tab", { name: "Stickers" }).click();
-    const stickerSurface = page.locator('.product-comment-media-picker [data-media-kind="sticker"]');
+    const stickerSurface = page.locator(
+      '.product-comment-media-picker [data-media-kind="sticker"]',
+    );
     await expect(stickerSurface).toBeVisible();
-    await expectSquareNonOverlapping(page, '[data-media-kind="sticker"] .product-comment-media-picker__results--sticker button');
+    await expectSquareNonOverlapping(
+      page,
+      '[data-media-kind="sticker"] .product-comment-media-picker__results--sticker button',
+    );
     await expect(stickerSurface.locator("img").first()).toHaveCSS("object-fit", "contain");
 
     await page.getByRole("tab", { name: "Emotes" }).click();
-    const emoteSurface = page.locator('.product-comment-media-picker [data-media-kind="emote"]');
+    const emoteSurface = page.locator(
+      '.product-comment-media-picker [data-media-kind="emote"]',
+    );
     await expect(emoteSurface).toBeVisible();
-    await expectSquareNonOverlapping(page, '[data-media-kind="emote"] .product-comment-media-picker__emote-grid button');
+    await expectSquareNonOverlapping(
+      page,
+      '[data-media-kind="emote"] .product-comment-media-picker__emote-grid button',
+    );
     await expect(emoteSurface.locator("img").first()).toHaveCSS("object-fit", "contain");
   });
 }
