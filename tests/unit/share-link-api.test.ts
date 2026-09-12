@@ -15,7 +15,8 @@ function request(body: unknown): Request {
 
 function handler(publicTargets: Set<string>) {
   return createShareLinkRequestHandler({
-    isPublicResource: async (type, resourceId) => publicTargets.has(`${type}:${resourceId}`),
+    isPublicResource: async (type, resourceId) =>
+      publicTargets.has(`${type}:${resourceId}`),
     getOrCreate: async (type: ShareResourceType, resourceId: string) => ({
       shortId: type === "POST" ? "Ab3dE5gH7j" : "Zy8xW6vU4t",
       resourceType: type,
@@ -32,7 +33,9 @@ describe("share-link API", () => {
       "req-1",
     );
     expect(response?.status).toBe(200);
-    await expect(response?.json()).resolves.toEqual({ shortUrl: "/sh/Ab3dE5gH7j" });
+    await expect(response?.json()).resolves.toEqual({
+      shortUrl: "/sh/Ab3dE5gH7j",
+    });
   });
 
   it("creates a short URL for a public comment", async () => {
@@ -41,7 +44,9 @@ describe("share-link API", () => {
       "req-2",
     );
     expect(response?.status).toBe(200);
-    await expect(response?.json()).resolves.toEqual({ shortUrl: "/sh/Zy8xW6vU4t" });
+    await expect(response?.json()).resolves.toEqual({
+      shortUrl: "/sh/Zy8xW6vU4t",
+    });
   });
 
   it("returns the same not-found surface for a non-public target", async () => {
