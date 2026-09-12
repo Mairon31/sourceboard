@@ -228,7 +228,10 @@ const PROFILE_COLUMNS = `
 `;
 
 function toProfile(row: ProfileRow, fallbackNow: number): ProfileRecord {
-  const visibility = row.profile_visibility === "FRIENDS_ONLY" ? "FRIENDS_ONLY" : "PUBLIC";
+  const visibility =
+    row.profile_visibility === "FRIENDS_ONLY" || row.profile_visibility === "PRIVATE"
+      ? row.profile_visibility
+      : "PUBLIC";
   return {
     userId: row.user_id,
     username: row.username,
@@ -458,7 +461,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
         .prepare(
           `SELECT ${PROFILE_COLUMNS}
            FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id
-           WHERE u.username_normalized = ? AND u.status NOT IN ('DELETED', 'BANNED')`,
+           WHERE u.username_normalized = ? AND u.status = 'ACTIVE'`,
         )
         .bind(usernameNormalized)
         .first<ProfileRow>();
@@ -466,7 +469,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       await ensureUserDefaults(row.user_id, row.username, now);
       const hydrated = await db
         .prepare(
-          `SELECT ${PROFILE_COLUMNS} FROM users u JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ?`,
+          `SELECT ${PROFILE_COLUMNS} FROM users u JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.status = 'ACTIVE'`,
         )
         .bind(row.user_id)
         .first<ProfileRow>();
