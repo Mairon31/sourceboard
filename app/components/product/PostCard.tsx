@@ -7,7 +7,6 @@ import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
 import { ShareAction } from "./ShareAction";
 import {
-  Avatar,
   Badge,
   Button,
   Card,
@@ -304,7 +303,7 @@ export function PostCard({
     >
       <header className="product-post__header">
         {post.author.mode === "ANONYMOUS" ? (
-          <Avatar name="Anonymous Author" />
+          <CosmeticIdentity anonymous mode="compact" nameAs="strong" />
         ) : (
           <Link
             to={post.author.profileUrl ?? `/u/${post.author.username ?? "aurora"}`}
@@ -323,7 +322,6 @@ export function PostCard({
           </Link>
         )}
         <div className="product-post__author">
-          {post.author.mode === "ANONYMOUS" ? <strong>Anonymous Author</strong> : null}
           <span>
             {new Date(post.createdAt).toLocaleDateString("en-US", {
               month: "short",
@@ -483,7 +481,12 @@ export function PostCard({
             <MessageIcon />
             <span>Comment</span>
           </Link>
-          <ShareAction url={shareUrl} title={displayTitle} text={displayDescription || undefined} />
+          <ShareAction
+            url={shareUrl}
+            title={displayTitle}
+            text={displayDescription || undefined}
+            target={{ resourceType: "POST", resourceId: post.id }}
+          />
         </footer>
         {reactionStatus ? (
           <small className="product-post__reaction-status" role="status">

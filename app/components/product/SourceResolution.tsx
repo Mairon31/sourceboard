@@ -3,7 +3,7 @@ import type {
   CommentView,
   VerifiedSourceView,
 } from "../../../shared/ui/contracts";
-import { Badge, Card, Avatar } from "../ui";
+import { Badge, Card } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { RichText } from "./RichText";
 
@@ -19,10 +19,7 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
     <article className="product-source-answer">
       <header className="product-source-answer__author">
         {comment.author.mode === "ANONYMOUS" ? (
-          <>
-            <Avatar name="Anonymous Author" size="sm" />
-            <strong>Anonymous Author</strong>
-          </>
+          <CosmeticIdentity anonymous mode="compact" avatarSize="sm" nameAs="strong" />
         ) : (
           <CosmeticIdentity
             displayName={comment.author.displayName}

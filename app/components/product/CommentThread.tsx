@@ -346,8 +346,7 @@ function CommentItem({
           <div className="product-comment__identity">
             {comment.author.mode === "ANONYMOUS" ? (
               <>
-                <Avatar name="Anonymous Author" size="sm" />
-                <strong>Anonymous Author</strong>
+                <CosmeticIdentity anonymous mode="compact" avatarSize="sm" nameAs="strong" />
                 <Badge>Anonymous</Badge>
               </>
             ) : (
@@ -522,6 +521,7 @@ function CommentItem({
           <ShareAction
             url={comment.commentHref ?? `#comment-${comment.id}`}
             title="SourceBoard comment"
+            target={{ resourceType: "COMMENT", resourceId: comment.id }}
           />
           {comment.editedAt ? (
             <span className="product-comment__edited" title="This comment was edited">
@@ -618,6 +618,20 @@ function insertRootComment(
   );
 }
 
+function countThread(comments: CommentView[]): { comments: number; replies: number } {
+  let total = 0;
+  let replies = 0;
+  const visit = (nodes: CommentView[], depth: number) => {
+    for (const node of nodes) {
+      total += 1;
+      if (depth > 0) replies += 1;
+      visit(node.replies, depth + 1);
+    }
+  };
+  visit(comments, 0);
+  return { comments: total, replies };
+}
+
 const COMPOSER_FALLBACK_NAME = "SourceBoard member";
 
 export function CommentThread({
@@ -655,6 +669,7 @@ export function CommentThread({
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkStatus, setLinkStatus] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const threadCount = countThread(items);
   useEffect(() => setItems(comments), [comments]);
 
   function changeSort(nextSort: CommentSort) {
@@ -786,7 +801,9 @@ export function CommentThread({
           <h2 id="comments-heading">Comments</h2>
         </div>
         <div className="product-comments__heading-actions">
-          <span>{items.length} top-level</span>
+          <span>
+            {threadCount.comments} {threadCount.comments === 1 ? "comment" : "comments"}
+          </span>
           <select
             className="product-comments__sort"
             aria-label="Sort comments"
@@ -982,6 +999,17 @@ export function CommentThread({
           />
         ))}
       </div>
+      {threadCount.comments > 0 ? (
+        <div className="product-comments__summary" aria-label="Comment thread summary">
+          <span>
+            {threadCount.comments} {threadCount.comments === 1 ? "comment" : "comments"}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {threadCount.replies} {threadCount.replies === 1 ? "reply" : "replies"}
+          </span>
+        </div>
+      ) : null}
     </section>
   );
 }

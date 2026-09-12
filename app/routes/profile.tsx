@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { useLoaderData, useRouteLoaderData, type MetaFunction } from "react-router";
+import {
+  isRouteErrorResponse,
+  useLoaderData,
+  useRouteError,
+  useRouteLoaderData,
+  type MetaFunction,
+} from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import { createD1PostStore } from "../../worker/posts/store";
@@ -8,6 +14,7 @@ import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
 import { loadAdminAccess } from "../data/admin-access";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { NotFoundPage } from "../components/product/NotFoundPage";
 import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
 import { ProfileActivity } from "../components/product/ProfileActivity";
 import { ProfileEditor } from "../components/product/ProfileEditor";
@@ -58,6 +65,9 @@ export async function loader({ params, request, context }: LoaderArgs) {
     ),
     loadAdminAccess(request, context),
   ]);
+  if (!profileResult.unavailable && !profileResult.profile) {
+    throw new Response("Profile not found", { status: 404 });
+  }
   return { ...profileResult, canAccessAdmin: adminAccess.authorized };
 }
 
@@ -110,20 +120,16 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   ];
 };
 
-function UnavailableProfile({ unavailable }: { unavailable: boolean }) {
+function ProfileServiceUnavailable() {
   return (
     <ProductShell wide>
       <Card className="product-empty-state">
         <PageHeader
           eyebrow="Profile"
-          title="Profile unavailable"
-          description={
-            unavailable
-              ? "The profile service is not available in this environment yet."
-              : "This profile is private, blocked or does not exist."
-          }
+          title="Profile service unavailable"
+          description="The profile service is not available in this environment yet."
         />
-        <p>Public profile data is shown only after server-side privacy checks succeed.</p>
+        <p>Try again after the service is available.</p>
       </Card>
     </ProductShell>
   );
@@ -178,12 +184,12 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
 }
 
 export default function ProfileRoute() {
-  const { profile, activityPosts, acceptedSourcePosts, unavailable, canAccessAdmin } =
+  const { profile, activityPosts, acceptedSourcePosts, canAccessAdmin } =
     useLoaderData<LoaderData>();
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const [editingProfile, setEditingProfile] = useState(false);
   const isOwnProfile = Boolean(profile && rootData?.session?.user.id === profile.id);
-  if (!profile) return <UnavailableProfile unavailable={unavailable} />;
+  if (!profile) return <ProfileServiceUnavailable />;
   return (
     <ProductShell wide>
       {isOwnProfile ? (
@@ -202,4 +208,10 @@ export default function ProfileRoute() {
       ) : null}
     </ProductShell>
   );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  if (isRouteErrorResponse(error) && error.status === 404) return <NotFoundPage />;
+  return <ProfileServiceUnavailable />;
 }

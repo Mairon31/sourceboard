@@ -99,6 +99,16 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(commentActionsCss).toContain("min-height: 40px");
   });
 
+  it("uses media-specific renderers with safe viewport containment", () => {
+    expect(picker).toContain('data-media-kind="gif"');
+    expect(picker).toContain('data-media-kind="sticker"');
+    expect(picker).toContain('data-media-kind="emote"');
+    expect(css).toContain("object-fit: contain");
+    expect(css).toContain("aspect-ratio: 1 / 1");
+    expect(css).toContain("env(safe-area-inset-bottom)");
+    expect(css).toContain("overflow-y: auto");
+  });
+
   it("keeps animated media URLs and applies the requested compact comment sizes", () => {
     expect(picker).toContain("item.url");
     expect(css).toContain("width: min(100%, 220px)");
