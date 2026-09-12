@@ -3,10 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, path), "utf8");
-const componentPath = resolve(
-  import.meta.dirname,
-  "../../app/components/product/NotFoundPage.tsx",
-);
+const componentPath = resolve(import.meta.dirname, "../../app/components/product/NotFoundPage.tsx");
 const cssPath = resolve(import.meta.dirname, "../../app/components/product/not-found.css");
 const routePath = resolve(import.meta.dirname, "../../app/routes/not-found.tsx");
 
