@@ -1,0 +1,42 @@
+name: Fix Block B Task 4 RED typing
+
+on:
+  push:
+    branches:
+      - feature/platform-overhaul-block-b
+
+permissions:
+  contents: write
+
+jobs:
+  fix-red:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/platform-overhaul-block-b
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Fix RED test typing and remove helper workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/unit/auth-session-context.test.ts')
+          text = path.read_text()
+          old = '    const createSession = vi.fn(async () => undefined);'
+          new = '    const createSession = vi.fn(async (_session: SessionRecord) => undefined);'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one createSession test double, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+          npx prettier --write tests/unit/auth-session-context.test.ts
+          rm .github/workflows/fix-block-b-task4-red-typing.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/unit/auth-session-context.test.ts .github/workflows/fix-block-b-task4-red-typing.yml
+          git commit -m "test: fix Block B Task 4 RED typing"
+          git push origin HEAD:feature/platform-overhaul-block-b
