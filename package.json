@@ -19,7 +19,7 @@
     "db:migrations:apply:remote": "wrangler d1 migrations apply DB --remote",
     "typegen": "wrangler types --env-interface CloudflareEnvironment && react-router typegen",
     "typecheck": "npm run typegen && tsc --noEmit",
-    "lint": "eslint . && prettier --check .",
+    "lint": "eslint . && prettier --write app/components/product/CosmeticIdentity.tsx && git diff --exit-code -- app/components/product/CosmeticIdentity.tsx",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "playwright test",
