@@ -7,7 +7,11 @@ import type {
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { Avatar } from "../ui";
 import { AnonymousAvatar } from "./AnonymousAvatar";
-import { cosmeticVisualClass, cosmeticVisualStyle, mergeCosmeticVisuals } from "./cosmetic-visual";
+import {
+  cosmeticVisualClass,
+  cosmeticVisualStyle,
+  mergeCosmeticVisuals,
+} from "./cosmetic-visual";
 import "./avatar-frames.css";
 
 const STRUCTURAL_AVATAR_FRAMES = new Set<AvatarFramePreset>([
@@ -59,7 +63,8 @@ interface IdentifiedCosmeticIdentityProps extends CosmeticIdentityBaseProps {
 }
 
 export type CosmeticIdentityProps =
-  AnonymousCosmeticIdentityProps | IdentifiedCosmeticIdentityProps;
+  | AnonymousCosmeticIdentityProps
+  | IdentifiedCosmeticIdentityProps;
 
 export function CosmeticIdentity(props: CosmeticIdentityProps) {
   const NameTag = props.nameAs ?? "span";
