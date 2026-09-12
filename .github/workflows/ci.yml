@@ -23,8 +23,6 @@ jobs:
         run: npm ci --strict-allow-scripts
       - name: Production dependency audit
         run: npm run audit:prod
-      - name: Print formatted anonymous identity
-        run: npx prettier app/components/product/CosmeticIdentity.tsx
       - name: Lint and format check
         run: npm run lint
       - name: Typecheck
