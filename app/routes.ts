@@ -13,6 +13,7 @@ export default [
   route("post/new", "routes/post-new.tsx"),
   route("posts/:postId", "routes/post-detail.tsx"),
   route("posts/:postId/:slug", "routes/post-detail.tsx", { id: "post-detail-slug" }),
+  route("sh/:shortId", "routes/share-resolver.tsx"),
   route("u/:username", "routes/profile.tsx", { id: "user-profile" }),
   route("profile/:username", "routes/profile.tsx", { id: "legacy-profile" }),
   route("friends", "routes/friends.tsx"),
