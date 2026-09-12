@@ -15,8 +15,7 @@ function request(body: unknown): Request {
 
 function handler(publicTargets: Set<string>) {
   return createShareLinkRequestHandler({
-    isPublicResource: async (type, resourceId) =>
-      publicTargets.has(`${type}:${resourceId}`),
+    isPublicResource: async (type, resourceId) => publicTargets.has(`${type}:${resourceId}`),
     getOrCreate: async (type: ShareResourceType, resourceId: string) => ({
       shortId: type === "POST" ? "Ab3dE5gH7j" : "Zy8xW6vU4t",
       resourceType: type,
