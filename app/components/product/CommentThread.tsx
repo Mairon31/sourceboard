@@ -522,6 +522,7 @@ function CommentItem({
           <ShareAction
             url={comment.commentHref ?? `#comment-${comment.id}`}
             title="SourceBoard comment"
+            target={{ resourceType: "COMMENT", resourceId: comment.id }}
           />
           {comment.editedAt ? (
             <span className="product-comment__edited" title="This comment was edited">
