@@ -66,6 +66,7 @@ export function MediaPicker({
   const [activePackId, setActivePackId] = useState<string>();
   const [status, setStatus] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const emotePackCacheRef = useRef<EmotePack[] | null>(null);
 
@@ -173,6 +174,13 @@ export function MediaPicker({
     };
   }, [kind, query]);
 
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      pickerRef.current?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [kind, items.length, packs.length, stickerPacks.length]);
+
   const filteredPacks = useMemo(() => {
     const value = query.trim().toLocaleLowerCase();
     if (!value) return packs;
@@ -196,7 +204,7 @@ export function MediaPicker({
   }
 
   return (
-    <div className="product-comment-media-picker" aria-label="Media picker">
+    <div ref={pickerRef} className="product-comment-media-picker" aria-label="Media picker">
       <div className="product-comment-media-picker__header">
         <strong>Add media</strong>
         <button
