@@ -32,7 +32,9 @@ export function createBase62Id(
   randomBytes: RandomBytes = defaultRandomBytes,
   length = DEFAULT_SHORT_ID_LENGTH,
 ): string {
-  if (!Number.isSafeInteger(length) || length < 1) throw new Error("Invalid short ID length.");
+  if (!Number.isSafeInteger(length) || length < 1) {
+    throw new Error("Invalid short ID length.");
+  }
   let result = "";
   let rounds = 0;
   while (result.length < length) {
