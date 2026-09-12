@@ -180,7 +180,9 @@ test("blocked public profile resolves to the same 404 surface", async ({ page })
   await expect(page.getByText("Public Profile User", { exact: true })).toHaveCount(0);
 });
 
-test("public profile media is anonymous only while current and publicly viewable", async ({ page }) => {
+test("public profile media is anonymous only while current and publicly viewable", async ({
+  page,
+}) => {
   const csrfToken = await signInPublicOwnerForMedia(page);
   await page.goto(`/u/${PUBLIC_USERNAME}`);
   const upload = await page.evaluate(async (token) => {
