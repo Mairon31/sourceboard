@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createBase62Id, createShareLinkService } from "../../worker/share-links/service";
+import { createD1ShareLinkStore } from "../../worker/share-links/store";
 import type { ShareLinkRecord, ShareLinkStore } from "../../worker/share-links/types";
 
 function createMemoryStore(initial: ShareLinkRecord[] = []): ShareLinkStore {
@@ -23,6 +24,25 @@ function createMemoryStore(initial: ShareLinkRecord[] = []): ShareLinkStore {
     },
   };
 }
+
+function failingInsertDatabase(error: Error): D1Database {
+  return {
+    prepare: () => ({
+      bind: () => ({
+        run: async () => {
+          throw error;
+        },
+      }),
+    }),
+  } as unknown as D1Database;
+}
+
+const record: ShareLinkRecord = {
+  shortId: "Ab3dE5gH7j",
+  resourceType: "POST",
+  resourceId: "post-1",
+  createdAt: 123,
+};
 
 describe("stable share links", () => {
   it("generates opaque Base62 identifiers at the approved length", () => {
@@ -67,5 +87,19 @@ describe("stable share links", () => {
   it("rejects malformed short IDs before store lookup", async () => {
     const service = createShareLinkService({ store: createMemoryStore() });
     await expect(service.resolve("../../post-1")).resolves.toBeNull();
+  });
+
+  it("returns false for share-link uniqueness collisions", async () => {
+    const db = failingInsertDatabase(
+      new Error("D1_ERROR: UNIQUE constraint failed: share_links.short_id: SQLITE_CONSTRAINT"),
+    );
+    await expect(createD1ShareLinkStore(db).insert(record)).resolves.toBe(false);
+  });
+
+  it("propagates unrelated D1 insert errors", async () => {
+    const db = failingInsertDatabase(
+      new Error("D1_ERROR: CHECK constraint failed: share_links_resource_type_check"),
+    );
+    await expect(createD1ShareLinkStore(db).insert(record)).rejects.toThrow("CHECK constraint");
   });
 });
