@@ -22,9 +22,7 @@ function isShareLinkUniqueConstraint(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return (
     message.includes("UNIQUE constraint failed: share_links.short_id") ||
-    message.includes(
-      "UNIQUE constraint failed: share_links.resource_type, share_links.resource_id",
-    )
+    message.includes("UNIQUE constraint failed: share_links.resource_type, share_links.resource_id")
   );
 }
 
