@@ -263,6 +263,7 @@ export function MediaPicker({
           ) : null}
           <div
             className="product-comment-media-picker__emote-scroll"
+            data-media-kind="emote"
             onScroll={(event) => {
               const root = event.currentTarget;
               const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-pack-id]"));
@@ -296,15 +297,32 @@ export function MediaPicker({
             ))}
           </div>
         </>
+      ) : kind === "GIF" ? (
+        <div
+          className="product-comment-media-picker__results product-comment-media-picker__results--gif"
+          data-media-kind="gif"
+          aria-label="GIF results"
+        >
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-label={`Add ${item.title}`}
+              onClick={() => onSelect(item)}
+            >
+              <img src={item.url || item.preview} alt={item.title} loading="lazy" />
+            </button>
+          ))}
+        </div>
       ) : (
-        <>
-          {kind === "STICKER" && stickerPacks.length ? (
+        <div className="product-comment-media-picker__sticker-scroll" data-media-kind="sticker">
+          {stickerPacks.length ? (
             <div className="product-comment-media-picker__sourceboard-stickers">
               {stickerPacks.map((pack) => (
                 <section key={pack.id}>
                   <h3>{pack.label}</h3>
                   <div
-                    className="product-comment-media-picker__results"
+                    className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
                     aria-label={`${pack.label} stickers`}
                   >
                     {pack.stickers.map((item) => (
@@ -324,12 +342,15 @@ export function MediaPicker({
               <h3>KLIPY</h3>
             </div>
           ) : null}
-          <div className="product-comment-media-picker__results" aria-label={`${kind} results`}>
+          <div
+            className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
+            aria-label="STICKER results"
+          >
             {items.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                className={item.type === "STICKER" ? "is-sticker" : undefined}
+                className="is-sticker"
                 aria-label={`Add ${item.title}`}
                 onClick={() => onSelect(item)}
               >
@@ -337,7 +358,7 @@ export function MediaPicker({
               </button>
             ))}
           </div>
-        </>
+        </div>
       )}
       {busy ? <small role="status">Loading…</small> : null}
       {!busy && status ? <small role="status">{status}</small> : null}
