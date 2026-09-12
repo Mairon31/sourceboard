@@ -52,7 +52,8 @@ test.describe("stable share links", () => {
     const response = await request.get("/sh/0000000000");
     expect(response.status()).toBe(404);
     const html = await response.text();
-    expect(html).toContain("Shared content unavailable");
+    expect(html).toContain('class="product-not-found"');
+    expect(html).toContain("product-not-found-title");
     expect(html).not.toContain("E2E navigation post");
     expect(html).not.toContain('property="og:title" content="E2E navigation post"');
   });
