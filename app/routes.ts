@@ -38,4 +38,5 @@ export default [
   route("admin/store", "routes/admin-store.tsx"),
   route("admin/audit", "routes/admin-audit.tsx"),
   route("admin/anonymous/:postId", "routes/admin-anonymous.tsx"),
+  route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;

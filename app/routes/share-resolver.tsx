@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLoaderData, useRouteError } from "react-router";
+import { isRouteErrorResponse, useLoaderData, useRouteError } from "react-router";
 import type { ShareLinkRecord } from "../../worker/share-links/types";
 import { createD1ShareLinkStore } from "../../worker/share-links/store";
 import { createShareLinkService } from "../../worker/share-links/service";
@@ -7,6 +7,7 @@ import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
 import { createD1CommentStore } from "../../worker/comments/store";
+import { NotFoundPage } from "../components/product/NotFoundPage";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 const SHARE_LOCALES = ["en", "es", "pt", "fr", "ru", "de"] as const;
@@ -236,15 +237,11 @@ export default function ShareResolverRoute() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  const unavailable = error instanceof Response && error.status === 503;
+  if (isRouteErrorResponse(error) && error.status === 404) return <NotFoundPage />;
   return (
     <main className="product-share-resolver">
-      <h1>{unavailable ? "Share service unavailable" : "Shared content unavailable"}</h1>
-      <p>
-        {unavailable
-          ? "SourceBoard could not resolve this shared link right now."
-          : "This shared content is not available."}
-      </p>
+      <h1>Share service unavailable</h1>
+      <p>SourceBoard could not resolve this shared link right now.</p>
       <a href="/">Go to SourceBoard</a>
     </main>
   );

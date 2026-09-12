@@ -18,6 +18,7 @@ import { createD1CommentStore } from "../../worker/comments/store";
 import { createCommentService } from "../../worker/comments/service";
 import { parseCommentSort } from "../../worker/comments/types";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { NotFoundPage } from "../components/product/NotFoundPage";
 import { PostCard } from "../components/product/PostCard";
 import { CommentThread } from "../components/product/CommentThread";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
@@ -283,28 +284,23 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   ];
 };
 
-function UnavailablePost({ unavailable }: { unavailable: boolean }) {
+function PostServiceUnavailable() {
   return (
     <ProductShell>
       <Card className="product-empty-state">
         <PageHeader
           eyebrow="Source request"
-          title={unavailable ? "Post service unavailable" : "Post not found"}
-          description={
-            unavailable
-              ? "The post service is not configured in this environment yet."
-              : "This request may have been deleted, hidden or never existed."
-          }
+          title="Post service unavailable"
+          description="The post service is not configured in this environment yet."
         />
-        <p>No private post data was returned to the browser.</p>
+        <p>Try again after the service is available.</p>
       </Card>
     </ProductShell>
   );
 }
 
 export default function PostDetailRoute() {
-  const { post, unavailable, authenticated, viewerIdentity, commentSort } =
-    useLoaderData<LoaderData>();
+  const { post, authenticated, viewerIdentity, commentSort } = useLoaderData<LoaderData>();
   const location = useLocation();
   const revalidator = useRevalidator();
 
@@ -332,7 +328,7 @@ export default function PostDetailRoute() {
     return () => window.clearTimeout(timer);
   }, [authenticated, location.hash]);
 
-  if (!post) return <UnavailablePost unavailable={unavailable} />;
+  if (!post) return <PostServiceUnavailable />;
   const currentPost = post;
   const acceptedComment = findComment(currentPost.comments, currentPost.acceptedSource?.commentId);
 
@@ -369,6 +365,6 @@ export default function PostDetailRoute() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  const notFound = isRouteErrorResponse(error) && error.status === 404;
-  return <UnavailablePost unavailable={!notFound} />;
+  if (isRouteErrorResponse(error) && error.status === 404) return <NotFoundPage />;
+  return <PostServiceUnavailable />;
 }
