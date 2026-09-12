@@ -1,0 +1,80 @@
+name: Apply profile editor degrade hotfix Sep 11
+
+on:
+  push:
+    branches:
+      - hotfix/profile-editor-username-degrade-sep11
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[profile-editor-patch]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: hotfix/profile-editor-username-degrade-sep11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --strict-allow-scripts
+      - name: Patch ProfileEditor
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("app/components/product/ProfileEditor.tsx")
+          text = path.read_text()
+
+          replacements = [
+              (
+                  '  const [usernameStatus, setUsernameStatus] = useState<UsernameChangeStatus | null>(null);\n  const [usernameDraft, setUsernameDraft] = useState(profile.username);',
+                  '  const [usernameStatus, setUsernameStatus] = useState<UsernameChangeStatus | null>(null);\n  const [usernameSettingsUnavailable, setUsernameSettingsUnavailable] = useState(false);\n  const [usernameDraft, setUsernameDraft] = useState(profile.username);',
+              ),
+              (
+                  '''  useEffect(() => {\n    if (!editing || (draft && usernameStatus)) return;\n    let cancelled = false;\n    setStatus(null);\n    void Promise.all([\n      fetch("/api/profile/me", { cache: "no-store" }).then(async (response) => {\n        if (!response.ok)\n          throw new Error(await readErrorMessage(response, "Could not load your profile."));\n        return (await response.json()) as MyProfileResponse;\n      }),\n      fetch("/api/profile/me/username", { cache: "no-store" }).then(async (response) => {\n        if (!response.ok)\n          throw new Error(await readErrorMessage(response, "Could not load username settings."));\n        return (await response.json()) as UsernameResponse;\n      }),\n    ])\n      .then(([data, usernameData]) => {\n        if (cancelled) return;\n        const nextDraft = createDraft(data);\n        setSource(data);\n        setDraft(nextDraft);\n        setInitialFingerprint(draftFingerprint(nextDraft));\n        setUsernameStatus(usernameData.username);\n        setUsernameDraft(usernameData.username.username);\n      })\n      .catch((error: unknown) => {\n        if (!cancelled)\n          setStatus(error instanceof Error ? error.message : "Could not load your profile.");\n      });\n    return () => {\n      cancelled = true;\n    };\n  }, [draft, editing, usernameStatus]);''',
+                  '''  useEffect(() => {\n    if (!editing || draft) return;\n    let cancelled = false;\n    setStatus(null);\n    setUsernameSettingsUnavailable(false);\n    void Promise.allSettled([\n      fetch("/api/profile/me", { cache: "no-store" }).then(async (response) => {\n        if (!response.ok)\n          throw new Error(await readErrorMessage(response, "Could not load your profile."));\n        return (await response.json()) as MyProfileResponse;\n      }),\n      fetch("/api/profile/me/username", { cache: "no-store" }).then(async (response) => {\n        if (!response.ok)\n          throw new Error(await readErrorMessage(response, "Could not load username settings."));\n        return (await response.json()) as UsernameResponse;\n      }),\n    ]).then(([profileResult, usernameResult]) => {\n      if (cancelled) return;\n      if (profileResult.status === "rejected") {\n        setStatus(\n          profileResult.reason instanceof Error\n            ? profileResult.reason.message\n            : "Could not load your profile.",\n        );\n        return;\n      }\n\n      const data = profileResult.value;\n      const nextDraft = createDraft(data);\n      setSource(data);\n      setDraft(nextDraft);\n      setInitialFingerprint(draftFingerprint(nextDraft));\n\n      if (usernameResult.status === "fulfilled") {\n        setUsernameStatus(usernameResult.value.username);\n        setUsernameDraft(usernameResult.value.username.username);\n        setUsernameSettingsUnavailable(false);\n      } else {\n        setUsernameStatus(null);\n        setUsernameDraft(profile.username);\n        setUsernameSettingsUnavailable(true);\n      }\n    });\n    return () => {\n      cancelled = true;\n    };\n  }, [draft, editing, profile.username]);''',
+              ),
+              (
+                  '    setUsernameStatus(null);\n    setUsernameDraft(profile.username);',
+                  '    setUsernameStatus(null);\n    setUsernameSettingsUnavailable(false);\n    setUsernameDraft(profile.username);',
+              ),
+              (
+                  '  if (!draft || !usernameStatus) {',
+                  '  if (!draft) {',
+              ),
+              (
+                  '              disabled={busy || !usernameStatus.canChange}',
+                  '              disabled={busy || usernameSettingsUnavailable || !usernameStatus?.canChange}',
+              ),
+              (
+                  '              {usernamePolicyMessage(usernameStatus)}',
+                  '''              {usernameSettingsUnavailable\n                ? "Username changes are temporarily unavailable. You can still edit the rest of your profile."\n                : usernameStatus\n                  ? usernamePolicyMessage(usernameStatus)\n                  : "Loading username settings…"}''',
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match, got {count}: {old[:90]!r}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+      - name: Format patched file
+        run: npx prettier --write app/components/product/ProfileEditor.tsx
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No patch changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/components/product/ProfileEditor.tsx
+          git commit -m "fix: degrade unavailable username settings [profile-editor-patch]"
+          git push origin HEAD:hotfix/profile-editor-username-degrade-sep11
