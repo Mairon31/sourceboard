@@ -29,4 +29,10 @@ describe("comment rendering regressions", () => {
     expect(commentThread).not.toContain("window.location.href");
     expect(shareAction).toContain("new URL(url, window.location.href).toString()");
   });
+
+  it("wires comments to stable short-link targets", () => {
+    expect(commentThread).toContain(
+      'target={{ resourceType: "COMMENT", resourceId: comment.id }}',
+    );
+  });
 });
