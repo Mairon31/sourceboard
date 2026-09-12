@@ -1,15 +1,19 @@
 import { expect, test } from "@playwright/test";
 import { waitForUiReady } from "./test-helpers";
 
-test("profile renders an explicit privacy-aware empty state without persisted data", async ({
+test("profile renders the unified privacy-aware not-found surface without persisted data", async ({
   page,
 }) => {
-  await page.goto("/u/aurora");
+  const response = await page.goto("/u/e2e-missing-profile-account-surface");
 
-  await expect(page.getByRole("heading", { name: "Profile unavailable" })).toBeVisible();
+  expect(response?.status()).toBe(404);
   await expect(
-    page.getByText("Public profile data is shown only after server-side privacy checks succeed."),
+    page.getByRole("heading", { name: "This page isn't available", exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Go to Home", exact: true })).toHaveAttribute(
+    "href",
+    "/",
+  );
 });
 
 test("friends surface requires an authenticated private account", async ({ page }) => {

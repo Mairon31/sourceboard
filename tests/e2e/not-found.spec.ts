@@ -36,11 +36,11 @@ function seedRestrictedProfileFixture() {
        created_at, updated_at)
     VALUES
       ('e2e-restricted-profile', 'E2E Restricted Profile', 'Should never appear in a 404.',
-       NULL, NULL, 'PRIVATE', ${now}, ${now});
+       NULL, NULL, 'FRIENDS_ONLY', ${now}, ${now});
 
     UPDATE user_profiles
     SET display_name = 'E2E Restricted Profile', bio = 'Should never appear in a 404.',
-        profile_visibility = 'PRIVATE', updated_at = ${now}
+        profile_visibility = 'FRIENDS_ONLY', updated_at = ${now}
     WHERE user_id = 'e2e-restricted-profile';
 
     INSERT OR IGNORE INTO user_preferences

@@ -128,10 +128,18 @@ test("signed-in source request composer previews, replaces and removes a validat
 
 test("post detail protects missing persisted data", async ({ page }) => {
   const response = await page.goto("/posts/post-verified");
+  const status = response?.status();
 
-  expect(response?.status()).toBeLessThan(500);
-  await expect(
-    page.getByRole("heading", { name: /Post (not found|service unavailable)/ }),
-  ).toBeVisible();
-  await expect(page.getByText("No private post data was returned to the browser.")).toBeVisible();
+  expect([404, 503]).toContain(status);
+  if (status === 404) {
+    await expect(
+      page.getByRole("heading", { name: "This page isn't available", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Go to Home", exact: true })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  } else {
+    await expect(page.getByRole("heading", { name: "Post service unavailable" })).toBeVisible();
+  }
 });
