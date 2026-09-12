@@ -1,0 +1,40 @@
+name: Post D1/Profile deploy smoke Sep11
+
+on:
+  push:
+    branches:
+      - diagnostic/post-d1-profile-deploy-smoke-sep11
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Smoke production routes
+        shell: bash
+        run: |
+          set -uo pipefail
+          base="https://srcboard.me"
+          failures=0
+          paths=(
+            "/api/health"
+            "/"
+            "/category/other"
+            "/search?q=test&type=posts"
+            "/store"
+          )
+          for path in "${paths[@]}"; do
+            code="$(curl --retry 2 --retry-delay 1 -sS -L -o /tmp/sourceboard-smoke-body -w '%{http_code}' "${base}${path}" || true)"
+            echo "${path} -> ${code}"
+            if [[ "${code}" != "200" ]]; then
+              failures=$((failures + 1))
+              echo "--- response body ---"
+              head -c 1200 /tmp/sourceboard-smoke-body 2>/dev/null || true
+              echo
+              echo "---------------------"
+            fi
+          done
+          echo "failures=${failures}"
+          test "${failures}" -eq 0
