@@ -146,7 +146,7 @@ describe("Block B encrypted session context", () => {
 
   it("captures trusted request transport context when creating a session", async () => {
     const credentials = await authCrypto.hashPassword("correct horse battery staple");
-    const createSession = vi.fn(async () => undefined);
+    const createSession = vi.fn(async (_session: SessionRecord) => undefined);
     const store = {
       findUserByEmailLookupHash: vi.fn(async () => loginUser()),
       getCredentials: vi.fn(async () => credentials),
