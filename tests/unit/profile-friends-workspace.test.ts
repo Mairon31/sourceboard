@@ -7,6 +7,7 @@ function read(path: string): string {
 }
 
 const profileHero = read("../../app/components/product/ProfileHero.tsx");
+const profileLayoutCss = read("../../app/components/product/profile-layout-polish.css");
 const friendsWorkspace = read("../../app/components/product/FriendsWorkspace.tsx");
 const profileRoute = read("../../app/routes/profile.tsx");
 const friendsRoute = read("../../app/routes/friends.tsx");
@@ -23,6 +24,15 @@ describe("profile and friends workspace", () => {
     expect(profileHero).toContain("<ShareAction");
     expect(profileHero).toContain("product-profile-stats--compact");
     expect(profileHero).not.toContain("product-stat-card");
+  });
+
+  it("reserves explicit profile identity areas so avatar and text cannot collide", () => {
+    expect(profileLayoutCss).toContain("grid-template-areas");
+    expect(profileLayoutCss).toContain('"avatar eyebrow"');
+    expect(profileLayoutCss).toContain('"avatar name"');
+    expect(profileLayoutCss).toContain('"avatar username"');
+    expect(profileLayoutCss).toContain("grid-area: avatar");
+    expect(profileLayoutCss).toContain("grid-area: name");
   });
 
   it("provides Friends, Incoming, Outgoing, Add and Discover modes with search", () => {

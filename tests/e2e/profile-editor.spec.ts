@@ -24,6 +24,18 @@ function executeLocalSql(sql: string) {
   );
 }
 
+function rectanglesOverlap(
+  first: { x: number; y: number; width: number; height: number },
+  second: { x: number; y: number; width: number; height: number },
+) {
+  return (
+    first.x < second.x + second.width &&
+    first.x + first.width > second.x &&
+    first.y < second.y + second.height &&
+    first.y + first.height > second.y
+  );
+}
+
 async function installProfileEditorFixture(page: Page) {
   const now = Date.now();
   const sessionToken = "sourceboard-e2e-profile-editor-session";
@@ -165,4 +177,35 @@ test("Edit profile stays usable when username settings are unavailable", async (
   );
   await page.getByRole("button", { name: "Save", exact: true }).click();
   expect((await profilePatch).status()).toBe(200);
+});
+
+test("profile avatar never collides with identity text on a narrow viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installProfileEditorFixture(page);
+  executeLocalSql(`
+    UPDATE user_profiles
+      SET display_name = 'A deliberately long profile display name for mobile collision coverage'
+      WHERE user_id = '${USER_ID}';
+  `);
+
+  await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  await waitForUiReady(page);
+
+  const avatar = page
+    .locator(".product-profile-name .cosmetic-identity--profile .cosmetic-identity__avatar-shell")
+    .first();
+  await expect(avatar).toBeVisible();
+  const avatarBox = await avatar.boundingBox();
+  expect(avatarBox).not.toBeNull();
+
+  for (const text of [
+    page.locator(".product-profile-name .product-eyebrow"),
+    page.locator(".product-profile-name h1"),
+    page.locator(".product-profile-name > p"),
+  ]) {
+    await expect(text).toBeVisible();
+    const textBox = await text.boundingBox();
+    expect(textBox).not.toBeNull();
+    expect(rectanglesOverlap(avatarBox!, textBox!)).toBe(false);
+  }
 });

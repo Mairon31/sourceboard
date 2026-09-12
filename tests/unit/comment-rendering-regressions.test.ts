@@ -33,4 +33,12 @@ describe("comment rendering regressions", () => {
   it("wires comments to stable short-link targets", () => {
     expect(commentThread).toContain('target={{ resourceType: "COMMENT", resourceId: comment.id }}');
   });
+
+  it("uses product-facing recursive comment totals instead of top-level terminology", () => {
+    expect(commentThread).not.toMatch(/top-level/i);
+    expect(commentThread).toContain("function countThread");
+    expect(commentThread).toContain("threadCount.comments");
+    expect(commentThread).toContain("threadCount.replies");
+    expect(commentThread).toContain("product-comments__summary");
+  });
 });
