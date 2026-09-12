@@ -125,7 +125,11 @@ describe("Phase 12 search service", () => {
     expect(prepared).toHaveLength(2);
     const postQuery = prepared.find(({ sql }) => sql.includes("public_post_search"));
     const profileQuery = prepared.find(({ sql }) => sql.includes("public_profile_search"));
+    expect(postQuery?.sql).toContain("WITH search_hits AS MATERIALIZED");
+    expect(postQuery?.sql).toContain("FROM public_post_search");
     expect(postQuery?.sql).toContain("public_post_search MATCH ?");
+    expect(postQuery?.sql).toContain("JOIN search_hits ON search_hits.post_id = p.id");
+    expect(postQuery?.sql).not.toContain("FROM public_post_search\n    JOIN posts p");
     expect(postQuery?.sql).toContain("p.visibility = 'PUBLIC'");
     expect(postQuery?.sql).toContain("p.is_nsfw = 0");
     expect(postQuery?.sql).toContain("p.created_at < ?");
