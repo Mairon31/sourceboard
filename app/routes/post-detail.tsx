@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { readCsrfToken } from "../data/csrf";
+import { readViewerLikedPostIds } from "../data/viewer-post-likes";
 import {
   isRouteErrorResponse,
   redirect,
@@ -89,12 +90,24 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
         commentsPromise,
         viewerIdentityPromise,
       ]);
+      const likedIds = post
+        ? await readViewerLikedPostIds(runtime.db, userId, [post.id])
+        : new Set<string>();
+      const viewerPost = post
+        ? {
+            ...post,
+            reaction: {
+              ...post.reaction,
+              viewerReacted: likedIds.has(post.id),
+            },
+          }
+        : null;
       if (post && !commentsResult.ok) throw commentsResult.error;
       const comments = commentsResult.ok
         ? commentsResult.value
         : { comments: [], nextCursor: null };
       return {
-        post: post ? { ...post, comments: comments.comments } : post,
+        post: viewerPost ? { ...viewerPost, comments: comments.comments } : viewerPost,
         unavailable: false,
         authenticated: Boolean(userId),
         viewerIdentity,
