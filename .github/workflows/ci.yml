@@ -23,6 +23,8 @@ jobs:
         run: npm ci --strict-allow-scripts
       - name: Production dependency audit
         run: npm run audit:prod
+      - name: Print formatted profile layout
+        run: npx prettier app/components/product/profile-layout-polish.css
       - name: Lint and format check
         run: npm run lint
       - name: Typecheck
