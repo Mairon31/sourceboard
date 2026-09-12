@@ -16,7 +16,8 @@ export interface SessionView {
 
 export type ParsedSessionUserAgent = Pick<SessionView, "browser" | "os" | "deviceType">;
 
-export function parseSessionUserAgent(_userAgent: string | null | undefined): ParsedSessionUserAgent {
+export function parseSessionUserAgent(userAgent: string | null | undefined): ParsedSessionUserAgent {
+  void userAgent;
   return {
     browser: { name: "unknown" },
     os: { name: "unknown" },
@@ -24,7 +25,8 @@ export function parseSessionUserAgent(_userAgent: string | null | undefined): Pa
   };
 }
 
-export function maskSessionIp(_ipAddress: string | null | undefined): string | undefined {
+export function maskSessionIp(ipAddress: string | null | undefined): string | undefined {
+  void ipAddress;
   return undefined;
 }
 
