@@ -157,7 +157,9 @@ export function buildShareResolverMeta(data?: ShareResolverData) {
     { property: "og:type", content: "article" },
     { property: "og:title", content: data.title },
     { property: "og:description", content: data.description },
-    ...(data.imageUrl ? [{ property: "og:image", content: data.imageUrl }] : []),
+    ...(data.imageUrl
+      ? [{ property: "og:image", content: data.imageUrl }]
+      : []),
     {
       name: "twitter:card",
       content: data.imageUrl ? "summary_large_image" : "summary",
@@ -252,7 +254,9 @@ export function ErrorBoundary() {
   const unavailable = error instanceof Response && error.status === 503;
   return (
     <main className="product-share-resolver">
-      <h1>{unavailable ? "Share service unavailable" : "Shared content unavailable"}</h1>
+      <h1>
+        {unavailable ? "Share service unavailable" : "Shared content unavailable"}
+      </h1>
       <p>
         {unavailable
           ? "SourceBoard could not resolve this shared link right now."
