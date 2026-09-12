@@ -7,10 +7,7 @@ import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
 import { createD1CommentStore } from "../../worker/comments/store";
-import {
-  withOptionalServerSession,
-  type ServerLoaderArgs,
-} from "../data/server-request";
+import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 const SHARE_LOCALES = ["en", "es", "pt", "fr", "ru", "de"] as const;
 type ShareLocale = (typeof SHARE_LOCALES)[number];
@@ -65,9 +62,7 @@ function postCanonicalUrl(post: ResolverPost, requestUrl: URL): URL {
   return new URL(path, requestUrl.origin);
 }
 
-function localeFromRequest(
-  requestUrl: URL,
-): { locale: ShareLocale; explicit: boolean } {
+function localeFromRequest(requestUrl: URL): { locale: ShareLocale; explicit: boolean } {
   const candidate = requestUrl.searchParams.get("lang");
   if (candidate && (SHARE_LOCALES as readonly string[]).includes(candidate)) {
     return { locale: candidate as ShareLocale, explicit: true };
@@ -75,11 +70,7 @@ function localeFromRequest(
   return { locale: "en", explicit: false };
 }
 
-function applyLocale(
-  canonicalUrl: URL,
-  locale: ShareLocale,
-  explicit: boolean,
-): URL {
+function applyLocale(canonicalUrl: URL, locale: ShareLocale, explicit: boolean): URL {
   const targetUrl = new URL(canonicalUrl.toString());
   if (explicit) targetUrl.searchParams.set("lang", locale);
   return targetUrl;
@@ -157,9 +148,7 @@ export function buildShareResolverMeta(data?: ShareResolverData) {
     { property: "og:type", content: "article" },
     { property: "og:title", content: data.title },
     { property: "og:description", content: data.description },
-    ...(data.imageUrl
-      ? [{ property: "og:image", content: data.imageUrl }]
-      : []),
+    ...(data.imageUrl ? [{ property: "og:image", content: data.imageUrl }] : []),
     {
       name: "twitter:card",
       content: data.imageUrl ? "summary_large_image" : "summary",
@@ -208,11 +197,7 @@ interface LoaderArgs extends ServerLoaderArgs {
   params: { shortId?: string };
 }
 
-export async function loader({
-  params,
-  request,
-  context,
-}: LoaderArgs): Promise<ShareResolverData> {
+export async function loader({ params, request, context }: LoaderArgs): Promise<ShareResolverData> {
   return withOptionalServerSession(
     request,
     context,
@@ -254,9 +239,7 @@ export function ErrorBoundary() {
   const unavailable = error instanceof Response && error.status === 503;
   return (
     <main className="product-share-resolver">
-      <h1>
-        {unavailable ? "Share service unavailable" : "Shared content unavailable"}
-      </h1>
+      <h1>{unavailable ? "Share service unavailable" : "Shared content unavailable"}</h1>
       <p>
         {unavailable
           ? "SourceBoard could not resolve this shared link right now."
