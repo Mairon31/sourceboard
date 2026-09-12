@@ -14,11 +14,17 @@ import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { createMediaService } from "../media/r2";
 import { ProfileError, isProfileError } from "./errors";
-import { createD1ProfileStore, type ProfileStore, type SocialLinkInput } from "./store";
+import {
+  createD1ProfileStore,
+  type MediaAssetRecord,
+  type ProfileStore,
+  type SocialLinkInput,
+} from "./store";
 import { createProfileService } from "./service";
 import { createD1UsernamePolicyStore, createUsernamePolicyService } from "./username-policy";
 import { createReputationReader } from "../reputation/read";
 import { enforceRateLimit } from "../security/rate-limit";
+import { canViewUser } from "../privacy/policy";
 
 const profileUpdateSchema = z.object({
   displayName: z.string(),
@@ -516,7 +522,7 @@ async function serveProfileMedia(ctx: MediaRouteContext, assetId: string): Promi
     throw new ProfileError(404, "MEDIA_NOT_FOUND", "Profile media was not found.");
   }
   const viewerId = await getOptionalViewerId(ctx.request, ctx.env);
-  if (!(await canViewProfileMedia(ctx.store, viewerId, asset.ownerUserId))) {
+  if (!(await canViewProfileMedia(ctx.store, viewerId, asset))) {
     throw new ProfileError(404, "MEDIA_NOT_FOUND", "Profile media was not found.");
   }
   const object = await createMediaService(requireMedia(ctx.env)).get(asset.r2Key);
@@ -630,19 +636,22 @@ async function handleMediaRequest(
 async function canViewProfileMedia(
   store: ProfileStore,
   viewerId: string | null,
-  ownerUserId: string,
+  asset: MediaAssetRecord,
 ): Promise<boolean> {
-  const profile = await store.getProfileByUserId(ownerUserId, Date.now());
+  const now = Date.now();
+  const profile = await store.getProfileByUserId(asset.ownerUserId, now);
   if (!profile) return false;
-  if (viewerId === ownerUserId) return true;
-  if (!viewerId) return false;
-  if (
-    (await store.getBlock(viewerId, ownerUserId)) ||
-    (await store.getBlock(ownerUserId, viewerId))
-  )
-    return false;
-  if (profile.profileVisibility === "PUBLIC") return true;
-  return (await store.getRelationship(viewerId, ownerUserId)) === "FRIEND";
+
+  const isCurrentAsset =
+    asset.purpose === "AVATAR"
+      ? profile.avatarAssetId === asset.id
+      : profile.bannerAssetId === asset.id;
+  if (!isCurrentAsset) return false;
+  if (viewerId === asset.ownerUserId) return true;
+
+  const activeProfile = await store.getProfileByUsernameNormalized(profile.usernameNormalized, now);
+  if (!activeProfile || activeProfile.userId !== asset.ownerUserId) return false;
+  return canViewUser(viewerId, asset.ownerUserId, { store, now: () => now });
 }
 
 function toHex(bytes: Uint8Array): string {
