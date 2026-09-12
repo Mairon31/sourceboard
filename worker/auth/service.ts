@@ -4,12 +4,15 @@ import {
   createIdentifier,
   createOpaqueToken,
   decryptEmail,
+  decryptSessionIp as decryptSessionIpEnvelope,
   encryptEmail,
+  encryptSessionIp,
   hashOpaqueToken,
   hashPassword,
   needsPasswordRehash,
   normalizeEmail,
   normalizeUsername,
+  SESSION_IP_KEY_VERSION,
   verifyPassword,
 } from "./crypto";
 import { enforceAuthRateLimit, requireTurnstile, sendTransactionalEmail } from "./bindings";
@@ -35,6 +38,7 @@ import type { SourceBoardEnvironment } from "../environment";
 import type {
   ActiveSessionRecord,
   AuthStore,
+  SessionContextUpdate,
   SessionRecord,
   SessionSummary,
   UserRecord,
@@ -140,6 +144,7 @@ export interface AuthService {
     context: AuthServiceContext,
   ): Promise<void>;
   getAuthorization(context: AuthServiceContext): Promise<AuthorizationSnapshot>;
+  decryptSessionIp(session: SessionRecord): string | null;
 }
 
 function requireSecret(
@@ -482,7 +487,36 @@ async function createOrRecoverFirebaseRegistration(
   }
 }
 
-const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+export const SESSION_CONTEXT_REFRESH_MS = 15 * 60 * 1000;
+
+type RequestWithCf = Request & {
+  cf?: { city?: unknown; region?: unknown; country?: unknown };
+};
+
+function boundedTransportValue(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function sessionContextFromRequest(
+  request: Request,
+  encryptionKey: string,
+  at: number,
+): SessionContextUpdate {
+  const ipAddress = boundedTransportValue(request.headers.get("cf-connecting-ip"), 64);
+  const userAgent = boundedTransportValue(request.headers.get("user-agent"), 1024);
+  const cf = (request as RequestWithCf).cf;
+  return {
+    ipEncrypted: ipAddress ? encryptSessionIp(ipAddress, encryptionKey) : null,
+    ipKeyVersion: ipAddress ? SESSION_IP_KEY_VERSION : null,
+    userAgent,
+    cfCity: boundedTransportValue(cf?.city, 128),
+    cfRegion: boundedTransportValue(cf?.region, 128),
+    cfCountry: boundedTransportValue(cf?.country, 16),
+    contextUpdatedAt: at,
+  };
+}
 
 export function createAuthService(dependencies: AuthServiceDependencies): AuthService {
   const now = dependencies.now ?? (() => Date.now());
@@ -492,6 +526,21 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     ((token: string | undefined) => requireTurnstile(dependencies.env, token));
   const sendEmail =
     dependencies.sendEmail ?? ((message) => sendTransactionalEmail(dependencies.env, message));
+
+  function requestSessionContext(request: Request, at: number): SessionContextUpdate | undefined {
+    const encryptionKey = dependencies.env.DATA_ENCRYPTION_KEY_V1;
+    return encryptionKey ? sessionContextFromRequest(request, encryptionKey, at) : undefined;
+  }
+
+  async function refreshSessionContext(
+    current: ActiveSessionRecord,
+    request: Request,
+    at: number,
+  ): Promise<void> {
+    const refreshedAt = current.contextUpdatedAt ?? current.lastUsedAt;
+    if (at - refreshedAt < SESSION_CONTEXT_REFRESH_MS) return;
+    await dependencies.store.touchSession(current.id, at, requestSessionContext(request, at));
+  }
 
   async function currentSession(
     context: AuthServiceContext,
@@ -517,9 +566,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       return null;
     }
 
-    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {
-      await dependencies.store.touchSession(current.id, at);
-    }
+    await refreshSessionContext(current, context.request, at);
     return { session: current, user: { id: current.userId, username: current.username } };
   }
 
@@ -643,6 +690,12 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     const csrfToken = createOpaqueToken();
     const createdAt = now();
     const expiresAt = createdAt + SESSION_MAX_AGE_SECONDS * 1000;
+    const encryptionKey = requireSecret(dependencies.env, "DATA_ENCRYPTION_KEY_V1");
+    const transportContext = sessionContextFromRequest(
+      requestContext.request,
+      encryptionKey,
+      createdAt,
+    );
     await dependencies.store.createSession({
       id: createIdentifier(),
       userId: user.id,
@@ -653,6 +706,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
       revokedAt: null,
       ipPrefixHash: requestContext.security.ipPrefixHash,
       userAgentHash: requestContext.security.userAgentHash,
+      ...transportContext,
     });
     return { expiresAt, rawSessionToken, csrfToken };
   }
@@ -992,9 +1046,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     if (!current || current.status !== "ACTIVE" || !current.emailVerifiedAt) {
       return null;
     }
-    if (at - current.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {
-      await dependencies.store.touchSession(current.id, at);
-    }
+    await refreshSessionContext(current, request, at);
     return { session: current, user: { id: current.userId, username: current.username } };
   }
 
@@ -1365,6 +1417,12 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     return dependencies.store.getAuthorization(current!.user.id);
   }
 
+  function decryptStoredSessionIp(session: SessionRecord): string | null {
+    if (!session.ipEncrypted || session.ipKeyVersion !== SESSION_IP_KEY_VERSION) return null;
+    const encryptionKey = requireSecret(dependencies.env, "DATA_ENCRYPTION_KEY_V1");
+    return decryptSessionIpEnvelope(session.ipEncrypted, encryptionKey);
+  }
+
   return {
     register,
     login,
@@ -1380,6 +1438,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     revokeSession,
     changeRole,
     getAuthorization,
+    decryptSessionIp: decryptStoredSessionIp,
   };
 }
 
