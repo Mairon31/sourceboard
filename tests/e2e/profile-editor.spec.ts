@@ -117,3 +117,52 @@ test("inline Edit profile changes username through the existing username policy 
   await expect(page).toHaveURL(new RegExp(`/u/${NEXT_USERNAME}$`));
   await expect(page.getByText(`@${NEXT_USERNAME}`, { exact: true }).first()).toBeVisible();
 });
+
+test("Edit profile stays usable when username settings are unavailable", async ({ page }) => {
+  await installProfileEditorFixture(page);
+  await page.route("**/api/profile/me/username", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "PROFILE_INTERNAL_ERROR",
+          message: "Profile service is temporarily unavailable",
+        },
+      }),
+    });
+  });
+
+  await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  await waitForUiReady(page);
+
+  const profileGet = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/profile/me") && response.request().method() === "GET",
+  );
+  await page.getByRole("button", { name: "Edit profile" }).click();
+  expect((await profileGet).status()).toBe(200);
+
+  await expect(page.getByLabel("Display name")).toBeVisible();
+  await expect(page.getByLabel("Bio")).toBeVisible();
+  await expect(page.getByLabel("Username")).toBeDisabled();
+  await expect(
+    page.getByText(
+      "Username changes are temporarily unavailable. You can still edit the rest of your profile.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Loading your profile…", { exact: true })).toHaveCount(0);
+
+  await page.getByLabel("Display name").fill("Profile Editor Updated");
+  const profilePatch = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/profile/me") && response.request().method() === "PATCH",
+  );
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await profilePatch).status()).toBe(200);
+});
