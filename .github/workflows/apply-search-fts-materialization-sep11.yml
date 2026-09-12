@@ -1,0 +1,37 @@
+name: Apply search FTS materialization hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/search-fts-materialized-sep11
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: hotfix/search-fts-materialized-sep11
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Apply FTS materialization patch
+        run: python .github/scripts/apply-search-fts-materialization-sep11.py
+      - name: Format patched file
+        run: npx prettier --write worker/search/service.ts
+      - name: Commit patch when needed
+        run: |
+          if git diff --quiet -- worker/search/service.ts; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "Mairon"
+          git config user.email "maironjoelkin430@gmail.com"
+          git add worker/search/service.ts
+          git commit -m "fix(search): materialize FTS hits before joins"
+          git push origin HEAD:hotfix/search-fts-materialized-sep11
