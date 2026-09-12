@@ -7,6 +7,20 @@
   color: var(--text-muted);
 }
 
+.product-comments__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 650;
+}
+
 .product-comments__sort {
   min-height: 34px;
   padding: 0 30px 0 10px;
