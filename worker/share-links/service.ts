@@ -7,6 +7,21 @@ const MAX_COLLISION_RETRIES = 5;
 
 type RandomBytes = (size: number) => Uint8Array;
 
+export class ShareLinkError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    public readonly publicMessage: string,
+  ) {
+    super(publicMessage);
+    this.name = "ShareLinkError";
+  }
+}
+
+export function isShareLinkError(error: unknown): error is ShareLinkError {
+  return error instanceof ShareLinkError;
+}
+
 function defaultRandomBytes(size: number): Uint8Array {
   const bytes = new Uint8Array(size);
   crypto.getRandomValues(bytes);
@@ -48,7 +63,9 @@ export function createShareLinkService({
       resourceId: string,
     ): Promise<ShareLinkRecord> {
       const normalizedResourceId = resourceId.trim();
-      if (!normalizedResourceId) throw new Error("Share resource ID is required.");
+      if (!normalizedResourceId) {
+        throw new ShareLinkError(400, "INVALID_SHARE_TARGET", "The share target is invalid.");
+      }
 
       const existing = await store.findByResource(resourceType, normalizedResourceId);
       if (existing) return existing;
@@ -66,7 +83,11 @@ export function createShareLinkService({
         if (winner) return winner;
       }
 
-      throw new Error("Unable to allocate a unique share-link identifier.");
+      throw new ShareLinkError(
+        503,
+        "SHARE_LINK_UNAVAILABLE",
+        "Unable to create a share link.",
+      );
     },
 
     async resolve(shortId: string): Promise<ShareLinkRecord | null> {
