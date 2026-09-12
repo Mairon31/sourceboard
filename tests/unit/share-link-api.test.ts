@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createShareLinkRequestHandler } from "../../worker/share-links/api";
+import {
+  createShareLinkRequestHandler,
+  createShareTargetVisibilityChecker,
+} from "../../worker/share-links/api";
 import type { ShareResourceType } from "../../worker/share-links/types";
 
 function request(body: unknown): Request {
@@ -26,6 +29,31 @@ function handler(publicTargets: Set<string>) {
 }
 
 describe("share-link API", () => {
+  it("checks targets as an anonymous viewer through domain services", async () => {
+    const calls: string[] = [];
+    const isPublicResource = createShareTargetVisibilityChecker({
+      getPost: async (resourceId, viewerId) => {
+        calls.push(`post:${resourceId}:${viewerId ?? "anonymous"}`);
+        return resourceId === "public-post" ? { id: resourceId } : null;
+      },
+      isCommentVisible: async (resourceId, viewerId) => {
+        calls.push(`comment:${resourceId}:${viewerId ?? "anonymous"}`);
+        return resourceId === "public-comment";
+      },
+    });
+
+    await expect(isPublicResource("POST", "public-post")).resolves.toBe(true);
+    await expect(isPublicResource("POST", "private-post")).resolves.toBe(false);
+    await expect(isPublicResource("COMMENT", "public-comment")).resolves.toBe(true);
+    await expect(isPublicResource("COMMENT", "deleted-comment")).resolves.toBe(false);
+    expect(calls).toEqual([
+      "post:public-post:anonymous",
+      "post:private-post:anonymous",
+      "comment:public-comment:anonymous",
+      "comment:deleted-comment:anonymous",
+    ]);
+  });
+
   it("creates a stable short URL for a public post", async () => {
     const response = await handler(new Set(["POST:post-1"]))(
       request({ resourceType: "POST", resourceId: "post-1" }),
