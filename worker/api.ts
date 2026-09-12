@@ -10,6 +10,7 @@ import { handleSourceRequest } from "./source/api";
 import { handleReputationRequest } from "./reputation/api";
 import { handlePublicReputationRequest } from "./reputation/public-api";
 import { withContributionRewards } from "./reputation/contribution-hooks";
+import { handleShareLinkRequest } from "./share-links/api";
 import { handleStoreRequest } from "./store/api";
 import { handleCommunityCosmeticRequest } from "./store/community-api";
 import { enforceCommunityCosmeticPublicationGate } from "./store/publication-gate";
@@ -57,6 +58,11 @@ export async function handleApiRequest(
   const publicReputationResponse = await handlePublicReputationRequest(request, requestId, runtime);
   if (publicReputationResponse) {
     return publicReputationResponse;
+  }
+
+  const shareLinkResponse = await handleShareLinkRequest(request, requestId, runtime);
+  if (shareLinkResponse) {
+    return shareLinkResponse;
   }
 
   const profileResponse = await handleProfileApiRequest(request, requestId, runtime);
