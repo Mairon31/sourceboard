@@ -1,0 +1,69 @@
+name: Apply Block B Task 3 GREEN
+
+on:
+  push:
+    branches:
+      - feature/platform-overhaul-block-b
+
+permissions:
+  contents: write
+
+jobs:
+  apply-task-3:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/platform-overhaul-block-b
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --strict-allow-scripts
+      - name: Apply public profile media gateway policy
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("worker/profile/api-core.ts")
+          text = path.read_text()
+
+          old_import = 'import { createD1ProfileStore, type ProfileStore, type SocialLinkInput } from "./store";'
+          new_import = '''import {\n  createD1ProfileStore,\n  type MediaAssetRecord,\n  type ProfileStore,\n  type SocialLinkInput,\n} from "./store";'''
+          if text.count(old_import) != 1:
+              raise SystemExit("profile store import shape changed")
+          text = text.replace(old_import, new_import)
+
+          anchor = 'import { enforceRateLimit } from "../security/rate-limit";'
+          replacement = anchor + '\nimport { canViewUser } from "../privacy/policy";'
+          if text.count(anchor) != 1:
+              raise SystemExit("rate-limit import anchor changed")
+          text = text.replace(anchor, replacement)
+
+          old_call = '  if (!(await canViewProfileMedia(ctx.store, viewerId, asset.ownerUserId))) {'
+          new_call = '  if (!(await canViewProfileMedia(ctx.store, viewerId, asset))) {'
+          if text.count(old_call) != 1:
+              raise SystemExit("media policy call shape changed")
+          text = text.replace(old_call, new_call)
+
+          old_policy = '''async function canViewProfileMedia(\n  store: ProfileStore,\n  viewerId: string | null,\n  ownerUserId: string,\n): Promise<boolean> {\n  const profile = await store.getProfileByUserId(ownerUserId, Date.now());\n  if (!profile) return false;\n  if (viewerId === ownerUserId) return true;\n  if (!viewerId) return false;\n  if (\n    (await store.getBlock(viewerId, ownerUserId)) ||\n    (await store.getBlock(ownerUserId, viewerId))\n  )\n    return false;\n  if (profile.profileVisibility === "PUBLIC") return true;\n  return (await store.getRelationship(viewerId, ownerUserId)) === "FRIEND";\n}'''
+          new_policy = '''async function canViewProfileMedia(\n  store: ProfileStore,\n  viewerId: string | null,\n  asset: MediaAssetRecord,\n): Promise<boolean> {\n  const now = Date.now();\n  const profile = await store.getProfileByUserId(asset.ownerUserId, now);\n  if (!profile) return false;\n\n  const isCurrentAsset =\n    asset.purpose === "AVATAR"\n      ? profile.avatarAssetId === asset.id\n      : profile.bannerAssetId === asset.id;\n  if (!isCurrentAsset) return false;\n  if (viewerId === asset.ownerUserId) return true;\n\n  const activeProfile = await store.getProfileByUsernameNormalized(profile.usernameNormalized, now);\n  if (!activeProfile || activeProfile.userId !== asset.ownerUserId) return false;\n  return canViewUser(viewerId, asset.ownerUserId, { store, now: () => now });\n}'''
+          if text.count(old_policy) != 1:
+              raise SystemExit("media policy implementation shape changed")
+          text = text.replace(old_policy, new_policy)
+          path.write_text(text)
+          PY
+          npx prettier --write worker/profile/api-core.ts
+      - name: Verify Task 3 focused GREEN
+        run: |
+          npm run typecheck
+          npm test -- --run tests/unit/profile-media-policy.test.ts tests/unit/public-profile-access.test.ts tests/unit/profile-policy.test.ts
+      - name: Remove helper workflow and commit Task 3 GREEN
+        run: |
+          rm .github/workflows/apply-block-b-task3-green.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add worker/profile/api-core.ts .github/workflows/apply-block-b-task3-green.yml
+          git commit -m "feat: serve public profile media to anonymous viewers"
+          git push origin HEAD:feature/platform-overhaul-block-b
