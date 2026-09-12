@@ -346,8 +346,7 @@ function CommentItem({
           <div className="product-comment__identity">
             {comment.author.mode === "ANONYMOUS" ? (
               <>
-                <Avatar name="Anonymous Author" size="sm" />
-                <strong>Anonymous Author</strong>
+                <CosmeticIdentity anonymous mode="compact" avatarSize="sm" nameAs="strong" />
                 <Badge>Anonymous</Badge>
               </>
             ) : (

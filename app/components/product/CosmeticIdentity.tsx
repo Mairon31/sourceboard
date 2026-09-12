@@ -6,6 +6,7 @@ import type {
 } from "../../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { Avatar } from "../ui";
+import { AnonymousAvatar } from "./AnonymousAvatar";
 import { cosmeticVisualClass, cosmeticVisualStyle, mergeCosmeticVisuals } from "./cosmetic-visual";
 import "./avatar-frames.css";
 
@@ -30,30 +31,60 @@ const STRUCTURAL_AVATAR_FRAMES = new Set<AvatarFramePreset>([
   "fox-ears",
 ]);
 
-export interface CosmeticIdentityProps {
+interface CosmeticIdentityBaseProps {
+  mode: "profile" | "compact" | "preview";
+  nameAs?: "span" | "strong" | "h1";
+}
+
+interface AnonymousCosmeticIdentityProps extends CosmeticIdentityBaseProps {
+  anonymous: true;
+  displayName?: never;
+  avatarUrl?: never;
+  avatarFrame?: never;
+  nameFont?: never;
+  nameEffect?: never;
+  visuals?: never;
+  avatarSize?: "sm" | "md" | "lg";
+}
+
+interface IdentifiedCosmeticIdentityProps extends CosmeticIdentityBaseProps {
+  anonymous?: false;
   displayName: string;
   avatarUrl?: string;
   avatarFrame?: AvatarFramePreset;
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
   visuals?: CosmeticIdentityVisuals;
-  mode: "profile" | "compact" | "preview";
   avatarSize?: "sm" | "md" | "lg" | "xl";
-  nameAs?: "span" | "strong" | "h1";
 }
 
-export function CosmeticIdentity({
-  displayName,
-  avatarUrl,
-  avatarFrame,
-  nameFont,
-  nameEffect,
-  visuals,
-  mode,
-  avatarSize = mode === "profile" ? "xl" : mode === "preview" ? "lg" : "sm",
-  nameAs = "span",
-}: CosmeticIdentityProps) {
-  const NameTag = nameAs;
+export type CosmeticIdentityProps =
+  | AnonymousCosmeticIdentityProps
+  | IdentifiedCosmeticIdentityProps;
+
+export function CosmeticIdentity(props: CosmeticIdentityProps) {
+  const NameTag = props.nameAs ?? "span";
+
+  if (props.anonymous) {
+    const avatarSize = props.avatarSize ?? (props.mode === "preview" ? "lg" : "sm");
+    return (
+      <div className={`cosmetic-identity cosmetic-identity--${props.mode}`}>
+        <AnonymousAvatar size={avatarSize} />
+        <NameTag className="cosmetic-identity__name">Anonymous Author</NameTag>
+      </div>
+    );
+  }
+
+  const {
+    displayName,
+    avatarUrl,
+    avatarFrame,
+    nameFont,
+    nameEffect,
+    visuals,
+    mode,
+    avatarSize = mode === "profile" ? "xl" : mode === "preview" ? "lg" : "sm",
+  } = props;
   const nameVisual = mergeCosmeticVisuals(visuals?.nameFont, visuals?.nameEffect);
   const nameStyle: CSSProperties = {
     ...(nameFont ? { fontFamily: nameFont } : {}),
