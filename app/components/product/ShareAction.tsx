@@ -3,10 +3,15 @@ import { readCsrfToken } from "../../data/csrf";
 import { Button } from "../ui";
 import { ShareIcon } from "../ui/icons";
 
+const SHARE_LOCALES = new Set(["en", "es", "pt", "fr", "ru", "de"]);
+
+type StableShareTarget = { resourceType: "POST" | "COMMENT"; resourceId: string };
+
 export interface ShareActionProps {
   url: string;
   title?: string;
   text?: string;
+  target?: StableShareTarget;
 }
 
 type ShareRewardTarget = { targetType: "POST" | "COMMENT" | "PROFILE"; targetId: string };
@@ -31,8 +36,10 @@ function shareRewardTarget(value: string): ShareRewardTarget | null {
   return null;
 }
 
-function recordShareIntent(resolvedUrl: string): void {
-  const target = shareRewardTarget(resolvedUrl);
+function recordShareIntent(resolvedUrl: string, stableTarget?: StableShareTarget): void {
+  const target: ShareRewardTarget | null = stableTarget
+    ? { targetType: stableTarget.resourceType, targetId: stableTarget.resourceId }
+    : shareRewardTarget(resolvedUrl);
   if (!target) return;
   void fetch("/api/reputation/share-intent", {
     method: "POST",
@@ -41,7 +48,30 @@ function recordShareIntent(resolvedUrl: string): void {
   }).catch(() => undefined);
 }
 
-export function ShareAction({ url, title, text }: ShareActionProps) {
+async function resolveStableShareUrl(url: string, target?: StableShareTarget): Promise<string> {
+  const canonicalUrl =
+    typeof window !== "undefined" ? new URL(url, window.location.href).toString() : url;
+  if (!target || typeof window === "undefined") return canonicalUrl;
+
+  const response = await fetch("/api/share-links", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+    body: JSON.stringify(target),
+  });
+  if (!response.ok) {
+    if (response.status >= 500) return canonicalUrl;
+    throw new Error("Share target is unavailable.");
+  }
+
+  const payload = (await response.json()) as { shortUrl?: string };
+  if (!payload.shortUrl) throw new Error("Share link response is invalid.");
+  const shortUrl = new URL(payload.shortUrl, window.location.href);
+  const locale = new URL(window.location.href).searchParams.get("lang");
+  if (locale && SHARE_LOCALES.has(locale)) shortUrl.searchParams.set("lang", locale);
+  return shortUrl.toString();
+}
+
+export function ShareAction({ url, title, text, target }: ShareActionProps) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
 
@@ -49,8 +79,7 @@ export function ShareAction({ url, title, text }: ShareActionProps) {
     setBusy(true);
     setStatus("idle");
     try {
-      const resolvedUrl =
-        typeof window !== "undefined" ? new URL(url, window.location.href).toString() : url;
+      const resolvedUrl = await resolveStableShareUrl(url, target);
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
         await navigator.share({ url: resolvedUrl, title, text });
       } else if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -59,7 +88,7 @@ export function ShareAction({ url, title, text }: ShareActionProps) {
       } else {
         throw new Error("Sharing is not available in this browser.");
       }
-      recordShareIntent(resolvedUrl);
+      recordShareIntent(resolvedUrl, target);
     } catch (cause) {
       if (cause instanceof DOMException && cause.name === "AbortError") return;
       setStatus("error");
