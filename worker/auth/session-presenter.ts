@@ -16,7 +16,9 @@ export interface SessionView {
 
 export type ParsedSessionUserAgent = Pick<SessionView, "browser" | "os" | "deviceType">;
 
-export function parseSessionUserAgent(userAgent: string | null | undefined): ParsedSessionUserAgent {
+export function parseSessionUserAgent(
+  userAgent: string | null | undefined,
+): ParsedSessionUserAgent {
   void userAgent;
   return {
     browser: { name: "unknown" },
