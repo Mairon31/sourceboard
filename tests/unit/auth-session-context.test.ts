@@ -1,11 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import * as authCrypto from "../../worker/auth/crypto";
-import {
-  createAuthContext,
-  createAuthService,
-  type AuthService,
-} from "../../worker/auth/service";
+import { createAuthContext, createAuthService, type AuthService } from "../../worker/auth/service";
 import * as authServiceModule from "../../worker/auth/service";
 import { SESSION_COOKIE_NAME } from "../../worker/auth/security";
 import {
@@ -251,9 +247,11 @@ describe("Block B encrypted session context", () => {
   });
 
   it("refreshes session activity/context only after the 15-minute context window", async () => {
-    const refreshMs = (authServiceModule as typeof authServiceModule & {
-      SESSION_CONTEXT_REFRESH_MS?: number;
-    }).SESSION_CONTEXT_REFRESH_MS;
+    const refreshMs = (
+      authServiceModule as typeof authServiceModule & {
+        SESSION_CONTEXT_REFRESH_MS?: number;
+      }
+    ).SESSION_CONTEXT_REFRESH_MS;
     expect(refreshMs).toBe(15 * 60 * 1000);
 
     const touchSession = vi.fn(async () => undefined);
