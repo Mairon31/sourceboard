@@ -85,9 +85,13 @@ describe("Block B session context migration contract", () => {
         user_agent_hash: "ua-hash",
       });
 
-      db.exec("UPDATE user_profiles SET profile_visibility = 'PRIVATE' WHERE user_id = 'private-user'");
+      db.exec(
+        "UPDATE user_profiles SET profile_visibility = 'PRIVATE' WHERE user_id = 'private-user'",
+      );
       expect(
-        db.prepare("SELECT profile_visibility FROM user_profiles WHERE user_id = 'private-user'").get(),
+        db
+          .prepare("SELECT profile_visibility FROM user_profiles WHERE user_id = 'private-user'")
+          .get(),
       ).toEqual({ profile_visibility: "PRIVATE" });
     } finally {
       db.close();
