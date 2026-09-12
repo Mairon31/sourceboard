@@ -6,7 +6,11 @@ import {
   getRequestSecurityContext,
   getSessionToken,
 } from "../auth/security";
+import { createD1CommentStore } from "../comments/store";
 import type { SourceBoardEnvironment } from "../environment";
+import { createD1PostStore } from "../posts/store";
+import { createPostService } from "../posts/service";
+import { createD1ProfileStore } from "../profile/store";
 import { enforceRateLimit } from "../security/rate-limit";
 import { createShareLinkService, isShareLinkError, ShareLinkError } from "./service";
 import { createD1ShareLinkStore } from "./store";
@@ -16,6 +20,11 @@ interface ShareLinkApiDependencies {
   isPublicResource(type: ShareResourceType, resourceId: string): Promise<boolean>;
   getOrCreate(type: ShareResourceType, resourceId: string): Promise<ShareLinkRecord>;
   rateLimit?: (request: Request) => Promise<void>;
+}
+
+interface ShareTargetVisibilityDependencies {
+  getPost(resourceId: string, viewerId: string | null): Promise<unknown | null>;
+  isCommentVisible(resourceId: string, viewerId: string | null): Promise<boolean>;
 }
 
 function json(body: unknown, requestId: string, status = 200): Response {
@@ -34,6 +43,20 @@ function failure(code: string, message: string, requestId: string, status: numbe
 
 function parseResourceType(value: unknown): ShareResourceType | null {
   return value === "POST" || value === "COMMENT" ? value : null;
+}
+
+export function createShareTargetVisibilityChecker(
+  dependencies: ShareTargetVisibilityDependencies,
+) {
+  return async function isPublicResource(
+    resourceType: ShareResourceType,
+    resourceId: string,
+  ): Promise<boolean> {
+    if (resourceType === "POST") {
+      return Boolean(await dependencies.getPost(resourceId, null));
+    }
+    return dependencies.isCommentVisible(resourceId, null);
+  };
 }
 
 export function createShareLinkRequestHandler(dependencies: ShareLinkApiDependencies) {
@@ -82,46 +105,6 @@ export function createShareLinkRequestHandler(dependencies: ShareLinkApiDependen
   };
 }
 
-async function isPublicResource(
-  db: D1Database,
-  resourceType: ShareResourceType,
-  resourceId: string,
-): Promise<boolean> {
-  if (resourceType === "POST") {
-    const row = await db
-      .prepare(
-        `SELECT id
-         FROM posts
-         WHERE id = ?
-           AND visibility = 'PUBLIC'
-           AND deleted_at IS NULL
-           AND hidden_at IS NULL
-           AND archived_at IS NULL`,
-      )
-      .bind(resourceId)
-      .first<{ id: string }>();
-    return Boolean(row);
-  }
-
-  const row = await db
-    .prepare(
-      `SELECT c.id
-       FROM comments c
-       JOIN posts p ON p.id = c.post_id
-       WHERE c.id = ?
-         AND c.state = 'VISIBLE'
-         AND c.deleted_at IS NULL
-         AND c.hidden_at IS NULL
-         AND p.visibility = 'PUBLIC'
-         AND p.deleted_at IS NULL
-         AND p.hidden_at IS NULL
-         AND p.archived_at IS NULL`,
-    )
-    .bind(resourceId)
-    .first<{ id: string }>();
-  return Boolean(row);
-}
-
 export async function handleShareLinkRequest(
   request: Request,
   requestId: string,
@@ -138,9 +121,30 @@ export async function handleShareLinkRequest(
     );
   }
 
-  const service = createShareLinkService({ store: createD1ShareLinkStore(env.DB) });
+  const db = env.DB;
+  const postService = createPostService({
+    store: createD1PostStore(db),
+    profileStore: createD1ProfileStore(db),
+  });
+  const commentStore = createD1CommentStore(db);
+  const isPublicResource = createShareTargetVisibilityChecker({
+    getPost: (resourceId, viewerId) => postService.getPost(resourceId, viewerId),
+    isCommentVisible: async (resourceId, viewerId) => {
+      const comment = await commentStore.getComment(resourceId);
+      if (
+        !comment ||
+        comment.comment.state !== "VISIBLE" ||
+        comment.comment.deletedAt !== null ||
+        comment.comment.hiddenAt !== null
+      ) {
+        return false;
+      }
+      return Boolean(await postService.getPost(comment.comment.postId, viewerId));
+    },
+  });
+  const service = createShareLinkService({ store: createD1ShareLinkStore(db) });
   const handler = createShareLinkRequestHandler({
-    isPublicResource: (type, resourceId) => isPublicResource(env.DB!, type, resourceId),
+    isPublicResource,
     getOrCreate: (type, resourceId) => service.getOrCreate(type, resourceId),
     rateLimit: env.RATE_LIMIT_CONTENT
       ? async (currentRequest) => {
