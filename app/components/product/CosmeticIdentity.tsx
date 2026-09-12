@@ -59,15 +59,13 @@ interface IdentifiedCosmeticIdentityProps extends CosmeticIdentityBaseProps {
 }
 
 export type CosmeticIdentityProps =
-  | AnonymousCosmeticIdentityProps
-  | IdentifiedCosmeticIdentityProps;
+  AnonymousCosmeticIdentityProps | IdentifiedCosmeticIdentityProps;
 
 export function CosmeticIdentity(props: CosmeticIdentityProps) {
   const NameTag = props.nameAs ?? "span";
 
   if (props.anonymous) {
-    const avatarSize =
-      props.avatarSize ?? (props.mode === "preview" ? "lg" : "sm");
+    const avatarSize = props.avatarSize ?? (props.mode === "preview" ? "lg" : "sm");
     return (
       <div className={`cosmetic-identity cosmetic-identity--${props.mode}`}>
         <AnonymousAvatar size={avatarSize} />
