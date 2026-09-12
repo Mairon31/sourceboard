@@ -72,6 +72,13 @@ export const sessions = sqliteTable(
     revokedAt: integer("revoked_at", { mode: "number" }),
     ipPrefixHash: text("ip_prefix_hash"),
     userAgentHash: text("user_agent_hash"),
+    ipEncrypted: text("ip_encrypted"),
+    ipKeyVersion: text("ip_key_version"),
+    userAgent: text("user_agent"),
+    cfCity: text("cf_city"),
+    cfRegion: text("cf_region"),
+    cfCountry: text("cf_country"),
+    contextUpdatedAt: integer("context_updated_at", { mode: "number" }),
   },
   (table) => [
     uniqueIndex("sessions_token_hash_unique").on(table.tokenHash),
