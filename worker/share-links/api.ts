@@ -1,6 +1,11 @@
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
-import { assertCsrfToken, assertSameOrigin, getRequestSecurityContext, getSessionToken } from "../auth/security";
+import {
+  assertCsrfToken,
+  assertSameOrigin,
+  getRequestSecurityContext,
+  getSessionToken,
+} from "../auth/security";
 import type { SourceBoardEnvironment } from "../environment";
 import { enforceRateLimit } from "../security/rate-limit";
 import { createShareLinkService, isShareLinkError, ShareLinkError } from "./service";
