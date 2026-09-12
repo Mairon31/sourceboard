@@ -23,10 +23,8 @@ jobs:
         run: npm ci --strict-allow-scripts
       - name: Production dependency audit
         run: npm run audit:prod
-      - name: Print formatted share resolver
-        run: |
-          npx prettier app/routes/share-resolver.tsx
-          exit 1
+      - name: Lint and format check
+        run: npm run lint
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
