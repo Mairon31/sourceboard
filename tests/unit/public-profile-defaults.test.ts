@@ -12,9 +12,7 @@ const schema = readFileSync(new URL("../../worker/db/schema.ts", import.meta.url
 
 describe("Block B public profile default contract", () => {
   it("force-backfills existing profiles to PUBLIC in migration 0031", () => {
-    expect(migration).toMatch(
-      /UPDATE\s+user_profiles\s+SET\s+profile_visibility\s*=\s*'PUBLIC'/i,
-    );
+    expect(migration).toMatch(/UPDATE\s+user_profiles\s+SET\s+profile_visibility\s*=\s*'PUBLIC'/i);
   });
 
   it("keeps new profiles PUBLIC by default", () => {
