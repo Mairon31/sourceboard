@@ -53,7 +53,7 @@ function createSqliteD1(sqlite: DatabaseSync): D1Database {
       },
       async run<T>() {
         sqlite.prepare(query).run(...(bindings as never[]));
-        return { results: [], success: true, meta: {} } as D1Result<T>;
+        return { results: [], success: true, meta: {} } as unknown as D1Result<T>;
       },
     };
     return statement;
