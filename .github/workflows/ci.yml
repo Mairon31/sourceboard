@@ -23,29 +23,8 @@ jobs:
         run: npm ci --strict-allow-scripts
       - name: Production dependency audit
         run: npm run audit:prod
-      - name: Diagnose lint and formatting
-        run: |
-          set +e
-          npx eslint . -f json > eslint-report.json
-          echo "$?" > eslint-status.txt
-          npx prettier --check . > prettier-check.txt 2>&1
-          echo "$?" > prettier-status.txt
-          npx prettier --write . > /dev/null 2>&1
-          git diff -- . ':!.github/workflows/ci.yml' > prettier.patch
-          exit 0
-      - name: Upload lint and formatting diagnostics
-        uses: actions/upload-artifact@v7
-        with:
-          name: lint-format-diagnostics
-          path: |
-            eslint-report.json
-            eslint-status.txt
-            prettier-check.txt
-            prettier-status.txt
-            prettier.patch
-          if-no-files-found: error
-      - name: Stop after diagnostics
-        run: exit 1
+      - name: Lint and format check
+        run: npm run lint
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
