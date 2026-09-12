@@ -21,60 +21,113 @@
 - Approximate location is city/region/country only. Never store or expose precise coordinates.
 - User-agent parsing must not invent a hardware model beyond observable data.
 - Session context writes are bounded; no D1 write on every trivial asset/request.
-- Migration head entering this block is `0030`; this block owns `0031_public_profiles_session_context.sql`.
+- Migration head entering this block is `0030`; this block owns exactly one migration, `0031_public_profiles_session_context.sql`.
+- **Important migration sequencing rule:** `0031` is written completely before the first local migration apply. Do not apply a partial `0031` and then append columns to the same file; once the ledger records it, later edits would not run.
 
 ---
 
-### Task 1: Add the profile visibility backfill migration
+### Task 1: Add the complete 0031 profile/session migration before applying it
 
 **Files:**
 - Create: `migrations/0031_public_profiles_session_context.sql`
 - Modify: `worker/db/schema.ts`
 - Test: `tests/unit/public-profile-defaults.test.ts`
+- Test: `tests/unit/session-context-migration.test.ts`
 
 **Interfaces:**
-- Produces: all existing `user_profiles.profile_visibility = 'PUBLIC'` immediately after migration while retaining the existing schema default of `PUBLIC`.
+- Existing `user_profiles` rows become `PUBLIC` once.
+- Schema/service default for new profiles remains `PUBLIC`.
+- Existing sessions remain valid while gaining nullable presentation-context fields:
 
-- [ ] **Step 1: Write RED migration-contract test**
+```text
+ip_encrypted TEXT
+ip_key_version TEXT
+user_agent TEXT
+cf_city TEXT
+cf_region TEXT
+cf_country TEXT
+context_updated_at INTEGER
+```
 
-The test must load the migration and assert it contains the explicit backfill:
+Existing `ip_prefix_hash` and `user_agent_hash` remain unchanged.
+
+- [ ] **Step 1: Write RED migration-contract tests**
+
+`public-profile-defaults.test.ts`:
 
 ```ts
 expect(sql).toMatch(/UPDATE\s+user_profiles\s+SET\s+profile_visibility\s*=\s*'PUBLIC'/i);
+expect(schema).toContain('default("PUBLIC")');
 ```
 
-And schema still declares:
+`session-context-migration.test.ts`:
 
 ```ts
-expect(schema).toContain('default("PUBLIC")');
+for (const column of [
+  "ip_encrypted",
+  "ip_key_version",
+  "user_agent",
+  "cf_city",
+  "cf_region",
+  "cf_country",
+  "context_updated_at",
+]) expect(sql).toContain(column);
 ```
 
 - [ ] **Step 2: Run RED**
 
 ```bash
-npm test -- --run tests/unit/public-profile-defaults.test.ts
+npm test -- --run tests/unit/public-profile-defaults.test.ts tests/unit/session-context-migration.test.ts
 ```
 
-- [ ] **Step 3: Start migration with public backfill**
+Expected: missing `0031`/columns.
+
+- [ ] **Step 3: Create the complete migration in one pass**
 
 ```sql
 UPDATE user_profiles
 SET profile_visibility = 'PUBLIC', updated_at = CAST(strftime('%s','now') AS INTEGER) * 1000
 WHERE profile_visibility <> 'PUBLIC';
+
+ALTER TABLE sessions ADD COLUMN ip_encrypted TEXT;
+ALTER TABLE sessions ADD COLUMN ip_key_version TEXT;
+ALTER TABLE sessions ADD COLUMN user_agent TEXT;
+ALTER TABLE sessions ADD COLUMN cf_city TEXT;
+ALTER TABLE sessions ADD COLUMN cf_region TEXT;
+ALTER TABLE sessions ADD COLUMN cf_country TEXT;
+ALTER TABLE sessions ADD COLUMN context_updated_at INTEGER;
 ```
 
-Do not alter friendship/block tables.
+Do not alter friendship/block tables. Existing sessions must tolerate all new fields being null.
 
-- [ ] **Step 4: Run local migration fixture that seeds Private/Friends rows before 0031**
+- [ ] **Step 4: Mirror every new session column in `worker/db/schema.ts`**
 
-Use a test database or migration test helper to verify both become `PUBLIC` and a later normal profile PATCH can set them back to supported non-public values.
+Keep `profileVisibility.default("PUBLIC")` intact.
 
-- [ ] **Step 5: Commit migration foundation**
+- [ ] **Step 5: Apply the complete migration once to a fixture with pre-0031 data**
+
+Seed one Private profile, one Friends-only profile and one legacy session before applying `0031`, then:
 
 ```bash
-git add migrations/0031_public_profiles_session_context.sql worker/db/schema.ts tests/unit/public-profile-defaults.test.ts
-git commit -m "feat: migrate profiles to public by default"
+npm run db:migrations:apply
 ```
+
+Assert both profiles become `PUBLIC`, the old session still reads successfully with null context, and a later normal profile PATCH can set a user back to a supported non-public value.
+
+- [ ] **Step 6: Run GREEN**
+
+```bash
+npm test -- --run tests/unit/public-profile-defaults.test.ts tests/unit/session-context-migration.test.ts
+```
+
+- [ ] **Step 7: Commit the final migration/schema shape**
+
+```bash
+git add migrations/0031_public_profiles_session_context.sql worker/db/schema.ts tests/unit/public-profile-defaults.test.ts tests/unit/session-context-migration.test.ts
+git commit -m "feat: add public profile and session context migration"
+```
+
+After this commit, do not edit `0031` during later Block B tasks. Any newly discovered schema need gets a new forward migration.
 
 ---
 
@@ -85,16 +138,14 @@ git commit -m "feat: migrate profiles to public by default"
 - Modify: `worker/profile/store.ts`
 - Modify if routing currently blocks anonymous reads: `worker/profile/api-core.ts`
 - Modify: `app/routes/profile.tsx`
-- Test: `tests/unit/profile-policy.test.ts` or add `tests/unit/public-profile-access.test.ts`
+- Test: `tests/unit/public-profile-access.test.ts`
 - Test: `tests/e2e/public-profile-access.spec.ts`
 
 **Interfaces:**
-- Consumes: existing `canViewUser(viewerId, target, relationship/block state)` policy.
-- Produces: anonymous viewer can receive the same public-safe `PublicProfileDto` for `PUBLIC` profiles; private/friends/blocked/deleted states return not-found/unavailable semantics.
+- Consumes existing `canViewUser`/relationship/block policy.
+- Produces anonymous viewer access to the same public-safe profile DTO for `PUBLIC` profiles; private/friends/blocked/deleted targets resolve to the unified not-found/unavailable contract.
 
 - [ ] **Step 1: Write RED policy matrix**
-
-Cover:
 
 ```ts
 expect(await readProfile({ viewerId: null, visibility: "PUBLIC" })).toMatchObject({ username: "public-user" });
@@ -111,22 +162,22 @@ Do not expose owner-only fields in the public DTO.
 npm test -- --run tests/unit/public-profile-access.test.ts
 ```
 
-- [ ] **Step 3: Refactor anonymous viewer handling through the existing visibility policy**
+- [ ] **Step 3: Refactor anonymous handling through existing visibility policy**
 
-Do not add `if (!viewerId) return null` ahead of policy. Pass a null/anonymous viewer into policy-safe reads and let public visibility succeed.
+Remove/avoid an early `if (!viewerId) return null` that bypasses public policy. A null viewer is a legitimate anonymous viewer, not an automatic denial.
 
-- [ ] **Step 4: Make `profile.tsx` SSR useful for signed-out public profiles**
+- [ ] **Step 4: Make `profile.tsx` SSR useful signed out**
 
-The loader must return profile content rather than the account-required shell when the target is public. Owner mutation controls remain absent for signed-out viewers.
+Public target returns profile content. Owner mutation controls remain absent signed out.
 
-- [ ] **Step 5: Run GREEN and browser matrix**
+- [ ] **Step 5: Run GREEN/browser matrix**
 
 ```bash
 npm test -- --run tests/unit/public-profile-access.test.ts
 npx playwright test tests/e2e/public-profile-access.spec.ts
 ```
 
-Browser cases: public signed out = 200/profile visible; private signed out = unified 404; public signed in = visible; blocked = unified 404.
+Cases: public signed out 200; private signed out unified 404; public signed in visible; blocked unified 404.
 
 - [ ] **Step 6: Commit**
 
@@ -147,7 +198,7 @@ git commit -m "feat: expose public profiles to signed-out viewers"
 - Test: `tests/e2e/public-profile-access.spec.ts`
 
 **Interfaces:**
-- Produces: `GET /api/media/profile/:assetId` succeeds signed-out only when the asset is the active avatar/banner of a currently public, otherwise visible profile.
+- `GET /api/media/profile/:assetId` succeeds signed out only when the asset is the current active avatar/banner of a currently public, publicly viewable profile.
 
 - [ ] **Step 1: Write RED media matrix**
 
@@ -157,7 +208,7 @@ expect((await getMedia({ signedOut: true, profile: "PRIVATE", purpose: "AVATAR" 
 expect((await getMedia({ signedOut: true, profile: "PUBLIC", detachedAsset: true })).status).toBe(404);
 ```
 
-Also test blocked/deleted profile state where applicable.
+Also cover deleted/sanctioned/blocked state where applicable.
 
 - [ ] **Step 2: Run RED**
 
@@ -165,9 +216,9 @@ Also test blocked/deleted profile state where applicable.
 npm test -- --run tests/unit/profile-media-policy.test.ts
 ```
 
-- [ ] **Step 3: Resolve asset ownership and current profile association before R2 read**
+- [ ] **Step 3: Resolve asset ownership/current association before R2 read**
 
-Public read must require all of:
+Require all of:
 
 ```text
 asset.status == ACTIVE
@@ -180,7 +231,7 @@ Do not issue public signed URLs and do not expose R2 keys.
 
 - [ ] **Step 4: Preserve authenticated friends/private paths**
 
-The existing authorized viewer logic still works for Friends-only/Private where policy grants access.
+Existing policy-authorized viewers retain supported non-public media access.
 
 - [ ] **Step 5: Run GREEN**
 
@@ -198,11 +249,9 @@ git commit -m "feat: serve public profile media to anonymous viewers"
 
 ---
 
-### Task 4: Extend session persistence with encrypted presentation context
+### Task 4: Implement encrypted session-context capture on the already-migrated columns
 
 **Files:**
-- Continue modifying: `migrations/0031_public_profiles_session_context.sql`
-- Modify: `worker/db/schema.ts`
 - Modify: `worker/auth/crypto.ts`
 - Modify: `worker/auth/store.ts`
 - Modify: `worker/auth/service.ts`
@@ -210,24 +259,15 @@ git commit -m "feat: serve public profile media to anonymous viewers"
 - Test: `tests/unit/auth-session-context.test.ts`
 
 **Interfaces:**
-- Migration adds nullable session columns:
+- Uses nullable session columns already created in Task 1.
+- Crypto produces explicit versioned session-IP encryption/decryption wrappers backed by `DATA_ENCRYPTION_KEY_V1`, while existing email encryption remains byte-compatible.
+- Exports:
 
-```text
-ip_encrypted TEXT
-ip_key_version TEXT
-user_agent TEXT
-cf_city TEXT
-cf_region TEXT
-cf_country TEXT
-context_updated_at INTEGER
+```ts
+export const SESSION_CONTEXT_REFRESH_MS = 15 * 60 * 1000;
 ```
 
-- Existing `ip_prefix_hash` and `user_agent_hash` remain.
-- Crypto produces generic versioned private-value helpers backed by `DATA_ENCRYPTION_KEY_V1`, while existing email encryption behavior remains byte-compatible.
-
 - [ ] **Step 1: Write RED encryption/storage tests**
-
-Assert plaintext IP never appears in the D1 row:
 
 ```ts
 const created = await createSessionFromRequest("203.0.113.42", "Mozilla/5.0 ...");
@@ -235,7 +275,7 @@ expect(created.row.ipEncrypted).not.toContain("203.0.113.42");
 expect(await service.decryptSessionIp(created.row)).toBe("203.0.113.42");
 ```
 
-Assert no request/log DTO receives the encryption secret.
+Also assert an old row with all context columns null still lists normally and no logs/DTOs contain encryption keys.
 
 - [ ] **Step 2: Run RED**
 
@@ -243,29 +283,11 @@ Assert no request/log DTO receives the encryption secret.
 npm test -- --run tests/unit/auth-session-context.test.ts
 ```
 
-- [ ] **Step 3: Add migration columns**
+- [ ] **Step 3: Refactor AES helper without changing email contract**
 
-Append to `0031_public_profiles_session_context.sql`:
+Extract internal generic AES-GCM envelope primitives in `worker/auth/crypto.ts`; existing email helpers delegate to them. Add named session-IP wrappers so call sites cannot accidentally use email lookup hashing or expose raw key material.
 
-```sql
-ALTER TABLE sessions ADD COLUMN ip_encrypted TEXT;
-ALTER TABLE sessions ADD COLUMN ip_key_version TEXT;
-ALTER TABLE sessions ADD COLUMN user_agent TEXT;
-ALTER TABLE sessions ADD COLUMN cf_city TEXT;
-ALTER TABLE sessions ADD COLUMN cf_region TEXT;
-ALTER TABLE sessions ADD COLUMN cf_country TEXT;
-ALTER TABLE sessions ADD COLUMN context_updated_at INTEGER;
-```
-
-Existing sessions remain valid with null context.
-
-- [ ] **Step 4: Refactor AES helper without changing email contract**
-
-Extract internal generic AES-GCM envelope functions in `worker/auth/crypto.ts`, then keep existing public email functions delegating to them. Add explicit session-IP wrappers so call sites cannot accidentally encrypt with a lookup hash or expose raw key material.
-
-- [ ] **Step 5: Capture trusted request context on session creation**
-
-Read:
+- [ ] **Step 4: Capture trusted request context on session creation**
 
 ```ts
 const userAgent = request.headers.get("user-agent");
@@ -273,27 +295,22 @@ const ip = request.headers.get("cf-connecting-ip");
 const cf = request.cf;
 ```
 
-Only use Cloudflare platform fields for city/region/country. Never trust client-submitted JSON for those values.
+Only Cloudflare/request transport metadata can populate city/region/country. Never trust client JSON for these fields.
 
-- [ ] **Step 6: Bound session-context refresh**
+- [ ] **Step 5: Bound context refresh**
 
-On authenticated requests, update `last_used_at`/context only when the stored timestamp is older than a chosen bounded interval, e.g. 15 minutes, or when the auth/session path already performs a write. The test uses the exact interval constant exported from auth service:
+Refresh `last_used_at`/context only when `context_updated_at` is older than `SESSION_CONTEXT_REFRESH_MS` or an auth/session request already needs a write. Do not write on every asset/navigation request.
 
-```ts
-export const SESSION_CONTEXT_REFRESH_MS = 15 * 60 * 1000;
-```
-
-- [ ] **Step 7: Run GREEN and migration**
+- [ ] **Step 6: Run GREEN**
 
 ```bash
-npm test -- --run tests/unit/auth-session-context.test.ts
-npm run db:migrations:apply
+npm test -- --run tests/unit/auth-session-context.test.ts tests/unit/session-context-migration.test.ts
 ```
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add migrations/0031_public_profiles_session_context.sql worker/db/schema.ts worker/auth tests/unit/auth-session-context.test.ts
+git add worker/auth tests/unit/auth-session-context.test.ts
 git commit -m "feat: persist encrypted session context"
 ```
 
@@ -308,7 +325,6 @@ git commit -m "feat: persist encrypted session context"
 - Test: `tests/unit/session-presenter.test.ts`
 
 **Interfaces:**
-- Produces:
 
 ```ts
 export interface SessionView {
@@ -326,11 +342,11 @@ export interface SessionView {
 }
 ```
 
-`GET /api/auth/sessions` returns only the current account’s session views.
+`GET /api/auth/sessions` returns only the current account’s sessions.
 
 - [ ] **Step 1: Write RED parsing/privacy tests**
 
-Use representative Chrome/Windows, Safari/iPhone, Firefox/Linux UAs and unknown strings. Assert unknown stays `unknown`; do not invent `iPhone 17 Pro` from a generic iPhone UA.
+Use representative Chrome/Windows, Safari/iPhone, Firefox/Linux UAs and unknown strings. Unknown remains `unknown`; never invent a specific hardware model from a generic UA.
 
 - [ ] **Step 2: Run RED**
 
@@ -338,13 +354,13 @@ Use representative Chrome/Windows, Safari/iPhone, Firefox/Linux UAs and unknown 
 npm test -- --run tests/unit/session-presenter.test.ts
 ```
 
-- [ ] **Step 3: Implement a small allowlisted parser or add one reviewed UA dependency**
+- [ ] **Step 3: Implement focused parser or one reviewed UA dependency**
 
-Prefer a focused in-repo parser if it can reliably distinguish the required fields. If a dependency is added, inspect its production audit/install scripts and pin it normally; do not add a tracking/remote service.
+Prefer an in-repo parser if it can reliably distinguish required fields. If a dependency is added, review production audit/install scripts and pin normally; no tracking/remote device service.
 
 - [ ] **Step 4: Implement IP masking**
 
-IPv4 example: `203.0.113.42` → `203.0.113.xxx`. IPv6 masking keeps a bounded prefix and hides the remainder. Expanded owner details may include decrypted full IP; collapsed row uses only masked IP or location.
+IPv4 `203.0.113.42` → `203.0.113.xxx`. IPv6 keeps a bounded prefix and hides the rest. Collapsed row uses masked IP/location; expanded owner details may include decrypted full IP.
 
 - [ ] **Step 5: Run GREEN**
 
@@ -359,6 +375,8 @@ git add worker/auth tests/unit/session-presenter.test.ts package.json package-lo
 git commit -m "feat: present professional session details"
 ```
 
+If no new dependency was needed, do not touch package files.
+
 ---
 
 ### Task 6: Reorganize Settings into General and Security surfaces
@@ -366,8 +384,8 @@ git commit -m "feat: present professional session details"
 **Files:**
 - Modify: `app/routes/settings.tsx`
 - Modify: settings CSS imported by the route
-- Create if it improves file responsibility: `app/components/product/SettingsSecurity.tsx`
-- Create if it improves file responsibility: `app/components/product/ActiveSessions.tsx`
+- Create: `app/components/product/SettingsSecurity.tsx` if needed to keep the route focused
+- Create: `app/components/product/ActiveSessions.tsx` if needed
 - Test: `tests/unit/settings-security-layout.test.ts`
 - Test: `tests/e2e/settings-security.spec.ts`
 
@@ -377,7 +395,7 @@ git commit -m "feat: present professional session details"
 
 - [ ] **Step 1: Write RED information-architecture test**
 
-Assert Settings no longer renders Change Password/Username as the first primary section and that Security owns them.
+Assert Settings no longer leads with Change Password/Username and Security owns both controls.
 
 - [ ] **Step 2: Run RED**
 
@@ -385,27 +403,21 @@ Assert Settings no longer renders Change Password/Username as the first primary 
 npm test -- --run tests/unit/settings-security-layout.test.ts
 ```
 
-- [ ] **Step 3: Split large route components by responsibility**
+- [ ] **Step 3: Split components by responsibility without duplicating policy**
 
-Keep network mutation methods close to the component that owns them. Do not duplicate username policy logic: continue calling the existing username status/mutation API.
+Continue calling existing username status/mutation API and password API; do not reproduce username cooldown/quota logic client-side.
 
-- [ ] **Step 4: Render session summary professionally**
+- [ ] **Step 4: Render professional session summaries**
 
-Collapsed row label is derived from DTO:
-
-```ts
-`${browser.name}${os.name !== "Unknown" ? ` on ${os.name}` : ""}`
-```
-
-Secondary text combines available location and relative activity. Do not render literal `undefined`, empty separators, or fake location.
+Collapsed label derives from observed DTO, e.g. `Chrome on Windows`; secondary text combines only available approximate location and activity. Never render fake location or empty separators.
 
 - [ ] **Step 5: Add expandable details and revoke controls**
 
-Expanded card shows exact available browser/OS/device, masked + revealable owner IP, city/region/country, created/last activity/expires. Current session is visibly labeled and cannot accidentally revoke itself through a button intended for “other session” unless the existing API explicitly supports current logout.
+Show exact available browser/OS/device, masked + owner-revealable IP, city/region/country, created/last activity/expires and current-session state. Other-session revoke uses existing endpoint.
 
-- [ ] **Step 6: Add “Sign out other sessions” only through an explicit backend action**
+- [ ] **Step 6: Add “Sign out other sessions” through an explicit backend action**
 
-If no existing batch endpoint exists, add `DELETE /api/auth/sessions` with semantics “revoke every non-current active session for current user”. Keep single-session `DELETE /api/auth/sessions/:id` unchanged.
+If absent, add `DELETE /api/auth/sessions` with semantics “revoke every active non-current session for current user”; retain `DELETE /api/auth/sessions/:id` for one session.
 
 - [ ] **Step 7: Run GREEN/E2E**
 
@@ -417,7 +429,7 @@ npx playwright test tests/e2e/settings-security.spec.ts
 - [ ] **Step 8: Commit**
 
 ```bash
-git add app/routes/settings.tsx app/components/product tests worker/auth
+git add app/routes/settings.tsx app/components/product worker/auth tests
 git commit -m "feat: redesign account security settings"
 ```
 
@@ -436,6 +448,7 @@ git commit -m "feat: redesign account security settings"
 ```bash
 npm test -- --run \
   tests/unit/public-profile-defaults.test.ts \
+  tests/unit/session-context-migration.test.ts \
   tests/unit/public-profile-access.test.ts \
   tests/unit/profile-media-policy.test.ts \
   tests/unit/auth-session-context.test.ts \
@@ -458,7 +471,7 @@ npm run test:e2e
 
 - [ ] **Step 3: Record migration/privacy evidence**
 
-Document that local `0031` backfilled profiles and added nullable session context; note that existing sessions without context degrade cleanly.
+Document that complete local `0031` backfilled profiles and added nullable session context in a single ledger application; existing sessions without context degrade cleanly.
 
 - [ ] **Step 4: Commit verification docs**
 
@@ -472,14 +485,14 @@ git commit -m "docs: record Block B verification"
 Verify:
 
 ```text
-existing formerly-private fixture/account after migration -> PUBLIC unless user changed it later
+existing pre-0031 private/friends profile -> PUBLIC after migration unless user changes it afterward
 new account profile -> PUBLIC
 signed-out public profile/avatar -> visible
 signed-out private/friends profile -> unified 404
 blocked relation -> unified 404
 Settings -> General first, username/password under Security
-sessions -> browser/OS/activity; no “Active browser” generic row
-owner expanded session -> IP/location when available
+sessions -> browser/OS/activity; no generic “Active browser” row
+owner expanded session -> IP/location only when actually available
 other session revoke -> disappears and cannot authenticate
 ```
 
