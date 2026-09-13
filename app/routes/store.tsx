@@ -1,25 +1,29 @@
 import { useEffect, useState } from "react";
 import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "react-router";
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
+import { localizedHref } from "../i18n/routes";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
-import { ProductShell, PresentationNotice } from "../components/product/ProductShell";
+import { PresentationNotice, ProductShell } from "../components/product/ProductShell";
 import { StoreItemCard } from "../components/product/StoreItemCard";
 import { StoreSection } from "../components/product/StoreSection";
 import { readCsrfToken } from "../data/csrf";
+import { requestedLocale } from "../data/locale.server";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { translate, type MessageKey } from "../i18n";
+import { useI18n } from "../i18n/I18nProvider";
 
 const STORE_FILTERS = [
-  { key: "ALL", label: "All" },
-  { key: "PROFILE_BANNER", label: "Profile Themes" },
-  { key: "AVATAR_FRAME", label: "Avatar Frames" },
-  { key: "PROFILE_EFFECT", label: "Profile Effects" },
-  { key: "NAME_EFFECT", label: "Name Effects" },
-  { key: "NAME_FONT", label: "Fonts" },
-  { key: "EMOTE_PACK", label: "Emotes" },
-  { key: "STICKER_PACK", label: "Stickers" },
-  { key: "COMMUNITY", label: "Community" },
-] as const;
+  { key: "ALL", label: "store.filter.all" },
+  { key: "PROFILE_BANNER", label: "store.filter.profileThemes" },
+  { key: "AVATAR_FRAME", label: "store.filter.avatarFrames" },
+  { key: "PROFILE_EFFECT", label: "store.filter.profileEffects" },
+  { key: "NAME_EFFECT", label: "store.filter.nameEffects" },
+  { key: "NAME_FONT", label: "store.filter.fonts" },
+  { key: "EMOTE_PACK", label: "store.filter.emotes" },
+  { key: "STICKER_PACK", label: "store.filter.stickers" },
+  { key: "COMMUNITY", label: "store.filter.community" },
+] as const satisfies ReadonlyArray<{ key: string; label: MessageKey }>;
 
 type StoreFilter = (typeof STORE_FILTERS)[number]["key"];
 const INCLUDED_STORE_STATE = { state: "INCLUDED" as const }.state;
@@ -31,53 +35,19 @@ const COSMETIC_TYPES = new Set<StoreItemType>([
   "NAME_EFFECT",
 ]);
 
-export const meta: MetaFunction = () => [
-  { title: "Store · SourceBoard" },
-  {
-    name: "description",
-    content: "Equip profile cosmetics and collect expressive emote packs on SourceBoard.",
-  },
-  { name: "robots", content: "index, follow" },
-  { tagName: "link", rel: "canonical", href: "https://srcboard.me/store" },
-  { property: "og:type", content: "website" },
-  { property: "og:title", content: "SourceBoard Store" },
-  {
-    property: "og:description",
-    content: "Equip profile cosmetics and collect expressive emote packs on SourceBoard.",
-  },
-  { property: "og:url", content: "https://srcboard.me/store" },
-  { property: "og:image", content: "https://srcboard.me/sourceboard-og.png" },
-];
-
-function parseConfig(value: unknown): StoreItemView["preview"]["config"] {
-  try {
-    const parsed = JSON.parse(String(value)) as Record<string, unknown>;
-    return {
-      preset:
-        typeof parsed.preset === "string"
-          ? (parsed.preset as StoreItemView["preview"]["config"]["preset"])
-          : undefined,
-      family:
-        typeof parsed.family === "string"
-          ? (parsed.family as StoreItemView["preview"]["config"]["family"])
-          : undefined,
-    };
-  } catch {
-    return {};
-  }
-}
-
 export async function loader({ request, context }: ServerLoaderArgs) {
+  const locale = requestedLocale(request);
   return withOptionalServerSession(
     request,
     context,
     (unavailable) => ({
+      locale,
       items: [] as StoreItemView[],
       unavailable,
       authenticated: false,
       adminUnlocked: false,
       points: null as number | null,
-      previewName: "SourceBoard member",
+      previewName: translate(locale, "store.memberDefault"),
       previewAvatarUrl: undefined as string | undefined,
     }),
     async (runtime, userId) => {
@@ -135,12 +105,13 @@ export async function loader({ request, context }: ServerLoaderArgs) {
         } satisfies StoreItemView;
       });
       return {
+        locale,
         items,
         unavailable: false,
         authenticated: Boolean(userId),
         adminUnlocked,
         points,
-        previewName: profile?.displayName ?? "SourceBoard member",
+        previewName: profile?.displayName ?? translate(locale, "store.memberDefault"),
         previewAvatarUrl: profile?.avatarAssetId
           ? `/api/media/profile/${encodeURIComponent(profile.avatarAssetId)}`
           : undefined,
@@ -150,6 +121,41 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
+
+export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
+  const locale = loaderData?.locale ?? "en";
+  const description = translate(locale, "store.metaDescription");
+  const canonical = `https://srcboard.me${localizedHref(locale, "store")}`;
+  return [
+    { title: `${translate(locale, "store.title")} · SourceBoard` },
+    { name: "description", content: description },
+    { name: "robots", content: "index, follow" },
+    { tagName: "link", rel: "canonical", href: canonical },
+    { property: "og:type", content: "website" },
+    { property: "og:title", content: `${translate(locale, "store.title")} · SourceBoard` },
+    { property: "og:description", content: description },
+    { property: "og:url", content: canonical },
+    { property: "og:image", content: "https://srcboard.me/sourceboard-og.png" },
+  ];
+};
+
+function parseConfig(value: unknown): StoreItemView["preview"]["config"] {
+  try {
+    const parsed = JSON.parse(String(value)) as Record<string, unknown>;
+    return {
+      preset:
+        typeof parsed.preset === "string"
+          ? (parsed.preset as StoreItemView["preview"]["config"]["preset"])
+          : undefined,
+      family:
+        typeof parsed.family === "string"
+          ? (parsed.family as StoreItemView["preview"]["config"]["family"])
+          : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
 
 function partitionStoreItems(items: StoreItemView[], authenticated: boolean) {
   const featured = items.filter((item) => item.featured);
@@ -171,6 +177,7 @@ export default function StoreRoute() {
     previewName,
     previewAvatarUrl,
   } = useLoaderData<LoaderData>();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const revalidator = useRevalidator();
   const [activeFilter, setActiveFilter] = useState<StoreFilter>("ALL");
@@ -241,14 +248,14 @@ export default function StoreRoute() {
         body: JSON.stringify({ idempotencyKey: crypto.randomUUID() }),
       });
       if (!response.ok) {
-        setFeedback("This item could not be redeemed.");
+        setFeedback(t("store.redeemError"));
         return;
       }
       markOwned(item);
-      setFeedback(`${item.name} unlocked.`);
+      setFeedback(t("store.unlockedFeedback", { name: item.name }));
       revalidator.revalidate();
     } catch {
-      setFeedback("This item could not be redeemed. Check your connection and try again.");
+      setFeedback(t("store.redeemConnectionError"));
     } finally {
       setBusyId(null);
     }
@@ -264,14 +271,14 @@ export default function StoreRoute() {
         body: JSON.stringify({ storeItemId: item.id }),
       });
       if (!response.ok) {
-        setFeedback("This cosmetic could not be equipped.");
+        setFeedback(t("store.equipError"));
         return;
       }
       markEquipped(item);
-      setFeedback(`${item.name} equipped.`);
+      setFeedback(t("store.equippedFeedback", { name: item.name }));
       revalidator.revalidate();
     } catch {
-      setFeedback("This cosmetic could not be equipped. Check your connection and try again.");
+      setFeedback(t("store.equipConnectionError"));
     } finally {
       setBusyId(null);
     }
@@ -286,14 +293,14 @@ export default function StoreRoute() {
         headers: { "x-csrf-token": readCsrfToken() },
       });
       if (!response.ok) {
-        setFeedback("This cosmetic could not be unequipped.");
+        setFeedback(t("store.unequipError"));
         return;
       }
       markUnequipped(item);
-      setFeedback(`${item.name} unequipped.`);
+      setFeedback(t("store.unequippedFeedback", { name: item.name }));
       revalidator.revalidate();
     } catch {
-      setFeedback("This cosmetic could not be unequipped. Check your connection and try again.");
+      setFeedback(t("store.unequipConnectionError"));
     } finally {
       setBusyId(null);
     }
@@ -338,21 +345,25 @@ export default function StoreRoute() {
       <div className="product-store-page">
         <header className="product-store-hero">
           <div>
-            <span className="product-eyebrow">Personalization Store</span>
-            <h1>Make SourceBoard yours</h1>
-            <p>Unlock profile frames, effects, fonts and community emote packs with points.</p>
+            <span className="product-eyebrow">{t("store.eyebrow")}</span>
+            <h1>{t("store.heroTitle")}</h1>
+            <p>{t("store.heroDescription")}</p>
           </div>
           <a className="product-store-create-link" href="/store/create">
-            Create cosmetic
+            {t("store.createCosmetic")}
           </a>
           <div className="product-store-wallet">
-            <span>{adminUnlocked ? "Admin access" : "Balance"}</span>
-            <strong>{adminUnlocked ? "Admin unlocked" : `${currentPoints ?? 0} pts`}</strong>
-            <small>{adminUnlocked ? "No points required" : "Earn points by contributing"}</small>
+            <span>{adminUnlocked ? t("store.adminAccess") : t("store.balance")}</span>
+            <strong>
+              {adminUnlocked
+                ? t("store.adminUnlocked")
+                : t("store.points", { count: currentPoints ?? 0 })}
+            </strong>
+            <small>{adminUnlocked ? t("store.noPointsRequired") : t("store.earnPoints")}</small>
           </div>
         </header>
 
-        <div className="product-store-filter-bar" aria-label="Store filters">
+        <div className="product-store-filter-bar" aria-label={t("store.filtersLabel")}>
           {STORE_FILTERS.map((filter) => (
             <button
               key={filter.key}
@@ -361,14 +372,12 @@ export default function StoreRoute() {
               aria-pressed={activeFilter === filter.key}
               onClick={() => setActiveFilter(filter.key)}
             >
-              {filter.label}
+              {t(filter.label)}
             </button>
           ))}
         </div>
 
-        {unavailable ? (
-          <PresentationNotice>Store data is temporarily unavailable.</PresentationNotice>
-        ) : null}
+        {unavailable ? <PresentationNotice>{t("store.unavailable")}</PresentationNotice> : null}
         {feedback ? (
           <div className="product-store-feedback" role="status">
             {feedback}
@@ -377,28 +386,28 @@ export default function StoreRoute() {
 
         {sections.featured.length ? (
           <StoreSection
-            eyebrow="Curated"
-            title="Featured"
-            description="Items highlighted by the SourceBoard catalog team."
+            eyebrow={t("store.curated")}
+            title={t("store.featured")}
+            description={t("store.featuredDescription")}
           >
             {renderItems(sections.featured)}
           </StoreSection>
         ) : null}
 
         {sections.newest.length ? (
-          <StoreSection title="New" description="Recent additions in the selected category.">
+          <StoreSection title={t("store.new")} description={t("store.newDescription")}>
             {renderItems(sections.newest)}
           </StoreSection>
         ) : null}
 
         {sections.owned.length ? (
-          <StoreSection title="Owned" description="Your unlocked and currently equipped items.">
+          <StoreSection title={t("store.owned")} description={t("store.ownedDescription")}>
             {renderItems(sections.owned)}
           </StoreSection>
         ) : null}
 
         {sections.browse.length ? (
-          <StoreSection title="All items" description="Full catalog in the selected category.">
+          <StoreSection title={t("store.allItems")} description={t("store.allItemsDescription")}>
             {renderItems(sections.browse)}
           </StoreSection>
         ) : null}
