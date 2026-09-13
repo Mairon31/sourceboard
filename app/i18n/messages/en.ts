@@ -1,3 +1,5 @@
+import { settingsMessageSets } from "./settings";
+
 export const enMessages = {
   "nav.home": "Home",
   "nav.search": "Search",
@@ -19,6 +21,7 @@ export const enMessages = {
   "settings.security.title": "Security",
   "settings.language.title": "Language",
   "settings.language.description": "Choose the language SourceBoard uses for its interface.",
+  ...settingsMessageSets.en,
   "security.sessions.title": "Active sessions",
   "security.sessions.revokeOthers": "Sign out other sessions",
   "notifications.title": "Notifications",
