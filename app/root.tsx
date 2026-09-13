@@ -10,6 +10,7 @@ import {
 } from "react-router";
 import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import { readSourceBoardRequestContext } from "../shared/router-context";
+import { createCmsNavigationService } from "../worker/cms/navigation";
 import { createD1ProfileStore } from "../worker/profile/store";
 import { requestedLocale } from "./data/locale.server";
 import { readServerSession, type ServerLoaderArgs } from "./data/server-request";
@@ -89,10 +90,16 @@ export async function loader({ request, context }: ServerLoaderArgs) {
     }
   }
 
+  const locale = requestedLocale(request, accountLocale);
+  const footerNavigation = requestContext?.env.DB
+    ? await createCmsNavigationService(requestContext.env.DB).list("FOOTER", locale).catch(() => [])
+    : [];
+
   return {
     cspNonce: requestContext?.cspNonce ?? null,
     origin: "https://srcboard.me",
-    locale: requestedLocale(request, accountLocale),
+    locale,
+    footerNavigation,
     // fallow-ignore-next-line unused-load-data-key -- global navigation reads this root loader.
     session,
     navigationIdentity,
