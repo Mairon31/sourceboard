@@ -23,7 +23,7 @@ export interface ProfileIdentityCardProps {
   bannerUrl?: string;
   visuals?: CosmeticIdentityVisuals;
   communityStyles?: Array<{ id: string; css: string }>;
-  mode?: "profile" | "preview" | "store" | "admin";
+  mode?: "profile" | "compact" | "preview" | "store" | "admin";
 }
 
 export function ProfileIdentityCard({
