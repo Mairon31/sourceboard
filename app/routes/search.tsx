@@ -34,6 +34,7 @@ export const meta: MetaFunction = () => [
 const SEARCH_FILTER_KEYS: Record<SearchFilter, MessageKey> = {
   relevant: "search.filter.relevant",
   recent: "search.filter.recent",
+  open: "search.filter.open",
   unanswered: "search.filter.unanswered",
   answered: "search.filter.answered",
   verified: "search.filter.verified",
