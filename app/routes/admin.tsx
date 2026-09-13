@@ -1,43 +1,23 @@
 import { Link, useLoaderData } from "react-router";
-import { readSourceBoardRequestContext } from "../../shared/router-context";
 import { createAdminReadService } from "../../worker/admin/read";
 import { AdminMetric } from "../components/admin/AdminMetric";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { Card } from "../components/ui";
-import { loadAdminAccess } from "../data/admin-access";
+import { requireAdminPageAccess } from "../data/admin-access";
 import type { ServerLoaderArgs } from "../data/server-request";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  const access = await loadAdminAccess(request, context);
-  if (!access.authorized) return { ...access, overview: null };
-
-  const runtime = readSourceBoardRequestContext(context);
-  if (!runtime?.env.DB) return { authorized: true, unavailable: true, overview: null };
+  const { runtime } = await requireAdminPageAccess(request, context);
 
   try {
     return {
       authorized: true,
       unavailable: false,
-      overview: await createAdminReadService(runtime.env.DB).overview(),
+      overview: await createAdminReadService(runtime.db).overview(),
     };
   } catch {
     return { authorized: true, unavailable: true, overview: null };
   }
-}
-
-function AccessDenied() {
-  return (
-    <AdminShell>
-      <AdminPageHeader
-        eyebrow="Restricted"
-        title="Admin access required"
-        description="This operational surface is protected by the admin.access capability."
-      />
-      <Card className="product-empty-state">
-        Sign in with an authorized administrative account to continue.
-      </Card>
-    </AdminShell>
-  );
 }
 
 function formatAdminDate(value: number): string {
@@ -52,7 +32,6 @@ function formatAdminDate(value: number): string {
 
 export default function AdminRoute() {
   const access = useLoaderData<typeof loader>();
-  if (!access.authorized) return <AccessDenied />;
 
   return (
     <AdminShell>

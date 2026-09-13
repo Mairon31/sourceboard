@@ -80,7 +80,7 @@ describe("store catalog lifecycle", () => {
     expect(storeRoute).toContain("sections.newest");
     expect(storeRoute).toContain("sections.owned");
     expect(storeRoute).toContain("const browse = items;");
-    expect(storeRoute).toContain('title="All items"');
+    expect(storeRoute).toContain('title={t("store.allItems")}');
     expect(storeSection).toContain("product-store-section");
     expect(storeCard).toContain("StorePreview");
   });

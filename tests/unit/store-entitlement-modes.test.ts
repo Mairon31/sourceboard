@@ -109,8 +109,8 @@ describe("Store entitlement modes", () => {
     expect(contracts).toContain('"INCLUDED"');
     expect(contracts).toContain("isGlobal: boolean");
     expect(route).toContain('state: "INCLUDED"');
-    expect(card).toContain('return "Included"');
-    expect(card).toContain('return "Get"');
-    expect(card).toContain('return "Purchase"');
+    expect(card).toContain('return "store.action.included"');
+    expect(card).toContain('return "store.action.get"');
+    expect(card).toContain('return "store.action.purchase"');
   });
 });

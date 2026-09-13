@@ -36,7 +36,7 @@ describe("production rollout regressions", () => {
       "wrangler d1 migrations list DB --remote",
     );
     expect(packageJson.scripts?.["db:migrations:apply:remote"]).toBe(
-      "wrangler d1 migrations apply DB --remote",
+      "npm run db:cms-seed:generate && wrangler d1 migrations apply DB --remote",
     );
   });
 });

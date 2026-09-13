@@ -12,7 +12,7 @@ describe("NotificationCard", () => {
     expect(component).toContain("NotificationCardView");
     expect(component).toContain("product-notification-card__primary");
     expect(component).toContain("NotificationActorStack");
-    expect(component).toContain("Notification actions");
+    expect(component).toContain('t("notifications.actions")');
     expect(css).toContain("grid-template-columns: auto minmax(0, 1fr) auto");
     expect(css).toContain("@media (max-width: 520px)");
     expect(css).toContain("grid-column: 2");

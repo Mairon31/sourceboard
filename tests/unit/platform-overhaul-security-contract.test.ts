@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { parseCosmeticVisualConfig } from "../../shared/store/cosmetic-config";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
@@ -34,9 +35,31 @@ describe("platform overhaul security contract", () => {
   });
 
   it("uses strict structured Creator Pro validation", () => {
-    const config = read("shared/store/cosmetic-config.ts");
-    expect(config).toContain("unknown");
-    expect(config).toContain("48");
-    expect(config).toContain("60000");
+    const valid = {
+      schemaVersion: 1,
+      palette: ["#ffffff"],
+      animation: {
+        durationMs: 60_000,
+        delayMs: 0,
+        easing: "linear",
+        direction: "normal",
+        iterations: 1,
+      },
+      particles: { count: 48, size: 1, speed: 1, spread: 1, path: "drift" },
+    };
+    expect(parseCosmeticVisualConfig(valid).animation?.durationMs).toBe(60_000);
+    expect(() => parseCosmeticVisualConfig({ ...valid, unsupported: true })).toThrow();
+    expect(() =>
+      parseCosmeticVisualConfig({
+        ...valid,
+        animation: { ...valid.animation, durationMs: 60_001 },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseCosmeticVisualConfig({
+        ...valid,
+        particles: { ...valid.particles, count: 49 },
+      }),
+    ).toThrow();
   });
 });

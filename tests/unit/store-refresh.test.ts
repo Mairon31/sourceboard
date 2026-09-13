@@ -21,18 +21,18 @@ const migration = read("../../migrations/0014_store_refresh.sql");
 
 describe("refreshed store experience", () => {
   it("filters the catalog across the current Store families", () => {
-    for (const label of [
-      "All",
-      "Profile Themes",
-      "Avatar Frames",
-      "Profile Effects",
-      "Name Effects",
-      "Fonts",
-      "Emotes",
-      "Stickers",
-      "Community",
+    for (const key of [
+      "store.filter.all",
+      "store.filter.profileThemes",
+      "store.filter.avatarFrames",
+      "store.filter.profileEffects",
+      "store.filter.nameEffects",
+      "store.filter.fonts",
+      "store.filter.emotes",
+      "store.filter.stickers",
+      "store.filter.community",
     ]) {
-      expect(storeRoute).toContain(`label: "${label}"`);
+      expect(storeRoute).toContain(`label: "${key}"`);
     }
     expect(storeRoute).toContain("activeFilter");
     expect(storeRoute).toContain("visibleItems");
@@ -44,7 +44,7 @@ describe("refreshed store experience", () => {
     expect(storeRoute).toContain("/purchase");
     expect(storeRoute).toContain("/api/me/cosmetics/");
     expect(storeRoute).toContain("adminUnlocked");
-    expect(storeRoute).toContain("Admin unlocked");
+    expect(storeRoute).toContain('t("store.adminUnlocked")');
     expect(storeService).toContain("isStoreAdmin");
     expect(storeService).toContain("allowUnowned");
     expect(storeApi).toContain("isStoreAdmin");
