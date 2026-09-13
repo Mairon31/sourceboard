@@ -6,7 +6,7 @@ import { assertCsrfToken, assertSameOrigin, getSessionToken } from "../auth/secu
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createD1ProfileStore } from "../profile/store";
-import { clearNotifications } from "./service";
+import { clearNotifications, markNotificationsReadBatch } from "./service";
 import { presentNotifications } from "./presenter";
 
 function json(body: unknown, requestId: string, status = 200): Response {
@@ -45,17 +45,23 @@ async function requireViewerId(
   if (!getSessionToken(request)) {
     return failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
   }
-  const session = await createAuthService({ store: createD1AuthStore(db), env }).getSession(
-    request,
-  );
-  return (
-    session?.user.id ?? failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.")
-  );
+  const session = await createAuthService({ store: createD1AuthStore(db), env }).getSession(request);
+  return session?.user.id ?? failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
 }
 
 function mutationSecurity(request: Request): void {
   assertSameOrigin(request);
   assertCsrfToken(request);
+}
+
+async function readBatchIds(request: Request): Promise<string[] | null> {
+  const body: unknown = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const ids = (body as { notificationIds?: unknown }).notificationIds;
+  if (!Array.isArray(ids) || ids.length > 50 || ids.some((id) => typeof id !== "string")) {
+    return null;
+  }
+  return ids as string[];
 }
 
 export async function handleNotificationRequest(
@@ -79,6 +85,7 @@ export async function handleNotificationRequest(
       return json(
         {
           unreadCount: result.unreadCount,
+          lastSeen: result.notifications[0]?.id ?? null,
           notifications: await presentNotifications(db, result.notifications),
         },
         requestId,
@@ -90,7 +97,17 @@ export async function handleNotificationRequest(
       return json({ cleared: await clearNotifications(db, viewer) }, requestId);
     }
     if (request.method === "POST" && url.pathname === "/api/notifications/read-all") {
-      return json({ read: await store.markAllNotificationsRead(viewer, Date.now()) }, requestId);
+      return json(
+        { read: await store.markAllNotificationsRead(viewer, Date.now()), unreadCount: 0 },
+        requestId,
+      );
+    }
+    if (request.method === "POST" && url.pathname === "/api/notifications/read-batch") {
+      const notificationIds = await readBatchIds(request);
+      if (!notificationIds) {
+        return failure(requestId, 400, "INVALID_NOTIFICATION_BATCH", "The notification batch is invalid.");
+      }
+      return json(await markNotificationsReadBatch(db, viewer, notificationIds, Date.now()), requestId);
     }
     const readMatch = url.pathname.match(/^\/api\/notifications\/([^/]+)\/read$/);
     if (request.method === "POST" && readMatch) {
@@ -104,6 +121,9 @@ export async function handleNotificationRequest(
   } catch (error) {
     if (isAuthError(error)) {
       return failure(requestId, error.status, error.code, error.publicMessage);
+    }
+    if (error instanceof RangeError) {
+      return failure(requestId, 400, "INVALID_NOTIFICATION_BATCH", error.message);
     }
     return failure(
       requestId,
