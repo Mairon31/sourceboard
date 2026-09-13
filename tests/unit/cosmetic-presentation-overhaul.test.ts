@@ -72,6 +72,17 @@ const NEW_AVATAR_FRAMES = [
   "electric-halo",
 ] as const;
 
+const BLOCK_E_AVATAR_FRAMES = [
+  "crystal-crown",
+  "comet-orbit",
+  "pixel-wings",
+  "fox-spirit",
+  "celestial-horns",
+  "floral-ring",
+  "void-lens",
+  "electric-halo",
+] as const;
+
 describe("Cosmetic presentation overhaul", () => {
   it("keeps profile effects out of avatar and name identity", () => {
     const identity = read("../../app/components/product/CosmeticIdentity.tsx");
@@ -93,6 +104,7 @@ describe("Cosmetic presentation overhaul", () => {
     expect(card).toContain("<ProfileThemeLayer");
     expect(card).toContain("<ProfileEffectLayer");
     expect(card).toContain('import "./profile-themes.css"');
+    expect(card).toContain('import "./profile-effects-expanded.css"');
   });
 
   it("keeps theme off the uploaded cover", () => {
@@ -167,7 +179,10 @@ describe("Cosmetic presentation overhaul", () => {
   });
 
   it("styles every approved new Profile Effect on the card layer", () => {
-    const effectCss = read("../../app/components/product/profile-effects.css");
+    const effectCss = [
+      read("../../app/components/product/profile-effects.css"),
+      read("../../app/components/product/profile-effects-expanded.css"),
+    ].join("\n");
     for (const slug of NEW_PROFILE_EFFECTS) {
       expect(effectCss).toContain(`.product-profile-effect-layer--${slug}`);
     }
@@ -183,14 +198,8 @@ describe("Cosmetic presentation overhaul", () => {
   });
 
   it("keeps Avatar Frame visuals isolated inside the canonical Avatar Stage", () => {
-    const framePath = resolve(
-      import.meta.dirname,
-      "../../app/components/product/avatar-frames.css",
-    );
-    expect(existsSync(framePath)).toBe(true);
-    if (!existsSync(framePath)) return;
-
-    const frameCss = read("../../app/components/product/avatar-frames.css");
+    const legacyFrameCss = read("../../app/components/product/avatar-frames.css");
+    const stageCss = read("../../app/components/product/avatar-stage.css");
     const identity = read("../../app/components/product/CosmeticIdentity.tsx");
     const stage = read("../../app/components/product/AvatarStage.tsx");
     const definitions = read("../../app/components/product/avatar-frame-definitions.ts");
@@ -198,11 +207,14 @@ describe("Cosmetic presentation overhaul", () => {
     expect(stage).toContain("AVATAR_FRAME_DEFINITIONS");
     expect(stage).toContain("product-avatar-stage__part");
     expect(definitions).toContain("AVATAR_STAGE_LAYER_ORDER");
-    expect(frameCss).not.toContain(".product-profile-effect-layer");
-    expect(frameCss).not.toContain(".product-profile-card-surface");
-    for (const slug of NEW_AVATAR_FRAMES) {
-      expect(frameCss).toContain(`[data-avatar-frame="${slug}"]`);
+    expect(legacyFrameCss).not.toContain(".product-profile-effect-layer");
+    expect(stageCss).not.toContain(".product-profile-effect-layer");
+    expect(legacyFrameCss).not.toContain(".product-profile-card-surface");
+    expect(stageCss).not.toContain(".product-profile-card-surface");
+    for (const slug of BLOCK_E_AVATAR_FRAMES.filter((slug) => slug !== "fox-spirit")) {
+      expect(stageCss).toContain(`[data-avatar-frame="${slug}"]`);
     }
+    expect(AVATAR_FRAME_DEFINITIONS["fox-spirit"].parts.length).toBeGreaterThan(0);
   });
 
   it("routes profile cosmetic preview surfaces through one shared renderer", () => {
@@ -229,13 +241,17 @@ describe("Cosmetic presentation overhaul", () => {
   it("bounds decorative motion and keeps a visible reduced-motion fallback", () => {
     const effectComponent = read("../../app/components/product/ProfileEffectLayer.tsx");
     const effectCss = read("../../app/components/product/profile-effects.css");
+    const expandedEffectCss = read("../../app/components/product/profile-effects-expanded.css");
     const frameCss = read("../../app/components/product/avatar-frames.css");
+    const stageCss = read("../../app/components/product/avatar-stage.css");
     const cardCss = read("../../app/components/product/profile-identity-card.css");
 
     expect(effectComponent).toContain("[0, 1, 2, 3, 4, 5]");
     expect(effectCss).toContain("pointer-events: none");
     expect(effectCss).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(expandedEffectCss).toContain("@media (prefers-reduced-motion: reduce)");
     expect(frameCss).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(stageCss).toContain("@media (prefers-reduced-motion: reduce)");
     for (const token of ["setInterval", "setTimeout", "requestAnimationFrame"]) {
       expect(effectComponent).not.toContain(token);
     }
