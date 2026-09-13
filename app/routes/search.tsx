@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Form, Link, useLoaderData, useNavigate, type MetaFunction } from "react-router";
 import { getPostCategory } from "../../shared/posts/categories";
-import type { SearchResult } from "../../worker/search/service";
+import type { SearchFilter, SearchResult } from "../../worker/search/service";
 import { createSearchService } from "../../worker/search/service";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { SearchDiscoveryControls } from "../components/product/SearchDiscoveryControls";
@@ -16,6 +16,8 @@ import {
   type SearchRouteState,
 } from "../data/search-state";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import type { MessageKey } from "../i18n";
+import { useI18n } from "../i18n/I18nProvider";
 
 type LoaderArgs = ServerLoaderArgs;
 
@@ -28,6 +30,14 @@ export const meta: MetaFunction = () => [
   },
   { name: "robots", content: "noindex, follow" },
 ];
+
+const SEARCH_FILTER_KEYS: Record<SearchFilter, MessageKey> = {
+  relevant: "search.filter.relevant",
+  recent: "search.filter.recent",
+  unanswered: "search.filter.unanswered",
+  answered: "search.filter.answered",
+  verified: "search.filter.verified",
+};
 
 function emptyResult(state: SearchRouteState): SearchResult {
   return {
@@ -86,15 +96,16 @@ function cursorHref(
 }
 
 function ProfileResults({ result, state }: { result: SearchResult; state: SearchRouteState }) {
+  const { t, tp } = useI18n();
   if (result.kind === "posts" || result.kind === "sources" || !result.profiles.length) return null;
   return (
     <section className="product-search-section" aria-labelledby="search-people-heading">
       <div className="product-search-section__header">
         <div>
-          <span className="product-eyebrow">Public profiles</span>
-          <h2 id="search-people-heading">Users</h2>
+          <span className="product-eyebrow">{t("search.profilesEyebrow")}</span>
+          <h2 id="search-people-heading">{t("search.users")}</h2>
         </div>
-        <span className="product-search-count">{result.profiles.length} results</span>
+        <span className="product-search-count">{tp("search.results", result.profiles.length)}</span>
       </div>
       <div className="product-search-profile-list">
         {result.profiles.map((profile) => (
@@ -118,7 +129,7 @@ function ProfileResults({ result, state }: { result: SearchResult; state: Search
               />
               <div className="product-search-profile__copy">
                 <span>@{profile.username}</span>
-                {profile.bio ? <p>{profile.bio}</p> : <p>No public bio.</p>}
+                {profile.bio ? <p>{profile.bio}</p> : <p>{t("search.noPublicBio")}</p>}
               </div>
             </Link>
           </Card>
@@ -129,7 +140,7 @@ function ProfileResults({ result, state }: { result: SearchResult; state: Search
           className="product-text-action"
           to={cursorHref(state, { profileCursor: result.nextProfileCursor })}
         >
-          Load more users
+          {t("search.loadMoreUsers")}
         </Link>
       ) : null}
     </section>
@@ -137,6 +148,7 @@ function ProfileResults({ result, state }: { result: SearchResult; state: Search
 }
 
 function PostResultsSection({ result, state }: { result: SearchResult; state: SearchRouteState }) {
+  const { t, tp } = useI18n();
   if (result.kind === "profiles" || !result.posts.length) return null;
   const sourceMode = result.kind === "sources";
   return (
@@ -144,11 +156,13 @@ function PostResultsSection({ result, state }: { result: SearchResult; state: Se
       <div className="product-search-section__header">
         <div>
           <span className="product-eyebrow">
-            {sourceMode ? "Resolved provenance" : "Public source requests"}
+            {sourceMode ? t("search.sourcesEyebrow") : t("search.requestsEyebrow")}
           </span>
-          <h2 id="search-posts-heading">{sourceMode ? "Accepted Sources" : "Posts"}</h2>
+          <h2 id="search-posts-heading">
+            {sourceMode ? t("search.acceptedSources") : t("search.posts")}
+          </h2>
         </div>
-        <span className="product-search-count">{result.posts.length} results</span>
+        <span className="product-search-count">{tp("search.results", result.posts.length)}</span>
       </div>
       <SearchPostResults posts={result.posts} view={state.view} sourceMode={sourceMode} />
       {result.nextPostCursor ? (
@@ -156,7 +170,7 @@ function PostResultsSection({ result, state }: { result: SearchResult; state: Se
           className="product-text-action"
           to={cursorHref(state, { postCursor: result.nextPostCursor })}
         >
-          Load more {sourceMode ? "accepted sources" : "posts"}
+          {sourceMode ? t("search.loadMoreAcceptedSources") : t("search.loadMorePosts")}
         </Link>
       ) : null}
     </section>
@@ -164,19 +178,23 @@ function PostResultsSection({ result, state }: { result: SearchResult; state: Se
 }
 
 function SearchSummary({ state, result }: { state: SearchRouteState; result: SearchResult }) {
+  const { t, tp } = useI18n();
   const total = result.posts.length + result.profiles.length;
   const category = state.categorySlug ? getPostCategory(state.categorySlug) : null;
   return (
     <div className="product-search-query-summary" aria-live="polite">
-      <strong>{total}</strong> visible results for “{result.query}”
-      {state.kind === "sources" ? <span>Accepted sources</span> : null}
-      {state.filter !== "recent" ? <span>{state.filter}</span> : null}
+      <span>
+        {tp("search.results", total)} {t("search.forQuery", { query: result.query })}
+      </span>
+      {state.kind === "sources" ? <span>{t("search.acceptedSources")}</span> : null}
+      {state.filter !== "recent" ? <span>{t(SEARCH_FILTER_KEYS[state.filter])}</span> : null}
       {category ? <span>{category.label}</span> : null}
     </div>
   );
 }
 
 export default function SearchRoute() {
+  const { t } = useI18n();
   const { unavailable, state, result } = useLoaderData<LoaderData>();
   const navigate = useNavigate();
 
@@ -207,9 +225,9 @@ export default function SearchRoute() {
     <ProductShell wide>
       <div className="product-search-heading">
         <PageHeader
-          eyebrow="Source search"
-          title="Discovery"
-          description="Find public source requests, contributors and accepted-source provenance."
+          eyebrow={t("search.eyebrow")}
+          title={t("search.title")}
+          description={t("search.description")}
         />
       </div>
       <Form
@@ -217,7 +235,7 @@ export default function SearchRoute() {
         method="get"
         role="search"
       >
-        <label htmlFor="search-query">Search SourceBoard</label>
+        <label htmlFor="search-query">{t("search.label")}</label>
         <div className="product-search-form__row">
           <div className="product-search-input-shell">
             <SearchIcon width="18" height="18" aria-hidden="true" />
@@ -226,7 +244,7 @@ export default function SearchRoute() {
               name="q"
               type="search"
               defaultValue={state.query}
-              placeholder="Image source, creator, username or topic"
+              placeholder={t("search.placeholder")}
               autoComplete="off"
             />
           </div>
@@ -240,19 +258,19 @@ export default function SearchRoute() {
           {state.kind !== "profiles" && state.hasExplicitView ? (
             <input type="hidden" name="view" value={state.view} />
           ) : null}
-          <button type="submit">Search</button>
+          <button type="submit">{t("search.submit")}</button>
         </div>
       </Form>
       {unavailable ? (
         <Card className="product-empty-state">
-          <strong>Search unavailable</strong>
-          <p>The public search index is not available in this environment yet.</p>
+          <strong>{t("search.unavailableTitle")}</strong>
+          <p>{t("search.unavailableDescription")}</p>
         </Card>
       ) : !state.query ? (
         <Card className="product-empty-state product-search-empty">
           <SearchIcon width="24" height="24" aria-hidden="true" />
-          <strong>Search public SourceBoard knowledge</strong>
-          <p>Look for a source request, original creator, accepted source or contributor.</p>
+          <strong>{t("search.emptyTitle")}</strong>
+          <p>{t("search.emptyDescription")}</p>
         </Card>
       ) : (
         <>
@@ -262,8 +280,8 @@ export default function SearchRoute() {
           <ProfileResults result={result} state={state} />
           {!result.posts.length && !result.profiles.length ? (
             <Card className="product-empty-state">
-              <strong>No public matches</strong>
-              <p>Try a broader term, another category or a different status filter.</p>
+              <strong>{t("search.noMatchesTitle")}</strong>
+              <p>{t("search.noMatchesDescription")}</p>
             </Card>
           ) : null}
         </>
