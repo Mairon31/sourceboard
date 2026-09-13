@@ -1,4 +1,5 @@
 import type { Locale } from "../../shared/i18n/locales";
+import { commonMessageSets, type CommonMessageKey } from "./messages/common";
 import { deMessages } from "./messages/de";
 import { enMessages, type MessageKey as BaseMessageKey } from "./messages/en";
 import { esMessages } from "./messages/es";
@@ -13,7 +14,7 @@ import { frStoreMessages } from "./messages/store.fr";
 import { ptStoreMessages } from "./messages/store.pt";
 import { ruStoreMessages } from "./messages/store.ru";
 
-export type MessageKey = BaseMessageKey | StoreMessageKey | SocialMessageKey;
+export type MessageKey = BaseMessageKey | StoreMessageKey | SocialMessageKey | CommonMessageKey;
 
 const baseMessages: Record<Locale, Record<BaseMessageKey, string>> = {
   en: enMessages,
@@ -37,12 +38,18 @@ const englishMessages: Record<MessageKey, string> = {
   ...enMessages,
   ...enStoreMessages,
   ...socialMessageSets.en,
+  ...commonMessageSets.en,
 };
 
 export const allMessages = Object.fromEntries(
   (Object.keys(baseMessages) as Locale[]).map((locale) => [
     locale,
-    { ...baseMessages[locale], ...storeMessages[locale], ...socialMessageSets[locale] },
+    {
+      ...baseMessages[locale],
+      ...storeMessages[locale],
+      ...socialMessageSets[locale],
+      ...commonMessageSets[locale],
+    },
   ]),
 ) as Record<Locale, Record<MessageKey, string>>;
 
