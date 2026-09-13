@@ -25,7 +25,9 @@ export function fontDefinitionByFamily(family: string): FontFamilyDefinition | u
 }
 
 export function googleFontCssUrl(definitions: readonly FontFamilyDefinition[]): string {
-  const registry = new Map(GOOGLE_FONT_REGISTRY.map((definition) => [definition.id, definition]));
+  const registry = new Map<string, FontFamilyDefinition>(
+    GOOGLE_FONT_REGISTRY.map((definition) => [definition.id, definition]),
+  );
   const unique = new Map<string, FontFamilyDefinition>();
   for (const definition of definitions) {
     const approved = registry.get(definition.id);
