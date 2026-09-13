@@ -3,9 +3,11 @@ import type {
   NameEffectPreset,
   NameFontFamily,
 } from "../../../shared/store/cosmetics";
+import type { CreatorProIdentityVisuals } from "../../../shared/store/creator-pro-config";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { AnonymousAvatar } from "./AnonymousAvatar";
 import { AvatarStage } from "./AvatarStage";
+import { creatorProVisualStyle } from "./creator-pro-visual";
 import { FontResources } from "./FontResources";
 import { cosmeticVisualClass, cosmeticVisualStyle, mergeCosmeticVisuals } from "./cosmetic-visual";
 import "./avatar-frames.css";
@@ -23,6 +25,7 @@ interface AnonymousCosmeticIdentityProps extends CosmeticIdentityBaseProps {
   nameFont?: never;
   nameEffect?: never;
   visuals?: never;
+  creatorPro?: never;
   avatarSize?: "sm" | "md" | "lg";
 }
 
@@ -34,6 +37,7 @@ interface IdentifiedCosmeticIdentityProps extends CosmeticIdentityBaseProps {
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
   visuals?: CosmeticIdentityVisuals;
+  creatorPro?: CreatorProIdentityVisuals;
   avatarSize?: "sm" | "md" | "lg" | "xl";
 }
 
@@ -91,13 +95,16 @@ export function CosmeticIdentity(props: CosmeticIdentityProps) {
     nameFont,
     nameEffect,
     visuals,
+    creatorPro,
     mode,
     avatarSize,
   } = props;
   const nameVisual = mergeCosmeticVisuals(visuals?.nameFont, visuals?.nameEffect);
+  const creatorName = creatorPro?.nameEffect ?? creatorPro?.nameFont;
   const nameStyle: CSSProperties = {
     ...(nameFont ? { fontFamily: `"${nameFont}", system-ui, sans-serif` } : {}),
     ...(cosmeticVisualStyle(nameVisual) ?? {}),
+    ...(creatorProVisualStyle(creatorName, "name") ?? {}),
   };
 
   return (
@@ -110,10 +117,12 @@ export function CosmeticIdentity(props: CosmeticIdentityProps) {
         size={stageSize(mode, avatarSize)}
         className={cosmeticVisualClass(visuals?.avatarFrame).trim() || undefined}
         style={cosmeticVisualStyle(visuals?.avatarFrame)}
+        creatorPro={creatorPro?.avatarFrame}
       />
       <NameTag
         className={`cosmetic-identity__name profile-name-area${nameEffect ? ` sb-name-effect--${nameEffect}` : ""}${cosmeticVisualClass(nameVisual)}`}
         style={nameStyle}
+        data-creator-pro={creatorName ? "true" : undefined}
         aria-label={displayName}
       >
         <NameContent displayName={displayName} nameEffect={nameEffect} />
