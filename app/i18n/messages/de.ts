@@ -39,6 +39,7 @@ export const deMessages = {
   "errors.notFound.title": "Seite nicht gefunden",
   "errors.notFound.description": "Die Seite wurde möglicherweise verschoben, entfernt oder ist für dich nicht verfügbar.",
   "errors.notFound.home": "Zur Startseite",
+  "errors.notFound.back": "Zurück",
   "auth.login": "Anmelden",
   "auth.register": "Konto erstellen",
   "docs.title": "Dokumentation",
