@@ -6,7 +6,7 @@ export const enMessages = {
   "nav.store": "Store",
   "nav.settings": "Settings",
   "nav.profile": "Profile",
-  "nav.create": "Create",
+  "nav.create": "Create post",
   "nav.admin": "Admin",
   "common.save": "Save",
   "common.cancel": "Cancel",
