@@ -1,0 +1,239 @@
+.product-profile-theme-layer[data-profile-theme="aurora-flow"] {
+  background:
+    radial-gradient(ellipse at 12% 22%, #55f1c566, transparent 40%),
+    radial-gradient(ellipse at 82% 18%, #8e6eff66, transparent 42%),
+    linear-gradient(130deg, #0b2027, #18223d 48%, #241839);
+  background-size: 120% 120%;
+  animation: profile-overhaul-drift 12s ease-in-out infinite alternate;
+}
+
+.product-profile-theme-layer[data-profile-theme="cyber-grid"] {
+  background-image:
+    linear-gradient(#5ce9ff20 1px, transparent 1px),
+    linear-gradient(90deg, #a86dff20 1px, transparent 1px),
+    radial-gradient(circle at 72% 14%, #b65cff3b, transparent 35%),
+    linear-gradient(145deg, #08131f, #111a2b);
+  background-size: 22px 22px, 22px 22px, auto, auto;
+}
+
+.product-profile-theme-layer[data-profile-theme="plasma-wave"] {
+  background:
+    radial-gradient(ellipse at 18% 78%, #655cff70, transparent 38%),
+    radial-gradient(ellipse at 78% 25%, #ff5fbf66, transparent 38%),
+    linear-gradient(120deg, #13132b, #23184a 52%, #141e36);
+  filter: saturate(1.12);
+}
+
+.product-profile-theme-layer[data-profile-theme="starlit"] {
+  background:
+    radial-gradient(circle at 14% 18%, #ffffffcc 0 1px, transparent 2px),
+    radial-gradient(circle at 68% 24%, #d5e8ff99 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 76%, #c1abff99 0 1px, transparent 2px),
+    radial-gradient(circle at 34% 72%, #ffffff88 0 1px, transparent 2px),
+    linear-gradient(145deg, #081120, #14172d 58%, #0a1020);
+}
+
+.product-profile-theme-layer[data-profile-theme="neon-glass"] {
+  background:
+    linear-gradient(120deg, #5ce8ff22, transparent 42%),
+    linear-gradient(300deg, #ff68d322, transparent 46%),
+    linear-gradient(145deg, #111827dd, #20253bdd);
+  box-shadow: inset 0 0 0 1px #b8efff2e;
+  backdrop-filter: blur(12px);
+}
+
+.product-profile-theme-layer[data-profile-theme="sunset-drift"] {
+  background:
+    radial-gradient(circle at 76% 20%, #ffc36b66, transparent 34%),
+    radial-gradient(circle at 18% 78%, #e65b9a55, transparent 42%),
+    linear-gradient(145deg, #3a2033, #6c3145 48%, #2d2947);
+}
+
+.product-profile-theme-layer[data-profile-theme="candy-motion"] {
+  background: linear-gradient(125deg, #ff8cc966, #7ee6ff55, #bd95ff66, #ffd47e55);
+  background-size: 220% 220%;
+  animation: profile-overhaul-drift 14s ease-in-out infinite alternate;
+}
+
+.product-profile-theme-layer[data-profile-theme="mono-editorial"] {
+  background:
+    linear-gradient(90deg, transparent 0 68%, #ffffff0d 68% 69%, transparent 69%),
+    linear-gradient(155deg, #151515, #262626 55%, #101010);
+  background-size: 46px 46px, auto;
+}
+
+.product-profile-theme-layer[data-profile-theme="holo-scan"] {
+  background:
+    repeating-linear-gradient(0deg, #ffffff08 0 1px, transparent 1px 5px),
+    linear-gradient(110deg, #5ce7ff33, #a66eff33 45%, #ff77cf2e),
+    linear-gradient(150deg, #111728, #1e2235);
+}
+
+.product-profile-theme-layer[data-profile-theme="cosmic-dust"] {
+  background:
+    radial-gradient(circle at 14% 22%, #f5f3ff99 0 1px, transparent 2px),
+    radial-gradient(circle at 48% 72%, #8fe9ff88 0 1px, transparent 2px),
+    radial-gradient(circle at 84% 38%, #d490ff88 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 86%, #ffd38b66 0 1px, transparent 2px),
+    linear-gradient(145deg, #0c1021, #20183c 54%, #111b2e);
+}
+
+.product-profile-effect-layer--petal-fall .product-profile-effect-layer__node,
+.product-profile-effect-layer--aurora-particles .product-profile-effect-layer__node,
+.product-profile-effect-layer--star-drift .product-profile-effect-layer__node,
+.product-profile-effect-layer--spark-field .product-profile-effect-layer__node,
+.product-profile-effect-layer--soft-confetti .product-profile-effect-layer__node,
+.product-profile-effect-layer--firefly-field .product-profile-effect-layer__node {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c7f5ff;
+  box-shadow: 0 0 10px #77ddffaa;
+  animation: profile-overhaul-particle 7s ease-in-out infinite;
+  animation-delay: calc(var(--fx-index, 0) * -700ms);
+}
+
+.product-profile-effect-layer--petal-fall .product-profile-effect-layer__node {
+  width: 10px;
+  height: 6px;
+  border-radius: 80% 20% 70% 30%;
+  background: #ff9fc9;
+  box-shadow: 0 0 6px #ff9fc966;
+}
+
+.product-profile-effect-layer--soft-confetti .product-profile-effect-layer__node {
+  border-radius: 2px;
+  background: linear-gradient(135deg, #ff79bd, #76e5ff);
+}
+
+.product-profile-effect-layer--firefly-field .product-profile-effect-layer__node {
+  width: 5px;
+  height: 5px;
+  background: #f5ff9c;
+  box-shadow: 0 0 12px #dfff70cc;
+}
+
+.product-profile-effect-layer--digital-rain .product-profile-effect-layer__node {
+  display: block;
+  width: 2px;
+  height: 34px;
+  border-radius: 2px;
+  background: linear-gradient(#7fffcf00, #7fffca, #7fffcf00);
+  animation: profile-overhaul-rain 4.2s linear infinite;
+}
+
+.product-profile-effect-layer--energy-arcs .product-profile-effect-layer__node {
+  display: block;
+  width: 34px;
+  height: 18px;
+  border: 2px solid #69e9ff;
+  border-color: #69e9ff transparent transparent #9b6cff;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 5px #71dfff);
+  animation: profile-overhaul-arc 4.8s ease-in-out infinite;
+}
+
+.product-profile-effect-layer--scan-pulse::after,
+.product-profile-effect-layer--glitch-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.product-profile-effect-layer--scan-pulse::after {
+  background: linear-gradient(180deg, transparent 0 46%, #71e9ff26 49%, #d9fbff5c 50%, #71e9ff26 51%, transparent 54%);
+  background-size: 100% 220%;
+  animation: profile-overhaul-scan 7s linear infinite;
+}
+
+.product-profile-effect-layer--glitch-ambient::after {
+  background: repeating-linear-gradient(0deg, #5ce9ff0c 0 2px, transparent 2px 7px);
+  box-shadow: inset 3px 0 #ff5bb72c, inset -3px 0 #5ce9ff2c;
+  animation: profile-overhaul-glitch 6s steps(2, end) infinite;
+}
+
+@keyframes profile-overhaul-drift {
+  to {
+    background-position: 100% 65%;
+  }
+}
+
+@keyframes profile-overhaul-particle {
+  0%,
+  100% {
+    transform: translate3d(0, 14px, 0) scale(0.8);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate3d(8px, -18px, 0) scale(1.08);
+    opacity: 0.9;
+  }
+}
+
+@keyframes profile-overhaul-rain {
+  from {
+    transform: translateY(-40px);
+    opacity: 0;
+  }
+  22% {
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(90px);
+    opacity: 0;
+  }
+}
+
+@keyframes profile-overhaul-arc {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: rotate(-8deg) scale(0.92);
+  }
+  50% {
+    opacity: 0.9;
+    transform: rotate(8deg) scale(1.04);
+  }
+}
+
+@keyframes profile-overhaul-scan {
+  to {
+    background-position: 0 200%;
+  }
+}
+
+@keyframes profile-overhaul-glitch {
+  0%,
+  88%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.45;
+  }
+  90% {
+    transform: translateX(2px);
+    opacity: 0.72;
+  }
+  94% {
+    transform: translateX(-2px);
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-profile-theme-layer[data-profile-theme="aurora-flow"],
+  .product-profile-theme-layer[data-profile-theme="candy-motion"],
+  .product-profile-effect-layer--petal-fall .product-profile-effect-layer__node,
+  .product-profile-effect-layer--digital-rain .product-profile-effect-layer__node,
+  .product-profile-effect-layer--aurora-particles .product-profile-effect-layer__node,
+  .product-profile-effect-layer--star-drift .product-profile-effect-layer__node,
+  .product-profile-effect-layer--spark-field .product-profile-effect-layer__node,
+  .product-profile-effect-layer--soft-confetti .product-profile-effect-layer__node,
+  .product-profile-effect-layer--energy-arcs .product-profile-effect-layer__node,
+  .product-profile-effect-layer--firefly-field .product-profile-effect-layer__node,
+  .product-profile-effect-layer--scan-pulse::after,
+  .product-profile-effect-layer--glitch-ambient::after {
+    animation: none !important;
+  }
+}
