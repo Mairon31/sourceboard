@@ -40,6 +40,18 @@ describe("localized official aliases", () => {
     }
   });
 
+  it("maps React Router root data requests back to the localized home route", async () => {
+    const request = new Request("https://srcboard.me/_.data");
+    try {
+      await loader({ request, context: {} } as never);
+      throw new Error("Expected localized alias loader to redirect");
+    } catch (response) {
+      expect(response).toBeInstanceOf(Response);
+      expect((response as Response).status).toBe(302);
+      expect((response as Response).headers.get("location")).toBe("/en");
+    }
+  });
+
   it("never locale-prefixes UGC routes", () => {
     for (const path of ["posts/:postId", "sh/:shortId", "u/:username"]) {
       expect(routes).not.toContain(`route("${path}", "routes/official-alias.tsx"`);
