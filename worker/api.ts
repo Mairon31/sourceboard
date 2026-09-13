@@ -16,6 +16,7 @@ import { handleCommunityCosmeticRequest } from "./store/community-api";
 import { enforceCommunityCosmeticPublicationGate } from "./store/publication-gate";
 import { handleModerationRequest } from "./moderation/api";
 import { handleSearchRequest } from "./search/api";
+import { handleCmsRequest } from "./cms/api";
 
 export interface HealthPayload {
   status: "ok";
@@ -88,6 +89,11 @@ export async function handleApiRequest(
   const reputationResponse = await handleReputationRequest(request, requestId, runtime);
   if (reputationResponse) {
     return reputationResponse;
+  }
+
+  const cmsResponse = await handleCmsRequest(request, requestId, runtime);
+  if (cmsResponse) {
+    return cmsResponse;
   }
 
   const cosmeticResponse = await handleCommunityCosmeticRequest(request, requestId, runtime);
