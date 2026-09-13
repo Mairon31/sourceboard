@@ -1,35 +1,13 @@
 import type { CSSProperties } from "react";
 import type {
-  AvatarFramePreset,
   NameEffectPreset,
   NameFontFamily,
 } from "../../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
-import { Avatar } from "../ui";
-import { AnonymousAvatar } from "./AnonymousAvatar";
+import { AvatarStage } from "./AvatarStage";
+import { FontResources } from "./FontResources";
 import { cosmeticVisualClass, cosmeticVisualStyle, mergeCosmeticVisuals } from "./cosmetic-visual";
 import "./avatar-frames.css";
-
-const STRUCTURAL_AVATAR_FRAMES = new Set<AvatarFramePreset>([
-  "cat-ears",
-  "wings",
-  "glitch-ring",
-  "neko-neon",
-  "pixel-glitch",
-  "devil-horns",
-  "angel-halo",
-  "cyber-wings",
-  "crown",
-  "electric-coils",
-  "orbit-planets",
-  "sakura-petals",
-  "black-hole",
-  "slime",
-  "retro-arcade",
-  "cat-ears-black",
-  "cat-ears-white",
-  "fox-ears",
-]);
 
 interface CosmeticIdentityBaseProps {
   mode: "profile" | "compact" | "preview";
@@ -51,7 +29,7 @@ interface IdentifiedCosmeticIdentityProps extends CosmeticIdentityBaseProps {
   anonymous?: false;
   displayName: string;
   avatarUrl?: string;
-  avatarFrame?: AvatarFramePreset;
+  avatarFrame?: import("../../../shared/store/cosmetics").AvatarFramePreset;
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
   visuals?: CosmeticIdentityVisuals;
@@ -59,16 +37,46 @@ interface IdentifiedCosmeticIdentityProps extends CosmeticIdentityBaseProps {
 }
 
 export type CosmeticIdentityProps =
-  AnonymousCosmeticIdentityProps | IdentifiedCosmeticIdentityProps;
+  | AnonymousCosmeticIdentityProps
+  | IdentifiedCosmeticIdentityProps;
+
+function stageSize(
+  mode: CosmeticIdentityBaseProps["mode"],
+  avatarSize?: IdentifiedCosmeticIdentityProps["avatarSize"],
+): "sm" | "md" | "lg" | "xl" | "preview" {
+  if (mode === "preview") return "preview";
+  return avatarSize ?? (mode === "profile" ? "xl" : "sm");
+}
+
+function graphemes(value: string): string[] {
+  if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
+    const Segmenter = Intl.Segmenter as new (
+      locales?: string | string[],
+      options?: { granularity: "grapheme" },
+    ) => { segment(input: string): Iterable<{ segment: string }> };
+    return [...new Segmenter(undefined, { granularity: "grapheme" }).segment(value)].map(
+      (part) => part.segment,
+    );
+  }
+  return Array.from(value);
+}
+
+function NameContent({ displayName, nameEffect }: { displayName: string; nameEffect?: NameEffectPreset }) {
+  if (nameEffect !== "sequential-bounce" && nameEffect !== "bounce-neon") return displayName;
+  return graphemes(displayName).map((letter, index) => (
+    <span key={`${letter}-${index}`} className="sb-name-effect__grapheme" style={{ "--name-letter-index": index } as CSSProperties} aria-hidden="true">
+      {letter}
+    </span>
+  ));
+}
 
 export function CosmeticIdentity(props: CosmeticIdentityProps) {
   const NameTag = props.nameAs ?? "span";
 
   if (props.anonymous) {
-    const avatarSize = props.avatarSize ?? (props.mode === "preview" ? "lg" : "sm");
     return (
       <div className={`cosmetic-identity cosmetic-identity--${props.mode}`}>
-        <AnonymousAvatar size={avatarSize} />
+        <AvatarStage alt="Anonymous Author" size={props.mode === "preview" ? "preview" : props.avatarSize ?? "sm"} anonymous />
         <NameTag className="cosmetic-identity__name">Anonymous Author</NameTag>
       </div>
     );
@@ -82,34 +90,31 @@ export function CosmeticIdentity(props: CosmeticIdentityProps) {
     nameEffect,
     visuals,
     mode,
-    avatarSize = mode === "profile" ? "xl" : mode === "preview" ? "lg" : "sm",
+    avatarSize,
   } = props;
   const nameVisual = mergeCosmeticVisuals(visuals?.nameFont, visuals?.nameEffect);
   const nameStyle: CSSProperties = {
-    ...(nameFont ? { fontFamily: nameFont } : {}),
+    ...(nameFont ? { fontFamily: `"${nameFont}", system-ui, sans-serif` } : {}),
     ...(cosmeticVisualStyle(nameVisual) ?? {}),
   };
-  const decorativeFrame = avatarFrame ? STRUCTURAL_AVATAR_FRAMES.has(avatarFrame) : false;
 
   return (
     <div className={`cosmetic-identity cosmetic-identity--${mode}`}>
-      <span
-        className={`cosmetic-identity__avatar-shell profile-avatar-area${decorativeFrame ? " product-avatar-frame--decorative" : ""}${cosmeticVisualClass(visuals?.avatarFrame)}`}
+      {nameFont ? <FontResources families={[nameFont]} /> : null}
+      <AvatarStage
+        alt={displayName}
+        avatarUrl={avatarUrl}
+        frame={avatarFrame}
+        size={stageSize(mode, avatarSize)}
+        className={cosmeticVisualClass(visuals?.avatarFrame).trim() || undefined}
         style={cosmeticVisualStyle(visuals?.avatarFrame)}
-        data-avatar-frame={avatarFrame}
-      >
-        <Avatar
-          name={displayName}
-          src={avatarUrl}
-          size={avatarSize}
-          className={avatarFrame ? `sb-avatar--frame-${avatarFrame}` : undefined}
-        />
-      </span>
+      />
       <NameTag
         className={`cosmetic-identity__name profile-name-area${nameEffect ? ` sb-name-effect--${nameEffect}` : ""}${cosmeticVisualClass(nameVisual)}`}
         style={nameStyle}
+        aria-label={displayName}
       >
-        {displayName}
+        <NameContent displayName={displayName} nameEffect={nameEffect} />
       </NameTag>
     </div>
   );
