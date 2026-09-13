@@ -11,6 +11,7 @@ import { ProfileThemeLayer } from "./ProfileThemeLayer";
 import "./profile-identity-card.css";
 import "./profile-cover.css";
 import "./profile-effects.css";
+import "./profile-effects-expanded.css";
 import "./profile-themes.css";
 import "./platform-overhaul-cosmetics.css";
 
