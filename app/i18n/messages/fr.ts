@@ -39,6 +39,7 @@ export const frMessages = {
   "errors.notFound.title": "Page introuvable",
   "errors.notFound.description": "La page a peut-être été déplacée, supprimée ou n’est pas disponible pour vous.",
   "errors.notFound.home": "Aller à l’accueil",
+  "errors.notFound.back": "Retour",
   "auth.login": "Se connecter",
   "auth.register": "Créer un compte",
   "docs.title": "Documentation",
