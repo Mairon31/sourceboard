@@ -14,10 +14,11 @@ export async function action({ request, context }: ServerLoaderArgs) {
   }
 
   const body = (await request.json().catch(() => null)) as { locale?: unknown } | null;
-  if (!isLocale(typeof body?.locale === "string" ? body.locale : null)) {
+  const localeCandidate = typeof body?.locale === "string" ? body.locale : null;
+  if (!isLocale(localeCandidate)) {
     return Response.json({ error: { code: "LOCALE_INVALID", message: "Unsupported locale." } }, { status: 400 });
   }
-  const locale = body.locale;
+  const locale = localeCandidate;
   const requestContext = readSourceBoardRequestContext(context);
   const session = await readServerSession(request, context).catch(() => null);
   if (session && requestContext?.env.DB) {
