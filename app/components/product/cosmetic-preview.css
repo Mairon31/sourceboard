@@ -1,0 +1,12 @@
+.product-canonical-cosmetic-preview {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+  place-items: center;
+  padding: var(--space-4);
+}
+
+.product-canonical-cosmetic-preview--card {
+  min-height: 180px;
+  align-content: end;
+}
