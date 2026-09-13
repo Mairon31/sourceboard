@@ -13,6 +13,9 @@ const localizedOfficialRoutes = SUPPORTED_LOCALES.flatMap((locale) => [
     id: `localized-docs-article-${locale}`,
   }),
   route(`${locale}/legal`, "routes/legal.tsx", { id: `localized-legal-${locale}` }),
+  route(`${locale}/legal/:slug`, "routes/legal-article.tsx", {
+    id: `localized-legal-article-${locale}`,
+  }),
 ]);
 
 export default [
@@ -41,6 +44,7 @@ export default [
   route("docs", "routes/docs.tsx"),
   route("docs/:slug", "routes/docs-article.tsx"),
   route("legal", "routes/legal.tsx"),
+  route("legal/:slug", "routes/legal-article.tsx"),
   route("admin", "routes/admin.tsx"),
   route("admin/moderation", "routes/admin-moderation.tsx"),
   route("admin/source-integrity", "routes/admin-verifications.tsx", {
