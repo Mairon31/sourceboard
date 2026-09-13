@@ -33,7 +33,9 @@ const EMPTY_DRAFT: CreateDraft = {
 
 function pageStatus(page: CmsAdminPage): string {
   const published = page.locales.filter((locale) => locale.status === "PUBLISHED").length;
-  const drafts = page.locales.filter((locale) => locale.latestRevision && locale.status !== "PUBLISHED").length;
+  const drafts = page.locales.filter(
+    (locale) => locale.latestRevision && locale.status !== "PUBLISHED",
+  ).length;
   if (published) return `${published} published locale${published === 1 ? "" : "s"}`;
   if (drafts) return `${drafts} draft locale${drafts === 1 ? "" : "s"}`;
   return "No content";
@@ -51,7 +53,9 @@ export default function AdminContentRoute() {
     setLoading(true);
     try {
       const response = await fetch("/api/admin/content/pages", { cache: "no-store" });
-      const payload = (await response.json().catch(() => null)) as { pages?: CmsAdminPage[] } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        pages?: CmsAdminPage[];
+      } | null;
       if (!response.ok) throw new Error("Could not load content pages.");
       setPages(payload?.pages ?? []);
     } catch (error) {
@@ -84,7 +88,10 @@ export default function AdminContentRoute() {
         headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
         body: JSON.stringify(draft),
       });
-      const payload = (await response.json().catch(() => null)) as { page?: CmsAdminPage; error?: { message?: string } } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        page?: CmsAdminPage;
+        error?: { message?: string };
+      } | null;
       if (!response.ok || !payload?.page) {
         throw new Error(payload?.error?.message ?? "Could not create the page.");
       }
@@ -105,7 +112,11 @@ export default function AdminContentRoute() {
         title="Docs, Legal & Pages"
         description="Versioned multilingual content. Draft revisions stay private until an explicit publish action selects them."
       />
-      {status ? <p role="status" className="admin-status-message">{status}</p> : null}
+      {status ? (
+        <p role="status" className="admin-status-message">
+          {status}
+        </p>
+      ) : null}
 
       {canManage ? (
         <Card className="admin-content-create">
@@ -118,7 +129,15 @@ export default function AdminContentRoute() {
           <div className="admin-content-form-grid">
             <label>
               Namespace
-              <select value={draft.namespace} onChange={(event) => setDraft((current) => ({ ...current, namespace: event.target.value as CmsNamespace }))}>
+              <select
+                value={draft.namespace}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    namespace: event.target.value as CmsNamespace,
+                  }))
+                }
+              >
                 <option value="DOCS">Docs</option>
                 <option value="LEGAL">Legal</option>
                 <option value="PAGE">General page</option>
@@ -126,28 +145,59 @@ export default function AdminContentRoute() {
             </label>
             <label>
               Locale
-              <select value={draft.locale} onChange={(event) => setDraft((current) => ({ ...current, locale: event.target.value as CreateDraft["locale"] }))}>
-                {(["en", "es", "pt", "fr", "ru", "de"] as const).map((locale) => <option key={locale} value={locale}>{locale.toUpperCase()}</option>)}
+              <select
+                value={draft.locale}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    locale: event.target.value as CreateDraft["locale"],
+                  }))
+                }
+              >
+                {(["en", "es", "pt", "fr", "ru", "de"] as const).map((locale) => (
+                  <option key={locale} value={locale}>
+                    {locale.toUpperCase()}
+                  </option>
+                ))}
               </select>
             </label>
-            <label>
-              Slug
-              <Input value={draft.slug} onChange={(event) => setDraft((current) => ({ ...current, slug: event.currentTarget.value }))} placeholder="getting-started" />
-            </label>
-            <label>
-              Title
-              <Input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.currentTarget.value }))} />
-            </label>
-            <label className="admin-content-form-grid__wide">
-              Description
-              <Input value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.currentTarget.value }))} />
-            </label>
+            <Input
+              label="Slug"
+              value={draft.slug}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, slug: event.currentTarget.value }))
+              }
+              placeholder="getting-started"
+            />
+            <Input
+              label="Title"
+              value={draft.title}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, title: event.currentTarget.value }))
+              }
+            />
+            <Input
+              label="Description"
+              className="admin-content-form-grid__wide"
+              value={draft.description}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, description: event.currentTarget.value }))
+              }
+            />
             <label className="admin-content-form-grid__wide">
               Markdown body
-              <textarea rows={8} value={draft.bodyMarkdown} onChange={(event) => setDraft((current) => ({ ...current, bodyMarkdown: event.currentTarget.value }))} />
+              <textarea
+                rows={8}
+                value={draft.bodyMarkdown}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, bodyMarkdown: event.currentTarget.value }))
+                }
+              />
             </label>
           </div>
-          <Button type="button" loading={busy} onClick={() => void createPage()}>Create draft</Button>
+          <Button type="button" loading={busy} onClick={() => void createPage()}>
+            Create draft
+          </Button>
         </Card>
       ) : null}
 
@@ -156,7 +206,10 @@ export default function AdminContentRoute() {
         {grouped.map((group) => (
           <section key={group.namespace}>
             <div className="admin-store-section-heading">
-              <div><span className="product-eyebrow">{group.namespace}</span><h2>{group.namespace === "PAGE" ? "General pages" : group.namespace}</h2></div>
+              <div>
+                <span className="product-eyebrow">{group.namespace}</span>
+                <h2>{group.namespace === "PAGE" ? "General pages" : group.namespace}</h2>
+              </div>
               <span className="product-search-count">{group.pages.length}</span>
             </div>
             <div className="admin-store-cosmetic-grid">
@@ -164,10 +217,26 @@ export default function AdminContentRoute() {
                 <Card key={page.id} className="admin-store-cosmetic-card">
                   <div className="admin-store-cosmetic-card__body">
                     <div className="admin-store-cosmetic-card__title">
-                      <div><span className="product-eyebrow">{page.namespace}</span><h3>{page.locales.find((locale) => locale.latestRevision)?.latestRevision?.title ?? page.id}</h3></div>
-                      <Badge tone={page.locales.some((locale) => locale.status === "PUBLISHED") ? "success" : "neutral"}>{pageStatus(page)}</Badge>
+                      <div>
+                        <span className="product-eyebrow">{page.namespace}</span>
+                        <h3>
+                          {page.locales.find((locale) => locale.latestRevision)?.latestRevision
+                            ?.title ?? page.id}
+                        </h3>
+                      </div>
+                      <Badge
+                        tone={
+                          page.locales.some((locale) => locale.status === "PUBLISHED")
+                            ? "success"
+                            : "neutral"
+                        }
+                      >
+                        {pageStatus(page)}
+                      </Badge>
                     </div>
-                    <div className="admin-store-card-actions"><Link to={`/admin/content/${encodeURIComponent(page.id)}`}>Open editor</Link></div>
+                    <div className="admin-store-card-actions">
+                      <Link to={`/admin/content/${encodeURIComponent(page.id)}`}>Open editor</Link>
+                    </div>
                   </div>
                 </Card>
               ))}
