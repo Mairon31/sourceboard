@@ -8,9 +8,9 @@ test("profile renders the unified privacy-aware not-found surface without persis
 
   expect(response?.status()).toBe(404);
   await expect(
-    page.getByRole("heading", { name: "This page isn't available", exact: true }),
+    page.getByRole("heading", { name: "Page not found", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Go to Home", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Go home", exact: true })).toHaveAttribute(
     "href",
     "/",
   );
