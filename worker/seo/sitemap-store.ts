@@ -76,13 +76,16 @@ export function createD1SitemapStore(db: D1Database): SitemapStore {
                  ORDER BY p.updated_at DESC, p.id DESC
                  LIMIT ?`,
               );
-        const result =
-          cursorUpdatedAt === null || cursorId === null
-            ? await statement.bind(SITEMAP_PAGE_SIZE).all<PostSitemapRow>()
-            : await statement
-                .bind(cursorUpdatedAt, cursorUpdatedAt, cursorId, SITEMAP_PAGE_SIZE)
-                .all<PostSitemapRow>();
-        const rows = result.results;
+        let rows: PostSitemapRow[];
+        if (cursorUpdatedAt === null || cursorId === null) {
+          const result = await statement.bind(SITEMAP_PAGE_SIZE).all<PostSitemapRow>();
+          rows = result.results;
+        } else {
+          const result = await statement
+            .bind(cursorUpdatedAt, cursorUpdatedAt, cursorId, SITEMAP_PAGE_SIZE)
+            .all<PostSitemapRow>();
+          rows = result.results;
+        }
         if (currentPage === page) {
           return rows.map((post) => ({
             loc: canonicalPostUrl(post.id, post.slug),
@@ -90,7 +93,7 @@ export function createD1SitemapStore(db: D1Database): SitemapStore {
           }));
         }
         if (rows.length < SITEMAP_PAGE_SIZE) return [];
-        const boundary = rows.at(-1)!;
+        const boundary: PostSitemapRow = rows.at(-1)!;
         cursorUpdatedAt = boundary.updated_at;
         cursorId = boundary.id;
       }
@@ -134,13 +137,16 @@ export function createD1SitemapStore(db: D1Database): SitemapStore {
                  ORDER BY up.updated_at DESC, u.username ASC
                  LIMIT ?`,
               );
-        const result =
-          cursorUpdatedAt === null || cursorUsername === null
-            ? await statement.bind(SITEMAP_PAGE_SIZE).all<ProfileSitemapRow>()
-            : await statement
-                .bind(cursorUpdatedAt, cursorUpdatedAt, cursorUsername, SITEMAP_PAGE_SIZE)
-                .all<ProfileSitemapRow>();
-        const rows = result.results;
+        let rows: ProfileSitemapRow[];
+        if (cursorUpdatedAt === null || cursorUsername === null) {
+          const result = await statement.bind(SITEMAP_PAGE_SIZE).all<ProfileSitemapRow>();
+          rows = result.results;
+        } else {
+          const result = await statement
+            .bind(cursorUpdatedAt, cursorUpdatedAt, cursorUsername, SITEMAP_PAGE_SIZE)
+            .all<ProfileSitemapRow>();
+          rows = result.results;
+        }
         if (currentPage === page) {
           return rows.map((profile) => ({
             loc: canonicalProfileUrl(profile.username),
@@ -148,7 +154,7 @@ export function createD1SitemapStore(db: D1Database): SitemapStore {
           }));
         }
         if (rows.length < SITEMAP_PAGE_SIZE) return [];
-        const boundary = rows.at(-1)!;
+        const boundary: ProfileSitemapRow = rows.at(-1)!;
         cursorUpdatedAt = boundary.updated_at;
         cursorUsername = boundary.username;
       }
