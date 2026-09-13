@@ -45,10 +45,79 @@ export function AdminCosmeticGuide() {
       <div className="admin-store-section-heading">
         <div>
           <span className="product-eyebrow">Cosmetic Guide</span>
-          <h2>Build against the same contract SourceBoard enforces</h2>
+          <h2>Creator Pro structured schema</h2>
           <p>
-            This guide is generated from the sanitizer allowlists used by Community Cosmetics, so
-            approved selectors and properties stay aligned with server validation.
+            Creator Pro is the official editing model for built-in and Admin-authored cosmetics. It
+            stores bounded schema v1 fields in the existing Store item config and renders through the
+            same Profile, Store and Admin cosmetic primitives used by the product.
+          </p>
+        </div>
+      </div>
+
+      <div className="admin-cosmetic-guide__grid">
+        <Card className="admin-cosmetic-guide__reference">
+          <h3>Palette and gradient</h3>
+          <ul>
+            <li>Palette: 1-8 allowlisted hex colors.</li>
+            <li>Gradient angle: 0-360 degrees with 2-8 ordered stops.</li>
+            <li>Opacity and intensity stay between 0 and 1.</li>
+            <li>Glow blur is capped at 32px and glow opacity at 1.</li>
+          </ul>
+          <p>
+            Profile Themes own the card surface, background treatment and broad color language.
+            Profile Effects add ambient motion or particles above that surface; they must not replace
+            the Theme or hide profile content.
+          </p>
+        </Card>
+
+        <Card className="admin-cosmetic-guide__reference">
+          <h3>Motion and particles</h3>
+          <ul>
+            <li>Animation duration: 300ms minimum and 60000ms maximum.</li>
+            <li>Delay: 0-10000ms with approved easing and direction values only.</li>
+            <li>Finite iterations: 1-20, or the explicit infinite mode.</li>
+            <li>Up to 48 particles with bounded size, speed and spread.</li>
+            <li>Particle paths: rise, fall, orbit, drift or burst.</li>
+          </ul>
+          <p>
+            Reduced motion is mandatory: every animated Theme, Effect, Frame and Name Effect needs a
+            stable non-animated presentation when the user prefers reduced motion. Motion should add
+            identity, never gate readability or interaction.
+          </p>
+        </Card>
+
+        <Card className="admin-cosmetic-guide__reference">
+          <h3>Renderer and provider rules</h3>
+          <ul>
+            <li>
+              Profile, Store and Admin previews use the canonical cosmetic renderer; do not create a
+              second preview-only implementation.
+            </li>
+            <li>
+              Avatar frame safe zone: decorative geometry may extend outside the avatar ring, but it
+              must keep the face/photo center unobstructed and preserve the click target.
+            </li>
+            <li>
+              Name Effects own text animation/decoration only; Name Font owns typography. Keep those
+              responsibilities separate so effects compose predictably.
+            </li>
+            <li>
+              Google Fonts are registry-based and loaded only when needed. Styles come from the
+              approved Google Fonts stylesheet endpoint and font binaries from the approved font
+              host; arbitrary font URLs are not accepted.
+            </li>
+          </ul>
+        </Card>
+      </div>
+
+      <div className="admin-store-section-heading">
+        <div>
+          <span className="product-eyebrow">Compatibility sandbox</span>
+          <h2>Legacy / Community CSS</h2>
+          <p>
+            Community CSS remains a separate constrained authoring path. It does not become Creator
+            Pro configuration and it cannot bypass the server sanitizer, selector scope or animation
+            budget.
           </p>
         </div>
       </div>
@@ -110,7 +179,7 @@ export function AdminCosmeticGuide() {
 
       <div className="admin-cosmetic-guide__playground">
         <Card className="admin-cosmetic-guide__editor">
-          <h3>CSS playground</h3>
+          <h3>Community CSS playground</h3>
           <Textarea
             label="Sandboxed cosmetic CSS"
             rows={18}
@@ -128,7 +197,7 @@ export function AdminCosmeticGuide() {
         </Card>
 
         <div className="admin-cosmetic-guide__preview">
-          <span className="product-eyebrow">Live preview</span>
+          <span className="product-eyebrow">Community preview</span>
           <ProfileCosmeticPreview
             type="PROFILE_BANNER"
             preset="nebula"
@@ -136,7 +205,7 @@ export function AdminCosmeticGuide() {
             communityStyles={preview.error ? undefined : [{ id: PREVIEW_ID, css: preview.css }]}
             className="admin-cosmetic-guide__profile-preview"
           />
-          <small>Community cosmetic preview</small>
+          <small>Legacy/community constrained CSS preview</small>
         </div>
       </div>
     </section>
