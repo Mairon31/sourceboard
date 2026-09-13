@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "react-router";
+import { parseCreatorProStoreConfig } from "../../shared/store/creator-pro-config";
+import { extractCosmeticVisualDefinition } from "../../shared/store/custom-cosmetics";
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
 import { localizedHref } from "../i18n/routes";
 import { createD1ProfileStore } from "../../worker/profile/store";
@@ -142,6 +144,12 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
 function parseConfig(value: unknown): StoreItemView["preview"]["config"] {
   try {
     const parsed = JSON.parse(String(value)) as Record<string, unknown>;
+    let creatorPro: StoreItemView["preview"]["config"]["creatorPro"];
+    try {
+      creatorPro = parseCreatorProStoreConfig(parsed) ?? undefined;
+    } catch {
+      creatorPro = undefined;
+    }
     return {
       preset:
         typeof parsed.preset === "string"
@@ -151,6 +159,8 @@ function parseConfig(value: unknown): StoreItemView["preview"]["config"] {
         typeof parsed.family === "string"
           ? (parsed.family as StoreItemView["preview"]["config"]["family"])
           : undefined,
+      visual: extractCosmeticVisualDefinition(parsed),
+      creatorPro,
     };
   } catch {
     return {};
