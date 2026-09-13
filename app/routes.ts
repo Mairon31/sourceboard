@@ -50,10 +50,10 @@ export default [
   route("legal/:slug", "routes/official-alias.tsx", { id: "legal-article-alias" }),
   route("admin", "routes/admin.tsx"),
   route("admin/moderation", "routes/admin-moderation.tsx"),
-  route("admin/source-integrity", "routes/admin-verifications.tsx", {
+  route("admin/source-integrity", "routes/admin-verifications-gated.tsx", {
     id: "admin-source-integrity",
   }),
-  route("admin/verifications", "routes/admin-verifications.tsx", {
+  route("admin/verifications", "routes/admin-verifications-gated.tsx", {
     id: "admin-verifications-legacy",
   }),
   route("admin/users", "routes/admin-users.tsx"),
