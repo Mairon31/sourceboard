@@ -55,16 +55,26 @@ export default function AdminContentPageRoute() {
   );
 
   async function refresh(preferredLocale = selectedLocale) {
-    const response = await fetch(`/api/admin/content/pages/${encodeURIComponent(pageId)}`, { cache: "no-store" });
-    const payload = (await response.json().catch(() => null)) as { page?: CmsAdminPage; error?: { message?: string } } | null;
-    if (!response.ok || !payload?.page) throw new Error(payload?.error?.message ?? "Could not load the page.");
+    const response = await fetch(`/api/admin/content/pages/${encodeURIComponent(pageId)}`, {
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      page?: CmsAdminPage;
+      error?: { message?: string };
+    } | null;
+    if (!response.ok || !payload?.page) {
+      throw new Error(payload?.error?.message ?? "Could not load the page.");
+    }
     setPage(payload.page);
-    const state = payload.page.locales.find((candidate) => candidate.locale === preferredLocale) ?? null;
+    const state =
+      payload.page.locales.find((candidate) => candidate.locale === preferredLocale) ?? null;
     setFields(initialFields(state?.latestRevision ?? null));
   }
 
   useEffect(() => {
-    void refresh("en").catch((error) => setStatus(error instanceof Error ? error.message : "Could not load the page."));
+    void refresh("en").catch((error) =>
+      setStatus(error instanceof Error ? error.message : "Could not load the page."),
+    );
   }, [pageId]);
 
   function chooseLocale(locale: Locale) {
@@ -78,13 +88,21 @@ export default function AdminContentPageRoute() {
     if (!canManage || busy) return;
     setBusy("save");
     try {
-      const response = await fetch(`/api/admin/content/pages/${encodeURIComponent(pageId)}/revisions`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({ locale: selectedLocale, ...fields }),
-      });
-      const payload = (await response.json().catch(() => null)) as { revision?: CmsRevision; error?: { message?: string } } | null;
-      if (!response.ok || !payload?.revision) throw new Error(payload?.error?.message ?? "Could not save the draft.");
+      const response = await fetch(
+        `/api/admin/content/pages/${encodeURIComponent(pageId)}/revisions`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+          body: JSON.stringify({ locale: selectedLocale, ...fields }),
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        revision?: CmsRevision;
+        error?: { message?: string };
+      } | null;
+      if (!response.ok || !payload?.revision) {
+        throw new Error(payload?.error?.message ?? "Could not save the draft.");
+      }
       await refresh(selectedLocale);
       setStatus(`Draft v${payload.revision.version} saved.`);
     } catch (error) {
@@ -107,13 +125,25 @@ export default function AdminContentPageRoute() {
         {
           method: "POST",
           headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-          body: JSON.stringify(action === "publish" ? { revisionId: localeState.latestRevision?.id } : {}),
+          body: JSON.stringify(
+            action === "publish" ? { revisionId: localeState.latestRevision?.id } : {},
+          ),
         },
       );
-      const payload = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
-      if (!response.ok) throw new Error(payload?.error?.message ?? `Could not ${action} this locale.`);
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      if (!response.ok) {
+        throw new Error(payload?.error?.message ?? `Could not ${action} this locale.`);
+      }
       await refresh(selectedLocale);
-      setStatus(action === "publish" ? "Published revision updated." : action === "archive" ? "Locale archived." : "Locale unpublished.");
+      setStatus(
+        action === "publish"
+          ? "Published revision updated."
+          : action === "archive"
+            ? "Locale archived."
+            : "Locale unpublished.",
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : `Could not ${action} this locale.`);
     } finally {
@@ -128,14 +158,25 @@ export default function AdminContentPageRoute() {
         title={localeState?.latestRevision?.title ?? "Content editor"}
         description="Each save creates an immutable revision. Publishing selects one revision without exposing later drafts."
       />
-      {status ? <p role="status" className="admin-status-message">{status}</p> : null}
+      {status ? (
+        <p role="status" className="admin-status-message">
+          {status}
+        </p>
+      ) : null}
 
       <Card className="admin-content-editor">
         <div className="admin-content-locale-tabs" role="tablist" aria-label="Content locale">
           {LOCALES.map((locale) => {
             const state = page?.locales.find((candidate) => candidate.locale === locale);
             return (
-              <button key={locale} type="button" role="tab" aria-selected={selectedLocale === locale} className={selectedLocale === locale ? "is-active" : undefined} onClick={() => chooseLocale(locale)}>
+              <button
+                key={locale}
+                type="button"
+                role="tab"
+                aria-selected={selectedLocale === locale}
+                className={selectedLocale === locale ? "is-active" : undefined}
+                onClick={() => chooseLocale(locale)}
+              >
                 <strong>{locale.toUpperCase()}</strong>
                 {state ? <Badge tone={localeTone(state)}>{localeLabel(state)}</Badge> : null}
               </button>
@@ -144,10 +185,42 @@ export default function AdminContentPageRoute() {
         </div>
 
         <div className="admin-content-form-grid">
-          <label>Slug<Input disabled={!canManage} value={fields.slug} onChange={(event) => setFields((current) => ({ ...current, slug: event.currentTarget.value }))} /></label>
-          <label>Title<Input disabled={!canManage} value={fields.title} onChange={(event) => setFields((current) => ({ ...current, title: event.currentTarget.value }))} /></label>
-          <label className="admin-content-form-grid__wide">Description<Input disabled={!canManage} value={fields.description} onChange={(event) => setFields((current) => ({ ...current, description: event.currentTarget.value }))} /></label>
-          <label className="admin-content-form-grid__wide">Markdown body<textarea disabled={!canManage} rows={18} value={fields.bodyMarkdown} onChange={(event) => setFields((current) => ({ ...current, bodyMarkdown: event.currentTarget.value }))} /></label>
+          <Input
+            label="Slug"
+            disabled={!canManage}
+            value={fields.slug}
+            onChange={(event) =>
+              setFields((current) => ({ ...current, slug: event.currentTarget.value }))
+            }
+          />
+          <Input
+            label="Title"
+            disabled={!canManage}
+            value={fields.title}
+            onChange={(event) =>
+              setFields((current) => ({ ...current, title: event.currentTarget.value }))
+            }
+          />
+          <Input
+            label="Description"
+            className="admin-content-form-grid__wide"
+            disabled={!canManage}
+            value={fields.description}
+            onChange={(event) =>
+              setFields((current) => ({ ...current, description: event.currentTarget.value }))
+            }
+          />
+          <label className="admin-content-form-grid__wide">
+            Markdown body
+            <textarea
+              disabled={!canManage}
+              rows={18}
+              value={fields.bodyMarkdown}
+              onChange={(event) =>
+                setFields((current) => ({ ...current, bodyMarkdown: event.currentTarget.value }))
+              }
+            />
+          </label>
         </div>
 
         <div className="admin-content-editor__preview" aria-label="Safe content preview">
@@ -159,10 +232,35 @@ export default function AdminContentPageRoute() {
 
         {canManage ? (
           <div className="admin-store-card-actions">
-            <Button type="button" loading={busy === "save"} onClick={() => void saveDraft()}>Save draft</Button>
-            <Button type="button" loading={busy === "publish"} disabled={!localeState?.latestRevision} onClick={() => void localeAction("publish")}>Publish latest draft</Button>
-            <Button type="button" variant="secondary" loading={busy === "unpublish"} disabled={localeState?.status !== "PUBLISHED"} onClick={() => void localeAction("unpublish")}>Unpublish</Button>
-            <Button type="button" variant="secondary" loading={busy === "archive"} disabled={!localeState?.latestRevision} onClick={() => void localeAction("archive")}>Archive</Button>
+            <Button type="button" loading={busy === "save"} onClick={() => void saveDraft()}>
+              Save draft
+            </Button>
+            <Button
+              type="button"
+              loading={busy === "publish"}
+              disabled={!localeState?.latestRevision}
+              onClick={() => void localeAction("publish")}
+            >
+              Publish latest draft
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={busy === "unpublish"}
+              disabled={localeState?.status !== "PUBLISHED"}
+              onClick={() => void localeAction("unpublish")}
+            >
+              Unpublish
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={busy === "archive"}
+              disabled={!localeState?.latestRevision}
+              onClick={() => void localeAction("archive")}
+            >
+              Archive
+            </Button>
           </div>
         ) : null}
       </Card>
