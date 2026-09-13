@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import type { PostCategorySlug } from "../../../shared/posts/categories";
-import type { CosmeticIdentityProps } from "./CosmeticIdentity";
-import { CategoryPicker } from "./CategoryPicker";
-import { CosmeticIdentity } from "./CosmeticIdentity";
-import { ImageUploadField } from "./ImageUploadField";
 import { readCsrfToken } from "../../data/csrf";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Button, Card, Input, Switch, Textarea } from "../ui";
+import { CategoryPicker } from "./CategoryPicker";
+import { CosmeticIdentity, type CosmeticIdentityProps } from "./CosmeticIdentity";
+import { ImageUploadField } from "./ImageUploadField";
 import "./post-composer.css";
 
 export interface PostComposerIdentity {
@@ -24,6 +24,7 @@ interface PostComposerProps {
 
 export function PostComposer({ identity, unavailable = false }: PostComposerProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [authorMode, setAuthorMode] = useState<"IDENTIFIED" | "ANONYMOUS">("IDENTIFIED");
   const [visibility, setVisibility] = useState<PostVisibility>("PUBLIC");
   const [category, setCategory] = useState<PostCategorySlug | null>(null);
@@ -35,11 +36,11 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!imageFile) {
-      setStatus("Add the main image before publishing.");
+      setStatus(t("composer.imageRequired"));
       return;
     }
     if (!category) {
-      setStatus("Choose a category before publishing.");
+      setStatus(t("composer.categoryRequired"));
       return;
     }
 
@@ -63,7 +64,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
         error?: { message?: string };
       } | null;
       if (!response.ok || !body?.post) {
-        setStatus(body?.error?.message ?? "The source request could not be published.");
+        setStatus(body?.error?.message ?? t("composer.publishError"));
         return;
       }
 
@@ -73,7 +74,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
         : postPath;
       navigate(destination, { replace: true });
     } catch {
-      setStatus("The source request could not be published. Check your connection and try again.");
+      setStatus(t("composer.connectionError"));
     } finally {
       setBusy(false);
     }
@@ -94,9 +95,9 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
           <div className="product-post-composer__section-heading">
             <div>
               <span className="product-post-composer__step">1</span>
-              <h2 id="post-image-heading">Add the image</h2>
+              <h2 id="post-image-heading">{t("composer.image.title")}</h2>
             </div>
-            <p>Use the clearest version you have. You can replace it before publishing.</p>
+            <p>{t("composer.image.description")}</p>
           </div>
           <ImageUploadField
             file={imageFile}
@@ -110,22 +111,22 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
           <div className="product-post-composer__section-heading">
             <div>
               <span className="product-post-composer__step">2</span>
-              <h2 id="post-context-heading">Add context</h2>
+              <h2 id="post-context-heading">{t("composer.context.title")}</h2>
             </div>
-            <p>Describe what you know so people can trace the source faster.</p>
+            <p>{t("composer.context.description")}</p>
           </div>
           <Input
-            label="Title"
+            label={t("composer.title.label")}
             name="title"
-            placeholder="Where did this image originally come from?"
+            placeholder={t("composer.title.placeholder")}
             maxLength={160}
             required
             disabled={unavailable || busy}
           />
           <Textarea
-            label="Description"
+            label={t("composer.description.label")}
             name="description"
-            placeholder="Where you found it, what you already tried, and what kind of source you need…"
+            placeholder={t("composer.description.placeholder")}
             maxLength={10_000}
             disabled={unavailable || busy}
           />
@@ -135,9 +136,9 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
           <div className="product-post-composer__section-heading">
             <div>
               <span className="product-post-composer__step">3</span>
-              <h2 id="post-category-heading">Choose a category</h2>
+              <h2 id="post-category-heading">{t("composer.category.title")}</h2>
             </div>
-            <p>Help people discover the request in the most relevant topic.</p>
+            <p>{t("composer.category.description")}</p>
           </div>
           <CategoryPicker value={category} onChange={setCategory} disabled={unavailable || busy} />
         </section>
@@ -146,41 +147,45 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
           <div className="product-post-composer__section-heading">
             <div>
               <span className="product-post-composer__step">4</span>
-              <h2 id="post-audience-heading">Choose the audience</h2>
+              <h2 id="post-audience-heading">{t("composer.audience.title")}</h2>
             </div>
-            <p>Control who can find the request and how your identity appears.</p>
+            <p>{t("composer.audience.description")}</p>
           </div>
 
           <label className="product-field-native">
-            <span>Visibility</span>
+            <span>{t("composer.visibility")}</span>
             <select
               name="visibility"
               value={visibility}
               onChange={(event) => setVisibility(event.currentTarget.value as PostVisibility)}
-              aria-label="Visibility"
+              aria-label={t("composer.visibility")}
               disabled={unavailable || busy}
             >
-              <option value="PUBLIC">Public</option>
+              <option value="PUBLIC">{t("composer.visibility.public")}</option>
               <option value="FRIENDS_ONLY" disabled={authorMode === "ANONYMOUS"}>
-                Friends only
+                {t("composer.visibility.friends")}
               </option>
-              <option value="UNLISTED">Unlisted</option>
-              <option value="PRIVATE">Private</option>
+              <option value="UNLISTED">{t("composer.visibility.unlisted")}</option>
+              <option value="PRIVATE">{t("composer.visibility.private")}</option>
             </select>
           </label>
 
           <Switch
-            label="Post anonymously"
-            description="People see Anonymous Author instead of your profile."
+            label={t("composer.anonymous.label")}
+            description={t("composer.anonymous.description")}
             checked={authorMode === "ANONYMOUS"}
             disabled={unavailable || busy}
             onCheckedChange={setAnonymous}
           />
 
-          <div className="product-presentation-notice" role="note" aria-label="Author preview">
-            <strong>Author preview</strong>
+          <div
+            className="product-presentation-notice"
+            role="note"
+            aria-label={t("composer.authorPreview")}
+          >
+            <strong>{t("composer.authorPreview")}</strong>
             {authorMode === "ANONYMOUS" ? (
-              <span>Anonymous Author</span>
+              <span>{t("composer.anonymousAuthor")}</span>
             ) : identity ? (
               <CosmeticIdentity
                 displayName={identity.displayName}
@@ -192,13 +197,13 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
                 nameAs="strong"
               />
             ) : (
-              <span>SourceBoard member</span>
+              <span>{t("composer.member")}</span>
             )}
           </div>
 
           <Switch
-            label="Mark as NSFW"
-            description="Use this when the image contains sensitive or adult material."
+            label={t("composer.nsfw.label")}
+            description={t("composer.nsfw.description")}
             checked={isNsfw}
             disabled={unavailable || busy}
             onCheckedChange={setIsNsfw}
@@ -207,14 +212,14 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
 
         {unavailable ? (
           <div className="product-post-composer__service-note" role="status">
-            Posting is temporarily unavailable. Your draft will stay on this page.
+            {t("composer.unavailable")}
           </div>
         ) : null}
 
         <div className="product-post-composer__footer">
           <div>
-            <strong>Ready to ask the community?</strong>
-            <span>You can edit the post for seven days after publishing.</span>
+            <strong>{t("composer.ready.title")}</strong>
+            <span>{t("composer.ready.description")}</span>
           </div>
           <Button
             type="submit"
@@ -222,7 +227,7 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
             loading={busy}
             disabled={unavailable || !imageFile || !category}
           >
-            Publish request
+            {t("composer.publish")}
           </Button>
         </div>
 
