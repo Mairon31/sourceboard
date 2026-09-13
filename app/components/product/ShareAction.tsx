@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { isLocale } from "../../../shared/i18n/locales";
 import { readCsrfToken } from "../../data/csrf";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Button } from "../ui";
 import { ShareIcon } from "../ui/icons";
-
-const SHARE_LOCALES = new Set(["en", "es", "pt", "fr", "ru", "de"]);
 
 type StableShareTarget = { resourceType: "POST" | "COMMENT"; resourceId: string };
 
@@ -67,11 +67,12 @@ async function resolveStableShareUrl(url: string, target?: StableShareTarget): P
   if (!payload.shortUrl) throw new Error("Share link response is invalid.");
   const shortUrl = new URL(payload.shortUrl, window.location.href);
   const locale = new URL(window.location.href).searchParams.get("lang");
-  if (locale && SHARE_LOCALES.has(locale)) shortUrl.searchParams.set("lang", locale);
+  if (isLocale(locale)) shortUrl.searchParams.set("lang", locale.toLowerCase());
   return shortUrl.toString();
 }
 
 export function ShareAction({ url, title, text, target }: ShareActionProps) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
 
@@ -99,11 +100,11 @@ export function ShareAction({ url, title, text, target }: ShareActionProps) {
 
   return (
     <span className="product-share-action">
-      <Button variant="ghost" loading={busy} onClick={share} aria-label="Share">
+      <Button variant="ghost" loading={busy} onClick={share} aria-label={t("share.action")}>
         <ShareIcon width="16" height="16" />
-        <span>{status === "copied" ? "Copied" : "Share"}</span>
+        <span>{status === "copied" ? t("share.copied") : t("share.action")}</span>
       </Button>
-      {status === "error" ? <span role="alert">Unable to share.</span> : null}
+      {status === "error" ? <span role="alert">{t("share.unavailable")}</span> : null}
     </span>
   );
 }
