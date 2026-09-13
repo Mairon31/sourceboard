@@ -19,6 +19,25 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --strict-allow-scripts
+      - name: Inspect lint toolchain before audit
+        shell: bash
+        run: |
+          {
+            echo "=== before audit ==="
+            npm ls @eslint/js eslint || true
+            node -e "import('@eslint/js').then(() => console.log('@eslint/js import: ok')).catch((error) => { console.error(error); process.exitCode = 1; })" || true
+          } |& tee /tmp/platform-overhaul-lint-toolchain.txt
+      - name: Production audit probe
+        run: npm audit --omit=dev
+      - name: Inspect lint toolchain after audit
+        shell: bash
+        run: |
+          {
+            echo "=== after audit ==="
+            npm ls @eslint/js eslint || true
+            node -e "import('@eslint/js').then(() => console.log('@eslint/js import: ok')).catch((error) => { console.error(error); process.exitCode = 1; })" || true
+            npm run lint || true
+          } |& tee -a /tmp/platform-overhaul-lint-toolchain.txt
       - name: Normalize formatting in ephemeral checkout
         run: npx prettier --write .
       - name: Generate deterministic CMS seed
@@ -43,6 +62,7 @@ jobs:
         with:
           name: platform-overhaul-diagnostics
           path: |
+            /tmp/platform-overhaul-lint-toolchain.txt
             /tmp/platform-overhaul-unit-tests.txt
             /tmp/platform-overhaul-formatted.patch
             /tmp/0034_cms_seed_existing_content.sql
