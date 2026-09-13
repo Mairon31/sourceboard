@@ -194,7 +194,12 @@ export function AdminStoreEditor({
                 <strong>Profile / Store / Admin renderer</strong>
               </div>
               {preview ? (
-                <CosmeticPreview cosmetic={preview} compact name={item.name} />
+                <CosmeticPreview
+                  cosmetic={preview}
+                  creatorPro={creatorConfig ?? initialCreatorConfig ?? undefined}
+                  compact
+                  name={item.name}
+                />
               ) : (
                 <small>
                   This item has no valid preset or family identity yet. Creator Pro settings can be
