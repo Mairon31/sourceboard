@@ -6,7 +6,11 @@ import { resolvePublicCmsPage } from "../data/cms-public.server";
 import { docsArticle } from "../data/docs-content";
 import type { ServerLoaderArgs } from "../data/server-request";
 
-export async function loader({ request, context, params }: ServerLoaderArgs) {
+interface LoaderArgs extends ServerLoaderArgs {
+  params: { slug?: string };
+}
+
+export async function loader({ request, context, params }: LoaderArgs) {
   const slug = params.slug ?? "";
   const cms = await resolvePublicCmsPage(request, context, "LEGAL", slug);
   if (cms.resolution?.redirectTo) throw redirect(cms.resolution.redirectTo, 301);
