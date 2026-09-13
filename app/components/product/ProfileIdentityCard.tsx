@@ -12,6 +12,7 @@ import "./profile-identity-card.css";
 import "./profile-cover.css";
 import "./profile-effects.css";
 import "./profile-themes.css";
+import "./platform-overhaul-cosmetics.css";
 
 export interface ProfileIdentityCardProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ export interface ProfileIdentityCardProps {
   bannerUrl?: string;
   visuals?: CosmeticIdentityVisuals;
   communityStyles?: Array<{ id: string; css: string }>;
+  mode?: "profile" | "preview" | "store" | "admin";
 }
 
 export function ProfileIdentityCard({
@@ -33,6 +35,7 @@ export function ProfileIdentityCard({
   bannerUrl,
   visuals,
   communityStyles,
+  mode = "profile",
 }: ProfileIdentityCardProps) {
   const theme = profileTheme ?? legacyProfileBanner;
 
@@ -40,6 +43,7 @@ export function ProfileIdentityCard({
     <Card
       className={`product-profile-hero product-profile-identity-card cosmetic-root${className ? ` ${className}` : ""}`}
       data-profile-theme={theme ?? "default"}
+      data-cosmetic-context={mode}
       data-community-cosmetic={communityStyles?.map((style) => style.id).join(" ") || undefined}
     >
       {communityStyles?.map((communityStyle) => (
