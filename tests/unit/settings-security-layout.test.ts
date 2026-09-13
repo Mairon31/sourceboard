@@ -64,7 +64,7 @@ describe("Block B settings security information architecture", () => {
   });
 
   it("uses the explicit revoke-other-sessions endpoint instead of logging out the current browser", () => {
-    expect(settingsSource).toContain("Sign out other sessions");
+    expect(settingsSource).toContain('t("security.sessions.revokeOthers")');
     expect(settingsSource).toContain('fetch("/api/auth/sessions"');
     expect(settingsSource).toContain('method: "DELETE"');
     expect(authApiSource).toContain('"DELETE /api/auth/sessions"');

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
+import type { SessionView } from "../../worker/auth/session-presenter";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createProfileService } from "../../worker/profile/service";
 import {
   createD1UsernamePolicyStore,
   createUsernamePolicyService,
 } from "../../worker/profile/username-policy";
-import type { SessionView } from "../../worker/auth/session-presenter";
 import { AnimationControl } from "../components/layout/AnimationControl";
+import { LanguageSelector } from "../components/layout/LanguageSelector";
 import { ThemeControl } from "../components/layout/ThemeControl";
 import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
@@ -15,6 +16,8 @@ import { Button, Card, Input, Switch } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
 import { persistPreferenceChange } from "../data/settings-preferences";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
+import type { MessageKey } from "../i18n";
+import { useI18n } from "../i18n/I18nProvider";
 
 type SessionSummary = SessionView;
 
@@ -107,6 +110,7 @@ function SettingsSectionHeader({
 }
 
 function usePreferenceController(data: SettingsData) {
+  const { t } = useI18n();
   const [values, setValues] = useState<PreferenceUpdate>(() => createInitialPreferenceValues(data));
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -128,9 +132,7 @@ function usePreferenceController(data: SettingsData) {
       apply: (value) => setValues(value),
       persist: (candidate) => persistPreferences(candidate, allowNsfwDirectOverride),
     });
-    setStatus(
-      saved ? "Saved" : "Could not save this preference. Your previous setting was restored.",
-    );
+    setStatus(saved ? t("settings.save.saved") : t("settings.save.error"));
     setSaving(false);
   }
 
@@ -140,9 +142,10 @@ function usePreferenceController(data: SettingsData) {
 type PreferenceController = ReturnType<typeof usePreferenceController>;
 
 function PreferenceSaveStatus({ controller }: { controller: PreferenceController }) {
+  const { t } = useI18n();
   return controller.status || controller.saving ? (
     <span className="product-settings-save-status" role="status" aria-live="polite">
-      {controller.saving ? "Saving…" : controller.status}
+      {controller.saving ? t("settings.save.saving") : controller.status}
     </span>
   ) : null;
 }
@@ -154,25 +157,26 @@ function ContentPreferences({
   data: SettingsData;
   controller: PreferenceController;
 }) {
+  const { t } = useI18n();
   const disabled = !data.authenticated || controller.saving;
   return (
     <section id="settings-content" className="product-settings-section-group">
       <SettingsSectionHeader
-        eyebrow="Content"
-        title="Content preferences"
-        description="Control how sensitive posts and media are exposed. These rules are enforced by the server and media gateway."
+        eyebrow={t("settings.content.eyebrow")}
+        title={t("settings.content.title")}
+        description={t("settings.content.description")}
       />
       <Card className="product-settings-section">
         <Switch
-          label="Hide NSFW posts"
-          description="Exclude sensitive posts from feeds and search when your account policy requires it."
+          label={t("settings.content.hideNsfw.label")}
+          description={t("settings.content.hideNsfw.description")}
           checked={controller.values.hideNsfw}
           disabled={disabled}
           onCheckedChange={(checked) => void controller.changePreference("hideNsfw", checked)}
         />
         <Switch
-          label="Blur NSFW media"
-          description="Keep eligible sensitive media blurred until you explicitly reveal it."
+          label={t("settings.content.blurNsfw.label")}
+          description={t("settings.content.blurNsfw.description")}
           checked={controller.values.blurNsfw}
           disabled={disabled}
           onCheckedChange={(checked) => void controller.changePreference("blurNsfw", checked)}
@@ -190,25 +194,26 @@ function NotificationPreferences({
   data: SettingsData;
   controller: PreferenceController;
 }) {
+  const { t } = useI18n();
   const disabled = !data.authenticated || controller.saving;
   return (
     <section id="settings-notifications" className="product-settings-section-group">
       <SettingsSectionHeader
-        eyebrow="Notifications"
-        title="Notification preferences"
-        description="Choose which private activity events should be stored in your notification feed."
+        eyebrow={t("settings.notifications.eyebrow")}
+        title={t("settings.notifications.title")}
+        description={t("settings.notifications.description")}
       />
       <Card className="product-settings-section">
         <Switch
-          label="Post and comment activity"
-          description="Replies, accepted sources, likes and other activity on your contributions."
+          label={t("settings.notifications.activity.label")}
+          description={t("settings.notifications.activity.description")}
           checked={controller.values.notifyActivity}
           disabled={disabled}
           onCheckedChange={(checked) => void controller.changePreference("notifyActivity", checked)}
         />
         <Switch
-          label="Friendship activity"
-          description="Friend requests, accepts and related account activity."
+          label={t("settings.notifications.friendships.label")}
+          description={t("settings.notifications.friendships.description")}
           checked={controller.values.notifyFriendships}
           disabled={disabled}
           onCheckedChange={(checked) =>
@@ -228,18 +233,19 @@ function PrivacyDataPreferences({
   data: SettingsData;
   controller: PreferenceController;
 }) {
+  const { t } = useI18n();
   const disabled = !data.authenticated || controller.saving;
   return (
     <section id="settings-privacy" className="product-settings-section-group">
       <SettingsSectionHeader
-        eyebrow="Privacy & data"
-        title="Social privacy"
-        description="Control who can initiate social contact and jump to the places where SourceBoard already exposes profile visibility and block management."
+        eyebrow={t("settings.privacy.eyebrow")}
+        title={t("settings.privacy.title")}
+        description={t("settings.privacy.description")}
       />
       <Card className="product-settings-section">
         <Switch
-          label="Allow friend requests"
-          description="When disabled, your account is excluded from friend discovery and new requests are rejected server-side."
+          label={t("settings.privacy.friendRequests.label")}
+          description={t("settings.privacy.friendRequests.description")}
           checked={controller.values.allowFriendRequests}
           disabled={disabled}
           onCheckedChange={(checked) =>
@@ -248,11 +254,11 @@ function PrivacyDataPreferences({
         />
         <div className="product-settings-link-row">
           <div>
-            <strong>Blocked accounts</strong>
-            <span>Review and unblock accounts from the Friends workspace.</span>
+            <strong>{t("settings.privacy.blocked.title")}</strong>
+            <span>{t("settings.privacy.blocked.description")}</span>
           </div>
           <Link className="sb-button sb-button--secondary sb-button--sm" to="/friends">
-            Manage blocks
+            {t("settings.privacy.blocked.action")}
           </Link>
         </div>
       </Card>
@@ -262,27 +268,20 @@ function PrivacyDataPreferences({
 }
 
 function SettingsNotice({ data }: { data: SettingsData }) {
+  const { t } = useI18n();
   if (data.authenticated) return null;
   return data.unavailable ? (
     <AuthRequiredCard unavailable />
   ) : (
     <AuthRequiredCard
-      title="Sign in to save your preferences"
-      description="Your privacy and social settings are private account data. Sign in or create an account to manage them."
+      title={t("settings.auth.title")}
+      description={t("settings.auth.description")}
     />
   );
 }
 
-function formatUsernameAvailability(value: number | null): string {
-  if (!value) return "Available now";
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
-  }).format(new Date(value));
-}
-
 function UsernamePanel({ data }: { data: SettingsData }) {
+  const { t, date } = useI18n();
   const initial = data.username;
   const [value, setValue] = useState(initial?.username ?? "");
   const [quota, setQuota] = useState(initial);
@@ -293,6 +292,11 @@ function UsernamePanel({ data }: { data: SettingsData }) {
     setValue(data.username?.username ?? "");
     setQuota(data.username);
   }, [data.username]);
+
+  function formatAvailability(nextChangeAt: number | null): string {
+    if (!nextChangeAt) return t("settings.username.availableNow");
+    return date(nextChangeAt, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+  }
 
   async function changeUsername() {
     if (!data.authenticated || !quota?.canChange || busy) return;
@@ -309,14 +313,14 @@ function UsernamePanel({ data }: { data: SettingsData }) {
         error?: { message?: string };
       } | null;
       if (!response.ok || !payload?.username) {
-        setStatus(payload?.error?.message ?? "The username could not be changed.");
+        setStatus(payload?.error?.message ?? t("settings.username.error"));
         return;
       }
       setQuota(payload.username);
       setValue(payload.username.username);
-      setStatus("Username updated.");
+      setStatus(t("settings.username.updated"));
     } catch {
-      setStatus("The username could not be changed. Check your connection and try again.");
+      setStatus(t("settings.username.networkError"));
     } finally {
       setBusy(false);
     }
@@ -325,13 +329,10 @@ function UsernamePanel({ data }: { data: SettingsData }) {
   return (
     <Card className="product-settings-section">
       <div className="product-settings-control-block">
-        <strong>Username</strong>
-        <span>
-          Usernames are unique. You can change yours up to 3 times in a rolling 15-day window, with
-          at least 24 hours between changes.
-        </span>
+        <strong>{t("settings.username.title")}</strong>
+        <span>{t("settings.username.description")}</span>
         <Input
-          label="Username"
+          label={t("settings.username.label")}
           value={value}
           minLength={3}
           maxLength={32}
@@ -341,9 +342,14 @@ function UsernamePanel({ data }: { data: SettingsData }) {
         {quota ? (
           <div className="product-settings-inline-actions">
             <span>
-              {quota.remainingChanges} of {quota.maxChanges} changes available
+              {t("settings.username.changesAvailable", {
+                remaining: quota.remainingChanges,
+                maximum: quota.maxChanges,
+              })}
             </span>
-            <span>Next change: {formatUsernameAvailability(quota.nextChangeAt)}</span>
+            <span>
+              {t("settings.username.nextChange", { date: formatAvailability(quota.nextChangeAt) })}
+            </span>
           </div>
         ) : null}
         <div className="product-settings-inline-actions">
@@ -353,7 +359,7 @@ function UsernamePanel({ data }: { data: SettingsData }) {
             disabled={!data.authenticated || !quota?.canChange || value.trim() === quota.username}
             onClick={() => void changeUsername()}
           >
-            Change username
+            {t("settings.username.change")}
           </Button>
           {status ? <span role="status">{status}</span> : null}
         </div>
@@ -363,6 +369,7 @@ function UsernamePanel({ data }: { data: SettingsData }) {
 }
 
 function PasswordPanel({ authenticated }: { authenticated: boolean }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -373,11 +380,11 @@ function PasswordPanel({ authenticated }: { authenticated: boolean }) {
   async function changePassword() {
     if (!authenticated || busy) return;
     if (newPassword.length < 12) {
-      setStatus("New passwords must contain at least 12 characters.");
+      setStatus(t("settings.password.tooShort"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setStatus("The new passwords do not match.");
+      setStatus(t("settings.password.mismatch"));
       return;
     }
     setBusy(true);
@@ -392,7 +399,7 @@ function PasswordPanel({ authenticated }: { authenticated: boolean }) {
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        setStatus(payload?.error?.message ?? "The password could not be changed.");
+        setStatus(payload?.error?.message ?? t("settings.password.error"));
         return;
       }
       setCurrentPassword("");
@@ -400,7 +407,7 @@ function PasswordPanel({ authenticated }: { authenticated: boolean }) {
       setConfirmPassword("");
       navigate("/login");
     } catch {
-      setStatus("The password could not be changed. Check your connection and try again.");
+      setStatus(t("settings.password.networkError"));
     } finally {
       setBusy(false);
     }
@@ -409,18 +416,18 @@ function PasswordPanel({ authenticated }: { authenticated: boolean }) {
   return (
     <Card className="product-settings-section product-settings-password-card">
       <div className="product-settings-control-block">
-        <strong>Password</strong>
-        <span>Changing your password invalidates existing authenticated sessions.</span>
+        <strong>{t("settings.password.title")}</strong>
+        <span>{t("settings.password.description")}</span>
         <div className="product-settings-password-fields">
           <Input
-            label="Current password"
+            label={t("settings.password.current")}
             type="password"
             autoComplete="current-password"
             value={currentPassword}
             onChange={(event) => setCurrentPassword(event.target.value)}
           />
           <Input
-            label="New password"
+            label={t("settings.password.new")}
             type="password"
             autoComplete="new-password"
             value={newPassword}
@@ -428,7 +435,7 @@ function PasswordPanel({ authenticated }: { authenticated: boolean }) {
             onChange={(event) => setNewPassword(event.target.value)}
           />
           <Input
-            label="Confirm new password"
+            label={t("settings.password.confirm")}
             type="password"
             autoComplete="new-password"
             value={confirmPassword}
@@ -443,7 +450,7 @@ function PasswordPanel({ authenticated }: { authenticated: boolean }) {
             disabled={!authenticated || !currentPassword || !newPassword || !confirmPassword}
             onClick={() => void changePassword()}
           >
-            Change password
+            {t("settings.password.change")}
           </Button>
           {status ? <span role="status">{status}</span> : null}
         </div>
@@ -452,44 +459,40 @@ function PasswordPanel({ authenticated }: { authenticated: boolean }) {
   );
 }
 
-function formatSessionMoment(value: number): string {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
-  }).format(new Date(value));
-}
-
 function formatSessionLocation(session: SessionSummary): string {
   return [session.location?.city, session.location?.region, session.location?.country]
     .filter((value): value is string => Boolean(value))
     .join(", ");
 }
 
-function sessionTitle(session: SessionSummary): string {
-  const browser = session.browser.name === "unknown" ? null : session.browser.name;
-  const os = session.os.name === "unknown" ? null : session.os.name;
-  if (browser && os) return `${browser} on ${os}`;
-  return browser ?? os ?? "Unknown session";
-}
-
-function sessionObservedName(name: string, version?: string): string {
-  const observed = name === "unknown" ? "Unknown" : name;
-  return version ? `${observed} ${version}` : observed;
-}
-
-function sessionActivityLabel(session: SessionSummary): string {
-  const location = formatSessionLocation(session);
-  const activity = `Last active ${formatSessionMoment(session.lastUsedAt)}`;
-  return location ? `${location} · ${activity}` : activity;
-}
-
 function SessionSecurityPanel() {
+  const { t, tp, date } = useI18n();
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+
+  const formatMoment = (value: number) =>
+    date(value, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+
+  function sessionTitle(session: SessionSummary): string {
+    const browser = session.browser.name === "unknown" ? null : session.browser.name;
+    const os = session.os.name === "unknown" ? null : session.os.name;
+    if (browser && os) return t("settings.sessions.browserOnOs", { browser, os });
+    return browser ?? os ?? t("settings.sessions.unknownSession");
+  }
+
+  function sessionObservedName(name: string, version?: string): string {
+    const observed = name === "unknown" ? t("settings.sessions.unknown") : name;
+    return version ? `${observed} ${version}` : observed;
+  }
+
+  function sessionActivityLabel(session: SessionSummary): string {
+    const location = formatSessionLocation(session);
+    const activity = t("settings.sessions.lastActiveAt", { date: formatMoment(session.lastUsedAt) });
+    return location ? `${location} · ${activity}` : activity;
+  }
 
   async function loadSessions() {
     setStatus(null);
@@ -505,14 +508,14 @@ function SessionSecurityPanel() {
       const body = (await response.json()) as { sessions?: SessionSummary[] };
       setSessions(body.sessions ?? []);
     } else {
-      setStatus("Sessions could not be loaded. Try again shortly.");
+      setStatus(t("settings.sessions.loadError"));
     }
   }
 
   useEffect(() => {
     void loadSessions().catch(() => {
       setAuthenticated(false);
-      setStatus("Session security is temporarily unavailable.");
+      setStatus(t("settings.sessions.unavailableError"));
     });
   }, []);
 
@@ -526,14 +529,14 @@ function SessionSecurityPanel() {
         headers: { "x-csrf-token": readCsrfToken() },
       });
       if (!response.ok) {
-        setStatus("That session could not be revoked.");
+        setStatus(t("settings.sessions.revokeError"));
         return;
       }
       setSessions((current) => current.filter((session) => session.id !== sessionId));
       setExpandedId((current) => (current === sessionId ? null : current));
-      setStatus("Session revoked.");
+      setStatus(t("settings.sessions.revoked"));
     } catch {
-      setStatus("That session could not be revoked. Check your connection and try again.");
+      setStatus(t("settings.sessions.revokeNetworkError"));
     } finally {
       setBusyId(null);
     }
@@ -549,16 +552,16 @@ function SessionSecurityPanel() {
         headers: { "x-csrf-token": readCsrfToken() },
       });
       if (!response.ok) {
-        setStatus("Other sessions could not be signed out.");
+        setStatus(t("settings.sessions.signOutError"));
         return;
       }
       setSessions((current) => current.filter((session) => session.current));
       setExpandedId((current) =>
         sessions.some((session) => session.id === current && session.current) ? current : null,
       );
-      setStatus("Other sessions signed out.");
+      setStatus(t("settings.sessions.signedOut"));
     } catch {
-      setStatus("Other sessions could not be signed out. Check your connection and try again.");
+      setStatus(t("settings.sessions.signOutNetworkError"));
     } finally {
       setBusyId(null);
     }
@@ -569,19 +572,19 @@ function SessionSecurityPanel() {
   return (
     <Card className="product-settings-section product-settings-security-card">
       {authenticated === null ? (
-        <div className="product-store-preview-status">Loading sessions…</div>
+        <div className="product-store-preview-status">{t("settings.sessions.loading")}</div>
       ) : null}
       {authenticated === false ? (
         <AuthRequiredCard
-          title="Sign in to manage sessions"
-          description="Active sessions are stored securely and can be reviewed after signing in."
+          title={t("settings.sessions.authTitle")}
+          description={t("settings.sessions.authDescription")}
         />
       ) : null}
       {authenticated ? (
         <>
           <div className="product-settings-session-summary">
             <strong>{sessions.length}</strong>
-            <span>active session{sessions.length === 1 ? "" : "s"}</span>
+            <span>{tp("settings.sessions.count", sessions.length, { count: sessions.length })}</span>
           </div>
           <div className="product-settings-session-list">
             {sessions.map((session) => {
@@ -593,7 +596,9 @@ function SessionSecurityPanel() {
                     <div className="product-settings-session-heading">
                       <strong>{sessionTitle(session)}</strong>
                       {session.current ? (
-                        <span className="product-settings-current-session">This device</span>
+                        <span className="product-settings-current-session">
+                          {t("settings.sessions.thisDevice")}
+                        </span>
                       ) : null}
                     </div>
                     <span>{sessionActivityLabel(session)}</span>
@@ -606,7 +611,9 @@ function SessionSecurityPanel() {
                       aria-controls={`session-details-${session.id}`}
                       onClick={() => setExpandedId(expanded ? null : session.id)}
                     >
-                      {expanded ? "Hide details" : "Details"}
+                      {expanded
+                        ? t("settings.sessions.hideDetails")
+                        : t("settings.sessions.details")}
                     </Button>
                     {!session.current ? (
                       <Button
@@ -616,7 +623,7 @@ function SessionSecurityPanel() {
                         disabled={Boolean(busyId)}
                         onClick={() => void revokeSession(session.id)}
                       >
-                        Revoke
+                        {t("settings.sessions.revoke")}
                       </Button>
                     ) : null}
                   </div>
@@ -626,41 +633,41 @@ function SessionSecurityPanel() {
                       id={`session-details-${session.id}`}
                     >
                       <div>
-                        <dt>Browser</dt>
+                        <dt>{t("settings.sessions.browser")}</dt>
                         <dd>
                           {sessionObservedName(session.browser.name, session.browser.version)}
                         </dd>
                       </div>
                       <div>
-                        <dt>Operating system</dt>
+                        <dt>{t("settings.sessions.os")}</dt>
                         <dd>{sessionObservedName(session.os.name, session.os.version)}</dd>
                       </div>
                       <div>
-                        <dt>Device type</dt>
+                        <dt>{t("settings.sessions.deviceType")}</dt>
                         <dd>{session.deviceType}</dd>
                       </div>
                       <div>
-                        <dt>IP address</dt>
+                        <dt>{t("settings.sessions.ip")}</dt>
                         <dd>
-                          {session.ip ?? session.ipMasked ?? "Unavailable"}
+                          {session.ip ?? session.ipMasked ?? t("settings.sessions.unavailable")}
                           {session.ip && session.ipMasked ? ` (${session.ipMasked})` : ""}
                         </dd>
                       </div>
                       <div>
-                        <dt>Approximate location</dt>
-                        <dd>{location || "Unavailable"}</dd>
+                        <dt>{t("settings.sessions.location")}</dt>
+                        <dd>{location || t("settings.sessions.unavailable")}</dd>
                       </div>
                       <div>
-                        <dt>Created</dt>
-                        <dd>{formatSessionMoment(session.createdAt)}</dd>
+                        <dt>{t("settings.sessions.created")}</dt>
+                        <dd>{formatMoment(session.createdAt)}</dd>
                       </div>
                       <div>
-                        <dt>Last active</dt>
-                        <dd>{formatSessionMoment(session.lastUsedAt)}</dd>
+                        <dt>{t("settings.sessions.lastActive")}</dt>
+                        <dd>{formatMoment(session.lastUsedAt)}</dd>
                       </div>
                       <div>
-                        <dt>Expires</dt>
-                        <dd>{formatSessionMoment(session.expiresAt)}</dd>
+                        <dt>{t("settings.sessions.expires")}</dt>
+                        <dd>{formatMoment(session.expiresAt)}</dd>
                       </div>
                     </dl>
                   ) : null}
@@ -675,7 +682,7 @@ function SessionSecurityPanel() {
             disabled={Boolean(busyId) || otherSessionCount === 0}
             onClick={() => void signOutOtherSessions()}
           >
-            Sign out other sessions
+            {t("security.sessions.revokeOthers")}
           </Button>
         </>
       ) : null}
@@ -688,30 +695,39 @@ function SessionSecurityPanel() {
   );
 }
 
-const settingsNavigation = [
-  ["settings-general", "General"],
-  ["settings-security", "Security"],
-] as const;
+const settingsNavigation: ReadonlyArray<readonly [string, MessageKey]> = [
+  ["settings-general", "settings.general.title"],
+  ["settings-profile", "settings.nav.profile"],
+  ["settings-content", "settings.nav.content"],
+  ["settings-notifications", "settings.nav.notifications"],
+  ["settings-appearance", "settings.nav.appearance"],
+  ["settings-language", "settings.nav.language"],
+  ["settings-privacy", "settings.nav.privacy"],
+  ["settings-accessibility", "settings.nav.accessibility"],
+  ["settings-security", "settings.security.title"],
+  ["settings-sessions", "settings.nav.sessions"],
+];
 
 export default function SettingsRoute() {
+  const { t } = useI18n();
   const data = useLoaderData<SettingsData>();
   const preferences = usePreferenceController(data);
 
   return (
     <ProductShell wide>
       <PageHeader
-        eyebrow="Account"
-        title="Settings"
-        description="Use General for everyday preferences and Security for credentials and active-session controls."
+        eyebrow={t("settings.page.eyebrow")}
+        title={t("settings.title")}
+        description={t("settings.page.description")}
       />
       <SettingsNotice data={data} />
 
       <div className="product-settings-layout">
-        <nav className="product-settings-nav" aria-label="Settings sections">
-          <span className="product-settings-nav__label">Settings</span>
-          {settingsNavigation.map(([id, label]) => (
+        <nav className="product-settings-nav" aria-label={t("settings.nav.aria")}>
+          <span className="product-settings-nav__label">{t("settings.nav.label")}</span>
+          {settingsNavigation.map(([id, labelKey]) => (
             <a key={id} href={`#${id}`}>
-              {label}
+              {t(labelKey)}
             </a>
           ))}
         </nav>
@@ -723,27 +739,25 @@ export default function SettingsRoute() {
             data-settings-surface="general"
           >
             <SettingsSectionHeader
-              eyebrow="General"
-              title="General preferences"
-              description="Manage your profile, content, notifications, appearance, privacy and accessibility preferences."
+              eyebrow={t("settings.general.title")}
+              title={t("settings.general.heading")}
+              description={t("settings.general.description")}
             />
 
             <section id="settings-profile" className="product-settings-section-group">
               <SettingsSectionHeader
-                eyebrow="Profile"
-                title="Public identity"
-                description="Avatar, banner, display name, bio, social links and profile visibility are edited directly on your profile so the result is visible while you edit."
+                eyebrow={t("settings.profile.eyebrow")}
+                title={t("settings.profile.title")}
+                description={t("settings.profile.description")}
               />
               <Card className="product-settings-section">
                 <div className="product-settings-link-row">
                   <div>
-                    <strong>Edit profile</strong>
-                    <span>
-                      Open the Discord-style inline profile editor and preview changes in place.
-                    </span>
+                    <strong>{t("settings.profile.editTitle")}</strong>
+                    <span>{t("settings.profile.editDescription")}</span>
                   </div>
                   <Link className="sb-button sb-button--secondary sb-button--sm" to="/profile">
-                    Open profile
+                    {t("settings.profile.open")}
                   </Link>
                 </div>
               </Card>
@@ -754,15 +768,28 @@ export default function SettingsRoute() {
 
             <section id="settings-appearance" className="product-settings-section-group">
               <SettingsSectionHeader
-                eyebrow="Appearance"
-                title="Theme"
-                description="Follow your operating system or use a SourceBoard light or dark override on this browser."
+                eyebrow={t("settings.appearance.eyebrow")}
+                title={t("settings.appearance.title")}
+                description={t("settings.appearance.description")}
               />
               <Card className="product-settings-section product-settings-appearance-card">
                 <div className="product-settings-control-block">
-                  <strong>Theme</strong>
-                  <span>Choose the interface color scheme used on this device.</span>
+                  <strong>{t("settings.appearance.themeTitle")}</strong>
+                  <span>{t("settings.appearance.themeDescription")}</span>
                   <ThemeControl />
+                </div>
+              </Card>
+            </section>
+
+            <section id="settings-language" className="product-settings-section-group">
+              <SettingsSectionHeader
+                eyebrow={t("settings.language.eyebrow")}
+                title={t("settings.language.title")}
+                description={t("settings.language.description")}
+              />
+              <Card className="product-settings-section product-settings-appearance-card">
+                <div className="product-settings-control-block">
+                  <LanguageSelector />
                 </div>
               </Card>
             </section>
@@ -771,9 +798,9 @@ export default function SettingsRoute() {
 
             <section id="settings-accessibility" className="product-settings-section-group">
               <SettingsSectionHeader
-                eyebrow="Accessibility"
-                title="Motion"
-                description="Control nonessential interface movement and animated cosmetics. System reduced-motion preferences remain respected automatically."
+                eyebrow={t("settings.accessibility.eyebrow")}
+                title={t("settings.accessibility.title")}
+                description={t("settings.accessibility.description")}
               />
               <Card className="product-settings-section product-settings-appearance-card">
                 <div className="product-settings-control-block">
@@ -789,18 +816,20 @@ export default function SettingsRoute() {
             data-settings-surface="security"
           >
             <SettingsSectionHeader
-              eyebrow="Security"
-              title="Account security"
-              description="Manage your username and password, then review the authenticated sessions that currently have access to your account."
+              eyebrow={t("settings.security.title")}
+              title={t("settings.security.heading")}
+              description={t("settings.security.description")}
             />
             <UsernamePanel data={data} />
             <PasswordPanel authenticated={data.authenticated} />
-            <SettingsSectionHeader
-              eyebrow="Sessions"
-              title="Active sessions"
-              description="Review observed browser, operating system, activity, approximate location and IP details, revoke one session, or sign out every other session while keeping this device signed in."
-            />
-            <SessionSecurityPanel />
+            <div id="settings-sessions">
+              <SettingsSectionHeader
+                eyebrow={t("settings.sessions.eyebrow")}
+                title={t("security.sessions.title")}
+                description={t("settings.sessions.description")}
+              />
+              <SessionSecurityPanel />
+            </div>
           </section>
         </div>
       </div>

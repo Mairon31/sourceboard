@@ -148,7 +148,7 @@ describe("community plan phase E1", () => {
     expect(api).toContain('"GET /api/profile/me/username"');
     expect(api).toContain('"PATCH /api/profile/me/username"');
     expect(settings).toContain("/api/profile/me/username");
-    expect(settings).toContain("changes available");
+    expect(settings).toContain('t("settings.username.changesAvailable"');
   });
 
   it("wires the inline profile editor to the existing username policy endpoint", () => {

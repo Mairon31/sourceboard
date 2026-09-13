@@ -1,4 +1,5 @@
 import type { MessageKey } from "./en";
+import { settingsMessageSets } from "./settings";
 
 export const ruMessages = {
   "nav.home": "Главная",
@@ -21,6 +22,7 @@ export const ruMessages = {
   "settings.security.title": "Безопасность",
   "settings.language.title": "Язык",
   "settings.language.description": "Выберите язык интерфейса SourceBoard.",
+  ...settingsMessageSets.ru,
   "security.sessions.title": "Активные сеансы",
   "security.sessions.revokeOthers": "Завершить другие сеансы",
   "notifications.title": "Уведомления",

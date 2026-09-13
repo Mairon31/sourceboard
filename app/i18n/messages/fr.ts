@@ -1,4 +1,5 @@
 import type { MessageKey } from "./en";
+import { settingsMessageSets } from "./settings";
 
 export const frMessages = {
   "nav.home": "Accueil",
@@ -21,6 +22,7 @@ export const frMessages = {
   "settings.security.title": "Sécurité",
   "settings.language.title": "Langue",
   "settings.language.description": "Choisissez la langue utilisée par l’interface SourceBoard.",
+  ...settingsMessageSets.fr,
   "security.sessions.title": "Sessions actives",
   "security.sessions.revokeOthers": "Déconnecter les autres sessions",
   "notifications.title": "Notifications",
