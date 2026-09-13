@@ -7,6 +7,7 @@ import { PostCard } from "../components/product/PostCard";
 import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { useI18n } from "../i18n/I18nProvider";
 import { readViewerLikedPostIds } from "../data/viewer-post-likes";
 
 interface LoaderArgs extends ServerLoaderArgs {
@@ -57,32 +58,33 @@ export async function loader({ request, context, params }: LoaderArgs) {
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
 export default function CategoryRoute() {
+  const { t } = useI18n();
   const data = useLoaderData<LoaderData>();
 
   return (
     <ProductShell wide>
       <section className="product-home-compact-lead">
         <div className="product-home-compact-lead__copy">
-          <span className="product-eyebrow">Category</span>
+          <span className="product-eyebrow">{t("category.eyebrow")}</span>
           <h1>{data.category.label}</h1>
           <p>{data.category.description}</p>
         </div>
         <Link className="product-nav__create product-home-create" to="/" prefetch="intent">
-          All posts
+          {t("category.allPosts")}
         </Link>
       </section>
 
       <section className="product-feed-workspace" aria-labelledby="category-feed-heading">
         <div className="product-feed-workspace__heading">
           <div>
-            <span className="product-eyebrow">Recent requests</span>
+            <span className="product-eyebrow">{t("category.recentRequests")}</span>
             <h2 id="category-feed-heading">{data.category.label}</h2>
           </div>
         </div>
         {data.unavailable ? (
           <Card className="product-empty-state">
-            <strong>Category feed unavailable</strong>
-            <p>The post service is temporarily unavailable.</p>
+            <strong>{t("category.unavailableTitle")}</strong>
+            <p>{t("category.unavailableDescription")}</p>
           </Card>
         ) : data.posts.length ? (
           <div className="product-feed-list">
@@ -92,8 +94,8 @@ export default function CategoryRoute() {
           </div>
         ) : (
           <div className="product-empty-state product-empty-state--compact">
-            <strong>No public requests in this category yet</strong>
-            <p>Try another category or publish a new source request.</p>
+            <strong>{t("category.emptyTitle")}</strong>
+            <p>{t("category.emptyDescription")}</p>
           </div>
         )}
       </section>
