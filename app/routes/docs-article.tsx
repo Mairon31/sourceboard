@@ -10,6 +10,10 @@ import {
 import { docsArticle } from "../data/docs-content";
 import type { ServerLoaderArgs } from "../data/server-request";
 
+interface LoaderArgs extends ServerLoaderArgs {
+  params: { slug?: string };
+}
+
 function cmsGroups(items: Awaited<ReturnType<typeof listPublicCmsNavigation>>["items"]): DocsNavigationGroup[] {
   const groups = new Map<string, DocsNavigationGroup["items"]>();
   for (const item of items) {
@@ -21,7 +25,7 @@ function cmsGroups(items: Awaited<ReturnType<typeof listPublicCmsNavigation>>["i
   return [...groups.entries()].map(([group, groupItems]) => ({ group, items: groupItems }));
 }
 
-export async function loader({ request, context, params }: ServerLoaderArgs) {
+export async function loader({ request, context, params }: LoaderArgs) {
   const slug = params.slug ?? "";
   const [cms, cmsNavigation] = await Promise.all([
     resolvePublicCmsPage(request, context, "DOCS", slug),
