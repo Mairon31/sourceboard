@@ -1,32 +1,21 @@
 import { Link, useNavigate } from "react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { BellIcon, SearchIcon } from "../ui";
-import { NotificationActorStack } from "../product/NotificationActorStack";
+import { NotificationCard } from "../product/NotificationCard";
+import type { NotificationCardView } from "../../../worker/notifications/grouping";
 import {
   notificationWebSocketUrl,
   readNotificationSnapshot,
   reconnectDelay,
-  type NotificationPreview,
 } from "../../data/notifications-realtime";
-import { notificationDisplayTitle, notificationGroupMeta } from "../../data/notification-display";
 import { markNavigationStart } from "../../data/performance-metrics";
 import { readCsrfToken } from "../../data/csrf";
 import { ThemeControl } from "./ThemeControl";
 
-function notificationTime(timestamp: number): string {
-  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return days < 7 ? `${days}d` : new Date(timestamp).toLocaleDateString();
-}
-
 export function TopBar() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
-  const [recentNotifications, setRecentNotifications] = useState<NotificationPreview[]>([]);
+  const [recentNotifications, setRecentNotifications] = useState<NotificationCardView[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const notificationMenuRef = useRef<HTMLDivElement>(null);
@@ -99,7 +88,7 @@ export function TopBar() {
           const message = JSON.parse(event.data) as { type?: unknown };
           if (message.type === "ready" || message.type === "notification") void refresh();
         } catch {
-          // Ignore malformed frames; D1 remains the source of truth.
+          // D1 remains authoritative; malformed realtime frames are ignored.
         }
       };
       socket.onerror = () => socket?.close();
@@ -135,15 +124,22 @@ export function TopBar() {
     };
   }, [notificationsOpen]);
 
-  function markNotificationGroupLocally(notification: NotificationPreview): void {
-    const unreadInGroup = notification.unreadCount ?? (notification.readAt ? 0 : 1);
-    const now = Date.now();
+  async function markCardRead(notification: NotificationCardView): Promise<void> {
+    if (!notification.unread) return;
+    const response = await fetch("/api/notifications/read-batch", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-csrf-token": readCsrfToken(),
+      },
+      body: JSON.stringify({ notificationIds: notification.notificationIds }),
+    }).catch(() => null);
+    if (!response?.ok) return;
+    const payload = (await response.json().catch(() => null)) as { unreadCount?: unknown } | null;
     setRecentNotifications((items) =>
-      items.map((item) =>
-        item.id === notification.id ? { ...item, readAt: now, unreadCount: 0 } : item,
-      ),
+      items.map((item) => (item.key === notification.key ? { ...item, unread: false } : item)),
     );
-    setUnreadCount((count) => Math.max(0, count - unreadInGroup));
+    if (typeof payload?.unreadCount === "number") setUnreadCount(payload.unreadCount);
   }
 
   async function markAllRead(): Promise<void> {
@@ -153,11 +149,8 @@ export function TopBar() {
       headers: { "x-csrf-token": readCsrfToken() },
     }).catch(() => null);
     if (!response?.ok) return;
-    const now = Date.now();
     setUnreadCount(0);
-    setRecentNotifications((items) =>
-      items.map((item) => ({ ...item, readAt: item.readAt ?? now, unreadCount: 0 })),
-    );
+    setRecentNotifications((items) => items.map((item) => ({ ...item, unread: false })));
   }
 
   return (
@@ -256,52 +249,19 @@ export function TopBar() {
                 </div>
               ) : recentNotifications.length ? (
                 <div className="sb-topbar-notification-menu__list">
-                  {recentNotifications.slice(0, 7).map((notification) => {
-                    const groupMeta = notificationGroupMeta(notification);
-                    return (
-                      <Link
-                        key={notification.id}
-                        className={`sb-topbar-notification-menu__item focus-ring${notification.readAt && !notification.unreadCount ? "" : " is-unread"}`}
-                        to={notification.href}
-                        onClick={() => {
-                          markNavigationStart(notification.href);
-                          markNotificationGroupLocally(notification);
-                          for (const id of notification.groupedIds ?? [notification.id]) {
-                            void fetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
-                              method: "POST",
-                              headers: { "x-csrf-token": readCsrfToken() },
-                            });
-                          }
-                          setNotificationsOpen(false);
-                        }}
-                      >
-                        <div
-                          className="sb-topbar-notification-menu__identity"
-                          aria-hidden={!notification.actor && !notification.groupActors?.length}
-                        >
-                          {notification.actor || notification.groupActors?.length ? (
-                            <NotificationActorStack
-                              actor={notification.actor}
-                              actors={notification.groupActors}
-                              total={notification.groupCount}
-                            />
-                          ) : (
-                            <span className="sb-topbar-notification-menu__system-mark">S</span>
-                          )}
-                        </div>
-                        <div className="sb-topbar-notification-menu__copy">
-                          <div className="sb-topbar-notification-menu__title-row">
-                            <strong>{notificationDisplayTitle(notification)}</strong>
-                            <time dateTime={new Date(notification.createdAt).toISOString()}>
-                              {notificationTime(notification.createdAt)}
-                            </time>
-                          </div>
-                          <span>{notification.body}</span>
-                          {groupMeta ? <small>{groupMeta}</small> : null}
-                        </div>
-                      </Link>
-                    );
-                  })}
+                  {recentNotifications.slice(0, 8).map((notification) => (
+                    <NotificationCard
+                      key={notification.key}
+                      card={notification}
+                      compact
+                      onOpen={(card) => {
+                        markNavigationStart(card.href);
+                        void markCardRead(card);
+                        setNotificationsOpen(false);
+                      }}
+                      onMarkRead={(card) => void markCardRead(card)}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="sb-topbar-notification-menu__empty">
