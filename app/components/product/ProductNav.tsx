@@ -3,12 +3,13 @@ import { ThemeControl } from "../layout/ThemeControl";
 import { FriendsIcon, HomeIcon, PlusIcon, StoreIcon, UserIcon } from "../ui";
 import type { RootLoaderData } from "../../root";
 import { markNavigationStart } from "../../data/performance-metrics";
+import { useI18n } from "../../i18n/I18nProvider";
 
 const primaryLinks = [
-  { href: "/", label: "Home", short: "Home" },
-  { href: "/friends", label: "Friends", short: "Friends" },
-  { href: "/notifications", label: "Notifications", short: "Alerts" },
-  { href: "/store", label: "Store", short: "Store" },
+  { href: "/", key: "nav.home" as const },
+  { href: "/friends", key: "nav.friends" as const },
+  { href: "/notifications", key: "nav.notifications" as const },
+  { href: "/store", key: "nav.store" as const },
 ];
 
 function navClass({ isActive }: { isActive: boolean }) {
@@ -18,9 +19,10 @@ function navClass({ isActive }: { isActive: boolean }) {
 export function ProductNav() {
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const user = rootData?.session?.user ?? null;
+  const { t } = useI18n();
 
   return (
-    <nav className="product-nav" aria-label="Primary navigation">
+    <nav className="product-nav" aria-label={t("nav.home")}>
       <div className="product-nav__links">
         {primaryLinks.map((item) => (
           <NavLink
@@ -32,7 +34,7 @@ export function ProductNav() {
             onClick={() => markNavigationStart(item.href)}
           >
             <span className="product-nav__dot" aria-hidden="true" />
-            <span>{item.label}</span>
+            <span>{t(item.key)}</span>
           </NavLink>
         ))}
       </div>
@@ -43,7 +45,7 @@ export function ProductNav() {
         prefetch="intent"
         onClick={() => markNavigationStart("/post/new")}
       >
-        Create post
+        {t("nav.create")}
       </NavLink>
 
       <div className="product-nav__account">
@@ -67,7 +69,7 @@ export function ProductNav() {
             onClick={() => markNavigationStart("/login")}
           >
             <span className="product-nav__dot" aria-hidden="true" />
-            <span>Sign in</span>
+            <span>{t("auth.login")}</span>
           </NavLink>
         )}
         <NavLink
@@ -77,7 +79,7 @@ export function ProductNav() {
           onClick={() => markNavigationStart("/settings")}
         >
           <span className="product-nav__dot" aria-hidden="true" />
-          <span>Settings</span>
+          <span>{t("nav.settings")}</span>
         </NavLink>
       </div>
     </nav>
@@ -88,18 +90,19 @@ export function MobileProductNav() {
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const user = rootData?.session?.user ?? null;
   const profileHref = user ? `/u/${encodeURIComponent(user.username)}` : "/login";
+  const { t } = useI18n();
 
   return (
     <nav
       className="product-mobile-nav glass-panel glass-panel--strong"
-      aria-label="Mobile navigation"
+      aria-label={t("nav.home")}
     >
       <NavLink
         to="/"
         className={navClass}
         end
-        aria-label="Home"
-        title="Home"
+        aria-label={t("nav.home")}
+        title={t("nav.home")}
         prefetch="intent"
         onClick={() => markNavigationStart("/")}
       >
@@ -108,8 +111,8 @@ export function MobileProductNav() {
       <NavLink
         to="/friends"
         className={navClass}
-        aria-label="Friends"
-        title="Friends"
+        aria-label={t("nav.friends")}
+        title={t("nav.friends")}
         prefetch="intent"
         onClick={() => markNavigationStart("/friends")}
       >
@@ -118,8 +121,8 @@ export function MobileProductNav() {
       <NavLink
         className="product-mobile-nav__create"
         to="/post/new"
-        aria-label="Create post"
-        title="Create post"
+        aria-label={t("nav.create")}
+        title={t("nav.create")}
         prefetch="intent"
         onClick={() => markNavigationStart("/post/new")}
       >
@@ -128,8 +131,8 @@ export function MobileProductNav() {
       <NavLink
         to={profileHref}
         className={navClass}
-        aria-label="Profile"
-        title="Profile"
+        aria-label={t("nav.profile")}
+        title={t("nav.profile")}
         prefetch="intent"
         onClick={() => markNavigationStart(profileHref)}
       >
@@ -138,8 +141,8 @@ export function MobileProductNav() {
       <NavLink
         to="/store"
         className={navClass}
-        aria-label="Store"
-        title="Store"
+        aria-label={t("nav.store")}
+        title={t("nav.store")}
         prefetch="intent"
         onClick={() => markNavigationStart("/store")}
       >
