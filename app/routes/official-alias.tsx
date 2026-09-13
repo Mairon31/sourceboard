@@ -5,7 +5,8 @@ import type { ServerLoaderArgs } from "../data/server-request";
 export async function loader({ request }: ServerLoaderArgs) {
   const source = new URL(request.url);
   const locale = requestedLocale(request);
-  const pathname = source.pathname === "/" ? "" : source.pathname.replace(/\.data$/, "");
+  const dataPathname = source.pathname.replace(/\.data$/, "");
+  const pathname = dataPathname === "/_" ? "" : dataPathname.endsWith("/_") ? dataPathname.slice(0, -2) : dataPathname === "/" ? "" : dataPathname;
   source.searchParams.delete("lang");
   const search = source.searchParams.size ? `?${source.searchParams.toString()}` : "";
   throw redirect(`/${locale}${pathname}${search}`, 302);
