@@ -39,6 +39,7 @@ export const esMessages = {
   "errors.notFound.title": "Página no encontrada",
   "errors.notFound.description": "La página puede haberse movido, eliminado o no estar disponible para ti.",
   "errors.notFound.home": "Ir al inicio",
+  "errors.notFound.back": "Volver",
   "auth.login": "Iniciar sesión",
   "auth.register": "Crear cuenta",
   "docs.title": "Documentación",
