@@ -1,7 +1,23 @@
 import { index, route, type RouteConfig } from "@react-router/dev/routes";
+import { SUPPORTED_LOCALES } from "../shared/i18n/locales";
+
+const localizedOfficialRoutes = SUPPORTED_LOCALES.flatMap((locale) => [
+  route(locale, "routes/_index.tsx", { id: `localized-home-${locale}` }),
+  route(`${locale}/store`, "routes/store.tsx", { id: `localized-store-${locale}` }),
+  route(`${locale}/category`, "routes/category-index.tsx", { id: `localized-category-${locale}` }),
+  route(`${locale}/category/:categorySlug`, "routes/category.tsx", {
+    id: `localized-category-detail-${locale}`,
+  }),
+  route(`${locale}/docs`, "routes/docs.tsx", { id: `localized-docs-${locale}` }),
+  route(`${locale}/docs/:slug`, "routes/docs-article.tsx", {
+    id: `localized-docs-article-${locale}`,
+  }),
+  route(`${locale}/legal`, "routes/legal.tsx", { id: `localized-legal-${locale}` }),
+]);
 
 export default [
   index("routes/_index.tsx"),
+  ...localizedOfficialRoutes,
   route("login", "routes/login.tsx"),
   route("register", "routes/register.tsx"),
   route("forgot-password", "routes/forgot-password.tsx"),
