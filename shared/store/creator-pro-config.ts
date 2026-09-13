@@ -26,3 +26,12 @@ export function parseCreatorProStoreConfig(input: unknown): CosmeticVisualConfig
   }
   return parseCosmeticVisualConfig(visual);
 }
+
+export function mergeCreatorProStoreConfig(
+  base: Record<string, unknown>,
+  visual: CosmeticVisualConfigV1,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...base };
+  for (const key of CREATOR_PRO_KEYS) delete merged[key];
+  return { ...merged, ...parseCosmeticVisualConfig(visual) };
+}
