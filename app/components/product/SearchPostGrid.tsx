@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import type { PostSummary } from "../../../shared/ui/contracts";
 import { markNavigationStart } from "../../data/performance-metrics";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Badge, HeartIcon, MessageIcon } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
@@ -17,17 +18,25 @@ export function SearchPostGrid({
   posts: PostSummary[];
   sourceMode: boolean;
 }) {
+  const { t, tp } = useI18n();
   return (
     <div className="product-search-detailed-grid" data-search-view="grid">
       {posts.map((post) => {
         const detailHref = postDetailHref(post);
         const mediaRestricted = post.isNsfw && post.nsfwPresentation !== "VISIBLE";
+        const statusLabel = {
+          OPEN: t("post.status.open"),
+          ANSWERED: t("post.status.answered"),
+          VERIFIED: t("post.status.verified"),
+          ARCHIVED: t("post.status.archived"),
+          LOCKED: t("post.status.locked"),
+        }[post.status];
         return (
           <article className="product-search-grid-card" key={post.id} data-search-post-id={post.id}>
             <Link
               to={detailHref}
               className="product-search-grid-card__media"
-              aria-label={`Open ${post.title}, ${post.status.toLowerCase()}`}
+              aria-label={`${t("post.openAria", { title: post.title })}, ${statusLabel}`}
               onClick={() => markNavigationStart(detailHref)}
             >
               {post.imageUrl && !mediaRestricted ? (
@@ -43,17 +52,21 @@ export function SearchPostGrid({
                   className="product-search-grid-card__placeholder"
                   role="img"
                   aria-label={
-                    mediaRestricted ? `${post.imageAlt}. Sensitive media hidden.` : post.imageAlt
+                    mediaRestricted
+                      ? `${post.imageAlt}. ${t("post.nsfw.hiddenTitle")}`
+                      : post.imageAlt
                   }
                 >
-                  <span>{mediaRestricted ? "Sensitive media" : "Image unavailable"}</span>
+                  <span>
+                    {mediaRestricted ? t("post.nsfw.hiddenTitle") : t("post.media.unavailable")}
+                  </span>
                 </div>
               )}
             </Link>
             <div className="product-search-grid-card__body">
               <div className="product-search-grid-card__author">
                 {post.author.mode === "ANONYMOUS" ? (
-                  <strong>Anonymous Author</strong>
+                  <strong>{t("post.badges.anonymous")}</strong>
                 ) : (
                   <Link
                     to={post.author.profileUrl ?? `/u/${post.author.username ?? "member"}`}
@@ -84,17 +97,17 @@ export function SearchPostGrid({
                   slug={post.categorySlug}
                   linked={post.visibility === "PUBLIC" && post.status !== "ARCHIVED"}
                 />
-                <Badge>{post.status.toLowerCase()}</Badge>
-                {sourceMode ? <Badge tone="accent">Accepted source</Badge> : null}
+                <Badge>{statusLabel}</Badge>
+                {sourceMode ? <Badge tone="accent">{t("post.meta.acceptedSource")}</Badge> : null}
               </div>
-              <div className="product-search-grid-card__metrics" aria-label="Post engagement">
+              <div className="product-search-grid-card__metrics" aria-label={t("post.engagementAria")}>
                 <span>
                   <HeartIcon width="16" height="16" aria-hidden="true" />
-                  <strong>{post.reaction.count}</strong> likes
+                  {tp("metrics.likes", post.reaction.count)}
                 </span>
                 <span>
                   <MessageIcon width="16" height="16" aria-hidden="true" />
-                  <strong>{post.commentCount}</strong> comments
+                  {tp("comments.summary", post.commentCount)}
                 </span>
               </div>
             </div>
