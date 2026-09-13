@@ -32,10 +32,10 @@ describe("post-merge production regressions", () => {
     expect(sourceApi).not.toContain("c.plaintext AS comment_plaintext");
   });
 
-  it("marks comments written by the post author", () => {
+  it("marks comments written by the post author with a localized badge", () => {
     expect(commentService).toContain("isPostAuthor:");
     expect(commentThread).toContain("comment.isPostAuthor");
-    expect(commentThread).toContain(">Author<");
+    expect(commentThread).toContain('t("comments.badges.author")');
   });
 
   it("uses explicit visual-only and emote-only presentation instead of styling every attachment as media-only", () => {
