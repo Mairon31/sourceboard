@@ -197,7 +197,7 @@ export function AdminCosmeticGuide() {
         </Card>
 
         <div className="admin-cosmetic-guide__preview">
-          <span className="product-eyebrow">Community preview</span>
+          <span className="product-eyebrow">Live preview · Community CSS</span>
           <ProfileCosmeticPreview
             type="PROFILE_BANNER"
             preset="nebula"
