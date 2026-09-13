@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { buttonClassName } from "../../../shared/design/component-variants";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Button } from "../ui";
 import { ProductShell } from "./ProductShell";
 import "./not-found.css";
@@ -10,6 +11,7 @@ export interface NotFoundPageProps {
 }
 
 export function NotFoundPage({ homeHref = "/", showBack = true }: NotFoundPageProps) {
+  const { t } = useI18n();
   return (
     <ProductShell rightRail={null}>
       <section className="product-not-found" aria-labelledby="product-not-found-title">
@@ -34,19 +36,17 @@ export function NotFoundPage({ homeHref = "/", showBack = true }: NotFoundPagePr
           </svg>
         </div>
         <div className="product-not-found__copy">
-          <span className="product-eyebrow">404 · Source unavailable</span>
-          <h1 id="product-not-found-title">This page isn&apos;t available</h1>
-          <p>
-            The page you&apos;re looking for may have moved, changed, or no longer be available.
-          </p>
+          <span className="product-eyebrow">404 · SourceBoard</span>
+          <h1 id="product-not-found-title">{t("errors.notFound.title")}</h1>
+          <p>{t("errors.notFound.description")}</p>
         </div>
         <div className="product-not-found__actions">
           <Link to={homeHref} className={buttonClassName("primary", "md")}>
-            Go to Home
+            {t("errors.notFound.home")}
           </Link>
           {showBack ? (
             <Button variant="secondary" onClick={() => window.history.back()}>
-              Go back
+              {t("errors.notFound.back")}
             </Button>
           ) : null}
         </div>

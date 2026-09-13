@@ -102,7 +102,10 @@ describe("reputation administration", () => {
     expect(api).toContain('url.pathname.split("/")[4]');
     expect(api).toContain("POINT_REWARD_RULE_VERSION_CREATED");
     expect(api).toContain("ACHIEVEMENT_VERSION_CREATED");
-    expect(route).toContain('loadCapabilityAccess(request, context, "points.manage")');
+    expect(route).toContain("requireAdminPageAccess(request, context)");
+    expect(route).toContain('hasCapability(authorization, "points.manage")');
+    expect(route).toContain('hasCapability(authorization, "achievement.manage")');
+    expect(route).toContain('hasCapability(authorization, "points.adjust")');
     expect(rbac).toContain('| "points.manage"');
   });
 });

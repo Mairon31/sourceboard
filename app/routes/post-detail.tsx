@@ -122,9 +122,9 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
     return result;
   }
   const canonicalPath = `/posts/${encodeURIComponent(result.post.id)}/${encodeURIComponent(result.post.slug ?? "")}`;
-  const canonicalUrl = new URL(canonicalPath, requested).toString();
+  const canonicalUrl = new URL(canonicalPath, "https://srcboard.me").toString();
   if (params.slug !== result.post.slug || requested.pathname !== canonicalPath) {
-    throw redirect(canonicalUrl, { status: 301 });
+    throw redirect(canonicalPath, { status: 301 });
   }
   return { ...result, canonicalUrl };
 }

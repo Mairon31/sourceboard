@@ -5,9 +5,9 @@ import { createModerationService } from "../../worker/moderation/service";
 import { AdminActionMenu } from "../components/admin/AdminActionMenu";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { Button, Modal, OverlayActionRow, Textarea } from "../components/ui";
-import { loadAdminAccess } from "../data/admin-access";
+import { requireAdminPageAccess } from "../data/admin-access";
 import { readCsrfToken } from "../data/csrf";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import type { ServerLoaderArgs } from "../data/server-request";
 
 const POST_ACTIONS = [
   "HIDE",
@@ -32,18 +32,10 @@ const TEMPORARY_ACTIONS = new Set<ModerationAction>([
 ]);
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  return withOptionalServerSession(
-    request,
-    context,
-    (unavailable) => ({ access: { authorized: false, unavailable }, queue: [] }),
-    async (runtime) => {
-      const access = await loadAdminAccess(request, context);
-      return {
-        access,
-        queue: access.authorized ? await createModerationService(runtime.db).listQueue() : [],
-      };
-    },
-  );
+  const { runtime } = await requireAdminPageAccess(request, context);
+  return {
+    queue: await createModerationService(runtime.db).listQueue(),
+  };
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
@@ -76,7 +68,7 @@ function reportDate(report: QueueReport): string {
 }
 
 export default function AdminModerationRoute() {
-  const { access, queue } = useLoaderData<LoaderData>();
+  const { queue } = useLoaderData<LoaderData>();
   const revalidator = useRevalidator();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [targetFilter, setTargetFilter] = useState("ALL");
@@ -99,18 +91,6 @@ export default function AdminModerationRoute() {
         return sortOrder === "OLDEST" ? delta : -delta;
       });
   }, [categoryFilter, queue, sortOrder, statusFilter, targetFilter]);
-
-  if (!access.authorized) {
-    return (
-      <AdminShell>
-        <AdminPageHeader
-          eyebrow="Restricted"
-          title="Admin access required"
-          description="This operational surface is protected by the admin.access capability."
-        />
-      </AdminShell>
-    );
-  }
 
   function beginAction(report: QueueReport, action: ModerationAction) {
     const targetType = String(report.targetType);

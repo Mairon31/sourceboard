@@ -8,7 +8,7 @@ const cssPath = resolve(import.meta.dirname, "../../app/components/product/not-f
 const routePath = resolve(import.meta.dirname, "../../app/routes/not-found.tsx");
 
 describe("unified not-found surface", () => {
-  it("defines one privacy-safe 404 component with Home and optional Back actions", () => {
+  it("defines one privacy-safe localized 404 component with Home and optional Back actions", () => {
     expect(existsSync(componentPath)).toBe(true);
     if (!existsSync(componentPath)) return;
 
@@ -17,8 +17,8 @@ describe("unified not-found surface", () => {
     expect(source).toContain("homeHref?: string");
     expect(source).toContain("showBack?: boolean");
     expect(source).toContain("product-not-found__illustration");
-    expect(source).toContain("Go to Home");
-    expect(source).toContain("Go back");
+    expect(source).toContain('t("errors.notFound.home")');
+    expect(source).toContain('t("errors.notFound.back")');
     for (const leakedState of ["blocked", "private", "deleted"]) {
       expect(source.toLowerCase()).not.toContain(leakedState);
     }

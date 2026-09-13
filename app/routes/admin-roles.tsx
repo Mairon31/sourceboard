@@ -3,25 +3,14 @@ import { createAdminReadService } from "../../worker/admin/read";
 import type { AdminRoleRow } from "../../worker/admin/types";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { Badge, Card } from "../components/ui";
-import { loadAdminAccess } from "../data/admin-access";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { requireAdminPageAccess } from "../data/admin-access";
+import type { ServerLoaderArgs } from "../data/server-request";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  return withOptionalServerSession(
-    request,
-    context,
-    (unavailable) => ({
-      access: { authorized: false, unavailable },
-      roles: [] as AdminRoleRow[],
-    }),
-    async (runtime) => {
-      const access = await loadAdminAccess(request, context);
-      return {
-        access,
-        roles: access.authorized ? await createAdminReadService(runtime.db).roles() : [],
-      };
-    },
-  );
+  const { runtime } = await requireAdminPageAccess(request, context);
+  return {
+    roles: await createAdminReadService(runtime.db).roles(),
+  };
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
@@ -41,19 +30,7 @@ function CapabilityBadges({ capabilities }: { capabilities: string[] }) {
 }
 
 export default function AdminRolesRoute() {
-  const { access, roles } = useLoaderData<LoaderData>();
-
-  if (!access.authorized) {
-    return (
-      <AdminShell>
-        <AdminPageHeader
-          eyebrow="Restricted"
-          title="Roles"
-          description="This operational surface is protected by the admin.access capability."
-        />
-      </AdminShell>
-    );
-  }
+  const { roles } = useLoaderData<LoaderData>();
 
   return (
     <AdminShell>
@@ -74,7 +51,7 @@ export default function AdminRolesRoute() {
                 <span>Assignments</span>
                 <span>Capabilities</span>
               </div>
-              {roles.map((role) => (
+              {roles.map((role: AdminRoleRow) => (
                 <div className="admin-table__row" role="row" key={role.id}>
                   <div className="admin-table__copy">
                     <strong>{role.name}</strong>
@@ -89,7 +66,7 @@ export default function AdminRolesRoute() {
             </div>
 
             <div className="admin-mobile-card-list">
-              {roles.map((role) => (
+              {roles.map((role: AdminRoleRow) => (
                 <Card className="admin-mobile-review-card admin-surface" key={role.id}>
                   <div className="admin-mobile-review-card__row">
                     <div className="admin-table__copy">

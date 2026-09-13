@@ -1,0 +1,215 @@
+.product-profile-effect-layer--petal-fall .product-profile-effect-layer__node {
+  top: -12%;
+  width: 14px;
+  height: 9px;
+  border-radius: 90% 20% 85% 20%;
+  background: linear-gradient(145deg, #ffd8e8, #ff93bfaa);
+  box-shadow: 0 0 7px #ffb1d255;
+  animation: profile-fx-expanded-petal 8.4s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--digital-rain {
+  background-image: linear-gradient(90deg, transparent 0 95%, #61f58b0b 95% 100%);
+  background-size: 16px 16px;
+  mix-blend-mode: screen;
+}
+
+.product-profile-effect-layer--digital-rain .product-profile-effect-layer__node {
+  top: -28%;
+  width: 2px;
+  height: 82px;
+  background: linear-gradient(180deg, transparent, #b5ffc5dd 18%, #53e57d99 52%, transparent);
+  box-shadow: 0 0 7px #5cff8570;
+  animation: profile-fx-expanded-rain 5.8s linear infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--aurora-particles {
+  background:
+    radial-gradient(ellipse at 16% 18%, #57ffd82b, transparent 38%),
+    radial-gradient(ellipse at 82% 28%, #8a6dff2b, transparent 42%);
+  mix-blend-mode: screen;
+}
+
+.product-profile-effect-layer--aurora-particles .product-profile-effect-layer__node {
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse, #94ffe266, #7c78ff22 58%, transparent 72%);
+  filter: blur(3px);
+  animation: profile-fx-expanded-aurora 7.2s ease-in-out infinite alternate;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--star-drift .product-profile-effect-layer__node {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow:
+    15px 9px 0 #d8e5ffb0,
+    -11px 22px 0 #b6caff8f,
+    7px 34px 0 #ffffff99;
+  animation: profile-fx-expanded-stars 9s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--spark-field .product-profile-effect-layer__node {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff3b7;
+  box-shadow:
+    11px -8px 0 #7fe8ff,
+    -13px 13px 0 #d695ff,
+    18px 20px 0 #ffffff99;
+  animation: profile-fx-expanded-spark 4.4s steps(4, end) infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--soft-confetti .product-profile-effect-layer__node {
+  top: -10%;
+  width: 5px;
+  height: 10px;
+  border-radius: 3px;
+  background: #ffd27fb0;
+  box-shadow:
+    12px 25px 0 #7ddfffa0,
+    -10px 48px 0 #f39ac9a0;
+  animation: profile-fx-expanded-confetti 8.2s linear infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--energy-arcs {
+  background: radial-gradient(circle at 50% 50%, #6fdcff12, transparent 54%);
+  mix-blend-mode: screen;
+}
+
+.product-profile-effect-layer--energy-arcs .product-profile-effect-layer__node {
+  width: 72px;
+  height: 28px;
+  border: 2px solid transparent;
+  border-top-color: #72e9ffbb;
+  border-right-color: #9f77ff99;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 5px #68dcff88);
+  animation: profile-fx-expanded-arc 4.2s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--scan-pulse {
+  background-image:
+    linear-gradient(#62ddff0a 1px, transparent 1px),
+    linear-gradient(90deg, #62ddff08 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.product-profile-effect-layer--scan-pulse .product-profile-effect-layer__node {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #86ecffdd 18% 82%, transparent);
+  box-shadow: 0 0 12px #66ddff77;
+  animation: profile-fx-expanded-scan 5.2s ease-in-out infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--glitch-ambient {
+  background: linear-gradient(90deg, #ff477316, transparent 32% 68%, #45dfff16);
+  mix-blend-mode: screen;
+}
+
+.product-profile-effect-layer--glitch-ambient .product-profile-effect-layer__node {
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #ff4c7d55, transparent 30% 65%, #57e5ff66);
+  animation: profile-fx-expanded-glitch 3.8s steps(2, end) infinite;
+  animation-delay: var(--fx-delay);
+}
+
+.product-profile-effect-layer--firefly-field .product-profile-effect-layer__node {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #eaff9ddd;
+  box-shadow: 0 0 9px #dfff79cc, 0 0 16px #95ff7080;
+  animation: profile-fx-expanded-firefly 6.6s ease-in-out infinite alternate;
+  animation-delay: var(--fx-delay);
+}
+
+@keyframes profile-fx-expanded-petal {
+  0% { opacity: 0; transform: translate3d(-8px, -20px, 0) rotate(-18deg); }
+  24%, 78% { opacity: 0.72; }
+  100% { opacity: 0; transform: translate3d(38px, 190px, 0) rotate(170deg); }
+}
+
+@keyframes profile-fx-expanded-rain {
+  0% { opacity: 0; transform: translate3d(0, -48px, 0); }
+  14%, 86% { opacity: 0.7; }
+  100% { opacity: 0; transform: translate3d(0, 280px, 0); }
+}
+
+@keyframes profile-fx-expanded-aurora {
+  from { opacity: 0.18; transform: translate3d(-16px, 8px, 0) scale(0.9); }
+  to { opacity: 0.62; transform: translate3d(22px, -10px, 0) scale(1.12); }
+}
+
+@keyframes profile-fx-expanded-stars {
+  0% { opacity: 0; transform: translate3d(-12px, 12px, 0); }
+  28%, 74% { opacity: 0.82; }
+  100% { opacity: 0; transform: translate3d(34px, -42px, 0); }
+}
+
+@keyframes profile-fx-expanded-spark {
+  0%, 100% { opacity: 0.1; transform: scale(0.68) rotate(0deg); }
+  48% { opacity: 0.95; transform: scale(1.18) rotate(45deg); }
+}
+
+@keyframes profile-fx-expanded-confetti {
+  0% { opacity: 0; transform: translate3d(-8px, -28px, 0) rotate(0deg); }
+  18%, 84% { opacity: 0.62; }
+  100% { opacity: 0; transform: translate3d(28px, 230px, 0) rotate(220deg); }
+}
+
+@keyframes profile-fx-expanded-arc {
+  0%, 100% { opacity: 0.16; transform: rotate(-14deg) scale(0.82); }
+  50% { opacity: 0.82; transform: rotate(14deg) scale(1.08); }
+}
+
+@keyframes profile-fx-expanded-scan {
+  0%, 100% { opacity: 0; transform: translate3d(0, 0, 0); }
+  18%, 78% { opacity: 0.74; }
+  50% { transform: translate3d(0, 180px, 0); }
+}
+
+@keyframes profile-fx-expanded-glitch {
+  0%, 82%, 100% { opacity: 0; transform: translate3d(0, 0, 0) scaleX(1); }
+  86% { opacity: 0.7; transform: translate3d(4px, 0, 0) scaleX(0.96); }
+  92% { opacity: 0.45; transform: translate3d(-4px, 0, 0) scaleX(1.04); }
+}
+
+@keyframes profile-fx-expanded-firefly {
+  0% { opacity: 0.18; transform: translate3d(-8px, 10px, 0) scale(0.72); }
+  45% { opacity: 0.92; transform: translate3d(8px, -8px, 0) scale(1.08); }
+  100% { opacity: 0.3; transform: translate3d(18px, 4px, 0) scale(0.84); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-profile-effect-layer--petal-fall .product-profile-effect-layer__node,
+  .product-profile-effect-layer--digital-rain .product-profile-effect-layer__node,
+  .product-profile-effect-layer--aurora-particles .product-profile-effect-layer__node,
+  .product-profile-effect-layer--star-drift .product-profile-effect-layer__node,
+  .product-profile-effect-layer--spark-field .product-profile-effect-layer__node,
+  .product-profile-effect-layer--soft-confetti .product-profile-effect-layer__node,
+  .product-profile-effect-layer--energy-arcs .product-profile-effect-layer__node,
+  .product-profile-effect-layer--scan-pulse .product-profile-effect-layer__node,
+  .product-profile-effect-layer--glitch-ambient .product-profile-effect-layer__node,
+  .product-profile-effect-layer--firefly-field .product-profile-effect-layer__node {
+    animation: none !important;
+    opacity: 0.42 !important;
+    transform: none !important;
+  }
+}

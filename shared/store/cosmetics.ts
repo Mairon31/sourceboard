@@ -34,6 +34,14 @@ export const AVATAR_FRAME_PRESETS = [
   "cat-ears-black",
   "cat-ears-white",
   "fox-ears",
+  "crystal-crown",
+  "comet-orbit",
+  "pixel-wings",
+  "fox-spirit",
+  "celestial-horns",
+  "floral-ring",
+  "void-lens",
+  "electric-halo",
 ] as const;
 
 export type AvatarFramePreset = (typeof AVATAR_FRAME_PRESETS)[number];
@@ -66,9 +74,74 @@ export const PROFILE_EFFECT_PRESETS = [
   "love-letter",
   "meteor-shower",
   "digital-scan",
+  "petal-fall",
+  "digital-rain",
+  "aurora-particles",
+  "star-drift",
+  "spark-field",
+  "soft-confetti",
+  "energy-arcs",
+  "scan-pulse",
+  "glitch-ambient",
+  "firefly-field",
 ] as const;
 
 export type ProfileEffectPreset = (typeof PROFILE_EFFECT_PRESETS)[number];
+
+export type ProfileEffectMechanism =
+  | "none"
+  | "glow"
+  | "grain"
+  | "particles"
+  | "energy"
+  | "smoke"
+  | "snow"
+  | "rain"
+  | "scan"
+  | "glitch"
+  | "mist"
+  | "confetti"
+  | "arc";
+
+export const PROFILE_EFFECT_MECHANISMS: Record<ProfileEffectPreset, ProfileEffectMechanism> = {
+  none: "none",
+  "soft-glow": "glow",
+  "paper-grain": "grain",
+  "star-dust": "particles",
+  "blue-energy": "energy",
+  "fire-pulse": "energy",
+  "pink-hearts": "particles",
+  "dark-smoke": "smoke",
+  "snow-drift": "snow",
+  "electric-burst": "arc",
+  "holy-glow": "glow",
+  butterfly: "particles",
+  "rgb-glitch": "glitch",
+  "moon-mist": "mist",
+  "leaf-drift": "particles",
+  "falling-stars": "particles",
+  "cherry-blossom": "particles",
+  "neon-rain": "rain",
+  "matrix-rain": "rain",
+  "pixel-spark": "particles",
+  "cosmic-rift": "energy",
+  "ocean-bubbles": "particles",
+  "ghost-flames": "energy",
+  confetti: "confetti",
+  "love-letter": "particles",
+  "meteor-shower": "particles",
+  "digital-scan": "scan",
+  "petal-fall": "particles",
+  "digital-rain": "rain",
+  "aurora-particles": "particles",
+  "star-drift": "particles",
+  "spark-field": "particles",
+  "soft-confetti": "confetti",
+  "energy-arcs": "arc",
+  "scan-pulse": "scan",
+  "glitch-ambient": "glitch",
+  "firefly-field": "particles",
+};
 
 export const PROFILE_THEME_PRESETS = [
   "nebula",
@@ -83,6 +156,16 @@ export const PROFILE_THEME_PRESETS = [
   "terminal-grid",
   "sakura-night",
   "golden-hour",
+  "aurora-flow",
+  "cyber-grid",
+  "plasma-wave",
+  "starlit",
+  "neon-glass",
+  "sunset-drift",
+  "candy-motion",
+  "mono-editorial",
+  "holo-scan",
+  "cosmic-dust",
 ] as const;
 
 export type ProfileThemePreset = (typeof PROFILE_THEME_PRESETS)[number];
@@ -108,6 +191,15 @@ export const NAME_EFFECT_PRESETS = [
   "candy",
   "terminal",
   "chrome",
+  "sequential-bounce",
+  "bounce-neon",
+  "wave-gradient",
+  "sparkle-sweep",
+  "soft-flicker",
+  "metallic-shine",
+  "plasma",
+  "chroma",
+  "light-trail",
 ] as const;
 
 export type NameEffectPreset = (typeof NAME_EFFECT_PRESETS)[number];
@@ -131,6 +223,12 @@ export const NAME_FONT_FAMILIES = [
   "Arial Black",
   "system-ui",
   "monospace",
+  "Bungee",
+  "Orbitron",
+  "Press Start 2P",
+  "Bebas Neue",
+  "Caveat",
+  "Space Grotesk",
 ] as const;
 
 export type NameFontFamily = (typeof NAME_FONT_FAMILIES)[number];

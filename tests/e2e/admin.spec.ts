@@ -1,28 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { installAdminStoreFixture, waitForUiReady } from "./test-helpers";
 
-test("admin dashboard uses the moderation-focused shell", async ({ page }) => {
-  await page.goto("/admin");
-  await waitForUiReady(page);
-
-  await expect(page.getByRole("heading", { name: "Admin access required" })).toBeVisible();
-});
-
-test("moderation queue presents NSFW and source-review context", async ({ page }) => {
-  await page.goto("/admin/moderation");
-  await waitForUiReady(page);
-
-  await expect(page.getByRole("heading", { name: "Admin access required" })).toBeVisible();
-});
-
-test("anonymous identity reveal is reason-gated", async ({ page }) => {
-  await page.goto("/admin/anonymous/post-anonymous");
-  await waitForUiReady(page);
-
-  await expect(page.getByRole("heading", { name: "Admin access required" })).toBeVisible();
-});
-
-test("authorized Admin Store exposes published cosmetics and editable metadata", async ({
+test("authorized Admin Store edits cosmetics through Creator Pro and rejects unsafe duration", async ({
   page,
 }) => {
   await installAdminStoreFixture(page);
@@ -42,8 +21,49 @@ test("authorized Admin Store exposes published cosmetics and editable metadata",
   await stellar.getByRole("button", { name: "Edit" }).click();
   const editor = page.locator(".admin-store-editor");
   await expect(editor.getByRole("heading", { name: "Stellar Magic", exact: true })).toBeVisible();
-  await expect(editor.locator('textarea[name="config"]')).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeVisible();
+  await expect(editor.getByLabel("Canonical cosmetic preview")).toBeVisible();
+  const creatorPro = editor.getByRole("region", { name: "Creator Pro cosmetic editor" });
+  await expect(creatorPro).toBeVisible();
+  await expect(editor.locator('textarea[name="config"]')).toHaveCount(0);
+
+  await creatorPro.getByRole("button", { name: "Clone preset" }).click();
+  await creatorPro.getByLabel("Primary color").fill("#2255aa");
+  await creatorPro.getByLabel("Duration (ms)").fill("12000");
+  await expect(creatorPro.getByText("Valid schema v1")).toBeVisible();
+
+  const saveResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/admin/store/") &&
+      response.request().method() === "PATCH",
+  );
+  await editor.getByRole("button", { name: "Save changes" }).click();
+  const saveResponse = await saveResponsePromise;
+  expect(saveResponse.status()).toBe(200);
+
+  const validBody = saveResponse.request().postDataJSON() as {
+    name: string;
+    description: string;
+    pricePoints: number;
+    sortOrder: number;
+    config: Record<string, unknown> & {
+      animation?: Record<string, unknown>;
+    };
+  };
+  const saveUrl = new URL(saveResponse.url());
+  const invalidResponse = await page.request.patch(saveUrl.pathname, {
+    headers: {
+      "x-csrf-token": "sourceboard-e2e-admin-csrf-token",
+      origin: saveUrl.origin,
+    },
+    data: {
+      ...validBody,
+      config: {
+        ...validBody.config,
+        animation: { ...validBody.config.animation, durationMs: 61_000 },
+      },
+    },
+  });
+  expect(invalidResponse.status()).toBe(400);
 });
 
 test("authorized Admin Store opens draft packs and administers individual emotes", async ({

@@ -62,7 +62,7 @@ test("legacy profile effect renders across the card and never inside the avatar"
   await expect(effect).toHaveCount(1);
   await expect(effect.locator(".product-profile-effect-layer__node")).toHaveCount(6);
   await expect(
-    page.locator('.cosmetic-identity__avatar-shell [data-profile-effect="rgb-glitch"]'),
+    page.locator('.product-avatar-stage [data-profile-effect="rgb-glitch"]'),
   ).toHaveCount(0);
   expect(await effect.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
 
@@ -76,7 +76,7 @@ test("legacy profile effect renders across the card and never inside the avatar"
 test("structural fox ears stay on the avatar shell", async ({ page }) => {
   await page.goto("/u/e2e-cosmetics");
 
-  const shell = page.locator('.cosmetic-identity__avatar-shell[data-avatar-frame="fox-ears"]');
+  const shell = page.locator('.product-avatar-stage[data-avatar-frame="fox-ears"]');
   await expect(shell).toHaveCount(1);
   await expect(shell).toHaveClass(/product-avatar-frame--decorative/);
   await expect(shell.locator(".sb-avatar--frame-fox-ears")).toHaveCount(1);
@@ -92,7 +92,7 @@ test("orbit animation decorates the shell without transforming the avatar image"
 }) => {
   await page.goto("/u/e2e-cosmetics-orbit");
 
-  const shell = page.locator('.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]');
+  const shell = page.locator('.product-avatar-stage[data-avatar-frame="orbit-planets"]');
   const avatar = shell.locator(".sb-avatar--frame-orbit-planets");
   await expect(shell).toHaveCount(1);
   await expect(avatar).toHaveCount(1);
@@ -109,7 +109,7 @@ test("structural avatar frames do not create mobile horizontal overflow", async 
   await page.goto("/u/e2e-cosmetics-orbit");
 
   await expect(
-    page.locator('.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]'),
+    page.locator('.product-avatar-stage[data-avatar-frame="orbit-planets"]'),
   ).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -177,7 +177,7 @@ test("reduced motion keeps representative cosmetics static and visible", async (
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/u/e2e-cosmetics-orbit");
 
-  const orbit = page.locator('.cosmetic-identity__avatar-shell[data-avatar-frame="orbit-planets"]');
+  const orbit = page.locator('.product-avatar-stage[data-avatar-frame="orbit-planets"]');
   await expect(orbit).toBeVisible();
   const orbitStyle = await orbit.evaluate((element) => {
     const style = getComputedStyle(element, "::before");

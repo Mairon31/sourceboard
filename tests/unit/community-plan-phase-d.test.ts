@@ -140,12 +140,12 @@ describe("community plan phase D", () => {
   it("shows Community after Stickers and attributes public cards by username", () => {
     const store = read("../../app/routes/store.tsx");
     const card = read("../../app/components/product/StoreItemCard.tsx");
-    const stickers = store.indexOf('label: "Stickers"');
-    const community = store.indexOf('label: "Community"');
+    const stickers = store.indexOf('label: "store.filter.stickers"');
+    const community = store.indexOf('label: "store.filter.community"');
     expect(stickers).toBeGreaterThan(-1);
     expect(community).toBeGreaterThan(stickers);
     expect(store).not.toContain("<CommunityCosmeticStudio />");
-    expect(card).toContain("Created by @");
+    expect(card).toContain('t("store.createdBy"');
     expect(card).not.toContain("creatorUserId}");
   });
 });

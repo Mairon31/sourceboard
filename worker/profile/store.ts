@@ -3,6 +3,10 @@ import {
   type EquippedCosmetics as CoreEquippedCosmetics,
   type ProfileStore as CoreProfileStore,
 } from "./store-core";
+import {
+  parseCreatorProStoreConfig,
+  type CreatorProIdentityVisuals,
+} from "../../shared/store/creator-pro-config";
 import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
 import { extractCosmeticVisualDefinition } from "../../shared/store/custom-cosmetics";
 import type {
@@ -24,6 +28,7 @@ export {
 
 export interface EquippedCosmetics extends CoreEquippedCosmetics {
   visuals?: CosmeticIdentityVisuals;
+  creatorPro?: CreatorProIdentityVisuals;
   communityStyles?: Array<{ id: string; css: string }>;
 }
 
@@ -169,6 +174,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       .bind(userId)
       .all<{ type: string; configJson: string }>();
     const visuals: CosmeticIdentityVisuals = {};
+    const creatorPro: CreatorProIdentityVisuals = {};
     const communityStyles: Array<{ id: string; css: string }> = [];
     for (const row of result.results) {
       let config: unknown;
@@ -187,6 +193,22 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       ) {
         communityStyles.push({ id: record.communityCosmeticId, css: record.communityCss });
       }
+
+      const structured = (() => {
+        try {
+          return parseCreatorProStoreConfig(config);
+        } catch {
+          return null;
+        }
+      })();
+      if (structured) {
+        if (row.type === "AVATAR_FRAME") creatorPro.avatarFrame = structured;
+        if (row.type === "PROFILE_BANNER") creatorPro.profileBanner = structured;
+        if (row.type === "PROFILE_EFFECT") creatorPro.profileEffect = structured;
+        if (row.type === "NAME_FONT") creatorPro.nameFont = structured;
+        if (row.type === "NAME_EFFECT") creatorPro.nameEffect = structured;
+      }
+
       const visual = extractCosmeticVisualDefinition(config);
       if (!visual) continue;
       if (row.type === "AVATAR_FRAME") visuals.avatarFrame = visual;
@@ -196,6 +218,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       if (row.type === "NAME_EFFECT") visuals.nameEffect = visual;
     }
     if (Object.keys(visuals).length) cosmetics.visuals = visuals;
+    if (Object.keys(creatorPro).length) cosmetics.creatorPro = creatorPro;
     if (communityStyles.length) cosmetics.communityStyles = communityStyles;
     return cosmetics;
   }

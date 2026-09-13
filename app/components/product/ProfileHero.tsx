@@ -179,6 +179,7 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
       profileEffect={profile.cosmetics?.profileEffect}
       bannerUrl={profile.bannerUrl}
       visuals={profile.cosmetics?.visuals}
+      creatorPro={profile.cosmetics?.creatorPro}
       communityStyles={profile.cosmetics?.communityStyles}
     >
       <div className="product-profile-content profile-header">
@@ -194,6 +195,7 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
               nameFont={profile.cosmetics?.nameFont}
               nameEffect={profile.cosmetics?.nameEffect}
               visuals={profile.cosmetics?.visuals}
+              creatorPro={profile.cosmetics?.creatorPro}
               mode="profile"
               nameAs="h1"
             />

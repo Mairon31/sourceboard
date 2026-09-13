@@ -5,6 +5,7 @@ import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { parseCreatorProStoreConfig } from "../../shared/store/creator-pro-config";
 import { resolvePublicFailure } from "../http/public-failure";
 import { createStoreAdminService, type StoreAdminAction } from "./admin";
 import {
@@ -75,6 +76,17 @@ function parseBody(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new StoreError(400, "INVALID_REQUEST", "The request body is invalid.");
   return value as Record<string, unknown>;
+}
+function assertCreatorProConfig(value: unknown): void {
+  try {
+    parseCreatorProStoreConfig(value);
+  } catch (error) {
+    throw new StoreError(
+      400,
+      "INVALID_CREATOR_PRO_CONFIG",
+      error instanceof Error ? error.message : "The Creator Pro configuration is invalid.",
+    );
+  }
 }
 function isType(value: unknown): value is StoreType {
   return typeof value === "string" && (STORE_TYPES as readonly string[]).includes(value);
@@ -271,6 +283,7 @@ export async function handleStoreRequest(
       assertCsrfToken(request);
       const actorUserId = await requireAdmin(request, requestId, env);
       const body = parseBody(await request.json());
+      if (body.config !== undefined) assertCreatorProConfig(body.config);
       const item = await createStoreAdminService(database).updateItem(
         decodeURIComponent(itemMatch[1] ?? ""),
         body,
@@ -300,7 +313,9 @@ export async function handleStoreRequest(
         );
       const id = crypto.randomUUID();
       const now = Date.now();
-      const configJson = validateStoreConfig(body.type, body.config ?? {});
+      const config = body.config ?? {};
+      assertCreatorProConfig(config);
+      const configJson = validateStoreConfig(body.type, config);
       const enabled = body.isActive !== false;
       const lifecycleState = enabled ? "PUBLISHED" : "DRAFT";
       await database

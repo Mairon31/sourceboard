@@ -1,13 +1,14 @@
-import { useLoaderData, useParams } from "react-router";
 import { useState } from "react";
+import { useLoaderData, useParams } from "react-router";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
-import { Badge, Button, Card, Textarea } from "../components/ui";
 import { PresentationNotice } from "../components/product/ProductShell";
-import { loadAdminAccess } from "../data/admin-access";
+import { Badge, Button, Card, Textarea } from "../components/ui";
+import { requireAdminPageAccess } from "../data/admin-access";
 import type { ServerLoaderArgs } from "../data/server-request";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  return loadAdminAccess(request, context);
+  await requireAdminPageAccess(request, context);
+  return { authorized: true as const };
 }
 
 function readCsrfToken(): string {
@@ -20,24 +21,12 @@ function readCsrfToken(): string {
 }
 
 export default function AdminAnonymousRoute() {
-  const access = useLoaderData<typeof loader>();
+  useLoaderData<typeof loader>();
   const { postId = "" } = useParams();
   const [reason, setReason] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "revealed" | "unavailable">("idle");
   const [username, setUsername] = useState<string | null>(null);
   const canReveal = reason.trim().length >= 10;
-
-  if (!access.authorized) {
-    return (
-      <AdminShell>
-        <AdminPageHeader
-          eyebrow="Restricted"
-          title="Admin access required"
-          description="This operational surface is protected by the admin.access capability."
-        />
-      </AdminShell>
-    );
-  }
 
   async function revealIdentity() {
     setStatus("loading");

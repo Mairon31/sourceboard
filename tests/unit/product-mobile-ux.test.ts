@@ -58,11 +58,11 @@ describe("mobile product UX regressions", () => {
     );
 
     expect(mobileNavSource).toContain("profileHref");
-    expect(mobileNavSource).toContain('aria-label="Profile"');
+    expect(mobileNavSource).toContain('aria-label={t("nav.profile")}');
     expect(mobileNavSource).not.toContain("Alerts");
   });
 
-  it("renders compact icon-only mobile navigation with accessible labels", () => {
+  it("renders compact icon-only mobile navigation with localized accessible labels", () => {
     const mobileNavSource = productNavSource.slice(
       productNavSource.indexOf("export function MobileProductNav"),
       productNavSource.indexOf("export function ProductContextRail"),
@@ -72,8 +72,8 @@ describe("mobile product UX regressions", () => {
       expect(iconSource).toContain(`export function ${icon}`);
       expect(mobileNavSource).toContain(`<${icon}`);
     }
-    for (const label of ["Home", "Friends", "Create post", "Profile", "Store"]) {
-      expect(mobileNavSource).toContain(`aria-label="${label}"`);
+    for (const key of ["nav.home", "nav.friends", "nav.create", "nav.profile", "nav.store"]) {
+      expect(mobileNavSource).toContain(`aria-label={t("${key}")}`);
     }
     expect(rootSource).toContain('import "./components/product/product-interactions.css"');
     expect(productInteractionsCss).toContain(".product-mobile-nav");

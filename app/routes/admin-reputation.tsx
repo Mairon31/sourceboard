@@ -6,64 +6,33 @@ import {
   lookupLedger,
   type ReputationUserLedger,
 } from "../../worker/reputation/admin";
+import { hasCapability } from "../../worker/auth/rbac";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { Badge, Button, Card, Input, Textarea } from "../components/ui";
-import { loadAdminAccess } from "../data/admin-access";
-import { loadCapabilityAccess } from "../data/capability-access";
+import { requireAdminPageAccess } from "../data/admin-access";
 import { readCsrfToken } from "../data/csrf";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import type { ServerLoaderArgs } from "../data/server-request";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
+  const { runtime, authorization } = await requireAdminPageAccess(request, context);
   const userQuery = new URL(request.url).searchParams.get("user")?.trim() ?? "";
-  return withOptionalServerSession(
-    request,
-    context,
-    (unavailable) => ({
-      access: { authorized: false, unavailable },
-      canManageRules: false,
-      canManageAchievements: false,
-      canAdjustPoints: false,
-      rules: [],
-      achievements: [],
-      ledger: null as ReputationUserLedger | null,
-      userQuery,
-    }),
-    async (runtime) => {
-      const access = await loadAdminAccess(request, context);
-      if (!access.authorized) {
-        return {
-          access,
-          canManageRules: false,
-          canManageAchievements: false,
-          canAdjustPoints: false,
-          rules: [],
-          achievements: [],
-          ledger: null as ReputationUserLedger | null,
-          userQuery,
-        };
-      }
-      const [ruleAccess, achievementAccess, adjustmentAccess] = await Promise.all([
-        loadCapabilityAccess(request, context, "points.manage"),
-        loadCapabilityAccess(request, context, "achievement.manage"),
-        loadCapabilityAccess(request, context, "points.adjust"),
-      ]);
-      const [rules, achievements, ledger] = await Promise.all([
-        listRewardRules(runtime.db),
-        listAchievements(runtime.db),
-        userQuery ? lookupLedger(runtime.db, userQuery) : Promise.resolve(null),
-      ]);
-      return {
-        access,
-        canManageRules: ruleAccess.authorized,
-        canManageAchievements: achievementAccess.authorized,
-        canAdjustPoints: adjustmentAccess.authorized,
-        rules,
-        achievements,
-        ledger,
-        userQuery,
-      };
-    },
-  );
+  const canManageRules = hasCapability(authorization, "points.manage");
+  const canManageAchievements = hasCapability(authorization, "achievement.manage");
+  const canAdjustPoints = hasCapability(authorization, "points.adjust");
+  const [rules, achievements, ledger] = await Promise.all([
+    listRewardRules(runtime.db),
+    listAchievements(runtime.db),
+    userQuery ? lookupLedger(runtime.db, userQuery) : Promise.resolve(null),
+  ]);
+  return {
+    canManageRules,
+    canManageAchievements,
+    canAdjustPoints,
+    rules,
+    achievements,
+    ledger: ledger as ReputationUserLedger | null,
+    userQuery,
+  };
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
@@ -89,7 +58,6 @@ function formatDate(value: number): string {
 
 export default function AdminReputationRoute() {
   const {
-    access,
     canManageRules,
     canManageAchievements,
     canAdjustPoints,
@@ -102,18 +70,6 @@ export default function AdminReputationRoute() {
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  if (!access.authorized) {
-    return (
-      <AdminShell>
-        <AdminPageHeader
-          eyebrow="Restricted"
-          title="Reputation"
-          description="This operational surface is protected by admin.access."
-        />
-      </AdminShell>
-    );
-  }
 
   async function submitRule(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

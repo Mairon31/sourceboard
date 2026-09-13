@@ -14,8 +14,8 @@ describe("community plan phase C profile cosmetics", () => {
     expect(cosmetics).toContain("PROFILE_THEME_PRESETS");
     expect(cosmetics).toContain("ProfileThemePreset");
     expect(profileTypes).toContain("profileTheme");
-    expect(store).toContain('label: "Profile Themes"');
-    expect(store).not.toContain('label: "Banner"');
+    expect(store).toContain('label: "store.filter.profileThemes"');
+    expect(store).not.toContain('label: "store.filter.banner"');
   });
 
   it("renders theme and effect through one ProfileIdentityCard for own and public profile", () => {

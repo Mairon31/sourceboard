@@ -1,6 +1,8 @@
 import type { PublicCosmeticsDto } from "../profile/types";
 import type { NotificationRecord } from "../profile/types";
 import { createD1ProfileStore } from "../profile/store";
+import { groupNotificationCards, type NotificationCardView } from "./grouping";
+import { notificationPreviewText } from "./preview-text";
 
 export interface NotificationActorView {
   id: string;
@@ -16,10 +18,6 @@ export interface PresentedNotification extends NotificationRecord {
   href: string;
   ctaLabel?: string;
   actor?: NotificationActorView;
-  groupActors?: NotificationActorView[];
-  groupedIds?: string[];
-  groupCount?: number;
-  unreadCount?: number;
 }
 
 interface PostContext {
@@ -254,111 +252,10 @@ function unique(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
-function groupTarget(notification: PresentedNotification): string | null {
-  const payload = parsePayload(notification.payloadJson);
-  if (notification.type === "comment.created" || notification.type === "comment.reply") {
-    return typeof payload.postId === "string" ? payload.postId : null;
-  }
-  if (notification.type === "post.liked" || notification.type === "comment.liked") {
-    return notification.entityId;
-  }
-  return null;
-}
-
-function groupedCopy(
-  notification: PresentedNotification,
-  count: number,
-): { title: string; body: string } {
-  if (notification.type === "comment.created") {
-    return {
-      title: `${count} new comments on your post`,
-      body: "Open the discussion to review the latest activity.",
-    };
-  }
-  if (notification.type === "comment.reply") {
-    return {
-      title: `${count} new replies to your comment`,
-      body: "Open the discussion to review the latest replies.",
-    };
-  }
-  if (notification.type === "post.liked") {
-    return {
-      title: `${count} people liked your post`,
-      body: "Your post is getting new reactions.",
-    };
-  }
-  return {
-    title: `${count} people liked your comment`,
-    body: "Your comment is getting new reactions.",
-  };
-}
-
-function appendGroupActor(
-  actors: NotificationActorView[] | undefined,
-  actor: NotificationActorView | undefined,
-): NotificationActorView[] | undefined {
-  const next = actors ? [...actors] : [];
-  if (actor && !next.some((candidate) => candidate.id === actor.id) && next.length < 3) {
-    next.push(actor);
-  }
-  return next.length ? next : undefined;
-}
-
-export function groupPresentedNotifications(
-  notifications: PresentedNotification[],
-): PresentedNotification[] {
-  const grouped: PresentedNotification[] = [];
-  const groups = new Map<string, PresentedNotification>();
-  const groupable = new Set(["comment.created", "comment.reply", "post.liked", "comment.liked"]);
-  for (const notification of notifications) {
-    if (!groupable.has(notification.type)) {
-      grouped.push(notification);
-      continue;
-    }
-    const target = groupTarget(notification);
-    if (!target) {
-      grouped.push(notification);
-      continue;
-    }
-    const key = `${notification.type}:${target}`;
-    const previous = groups.get(key);
-    const groupingWindowMs = notification.type.endsWith(".liked")
-      ? 24 * 60 * 60 * 1000
-      : 15 * 60 * 1000;
-    if (!previous || previous.createdAt - notification.createdAt > groupingWindowMs) {
-      const next = {
-        ...notification,
-        ...(notification.actor ? { groupActors: [notification.actor] } : {}),
-        groupedIds: [notification.id],
-        groupCount: 1,
-        unreadCount: notification.readAt ? 0 : 1,
-      };
-      groups.set(key, next);
-      grouped.push(next);
-      continue;
-    }
-    const ids = [...(previous.groupedIds ?? [previous.id]), notification.id];
-    const count = ids.length;
-    const copy = groupedCopy(notification, count);
-    previous.groupedIds = ids;
-    previous.groupCount = count;
-    previous.groupActors = appendGroupActor(previous.groupActors, notification.actor);
-    previous.unreadCount =
-      (previous.unreadCount ?? (previous.readAt ? 0 : 1)) + (notification.readAt ? 0 : 1);
-    previous.readAt = previous.readAt && notification.readAt ? previous.readAt : null;
-    previous.title = copy.title;
-    previous.body = copy.body;
-    previous.ctaLabel = notification.type.endsWith(".liked")
-      ? notification.ctaLabel
-      : "View discussion";
-  }
-  return grouped;
-}
-
 export async function presentNotifications(
   db: D1Database,
   records: NotificationRecord[],
-): Promise<PresentedNotification[]> {
+): Promise<NotificationCardView[]> {
   if (!records.length) return [];
   const payloads = records.map((record) => parsePayload(record.payloadJson));
   const userIds = unique([
@@ -466,5 +363,39 @@ export async function presentNotifications(
     storeItems: new Map(storeRows.results.map((row) => [row.id, row.name])),
     achievements: new Map(achievementRows.results.map((row) => [row.id, row.name])),
   };
-  return groupPresentedNotifications(records.map((record) => presentNotification(record, context)));
+
+  return groupNotificationCards(
+    records.map((record) => {
+      const notification = presentNotification(record, context);
+      const preview = notificationPreviewText({ bodyPlaintext: notification.body });
+      return {
+        id: notification.id,
+        type: notification.type,
+        entityType: notification.entityType,
+        entityId: notification.entityId,
+        href: notification.href,
+        title: notification.title,
+        ...(preview ? { preview } : {}),
+        ...(notification.ctaLabel ? { ctaLabel: notification.ctaLabel } : {}),
+        createdAt: notification.createdAt,
+        unread: !notification.readAt,
+        ...(notification.actor
+          ? {
+              actor: {
+                userId: notification.actor.id,
+                id: notification.actor.id,
+                username: notification.actor.username,
+                displayName: notification.actor.displayName,
+                ...(notification.actor.avatarUrl
+                  ? { avatarUrl: notification.actor.avatarUrl }
+                  : {}),
+                ...(notification.actor.cosmetics
+                  ? { cosmetics: notification.actor.cosmetics }
+                  : {}),
+              },
+            }
+          : {}),
+      };
+    }),
+  );
 }

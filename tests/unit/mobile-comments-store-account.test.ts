@@ -33,7 +33,7 @@ describe("mobile comments, store and account regressions", () => {
 
   it("offers an explicit unequip action for equipped cosmetics", () => {
     expect(storeRoute).toContain("async function unequip");
-    expect(storeCard).toContain('return "Unequip"');
+    expect(storeCard).toContain('return "store.action.unequip"');
     expect(storeRoute).toContain('method: "DELETE"');
     expect(storeApi).toContain('request.method === "DELETE"');
     expect(storeApi).toContain("service.unequip");

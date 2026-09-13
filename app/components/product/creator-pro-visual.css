@@ -1,0 +1,40 @@
+.product-profile-effect-layer[data-creator-pro="true"] .product-profile-effect-layer__node {
+  background: var(--creator-gradient, var(--creator-primary));
+  box-shadow: 0 0 var(--creator-glow-blur, 0) color-mix(in srgb, var(--creator-primary) calc(var(--creator-glow-opacity, 0) * 100%), transparent);
+  opacity: var(--creator-intensity, 1);
+  animation-duration: var(--creator-duration, inherit) !important;
+  animation-delay: var(--creator-delay, 0ms) !important;
+}
+
+.product-avatar-stage[data-creator-pro="true"] .product-avatar-stage__part[data-layer="inner-ring"],
+.product-avatar-stage[data-creator-pro="true"] .product-avatar-stage__part[data-layer="outer-ring"],
+.product-avatar-stage[data-creator-pro="true"] .product-avatar-stage__part[data-layer="orbit"] {
+  border-color: var(--creator-primary) var(--creator-secondary) var(--creator-primary) var(--creator-secondary);
+  box-shadow: 0 0 var(--creator-glow-blur, 0) color-mix(in srgb, var(--creator-primary) calc(var(--creator-glow-opacity, 0) * 100%), transparent);
+}
+
+.product-avatar-stage[data-creator-pro="true"] .product-avatar-stage__part[data-layer="top-ornament"],
+.product-avatar-stage[data-creator-pro="true"] .product-avatar-stage__part[data-layer="side-ornament"] {
+  background: var(--creator-gradient, var(--creator-primary));
+  border-color: var(--creator-primary);
+  filter: drop-shadow(0 0 var(--creator-glow-blur, 0) color-mix(in srgb, var(--creator-primary) calc(var(--creator-glow-opacity, 0) * 100%), transparent));
+}
+
+.product-avatar-stage[data-creator-pro="true"] .product-avatar-stage__part[data-layer="foreground"] {
+  background:
+    radial-gradient(circle at 14% 18%, var(--creator-primary) 0 3px, transparent 4px),
+    radial-gradient(circle at 86% 30%, var(--creator-secondary) 0 2px, transparent 3px),
+    radial-gradient(circle at 26% 82%, var(--creator-primary) 0 2px, transparent 3px);
+}
+
+.product-avatar-stage[data-creator-pro="true"] .product-avatar-stage__part {
+  animation-duration: var(--creator-duration, var(--avatar-part-duration)) !important;
+  animation-delay: var(--creator-delay, 0ms) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-profile-effect-layer[data-creator-pro="true"] .product-profile-effect-layer__node,
+  .product-avatar-stage[data-creator-pro="true"] .product-avatar-stage__part {
+    animation: none !important;
+  }
+}

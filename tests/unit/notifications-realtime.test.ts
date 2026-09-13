@@ -1,31 +1,35 @@
 import { describe, expect, it } from "vitest";
 import {
+  mergeNotificationRowsById,
   notificationWebSocketUrl,
   readNotificationSnapshot,
   reconnectDelay,
 } from "../../app/data/notifications-realtime";
 
 describe("notification realtime client contract", () => {
-  it("uses the newest D1 notification as the reconnect cursor", () => {
+  it("uses the server reconnect cursor and parses grouped card DTOs", () => {
     expect(
       readNotificationSnapshot({
         unreadCount: 3.8,
+        lastSeen: "notification-new",
         notifications: [
           {
-            id: "notification-new",
-            type: "source.verified",
-            title: "A source was verified",
-            body: "The accepted source was verified.",
+            key: "post.liked:POST:post-1",
+            notificationIds: ["notification-new", "notification-old"],
+            type: "post.liked",
+            grouped: true,
+            actorCount: 2,
+            actors: [
+              { userId: "actor-1", id: "actor-1", username: "one", displayName: "One" },
+              { userId: "actor-2", id: "actor-2", username: "two", displayName: "Two" },
+            ],
+            entityType: "POST",
+            entityId: "post-1",
+            title: "One and 1 other liked your post",
+            preview: "Your post is getting new reactions.",
             href: "/posts/post-1",
             createdAt: 200,
-          },
-          {
-            id: "notification-old",
-            type: "comment.created",
-            title: "Someone commented on your post",
-            body: "New comment.",
-            href: "/posts/post-1#comment-comment-1",
-            createdAt: 100,
+            unread: true,
           },
         ],
       }),
@@ -34,31 +38,38 @@ describe("notification realtime client contract", () => {
       lastSeen: "notification-new",
       notifications: [
         {
-          id: "notification-new",
-          type: "source.verified",
-          entityType: null,
-          entityId: null,
-          payloadJson: null,
-          title: "A source was verified",
-          body: "The accepted source was verified.",
+          key: "post.liked:POST:post-1",
+          notificationIds: ["notification-new", "notification-old"],
+          type: "post.liked",
+          grouped: true,
+          actorCount: 2,
+          actors: [
+            { userId: "actor-1", id: "actor-1", username: "one", displayName: "One" },
+            { userId: "actor-2", id: "actor-2", username: "two", displayName: "Two" },
+          ],
+          entityType: "POST",
+          entityId: "post-1",
+          title: "One and 1 other liked your post",
+          preview: "Your post is getting new reactions.",
           href: "/posts/post-1",
-          readAt: null,
           createdAt: 200,
-        },
-        {
-          id: "notification-old",
-          type: "comment.created",
-          entityType: null,
-          entityId: null,
-          payloadJson: null,
-          title: "Someone commented on your post",
-          body: "New comment.",
-          href: "/posts/post-1#comment-comment-1",
-          readAt: null,
-          createdAt: 100,
+          unread: true,
         },
       ],
     });
+  });
+
+  it("deduplicates raw notification rows by notification identity before grouping", () => {
+    expect(
+      mergeNotificationRowsById(
+        [{ id: "n-1", value: "initial" }, { id: "n-2", value: "initial" }],
+        [{ id: "n-1", value: "reconciled" }, { id: "n-3", value: "new" }],
+      ),
+    ).toEqual([
+      { id: "n-1", value: "reconciled" },
+      { id: "n-2", value: "initial" },
+      { id: "n-3", value: "new" },
+    ]);
   });
 
   it("builds a same-origin websocket URL without leaking a session token", () => {

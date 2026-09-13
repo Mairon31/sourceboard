@@ -20,9 +20,11 @@ describe("category routing", () => {
     expect(parsePostCategorySlug("not-real")).toBeNull();
   });
 
-  it("registers the category resolver and canonical category feed routes", () => {
-    expect(routesSource).toContain('route("category", "routes/category-index.tsx")');
-    expect(routesSource).toContain('route("category/:categorySlug", "routes/category.tsx")');
+  it("registers localized category feeds and keeps unprefixed routes as locale aliases", () => {
+    expect(routesSource).toContain('route("category", "routes/official-alias.tsx"');
+    expect(routesSource).toContain('route("category/:categorySlug", "routes/official-alias.tsx"');
+    expect(routesSource).toContain('route(`${locale}/category`, "routes/category-index.tsx"');
+    expect(routesSource).toContain('route(`${locale}/category/:categorySlug`, "routes/category.tsx"');
   });
 
   it("canonicalizes recognized category queries without mapping unknown values to Other", () => {

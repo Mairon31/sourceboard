@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLoaderData, useRevalidator } from "react-router";
 import { createAdminReadService } from "../../worker/admin/read";
 import type { AdminRoleRow, AdminUserRow } from "../../worker/admin/types";
+import { hasCapability } from "../../worker/auth/rbac";
 import { AdminActionMenu } from "../components/admin/AdminActionMenu";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import {
@@ -10,10 +11,9 @@ import {
 } from "../components/admin/AdminUserControlDialog";
 import { CosmeticIdentity } from "../components/product/CosmeticIdentity";
 import { Badge, Button, Card, Input, Modal, OverlayActionRow, Textarea } from "../components/ui";
-import { loadAdminAccess } from "../data/admin-access";
-import { loadCapabilityAccess } from "../data/capability-access";
+import { requireAdminPageAccess } from "../data/admin-access";
 import { readCsrfToken } from "../data/csrf";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import type { ServerLoaderArgs } from "../data/server-request";
 
 const ROLE_SLUGS = ["owner", "admin", "moderator", "source_verifier", "user"] as const;
 type RoleSlug = (typeof ROLE_SLUGS)[number];
@@ -24,64 +24,26 @@ function isRoleSlug(value: string): value is RoleSlug {
 }
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  const requestUrl = new URL(request.url);
-  const query = requestUrl.searchParams.get("q")?.trim() ?? "";
-  return withOptionalServerSession(
-    request,
-    context,
-    (unavailable) => ({
-      access: { authorized: false, unavailable },
-      canAssignRoles: false,
-      controls: {
-        suspend: false,
-        ban: false,
-        delete: false,
-      } satisfies AdminUserControlCapabilities,
-      query,
-      users: [] as AdminUserRow[],
-      roles: [] as AdminRoleRow[],
-    }),
-    async (runtime) => {
-      const access = await loadAdminAccess(request, context);
-      if (!access.authorized) {
-        return {
-          access,
-          canAssignRoles: false,
-          controls: {
-            suspend: false,
-            ban: false,
-            delete: false,
-          } satisfies AdminUserControlCapabilities,
-          query,
-          users: [] as AdminUserRow[],
-          roles: [] as AdminRoleRow[],
-        };
-      }
-      const [roleAccess, suspendAccess, banAccess, deleteAccess] = await Promise.all([
-        loadCapabilityAccess(request, context, "user.assign_roles"),
-        loadCapabilityAccess(request, context, "user.suspend"),
-        loadCapabilityAccess(request, context, "user.ban"),
-        loadCapabilityAccess(request, context, "user.delete"),
-      ]);
-      const read = createAdminReadService(runtime.db);
-      const [users, roles] = await Promise.all([
-        read.users(query),
-        roleAccess.authorized ? read.roles() : Promise.resolve([] as AdminRoleRow[]),
-      ]);
-      return {
-        access,
-        canAssignRoles: roleAccess.authorized,
-        controls: {
-          suspend: suspendAccess.authorized,
-          ban: banAccess.authorized,
-          delete: deleteAccess.authorized,
-        } satisfies AdminUserControlCapabilities,
-        query,
-        users,
-        roles: roles.filter((role) => isRoleSlug(role.slug)),
-      };
-    },
-  );
+  const { runtime, authorization } = await requireAdminPageAccess(request, context);
+  const query = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+  const canAssignRoles = hasCapability(authorization, "user.assign_roles");
+  const controls = {
+    suspend: hasCapability(authorization, "user.suspend"),
+    ban: hasCapability(authorization, "user.ban"),
+    delete: hasCapability(authorization, "user.delete"),
+  } satisfies AdminUserControlCapabilities;
+  const read = createAdminReadService(runtime.db);
+  const [users, roles] = await Promise.all([
+    read.users(query),
+    canAssignRoles ? read.roles() : Promise.resolve([] as AdminRoleRow[]),
+  ]);
+  return {
+    canAssignRoles,
+    controls,
+    query,
+    users,
+    roles: roles.filter((role) => isRoleSlug(role.slug)),
+  };
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
@@ -133,7 +95,7 @@ function AdminUserIdentity({
 }
 
 export default function AdminUsersRoute() {
-  const { access, canAssignRoles, controls, query, users, roles } = useLoaderData<LoaderData>();
+  const { canAssignRoles, controls, query, users, roles } = useLoaderData<LoaderData>();
   const revalidator = useRevalidator();
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
   const [moderationUser, setModerationUser] = useState<AdminUserRow | null>(null);
@@ -143,18 +105,6 @@ export default function AdminUsersRoute() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
-
-  if (!access.authorized) {
-    return (
-      <AdminShell>
-        <AdminPageHeader
-          eyebrow="Restricted"
-          title="Users"
-          description="This operational surface is protected by the admin.access capability."
-        />
-      </AdminShell>
-    );
-  }
 
   function openRoleDialog(user: AdminUserRow) {
     const existing = user.roles.find(isRoleSlug);

@@ -98,15 +98,19 @@ describe("community plan phase E2", () => {
   it("orders the public Store filters and sections around Featured then New", () => {
     const store = read("../../app/routes/store.tsx");
     expectOrdered(store, [
-      'label: "Profile Themes"',
-      'label: "Avatar Frames"',
-      'label: "Profile Effects"',
-      'label: "Name Effects"',
-      'label: "Fonts"',
-      'label: "Emotes"',
-      'label: "Stickers"',
-      'label: "Community"',
+      'label: "store.filter.profileThemes"',
+      'label: "store.filter.avatarFrames"',
+      'label: "store.filter.profileEffects"',
+      'label: "store.filter.nameEffects"',
+      'label: "store.filter.fonts"',
+      'label: "store.filter.emotes"',
+      'label: "store.filter.stickers"',
+      'label: "store.filter.community"',
     ]);
-    expectOrdered(store, ['title="Featured"', 'title="New"', 'title="Owned"']);
+    expectOrdered(store, [
+      'title={t("store.featured")}',
+      'title={t("store.new")}',
+      'title={t("store.owned")}',
+    ]);
   });
 });

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useLoaderData } from "react-router";
 import { hasCapability } from "../../worker/auth/rbac";
-import { createD1AuthStore } from "../../worker/auth/store";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { AdminCommunityCosmeticReviews } from "../components/admin/store/AdminCommunityCosmeticReviews";
 import { AdminCosmeticCatalog } from "../components/admin/store/AdminCosmeticCatalog";
@@ -11,11 +10,17 @@ import { AdminPresetLaboratory } from "../components/admin/store/AdminPresetLabo
 import { AdminStickerPackManager } from "../components/admin/store/AdminStickerPackManager";
 import type { AdminStoreItem, EmotePackSummary } from "../components/admin/store/types";
 import { Button, Card, Input, Textarea } from "../components/ui";
+import { requireAdminPageAccess } from "../data/admin-access";
 import { readCsrfToken } from "../data/csrf";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import type { ServerLoaderArgs } from "../data/server-request";
 
 type AdminStoreMode =
-  "COSMETICS" | "EMOTE_PACKS" | "STICKER_PACKS" | "COMMUNITY" | "PRESETS" | "GUIDE";
+  | "COSMETICS"
+  | "EMOTE_PACKS"
+  | "STICKER_PACKS"
+  | "COMMUNITY"
+  | "PRESETS"
+  | "GUIDE";
 
 const ADMIN_STORE_TABS: Array<{ mode: AdminStoreMode; label: string }> = [
   { mode: "COSMETICS", label: "Catalog" },
@@ -27,42 +32,18 @@ const ADMIN_STORE_TABS: Array<{ mode: AdminStoreMode; label: string }> = [
 ];
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  return withOptionalServerSession(
-    request,
-    context,
-    () => ({
-      authorized: false,
-      unavailable: false,
-      storeManage: false,
-      emoteManage: false,
-      catalogModerate: false,
-      stickerManage: false,
-    }),
-    async (runtime, userId) => {
-      if (!userId) {
-        return {
-          authorized: false,
-          unavailable: false,
-          storeManage: false,
-          emoteManage: false,
-          catalogModerate: false,
-          stickerManage: false,
-        };
-      }
-      const authorization = await createD1AuthStore(runtime.db).getAuthorization(userId);
-      const storeManage = hasCapability(authorization, "store.manage");
-      const emoteManage = hasCapability(authorization, "emote.manage");
-      const stickerManage = hasCapability(authorization, "sticker.manage");
-      return {
-        authorized: storeManage || emoteManage || stickerManage,
-        unavailable: false,
-        storeManage,
-        emoteManage,
-        stickerManage,
-        catalogModerate: hasCapability(authorization, "catalog.moderate"),
-      };
-    },
-  );
+  const { authorization } = await requireAdminPageAccess(request, context);
+  const storeManage = hasCapability(authorization, "store.manage");
+  const emoteManage = hasCapability(authorization, "emote.manage");
+  const stickerManage = hasCapability(authorization, "sticker.manage");
+  return {
+    authorized: storeManage || emoteManage || stickerManage,
+    unavailable: false,
+    storeManage,
+    emoteManage,
+    stickerManage,
+    catalogModerate: hasCapability(authorization, "catalog.moderate"),
+  };
 }
 
 function errorMessage(payload: unknown, fallback: string): string {

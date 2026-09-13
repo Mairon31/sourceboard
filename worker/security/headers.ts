@@ -4,14 +4,14 @@ function contentSecurityPolicy(cspNonce?: string): string {
     "default-src 'self'",
     "base-uri 'self'",
     "connect-src 'self' https://challenges.cloudflare.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://accounts.google.com wss:",
-    "font-src 'self'",
+    "font-src 'self' https://fonts.gstatic.com",
     "form-action 'self'",
     "frame-ancestors 'none'",
     "frame-src https://challenges.cloudflare.com https://*.firebaseapp.com https://accounts.google.com",
     "img-src 'self' data: blob: https://static.klipy.com https://static1.klipy.com https://static2.klipy.com",
     "object-src 'none'",
     `script-src 'self' ${scriptSource} https://challenges.cloudflare.com https://apis.google.com https://www.gstatic.com`,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   ].join("; ");
 }
 

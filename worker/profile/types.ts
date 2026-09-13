@@ -6,6 +6,7 @@ import type {
   ProfileEffectPreset,
   ProfileThemePreset,
 } from "../../shared/store/cosmetics";
+import type { CreatorProIdentityVisuals } from "../../shared/store/creator-pro-config";
 import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
 
 export type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY" | "PRIVATE";
@@ -87,6 +88,7 @@ export interface PublicCosmeticsDto {
   nameFont?: NameFontFamily;
   nameEffect?: NameEffectPreset;
   visuals?: CosmeticIdentityVisuals;
+  creatorPro?: CreatorProIdentityVisuals;
   communityStyles?: Array<{ id: string; css: string }>;
 }
 
