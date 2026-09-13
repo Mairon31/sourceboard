@@ -4,6 +4,7 @@ import type {
   NameFontFamily,
 } from "../../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
+import { AnonymousAvatar } from "./AnonymousAvatar";
 import { AvatarStage } from "./AvatarStage";
 import { FontResources } from "./FontResources";
 import { cosmeticVisualClass, cosmeticVisualStyle, mergeCosmeticVisuals } from "./cosmetic-visual";
@@ -74,9 +75,10 @@ export function CosmeticIdentity(props: CosmeticIdentityProps) {
   const NameTag = props.nameAs ?? "span";
 
   if (props.anonymous) {
+    const avatarSize = props.avatarSize ?? (props.mode === "preview" ? "lg" : "sm");
     return (
       <div className={`cosmetic-identity cosmetic-identity--${props.mode}`}>
-        <AvatarStage alt="Anonymous Author" size={props.mode === "preview" ? "preview" : props.avatarSize ?? "sm"} anonymous />
+        <AnonymousAvatar size={avatarSize} />
         <NameTag className="cosmetic-identity__name">Anonymous Author</NameTag>
       </div>
     );
