@@ -88,10 +88,10 @@ describe("comment social actions", () => {
     expect(storeSource).toContain("child.deleted_at IS NULL");
   });
 
-  it("offers route-backed sort controls and focuses a freshly created comment", () => {
-    expect(threadSource).toContain("Recent");
-    expect(threadSource).toContain("Popular");
-    expect(threadSource).toContain("Oldest");
+  it("offers route-backed localized sort controls and focuses a freshly created comment", () => {
+    expect(threadSource).toContain('t("comments.sort.recent")');
+    expect(threadSource).toContain('t("comments.sort.popular")');
+    expect(threadSource).toContain('t("comments.sort.oldest")');
     expect(threadSource).toContain('params.set("comments", nextSort)');
     expect(threadSource).toContain("insertRootComment");
     expect(threadSource).toContain("tabIndex={-1}");
@@ -118,13 +118,13 @@ describe("comment social actions", () => {
     expect(apiSource).toContain("LINK_PREVIEW_RATE_LIMIT_UNAVAILABLE");
   });
 
-  it("offers a Link tool that submits only the canonical preview URL", () => {
+  it("offers a localized Link tool and sends only the submitted URL", () => {
     expect(iconsSource).toContain("export function LinkIcon");
     expect(threadSource).toContain("<LinkIcon");
-    expect(threadSource).toContain('aria-label="Link"');
+    expect(threadSource).toContain('aria-label={t("comments.composer.link")}');
     expect(threadSource).toContain('fetch("/api/comments/link-preview"');
     expect(threadSource).toContain("<LinkPreviewCard");
-    expect(threadSource).toContain("linkPreviewUrl: linkPreview?.canonicalUrl");
+    expect(threadSource).toContain("linkPreviewUrl: linkCandidate || undefined");
     expect(threadSource).not.toContain("linkPreview: linkPreview");
   });
 
