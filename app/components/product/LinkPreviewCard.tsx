@@ -1,15 +1,17 @@
 import type { CommentLinkPreviewView } from "../../../shared/ui/contracts";
+import { useI18n } from "../../i18n/I18nProvider";
 
-function previewLabel(preview: CommentLinkPreviewView): string {
+function previewLabel(preview: CommentLinkPreviewView, fallback: string): string {
   if (preview.siteName) return preview.siteName;
   try {
     return new URL(preview.canonicalUrl).hostname;
   } catch {
-    return "Link";
+    return fallback;
   }
 }
 
 export function LinkPreviewCard({ preview }: { preview: CommentLinkPreviewView }) {
+  const { t } = useI18n();
   return (
     <a
       className="product-link-preview-card"
@@ -26,7 +28,9 @@ export function LinkPreviewCard({ preview }: { preview: CommentLinkPreviewView }
         />
       ) : null}
       <span className="product-link-preview-card__body">
-        <small className="product-link-preview-card__site">{previewLabel(preview)}</small>
+        <small className="product-link-preview-card__site">
+          {previewLabel(preview, t("link.fallbackLabel"))}
+        </small>
         {preview.title ? <strong>{preview.title}</strong> : null}
         {preview.description ? (
           <span className="product-link-preview-card__description">{preview.description}</span>
