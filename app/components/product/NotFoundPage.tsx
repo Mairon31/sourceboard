@@ -46,7 +46,7 @@ export function NotFoundPage({ homeHref = "/", showBack = true }: NotFoundPagePr
           </Link>
           {showBack ? (
             <Button variant="secondary" onClick={() => window.history.back()}>
-              Go back
+              {t("errors.notFound.back")}
             </Button>
           ) : null}
         </div>
