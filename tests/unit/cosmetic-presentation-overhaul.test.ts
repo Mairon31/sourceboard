@@ -10,6 +10,7 @@ import {
   isProfileBannerPreset,
   isProfileEffectPreset,
 } from "../../shared/store/cosmetics";
+import { AVATAR_FRAME_DEFINITIONS } from "../../app/components/product/avatar-frame-definitions";
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, path), "utf8");
 
@@ -32,6 +33,16 @@ const NEW_PROFILE_EFFECTS = [
   "love-letter",
   "meteor-shower",
   "digital-scan",
+  "petal-fall",
+  "digital-rain",
+  "aurora-particles",
+  "star-drift",
+  "spark-field",
+  "soft-confetti",
+  "energy-arcs",
+  "scan-pulse",
+  "glitch-ambient",
+  "firefly-field",
 ] as const;
 
 const NEW_AVATAR_FRAMES = [
@@ -51,6 +62,14 @@ const NEW_AVATAR_FRAMES = [
   "cat-ears-black",
   "cat-ears-white",
   "fox-ears",
+  "crystal-crown",
+  "comet-orbit",
+  "pixel-wings",
+  "fox-spirit",
+  "celestial-horns",
+  "floral-ring",
+  "void-lens",
+  "electric-halo",
 ] as const;
 
 describe("Cosmetic presentation overhaul", () => {
@@ -140,8 +159,8 @@ describe("Cosmetic presentation overhaul", () => {
     expect(card).toContain('import "./profile-effects.css"');
   });
 
-  it("exposes exactly 27 Profile Effect choices", () => {
-    expect(PROFILE_EFFECT_PRESETS).toHaveLength(27);
+  it("exposes the complete Block E Profile Effect catalog", () => {
+    expect(PROFILE_EFFECT_PRESETS).toHaveLength(37);
     for (const slug of NEW_PROFILE_EFFECTS) {
       expect(isProfileEffectPreset(slug)).toBe(true);
     }
@@ -154,14 +173,16 @@ describe("Cosmetic presentation overhaul", () => {
     }
   });
 
-  it("accepts all approved Avatar Frames", () => {
-    expect(AVATAR_FRAME_PRESETS).toHaveLength(35);
+  it("accepts the complete Block E Avatar Frame catalog", () => {
+    expect(AVATAR_FRAME_PRESETS).toHaveLength(43);
     for (const slug of NEW_AVATAR_FRAMES) {
       expect(isAvatarFramePreset(slug)).toBe(true);
+      expect(AVATAR_FRAME_DEFINITIONS[slug]).toBeDefined();
+      expect(AVATAR_FRAME_DEFINITIONS[slug].parts.length).toBeGreaterThan(0);
     }
   });
 
-  it("keeps structural Avatar Frame visuals isolated from card-wide cosmetic layers", () => {
+  it("keeps Avatar Frame visuals isolated inside the canonical Avatar Stage", () => {
     const framePath = resolve(
       import.meta.dirname,
       "../../app/components/product/avatar-frames.css",
@@ -171,9 +192,12 @@ describe("Cosmetic presentation overhaul", () => {
 
     const frameCss = read("../../app/components/product/avatar-frames.css");
     const identity = read("../../app/components/product/CosmeticIdentity.tsx");
-    expect(identity).toContain('import "./avatar-frames.css"');
-    expect(identity).toContain("STRUCTURAL_AVATAR_FRAMES");
-    expect(identity).toContain("STRUCTURAL_AVATAR_FRAMES.has(avatarFrame)");
+    const stage = read("../../app/components/product/AvatarStage.tsx");
+    const definitions = read("../../app/components/product/avatar-frame-definitions.ts");
+    expect(identity).toContain("<AvatarStage");
+    expect(stage).toContain("AVATAR_FRAME_DEFINITIONS");
+    expect(stage).toContain("product-avatar-stage__part");
+    expect(definitions).toContain("AVATAR_STAGE_LAYER_ORDER");
     expect(frameCss).not.toContain(".product-profile-effect-layer");
     expect(frameCss).not.toContain(".product-profile-card-surface");
     for (const slug of NEW_AVATAR_FRAMES) {
