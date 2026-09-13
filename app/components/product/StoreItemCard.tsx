@@ -58,11 +58,13 @@ export function StorePreview({
         name={name}
         avatarUrl={avatarUrl}
         visual={config.visual}
+        creatorPro={config.creatorPro}
         communityStyles={
           item.community?.css
             ? [{ id: item.community.cosmeticId, css: item.community.css }]
             : undefined
         }
+        mode="store"
         className={`product-store-preview product-store-preview--${item.type === "AVATAR_FRAME" ? "avatar" : item.type === "PROFILE_BANNER" ? "theme" : "effect"}`}
       />
     );
