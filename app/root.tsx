@@ -11,7 +11,9 @@ import {
 import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import { readSourceBoardRequestContext } from "../shared/router-context";
 import { createD1ProfileStore } from "../worker/profile/store";
+import { requestedLocale } from "./data/locale.server";
 import { readServerSession, type ServerLoaderArgs } from "./data/server-request";
+import { I18nProvider } from "./i18n/I18nProvider";
 import "./styles/base.css";
 import "./styles/motion-preferences.css";
 import "./components/ui/ui.css";
@@ -49,11 +51,12 @@ import "./components/product/store-mobile-polish.css";
 import "./components/product/post-layout-polish.css";
 import "./components/product/friends-page-polish.css";
 
-// fallow-ignore-next-line complexity -- route loader combines request context and session recovery.
+// fallow-ignore-next-line complexity -- route loader combines request context, session recovery and locale resolution.
 export async function loader({ request, context }: ServerLoaderArgs) {
   const requestContext = readSourceBoardRequestContext(context);
   const currentSession = await readServerSession(request, context).catch(() => null);
   const session = currentSession ? { user: currentSession.user } : null;
+  let accountLocale: string | null = null;
   let navigationIdentity: {
     displayName: string;
     avatarUrl?: string;
@@ -63,10 +66,15 @@ export async function loader({ request, context }: ServerLoaderArgs) {
   if (currentSession && requestContext?.env.DB) {
     try {
       const profileStore = createD1ProfileStore(requestContext.env.DB);
-      const [profile, cosmetics] = await Promise.all([
+      const [profile, cosmetics, localeRow] = await Promise.all([
         profileStore.getProfileByUserId(currentSession.user.id, Date.now()),
         profileStore.getEquippedCosmetics(currentSession.user.id),
+        requestContext.env.DB.prepare("SELECT locale FROM user_preferences WHERE user_id = ?")
+          .bind(currentSession.user.id)
+          .first<{ locale: string | null }>()
+          .catch(() => null),
       ]);
+      accountLocale = localeRow?.locale ?? null;
       if (profile) {
         navigationIdentity = {
           displayName: profile.displayName,
@@ -84,6 +92,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
   return {
     cspNonce: requestContext?.cspNonce ?? null,
     origin: "https://srcboard.me",
+    locale: requestedLocale(request, accountLocale),
     // fallow-ignore-next-line unused-load-data-key -- global navigation reads this root loader.
     session,
     navigationIdentity,
@@ -122,11 +131,11 @@ export const links = () => [
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { cspNonce } = useLoaderData<RootLoaderData>();
+  const { cspNonce, locale } = useLoaderData<RootLoaderData>();
   const nonce = cspNonce ?? undefined;
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -149,5 +158,10 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const { locale } = useLoaderData<RootLoaderData>();
+  return (
+    <I18nProvider locale={locale}>
+      <Outlet />
+    </I18nProvider>
+  );
 }
