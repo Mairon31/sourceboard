@@ -4,6 +4,7 @@ import type {
   ProfileEffectPreset,
   ProfileThemePreset,
 } from "../../../shared/store/cosmetics";
+import type { CreatorProIdentityVisuals } from "../../../shared/store/creator-pro-config";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { Card } from "../ui";
 import { ProfileEffectLayer } from "./ProfileEffectLayer";
@@ -14,6 +15,7 @@ import "./profile-effects.css";
 import "./profile-effects-expanded.css";
 import "./profile-themes.css";
 import "./platform-overhaul-cosmetics.css";
+import "./creator-pro-visual.css";
 
 export interface ProfileIdentityCardProps {
   children: ReactNode;
@@ -23,6 +25,7 @@ export interface ProfileIdentityCardProps {
   profileEffect?: ProfileEffectPreset;
   bannerUrl?: string;
   visuals?: CosmeticIdentityVisuals;
+  creatorPro?: CreatorProIdentityVisuals;
   communityStyles?: Array<{ id: string; css: string }>;
   mode?: "profile" | "compact" | "preview" | "store" | "admin";
 }
@@ -35,6 +38,7 @@ export function ProfileIdentityCard({
   profileEffect,
   bannerUrl,
   visuals,
+  creatorPro,
   communityStyles,
   mode = "profile",
 }: ProfileIdentityCardProps) {
@@ -50,7 +54,11 @@ export function ProfileIdentityCard({
       {communityStyles?.map((communityStyle) => (
         <style key={communityStyle.id}>{communityStyle.css}</style>
       ))}
-      <ProfileThemeLayer preset={theme} visual={visuals?.profileBanner} />
+      <ProfileThemeLayer
+        preset={theme}
+        visual={visuals?.profileBanner}
+        creatorPro={creatorPro?.profileBanner}
+      />
       <div className="product-profile-cover" aria-hidden="true">
         {bannerUrl ? (
           <div
@@ -59,7 +67,12 @@ export function ProfileIdentityCard({
           />
         ) : null}
       </div>
-      <ProfileEffectLayer preset={profileEffect} visual={visuals?.profileEffect} />
+      <ProfileEffectLayer
+        preset={profileEffect}
+        visual={visuals?.profileEffect}
+        creatorPro={creatorPro?.profileEffect}
+        mode={mode}
+      />
       <div className="product-profile-card-surface profile-card">{children}</div>
     </Card>
   );
