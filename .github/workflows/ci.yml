@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-24.04
+    runs-on: tenki-standard-medium-4c-8g
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
