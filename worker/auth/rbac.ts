@@ -34,6 +34,7 @@ export type Capability =
   | "sticker.manage"
   | "achievement.manage"
   | "settings.manage"
+  | "content.manage"
   | "audit.read"
   | "anonymous_post.deanonymize"
   | "post.nsfw.mark"
