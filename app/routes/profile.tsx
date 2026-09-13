@@ -14,6 +14,7 @@ import { createReputationReader } from "../../worker/reputation/read";
 import type { RootLoaderData } from "../root";
 import { loadAdminAccess } from "../data/admin-access";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { useI18n } from "../i18n/I18nProvider";
 import { NotFoundPage } from "../components/product/NotFoundPage";
 import { ProfileAccountActions } from "../components/product/ProfileAccountActions";
 import { ProfileActivity } from "../components/product/ProfileActivity";
@@ -121,54 +122,59 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
 };
 
 function ProfileServiceUnavailable() {
+  const { t } = useI18n();
   return (
     <ProductShell wide>
       <Card className="product-empty-state">
         <PageHeader
-          eyebrow="Profile"
-          title="Profile service unavailable"
-          description="The profile service is not available in this environment yet."
+          eyebrow={t("profile.serviceEyebrow")}
+          title={t("profile.serviceTitle")}
+          description={t("profile.serviceDescription")}
         />
-        <p>Try again after the service is available.</p>
+        <p>{t("profile.serviceRetry")}</p>
       </Card>
     </ProductShell>
   );
 }
 
 function ContributionHistory({ profile }: { profile: PublicProfile }) {
+  const { t } = useI18n();
   return (
     <section className="product-profile-contributions">
       <div className="product-profile-contributions__header">
         <div>
-          <span className="product-eyebrow">Contribution</span>
-          <h2>SourceBoard activity</h2>
+          <span className="product-eyebrow">{t("profile.contributions.eyebrow")}</span>
+          <h2>{t("profile.contributions.title")}</h2>
         </div>
-        <p>Earned from useful source-finding activity</p>
+        <p>{t("profile.contributions.description")}</p>
       </div>
-      <div className="product-profile-contributions__metrics" aria-label="Contribution metrics">
+      <div
+        className="product-profile-contributions__metrics"
+        aria-label={t("profile.contributions.metricsAria")}
+      >
         {profile.reputation !== undefined ? (
           <div className="product-profile-contributions__metric">
             <strong>{profile.reputation}</strong>
-            <span>Reputation</span>
+            <span>{t("profile.contributions.reputation")}</span>
           </div>
         ) : null}
         {profile.points !== undefined ? (
           <div className="product-profile-contributions__metric">
             <strong>{profile.points}</strong>
-            <span>Points</span>
+            <span>{t("profile.contributions.points")}</span>
           </div>
         ) : null}
         {profile.verifiedSources !== undefined ? (
           <div className="product-profile-contributions__metric">
             <strong>{profile.verifiedSources}</strong>
-            <span>Verified sources</span>
+            <span>{t("profile.contributions.verifiedSources")}</span>
           </div>
         ) : null}
       </div>
       {profile.achievements?.length ? (
         <div
           className="product-profile-contributions__achievements"
-          aria-label="Earned achievements"
+          aria-label={t("profile.contributions.achievementsAria")}
         >
           {profile.achievements.map((achievement) => (
             <Badge key={achievement.id} tone="neutral">
@@ -177,7 +183,7 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
           ))}
         </div>
       ) : (
-        <p className="product-store-preview-status">No achievements earned yet.</p>
+        <p className="product-store-preview-status">{t("profile.contributions.noAchievements")}</p>
       )}
     </section>
   );
