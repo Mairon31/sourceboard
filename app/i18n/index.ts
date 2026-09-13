@@ -4,6 +4,7 @@ import { deMessages } from "./messages/de";
 import { enMessages, type MessageKey as BaseMessageKey } from "./messages/en";
 import { esMessages } from "./messages/es";
 import { frMessages } from "./messages/fr";
+import { productMessageSets, type ProductMessageKey } from "./messages/product";
 import { ptMessages } from "./messages/pt";
 import { ruMessages } from "./messages/ru";
 import { socialMessageSets, type SocialMessageKey } from "./messages/social";
@@ -14,7 +15,12 @@ import { frStoreMessages } from "./messages/store.fr";
 import { ptStoreMessages } from "./messages/store.pt";
 import { ruStoreMessages } from "./messages/store.ru";
 
-export type MessageKey = BaseMessageKey | StoreMessageKey | SocialMessageKey | CommonMessageKey;
+export type MessageKey =
+  | BaseMessageKey
+  | StoreMessageKey
+  | SocialMessageKey
+  | CommonMessageKey
+  | ProductMessageKey;
 
 const baseMessages: Record<Locale, Record<BaseMessageKey, string>> = {
   en: enMessages,
@@ -39,6 +45,7 @@ const englishMessages: Record<MessageKey, string> = {
   ...enStoreMessages,
   ...socialMessageSets.en,
   ...commonMessageSets.en,
+  ...productMessageSets.en,
 };
 
 export const allMessages = Object.fromEntries(
@@ -49,6 +56,7 @@ export const allMessages = Object.fromEntries(
       ...storeMessages[locale],
       ...socialMessageSets[locale],
       ...commonMessageSets[locale],
+      ...productMessageSets[locale],
     },
   ]),
 ) as Record<Locale, Record<MessageKey, string>>;
