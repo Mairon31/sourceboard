@@ -5,30 +5,30 @@ import { LanguageSelector } from "../layout/LanguageSelector";
 
 const footerGroups = [
   {
-    label: "Product",
+    labelKey: "footer.product",
     links: [
-      ["Docs", "/docs"],
-      ["Help", "/docs/support"],
-      ["Accepted Sources", "/docs/accepted-sources"],
-      ["Store & points", "/docs/store-and-points"],
+      ["footer.docs", "/docs"],
+      ["footer.help", "/docs/support"],
+      ["footer.acceptedSources", "/docs/accepted-sources"],
+      ["footer.storePoints", "/docs/store-and-points"],
     ],
   },
   {
-    label: "Policies",
+    labelKey: "footer.policies",
     links: [
-      ["Terms", "/docs/terms"],
-      ["Privacy", "/docs/privacy"],
-      ["Community Guidelines", "/docs/community-guidelines"],
-      ["Acceptable Use", "/docs/acceptable-use"],
+      ["footer.terms", "/docs/terms"],
+      ["footer.privacy", "/docs/privacy"],
+      ["footer.communityGuidelines", "/docs/community-guidelines"],
+      ["footer.acceptableUse", "/docs/acceptable-use"],
     ],
   },
   {
-    label: "Data & attribution",
+    labelKey: "footer.dataAttribution",
     links: [
-      ["Copyright & attribution", "/docs/copyright-and-attribution"],
-      ["Data Handling", "/docs/data-handling"],
-      ["AI & public content", "/docs/ai-public-content"],
-      ["Account & verification", "/docs/account-verification"],
+      ["footer.copyrightAttribution", "/docs/copyright-and-attribution"],
+      ["footer.dataHandling", "/docs/data-handling"],
+      ["footer.aiPublicContent", "/docs/ai-public-content"],
+      ["footer.accountVerification", "/docs/account-verification"],
     ],
   },
 ] as const;
@@ -51,7 +51,7 @@ export function ProductFooter() {
       <div className="product-footer__inner product-footer__inner--expanded">
         <div className="product-footer__brand">
           <strong>SourceBoard</strong>
-          <span>Trace images back to their original source with an auditable evidence trail.</span>
+          <span>{t("footer.tagline")}</span>
           <LanguageSelector compact />
         </div>
         <div className="product-footer__groups">
@@ -67,11 +67,11 @@ export function ProductFooter() {
                 </nav>
               ))
             : footerGroups.map((group) => (
-                <nav key={group.label} aria-label={group.label}>
-                  <strong>{group.label}</strong>
-                  {group.links.map(([label, href]) => (
+                <nav key={group.labelKey} aria-label={t(group.labelKey)}>
+                  <strong>{t(group.labelKey)}</strong>
+                  {group.links.map(([labelKey, href]) => (
                     <Link key={href} to={href}>
-                      {label === "Docs" ? t("footer.docs") : label}
+                      {t(labelKey)}
                     </Link>
                   ))}
                 </nav>
