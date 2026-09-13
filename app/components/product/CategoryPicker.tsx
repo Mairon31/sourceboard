@@ -4,6 +4,7 @@ import {
   getPostCategory,
   type PostCategorySlug,
 } from "../../../shared/posts/categories";
+import { useI18n } from "../../i18n/I18nProvider";
 import "./category-picker.css";
 
 interface CategoryPickerProps {
@@ -17,6 +18,7 @@ function normalizeSearch(value: string): string {
 }
 
 export function CategoryPicker({ value, onChange, disabled = false }: CategoryPickerProps) {
+  const { t } = useI18n();
   const listboxId = useId();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -75,21 +77,21 @@ export function CategoryPicker({ value, onChange, disabled = false }: CategoryPi
   return (
     <div className="product-category-picker">
       <label className="product-category-picker__label" htmlFor={`${listboxId}-input`}>
-        Category
+        {t("categoryPicker.label")}
       </label>
       <div className="product-category-picker__control">
         <input
           id={`${listboxId}-input`}
           type="search"
           role="combobox"
-          aria-label="Category"
+          aria-label={t("categoryPicker.label")}
           aria-autocomplete="list"
           aria-expanded={open}
           aria-controls={listboxId}
           aria-activedescendant={activeOption ? `${listboxId}-${activeOption.slug}` : undefined}
           autoComplete="off"
           disabled={disabled}
-          placeholder={selected ? selected.label : "Search categories…"}
+          placeholder={selected ? selected.label : t("categoryPicker.search")}
           value={query}
           onFocus={() => setOpen(true)}
           onChange={(event) => {
@@ -106,9 +108,7 @@ export function CategoryPicker({ value, onChange, disabled = false }: CategoryPi
             <span>{selected.description}</span>
           </div>
         ) : (
-          <span className="product-category-picker__hint">
-            Choose the closest match for this request.
-          </span>
+          <span className="product-category-picker__hint">{t("categoryPicker.hint")}</span>
         )}
       </div>
       {open && !disabled ? (
@@ -116,7 +116,7 @@ export function CategoryPicker({ value, onChange, disabled = false }: CategoryPi
           className="product-category-picker__list"
           id={listboxId}
           role="listbox"
-          aria-label="Post categories"
+          aria-label={t("categoryPicker.listAria")}
         >
           {filtered.length ? (
             filtered.map((category, index) => (
@@ -136,7 +136,7 @@ export function CategoryPicker({ value, onChange, disabled = false }: CategoryPi
               </button>
             ))
           ) : (
-            <div className="product-category-picker__empty">No matching categories.</div>
+            <div className="product-category-picker__empty">{t("categoryPicker.empty")}</div>
           )}
         </div>
       ) : null}
