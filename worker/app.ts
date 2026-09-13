@@ -6,6 +6,7 @@ import { processReputationEvent, type ReputationEvent } from "./reputation/servi
 import { persistNotification, type NotificationEvent } from "./notifications/service";
 import { NotificationHub } from "./notifications/hub";
 import { createAuthService } from "./auth/service";
+import { hasCapability } from "./auth/rbac";
 import { createD1AuthStore } from "./auth/store";
 import { preventHtmlTransforms, withSecurityHeaders } from "./security/headers";
 import { runMaintenance } from "./maintenance/service";
@@ -18,6 +19,32 @@ const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
   import.meta.env.MODE,
 );
+
+function isAdminPagePath(pathname: string): boolean {
+  return pathname === "/admin" || pathname === "/admin.data" || pathname.startsWith("/admin/");
+}
+
+async function gateAdminPageRequest(
+  request: Request,
+  env: CloudflareEnvironment,
+): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (!isAdminPagePath(url.pathname)) return null;
+  if (!env.DB) return new Response("Service unavailable", { status: 503 });
+
+  const authStore = createD1AuthStore(env.DB);
+  const session = await createAuthService({ store: authStore, env }).getSession(request).catch(() => null);
+  if (!session) {
+    const next = `${url.pathname}${url.search}`;
+    const login = new URL("/login", url.origin);
+    login.searchParams.set("next", next);
+    return Response.redirect(login, 302);
+  }
+
+  const authorization = await authStore.getAuthorization(session.user.id);
+  if (!hasCapability(authorization, "admin.access")) return new Response("", { status: 404 });
+  return null;
+}
 
 export default {
   async fetch(request, env) {
@@ -47,6 +74,10 @@ export default {
       const stub = env.NOTIFICATION_HUB.get(env.NOTIFICATION_HUB.idFromName(session.user.id));
       return finish(await stub.fetch(new Request(target, request)));
     }
+
+    const adminGateResponse = await gateAdminPageRequest(request, env);
+    if (adminGateResponse) return finish(adminGateResponse);
+
     const seoResponse = await handlePublicSeoRequest(request, env);
     if (seoResponse) return finish(seoResponse);
 
