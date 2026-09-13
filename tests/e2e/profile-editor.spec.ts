@@ -192,7 +192,7 @@ test("profile avatar never collides with identity text on a narrow viewport", as
   await waitForUiReady(page);
 
   const avatar = page
-    .locator(".product-profile-name .cosmetic-identity--profile .cosmetic-identity__avatar-shell")
+    .locator(".product-profile-name .cosmetic-identity--profile .product-avatar-stage")
     .first();
   await expect(avatar).toBeVisible();
   const avatarBox = await avatar.boundingBox();
