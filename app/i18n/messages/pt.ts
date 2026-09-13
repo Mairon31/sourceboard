@@ -39,6 +39,7 @@ export const ptMessages = {
   "errors.notFound.title": "Página não encontrada",
   "errors.notFound.description": "A página pode ter sido movida, removida ou não estar disponível para você.",
   "errors.notFound.home": "Ir para o início",
+  "errors.notFound.back": "Voltar",
   "auth.login": "Entrar",
   "auth.register": "Criar conta",
   "docs.title": "Documentação",
