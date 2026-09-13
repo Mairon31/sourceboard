@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import type { MessageKey } from "../../i18n";
+import { useI18n } from "../../i18n/I18nProvider";
 
 const POST_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/avif";
 const POST_IMAGE_TYPES = new Set(POST_IMAGE_ACCEPT.split(","));
@@ -12,16 +14,10 @@ interface ImageUploadFieldProps {
   uploading?: boolean;
 }
 
-function validatePostImageFile(file: File): string | null {
-  if (file.type === "image/gif") {
-    return "GIF isn't supported as a main post image. Choose a JPEG, PNG, WebP or AVIF image.";
-  }
-  if (!POST_IMAGE_TYPES.has(file.type)) {
-    return "Choose a JPEG, PNG, WebP or AVIF image.";
-  }
-  if (file.size < 1 || file.size > MAX_POST_IMAGE_BYTES) {
-    return "Choose an image smaller than 10 MB.";
-  }
+function validatePostImageFile(file: File): MessageKey | null {
+  if (file.type === "image/gif") return "imageUpload.gifUnsupported";
+  if (!POST_IMAGE_TYPES.has(file.type)) return "imageUpload.typeInvalid";
+  if (file.size < 1 || file.size > MAX_POST_IMAGE_BYTES) return "imageUpload.sizeInvalid";
   return null;
 }
 
@@ -79,6 +75,7 @@ export function ImageUploadField({
   disabled = false,
   uploading = false,
 }: ImageUploadFieldProps) {
+  const { t, locale } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -99,7 +96,7 @@ export function ImageUploadField({
     if (!next || disabled) return;
     const validationError = validatePostImageFile(next);
     if (validationError) {
-      setError(validationError);
+      setError(t(validationError));
       return;
     }
 
@@ -110,9 +107,11 @@ export function ImageUploadField({
       onFileChange(prepared);
     } catch (reason) {
       setError(
-        reason instanceof Error && reason.message === "IMAGE_DIMENSIONS_INVALID"
-          ? "Choose an image no larger than 10,000 pixels on either side."
-          : "This image couldn't be prepared. Try another file.",
+        t(
+          reason instanceof Error && reason.message === "IMAGE_DIMENSIONS_INVALID"
+            ? "imageUpload.dimensionsInvalid"
+            : "imageUpload.prepareError",
+        ),
       );
     } finally {
       setPreparing(false);
@@ -142,7 +141,11 @@ export function ImageUploadField({
     }
   }
 
-  const progressLabel = preparing ? "Preparing image…" : uploading ? "Publishing image…" : null;
+  const progressLabel = preparing
+    ? t("imageUpload.preparing")
+    : uploading
+      ? t("imageUpload.publishing")
+      : null;
 
   return (
     <div className="product-image-upload-field">
@@ -157,7 +160,7 @@ export function ImageUploadField({
         onDrop={onDrop}
         onPaste={onPaste}
         tabIndex={disabled ? -1 : 0}
-        aria-label="Main image upload"
+        aria-label={t("imageUpload.dropzoneAria")}
       >
         <input
           ref={inputRef}
@@ -167,15 +170,15 @@ export function ImageUploadField({
           accept={POST_IMAGE_ACCEPT}
           disabled={disabled || preparing || uploading}
           onChange={(event) => void selectFile(event.currentTarget.files?.item(0) ?? null)}
-          aria-label="Main image"
+          aria-label={t("imageUpload.inputAria")}
         />
 
         {previewUrl && file ? (
           <div className="product-image-upload-field__preview">
-            <img src={previewUrl} alt="Selected source request preview" />
+            <img src={previewUrl} alt={t("imageUpload.previewAlt")} />
             <div className="product-image-upload-field__preview-meta">
               <strong>{file.name}</strong>
-              <span>{Math.max(1, Math.round(file.size / 1024)).toLocaleString("en-US")} KB</span>
+              <span>{new Intl.NumberFormat(locale).format(Math.max(1, Math.round(file.size / 1024)))} KB</span>
             </div>
             <div className="product-image-upload-field__actions">
               <button
@@ -184,7 +187,7 @@ export function ImageUploadField({
                 onClick={() => inputRef.current?.click()}
                 disabled={disabled || preparing || uploading}
               >
-                Replace
+                {t("imageUpload.replace")}
               </button>
               <button
                 type="button"
@@ -192,7 +195,7 @@ export function ImageUploadField({
                 onClick={removeFile}
                 disabled={disabled || preparing || uploading}
               >
-                Remove
+                {t("imageUpload.remove")}
               </button>
             </div>
           </div>
@@ -203,9 +206,9 @@ export function ImageUploadField({
             onClick={() => inputRef.current?.click()}
             disabled={disabled || preparing || uploading}
           >
-            <strong>Add the image you want to trace</strong>
-            <span>Choose a file, drag it here, or paste from your clipboard.</span>
-            <small>JPEG, PNG, WebP or AVIF · up to 10 MB</small>
+            <strong>{t("imageUpload.addTitle")}</strong>
+            <span>{t("imageUpload.addDescription")}</span>
+            <small>{t("imageUpload.formats")}</small>
           </button>
         )}
       </div>
