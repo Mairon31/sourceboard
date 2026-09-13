@@ -57,9 +57,9 @@ async function expectUnifiedNotFound(page: Page, path: string) {
 
   const surface = page.locator(".product-not-found");
   await expect(
-    surface.getByRole("heading", { name: "This page isn't available", exact: true }),
+    surface.getByRole("heading", { name: "Page not found", exact: true }),
   ).toBeVisible();
-  await expect(surface.getByRole("link", { name: "Go to Home", exact: true })).toHaveAttribute(
+  await expect(surface.getByRole("link", { name: "Go home", exact: true })).toHaveAttribute(
     "href",
     "/",
   );
