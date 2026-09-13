@@ -3,11 +3,13 @@ import type {
   CommentView,
   VerifiedSourceView,
 } from "../../../shared/ui/contracts";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Badge, Card } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { RichText } from "./RichText";
 
 function AcceptedComment({ comment }: { comment: CommentView }) {
+  const { t, date } = useI18n();
   const nodes = [
     {
       type: "paragraph" as const,
@@ -34,7 +36,7 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
           />
         )}
         <span>
-          {new Date(comment.createdAt).toLocaleDateString("en-US", {
+          {date(new Date(comment.createdAt), {
             month: "short",
             day: "numeric",
             timeZone: "UTC",
@@ -47,7 +49,7 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
           <img
             className={`product-source-answer__media product-source-answer__media--${comment.attachment?.type.toLowerCase()}`}
             src={imageUrl}
-            alt={comment.attachment?.label ?? "Accepted source attachment"}
+            alt={comment.attachment?.label ?? t("source.accepted.attachmentAlt")}
             loading="lazy"
           />
         ) : null}
@@ -65,10 +67,11 @@ export function SourceResolution({
   acceptedComment?: CommentView;
   verified?: VerifiedSourceView;
 }) {
+  const { t } = useI18n();
   if (!accepted && !verified) return null;
 
   return (
-    <section className="product-source-resolution" aria-label="Source resolution">
+    <section className="product-source-resolution" aria-label={t("source.resolutionAria")}>
       {accepted ? (
         <Card className="product-source-card product-source-card--accepted">
           <div className="product-source-card__heading">
@@ -76,17 +79,15 @@ export function SourceResolution({
               ✓
             </div>
             <div>
-              <Badge tone="accent">Accepted Source</Badge>
-              <h2>Accepted answer</h2>
-              <p>
-                The post author marked this contribution as the source that resolved the request.
-              </p>
+              <Badge tone="accent">{t("source.accepted.badge")}</Badge>
+              <h2>{t("source.accepted.title")}</h2>
+              <p>{t("source.accepted.description")}</p>
             </div>
           </div>
           {acceptedComment ? <AcceptedComment comment={acceptedComment} /> : null}
           {accepted.canonicalUrl ? (
             <a href={accepted.canonicalUrl} target="_blank" rel="noreferrer">
-              Open source reference
+              {t("source.accepted.openReference")}
             </a>
           ) : null}
         </Card>
@@ -98,13 +99,13 @@ export function SourceResolution({
             ✓
           </div>
           <div>
-            <Badge tone="success">Verified Source</Badge>
-            <h2>Source authenticity verified</h2>
+            <Badge tone="success">{t("source.verified.badge")}</Badge>
+            <h2>{t("source.verified.title")}</h2>
             <p>{verified.evidenceSummary}</p>
             <div className="product-source-card__meta">
               <span>{verified.verifierLabel}</span>
               <a href={verified.canonicalUrl} target="_blank" rel="noreferrer">
-                Canonical source
+                {t("source.verified.canonical")}
               </a>
             </div>
           </div>
