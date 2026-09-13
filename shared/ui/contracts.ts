@@ -1,4 +1,5 @@
 import type { PostCategorySlug } from "../posts/categories";
+import type { CosmeticVisualConfigV1 } from "../store/cosmetic-config";
 import type {
   AvatarFramePreset,
   NameEffectPreset,
@@ -251,6 +252,7 @@ export interface StoreItemView {
       preset?: AvatarFramePreset | ProfileBannerPreset | ProfileEffectPreset | NameEffectPreset;
       family?: NameFontFamily;
       visual?: CosmeticVisualDefinition;
+      creatorPro?: CosmeticVisualConfigV1;
     };
     media: Array<{ id: string; label: string; url: string }>;
   };
