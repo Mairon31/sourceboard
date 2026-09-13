@@ -825,7 +825,7 @@ review and the broader Platform Overhaul sequence.
 
 ## Hotfix PR #39 — Settings i18n, comment previews and navigation observability
 
-Status: **IN REVIEW — final repository gates pending**
+Status: **COMPLETED — merged to `master` and post-merge CI green**
 
 - Settings and the related public product surfaces use the global `useI18n()` API;
   user-generated content remains data and is never passed through translations.
@@ -840,8 +840,8 @@ Status: **IN REVIEW — final repository gates pending**
   the comments API, at most one per page and no more frequently than every
   thirty minutes; SSR post rendering does not wait for that refresh.
 - Navigation coverage records a route-ready mark and asserts the tested post
-  navigation remains SPA without a document reload. Local measurements and the
-  final CI evidence are recorded only after the final verification run.
+  navigation remains SPA without a document reload. Local measurements are
+  recorded below and the exact-head CI evidence is recorded in this checkpoint.
 - The dominant Store-navigation cost was an N+1 lookup of
   `cosmetic_submission_reviews`, once per catalog item. Store projection now
   loads community-review metadata in one bounded query while retaining the
@@ -863,8 +863,17 @@ Status: **IN REVIEW — final repository gates pending**
   apply. The 227-test Playwright pass validated 226 cases and exposed one
   repeatability collision caused by a fixed comment body left in the persisted
   E2E database; after making that body unique per execution, the affected test
-  passed **2/2** consecutive reruns. The exact-HEAD standard CI remains the
-  authoritative complete Playwright/release gate before merge.
+  passed **2/2** consecutive reruns.
+- The final code candidate was
+  `a4b8d6bde9020ec8a03dd96f01b6625cc727f4bf`. Standard CI **#1860**
+  (`34779945114`) passed on that exact PR head, including dependency audit,
+  formatting, lint, strict TypeScript, unit tests, production build, Worker
+  deploy dry-run, Chromium installation, fresh local D1 migrations and the full
+  Playwright E2E gate. PR **#39** was then integrated by fast-forward, so the
+  code merge SHA is the same `a4b8d6b` candidate rather than a synthetic merge
+  commit. The resulting `master` push triggered standard CI **#1861**
+  (`34780302236`), and its complete `verify` job passed all of the same release
+  stages, including D1 migrations and E2E.
 - The refactored i18n client chunk is currently about **277.25 kB raw / 68.70
   kB gzip** in the production build. Dynamic per-locale loading is deliberately
   deferred until profiling demonstrates that its SSR/hydration complexity is
