@@ -15,6 +15,14 @@ const CREATOR_PRO_KEYS = [
   "intensity",
 ] as const;
 
+export interface CreatorProIdentityVisuals {
+  avatarFrame?: CosmeticVisualConfigV1;
+  profileBanner?: CosmeticVisualConfigV1;
+  profileEffect?: CosmeticVisualConfigV1;
+  nameFont?: CosmeticVisualConfigV1;
+  nameEffect?: CosmeticVisualConfigV1;
+}
+
 export function parseCreatorProStoreConfig(input: unknown): CosmeticVisualConfigV1 | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const value = input as Record<string, unknown>;
