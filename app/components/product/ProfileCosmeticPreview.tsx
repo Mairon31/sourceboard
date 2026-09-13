@@ -1,3 +1,4 @@
+import type { CosmeticVisualConfigV1 } from "../../../shared/store/cosmetic-config";
 import {
   isAvatarFramePreset,
   isProfileEffectPreset,
@@ -6,6 +7,7 @@ import {
   type ProfileEffectPreset,
   type ProfileThemePreset,
 } from "../../../shared/store/cosmetics";
+import type { CreatorProIdentityVisuals } from "../../../shared/store/creator-pro-config";
 import type {
   CosmeticIdentityVisuals,
   CosmeticVisualDefinition,
@@ -21,9 +23,11 @@ export interface ProfileCosmeticPreviewProps {
   name: string;
   avatarUrl?: string;
   visual?: CosmeticVisualDefinition;
+  creatorPro?: CosmeticVisualConfigV1;
   communityStyles?: Array<{ id: string; css: string }>;
   bannerUrl?: string;
   className?: string;
+  mode?: "preview" | "store" | "admin" | "compact";
 }
 
 function previewVisuals(
@@ -34,6 +38,16 @@ function previewVisuals(
   if (type === "PROFILE_BANNER") return { profileBanner: visual };
   if (type === "PROFILE_EFFECT") return { profileEffect: visual };
   return { avatarFrame: visual };
+}
+
+function previewCreatorPro(
+  type: ProfileCosmeticPreviewType,
+  creatorPro?: CosmeticVisualConfigV1,
+): CreatorProIdentityVisuals | undefined {
+  if (!creatorPro) return undefined;
+  if (type === "PROFILE_BANNER") return { profileBanner: creatorPro };
+  if (type === "PROFILE_EFFECT") return { profileEffect: creatorPro };
+  return { avatarFrame: creatorPro };
 }
 
 function validTheme(
@@ -63,11 +77,14 @@ export function ProfileCosmeticPreview({
   name,
   avatarUrl,
   visual,
+  creatorPro,
   communityStyles,
   bannerUrl,
   className,
+  mode = "preview",
 }: ProfileCosmeticPreviewProps) {
   const visuals = previewVisuals(type, visual);
+  const structured = previewCreatorPro(type, creatorPro);
   const frame = validFrame(type, preset);
 
   if (type === "AVATAR_FRAME") {
@@ -84,6 +101,7 @@ export function ProfileCosmeticPreview({
             avatarUrl={avatarUrl}
             avatarFrame={frame}
             visuals={visuals}
+            creatorPro={structured}
             mode="preview"
             nameAs="strong"
           />
@@ -99,7 +117,9 @@ export function ProfileCosmeticPreview({
       profileEffect={validEffect(type, preset)}
       bannerUrl={bannerUrl}
       visuals={visuals}
+      creatorPro={structured}
       communityStyles={communityStyles}
+      mode={mode}
     >
       <div className="profile-header product-cosmetic-preview__header">
         <CosmeticIdentity displayName={name} avatarUrl={avatarUrl} mode="preview" nameAs="strong" />
