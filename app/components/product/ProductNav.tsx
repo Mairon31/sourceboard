@@ -22,7 +22,7 @@ export function ProductNav() {
   const { t } = useI18n();
 
   return (
-    <nav className="product-nav" aria-label={t("nav.home")}>
+    <nav className="product-nav" aria-label="Primary navigation">
       <div className="product-nav__links">
         {primaryLinks.map((item) => (
           <NavLink
@@ -95,7 +95,7 @@ export function MobileProductNav() {
   return (
     <nav
       className="product-mobile-nav glass-panel glass-panel--strong"
-      aria-label={t("nav.home")}
+      aria-label="Primary navigation"
     >
       <NavLink
         to="/"
