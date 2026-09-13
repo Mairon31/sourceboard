@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseCreatorProStoreConfig } from "../../shared/store/creator-pro-config";
+import {
+  mergeCreatorProStoreConfig,
+  parseCreatorProStoreConfig,
+} from "../../shared/store/creator-pro-config";
 
 const validCreatorPro = {
   preset: "aurora-flow",
@@ -46,5 +49,29 @@ describe("Creator Pro Store config envelope", () => {
         particles: { ...validCreatorPro.particles, count: 49 },
       }),
     ).toThrow();
+  });
+
+  it("merges normalized Creator Pro fields without mutating legacy identity metadata", () => {
+    const base = {
+      preset: "aurora-flow",
+      creatorNote: "keep-me",
+      schemaVersion: 1,
+      palette: ["#000000"],
+      intensity: 0.1,
+    };
+    const snapshot = structuredClone(base);
+    const visual = parseCreatorProStoreConfig(validCreatorPro);
+    expect(visual).not.toBeNull();
+
+    const merged = mergeCreatorProStoreConfig(base, visual!);
+
+    expect(merged).toMatchObject({
+      preset: "aurora-flow",
+      creatorNote: "keep-me",
+      schemaVersion: 1,
+      palette: ["#7c8cff", "#62e8ff"],
+      intensity: 0.7,
+    });
+    expect(base).toEqual(snapshot);
   });
 });
