@@ -1,8 +1,10 @@
 import type { CSSProperties } from "react";
+import type { CosmeticVisualConfigV1 } from "../../../shared/store/cosmetic-config";
 import type { AvatarFramePreset } from "../../../shared/store/cosmetics";
 import { Avatar } from "../ui";
 import { AnonymousAvatar } from "./AnonymousAvatar";
 import { AVATAR_FRAME_DEFINITIONS, AVATAR_STAGE_LAYER_ORDER } from "./avatar-frame-definitions";
+import { creatorProVisualStyle } from "./creator-pro-visual";
 import "./avatar-stage.css";
 import "./avatar-frames.css";
 
@@ -14,6 +16,7 @@ export interface AvatarStageProps {
   anonymous?: boolean;
   className?: string;
   style?: CSSProperties;
+  creatorPro?: CosmeticVisualConfigV1;
 }
 
 function avatarSize(size: AvatarStageProps["size"]): "sm" | "md" | "lg" | "xl" {
@@ -28,6 +31,7 @@ export function AvatarStage({
   anonymous = false,
   className,
   style,
+  creatorPro,
 }: AvatarStageProps) {
   const definition = frame ? AVATAR_FRAME_DEFINITIONS[frame] : undefined;
   return (
@@ -35,7 +39,8 @@ export function AvatarStage({
       className={`product-avatar-stage profile-avatar-area${frame ? " product-avatar-frame--decorative" : ""}${className ? ` ${className}` : ""}`}
       data-size={size}
       data-avatar-frame={frame ?? undefined}
-      style={style}
+      data-creator-pro={creatorPro ? "true" : undefined}
+      style={{ ...style, ...(creatorProVisualStyle(creatorPro, "avatar") ?? {}) }}
     >
       <span className="product-avatar-stage__avatar">
         {anonymous ? (
