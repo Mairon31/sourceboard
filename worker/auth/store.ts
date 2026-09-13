@@ -122,6 +122,7 @@ export interface AuthStore {
   touchSession(sessionId: string, now: number, context?: SessionContextUpdate): Promise<void>;
   revokeSession(sessionId: string, userId: string, now: number): Promise<void>;
   revokeAllSessions(userId: string, now: number): Promise<void>;
+  revokeOtherSessions(userId: string, currentSessionId: string, now: number): Promise<void>;
   listSessions(userId: string, now: number): Promise<SessionRecord[]>;
   getLoginFailureState(keyHash: string): Promise<LoginFailureState | null>;
   recordLoginFailure(keyHash: string, now: number, windowMs: number): Promise<void>;
@@ -582,6 +583,17 @@ export function createD1AuthStore(db: D1Database): AuthStore {
       await db
         .prepare(`UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`)
         .bind(now, userId)
+        .run();
+    },
+
+    async revokeOtherSessions(userId, currentSessionId, now) {
+      await db
+        .prepare(
+          `UPDATE sessions
+           SET revoked_at = ?
+           WHERE user_id = ? AND id <> ? AND revoked_at IS NULL AND expires_at > ?`,
+        )
+        .bind(now, userId, currentSessionId, now)
         .run();
     },
 

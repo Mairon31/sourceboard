@@ -6,6 +6,7 @@ import {
   createD1UsernamePolicyStore,
   createUsernamePolicyService,
 } from "../../worker/profile/username-policy";
+import type { SessionView } from "../../worker/auth/session-presenter";
 import { AnimationControl } from "../components/layout/AnimationControl";
 import { ThemeControl } from "../components/layout/ThemeControl";
 import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
@@ -15,13 +16,7 @@ import { readCsrfToken } from "../data/csrf";
 import { persistPreferenceChange } from "../data/settings-preferences";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 
-interface SessionSummary {
-  id: string;
-  createdAt: number;
-  lastUsedAt: number;
-  expiresAt: number;
-  current: boolean;
-}
+type SessionSummary = SessionView;
 
 export async function loader({ request, context }: ServerLoaderArgs) {
   return withServerSession(
@@ -457,11 +452,43 @@ function PasswordPanel({ authenticated }: { authenticated: boolean }) {
   );
 }
 
+function formatSessionMoment(value: number): string {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function formatSessionLocation(session: SessionSummary): string {
+  return [session.location?.city, session.location?.region, session.location?.country]
+    .filter((value): value is string => Boolean(value))
+    .join(", ");
+}
+
+function sessionTitle(session: SessionSummary): string {
+  const browser = session.browser.name === "unknown" ? null : session.browser.name;
+  const os = session.os.name === "unknown" ? null : session.os.name;
+  if (browser && os) return `${browser} on ${os}`;
+  return browser ?? os ?? "Unknown session";
+}
+
+function sessionObservedName(name: string, version?: string): string {
+  const observed = name === "unknown" ? "Unknown" : name;
+  return version ? `${observed} ${version}` : observed;
+}
+
+function sessionActivityLabel(session: SessionSummary): string {
+  const location = formatSessionLocation(session);
+  const activity = `Last active ${formatSessionMoment(session.lastUsedAt)}`;
+  return location ? `${location} · ${activity}` : activity;
+}
+
 function SessionSecurityPanel() {
-  const navigate = useNavigate();
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
   async function loadSessions() {
@@ -503,6 +530,7 @@ function SessionSecurityPanel() {
         return;
       }
       setSessions((current) => current.filter((session) => session.id !== sessionId));
+      setExpandedId((current) => (current === sessionId ? null : current));
       setStatus("Session revoked.");
     } catch {
       setStatus("That session could not be revoked. Check your connection and try again.");
@@ -511,28 +539,32 @@ function SessionSecurityPanel() {
     }
   }
 
-  async function logoutAll() {
+  async function signOutOtherSessions() {
     if (busyId) return;
-    setBusyId("all");
+    setBusyId("others");
     setStatus(null);
     try {
-      const response = await fetch("/api/auth/logout-all", {
-        method: "POST",
+      const response = await fetch("/api/auth/sessions", {
+        method: "DELETE",
         headers: { "x-csrf-token": readCsrfToken() },
       });
       if (!response.ok) {
-        setStatus("Could not log out all sessions.");
+        setStatus("Other sessions could not be signed out.");
         return;
       }
-      setSessions([]);
-      setAuthenticated(false);
-      navigate("/login");
+      setSessions((current) => current.filter((session) => session.current));
+      setExpandedId((current) =>
+        sessions.some((session) => session.id === current && session.current) ? current : null,
+      );
+      setStatus("Other sessions signed out.");
     } catch {
-      setStatus("Could not log out all sessions. Try again.");
+      setStatus("Other sessions could not be signed out. Check your connection and try again.");
     } finally {
       setBusyId(null);
     }
   }
+
+  const otherSessionCount = sessions.filter((session) => !session.current).length;
 
   return (
     <Card className="product-settings-section product-settings-security-card">
@@ -552,56 +584,113 @@ function SessionSecurityPanel() {
             <span>active session{sessions.length === 1 ? "" : "s"}</span>
           </div>
           <div className="product-settings-session-list">
-            {sessions.map((session) => (
-              <div className="product-settings-session" key={session.id}>
-                <div>
-                  <strong>{session.current ? "Current browser" : "Active browser"}</strong>
-                  <span>
-                    Last used{" "}
-                    {new Date(session.lastUsedAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
-                  </span>
+            {sessions.map((session) => {
+              const expanded = expandedId === session.id;
+              const location = formatSessionLocation(session);
+              return (
+                <div className="product-settings-session" key={session.id}>
+                  <div className="product-settings-session-main">
+                    <div className="product-settings-session-heading">
+                      <strong>{sessionTitle(session)}</strong>
+                      {session.current ? (
+                        <span className="product-settings-current-session">This device</span>
+                      ) : null}
+                    </div>
+                    <span>{sessionActivityLabel(session)}</span>
+                  </div>
+                  <div className="product-settings-session-actions">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-expanded={expanded}
+                      aria-controls={`session-details-${session.id}`}
+                      onClick={() => setExpandedId(expanded ? null : session.id)}
+                    >
+                      {expanded ? "Hide details" : "Details"}
+                    </Button>
+                    {!session.current ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        loading={busyId === session.id}
+                        disabled={Boolean(busyId)}
+                        onClick={() => void revokeSession(session.id)}
+                      >
+                        Revoke
+                      </Button>
+                    ) : null}
+                  </div>
+                  {expanded ? (
+                    <dl
+                      className="product-settings-session-details"
+                      id={`session-details-${session.id}`}
+                    >
+                      <div>
+                        <dt>Browser</dt>
+                        <dd>
+                          {sessionObservedName(session.browser.name, session.browser.version)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Operating system</dt>
+                        <dd>{sessionObservedName(session.os.name, session.os.version)}</dd>
+                      </div>
+                      <div>
+                        <dt>Device type</dt>
+                        <dd>{session.deviceType}</dd>
+                      </div>
+                      <div>
+                        <dt>IP address</dt>
+                        <dd>
+                          {session.ip ?? session.ipMasked ?? "Unavailable"}
+                          {session.ip && session.ipMasked ? ` (${session.ipMasked})` : ""}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Approximate location</dt>
+                        <dd>{location || "Unavailable"}</dd>
+                      </div>
+                      <div>
+                        <dt>Created</dt>
+                        <dd>{formatSessionMoment(session.createdAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>Last active</dt>
+                        <dd>{formatSessionMoment(session.lastUsedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>Expires</dt>
+                        <dd>{formatSessionMoment(session.expiresAt)}</dd>
+                      </div>
+                    </dl>
+                  ) : null}
                 </div>
-                {session.current ? (
-                  <span className="product-settings-current-session">This device</span>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    loading={busyId === session.id}
-                    disabled={Boolean(busyId)}
-                    onClick={() => void revokeSession(session.id)}
-                  >
-                    Revoke
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
           <Button
             variant="secondary"
             size="sm"
-            loading={busyId === "all"}
-            disabled={Boolean(busyId)}
-            onClick={() => void logoutAll()}
+            loading={busyId === "others"}
+            disabled={Boolean(busyId) || otherSessionCount === 0}
+            onClick={() => void signOutOtherSessions()}
           >
-            Log out all sessions
+            Sign out other sessions
           </Button>
         </>
       ) : null}
-      {status ? <span role="status">{status}</span> : null}
+      {status ? (
+        <span role="status" aria-live="polite">
+          {status}
+        </span>
+      ) : null}
     </Card>
   );
 }
 
 const settingsNavigation = [
-  ["settings-account", "Account"],
-  ["settings-profile", "Profile"],
-  ["settings-content", "Content"],
-  ["settings-notifications", "Notifications"],
-  ["settings-appearance", "Appearance"],
-  ["settings-privacy", "Privacy & data"],
+  ["settings-general", "General"],
   ["settings-security", "Security"],
-  ["settings-accessibility", "Accessibility"],
 ] as const;
 
 export default function SettingsRoute() {
@@ -613,7 +702,7 @@ export default function SettingsRoute() {
       <PageHeader
         eyebrow="Account"
         title="Settings"
-        description="Manage your account, profile, content, notifications, appearance, privacy, security and accessibility from one place."
+        description="Use General for everyday preferences and Security for credentials and active-session controls."
       />
       <SettingsNotice data={data} />
 
@@ -628,77 +717,90 @@ export default function SettingsRoute() {
         </nav>
 
         <div className="product-settings-content">
-          <section id="settings-account" className="product-settings-section-group">
+          <div
+            id="settings-general"
+            className="product-settings-surface"
+            data-settings-surface="general"
+          >
             <SettingsSectionHeader
-              eyebrow="Account"
-              title="Account access"
-              description="Manage credentials with server-enforced session invalidation. SourceBoard does not expose private account identifiers on public profile surfaces."
+              eyebrow="General"
+              title="General preferences"
+              description="Manage your profile, content, notifications, appearance, privacy and accessibility preferences."
+            />
+
+            <section id="settings-profile" className="product-settings-section-group">
+              <SettingsSectionHeader
+                eyebrow="Profile"
+                title="Public identity"
+                description="Avatar, banner, display name, bio, social links and profile visibility are edited directly on your profile so the result is visible while you edit."
+              />
+              <Card className="product-settings-section">
+                <div className="product-settings-link-row">
+                  <div>
+                    <strong>Edit profile</strong>
+                    <span>
+                      Open the Discord-style inline profile editor and preview changes in place.
+                    </span>
+                  </div>
+                  <Link className="sb-button sb-button--secondary sb-button--sm" to="/profile">
+                    Open profile
+                  </Link>
+                </div>
+              </Card>
+            </section>
+
+            <ContentPreferences data={data} controller={preferences} />
+            <NotificationPreferences data={data} controller={preferences} />
+
+            <section id="settings-appearance" className="product-settings-section-group">
+              <SettingsSectionHeader
+                eyebrow="Appearance"
+                title="Theme"
+                description="Follow your operating system or use a SourceBoard light or dark override on this browser."
+              />
+              <Card className="product-settings-section product-settings-appearance-card">
+                <div className="product-settings-control-block">
+                  <strong>Theme</strong>
+                  <span>Choose the interface color scheme used on this device.</span>
+                  <ThemeControl />
+                </div>
+              </Card>
+            </section>
+
+            <PrivacyDataPreferences data={data} controller={preferences} />
+
+            <section id="settings-accessibility" className="product-settings-section-group">
+              <SettingsSectionHeader
+                eyebrow="Accessibility"
+                title="Motion"
+                description="Control nonessential interface movement and animated cosmetics. System reduced-motion preferences remain respected automatically."
+              />
+              <Card className="product-settings-section product-settings-appearance-card">
+                <div className="product-settings-control-block">
+                  <AnimationControl />
+                </div>
+              </Card>
+            </section>
+          </div>
+
+          <section
+            id="settings-security"
+            className="product-settings-surface product-settings-section-group"
+            data-settings-surface="security"
+          >
+            <SettingsSectionHeader
+              eyebrow="Security"
+              title="Account security"
+              description="Manage your username and password, then review the authenticated sessions that currently have access to your account."
             />
             <UsernamePanel data={data} />
             <PasswordPanel authenticated={data.authenticated} />
-          </section>
-
-          <section id="settings-profile" className="product-settings-section-group">
             <SettingsSectionHeader
-              eyebrow="Profile"
-              title="Public identity"
-              description="Avatar, banner, display name, bio, social links and profile visibility are edited directly on your profile so the result is visible while you edit."
-            />
-            <Card className="product-settings-section">
-              <div className="product-settings-link-row">
-                <div>
-                  <strong>Edit profile</strong>
-                  <span>
-                    Open the Discord-style inline profile editor and preview changes in place.
-                  </span>
-                </div>
-                <Link className="sb-button sb-button--secondary sb-button--sm" to="/profile">
-                  Open profile
-                </Link>
-              </div>
-            </Card>
-          </section>
-
-          <ContentPreferences data={data} controller={preferences} />
-          <NotificationPreferences data={data} controller={preferences} />
-
-          <section id="settings-appearance" className="product-settings-section-group">
-            <SettingsSectionHeader
-              eyebrow="Appearance"
-              title="Theme"
-              description="Follow your operating system or use a SourceBoard light or dark override on this browser."
-            />
-            <Card className="product-settings-section product-settings-appearance-card">
-              <div className="product-settings-control-block">
-                <strong>Theme</strong>
-                <span>Choose the interface color scheme used on this device.</span>
-                <ThemeControl />
-              </div>
-            </Card>
-          </section>
-
-          <PrivacyDataPreferences data={data} controller={preferences} />
-
-          <section id="settings-security" className="product-settings-section-group">
-            <SettingsSectionHeader
-              eyebrow="Security"
+              eyebrow="Sessions"
               title="Active sessions"
-              description="Review authenticated browser sessions, revoke another browser immediately, or invalidate every session."
+              description="Review observed browser, operating system, activity, approximate location and IP details, revoke one session, or sign out every other session while keeping this device signed in."
             />
             <SessionSecurityPanel />
-          </section>
-
-          <section id="settings-accessibility" className="product-settings-section-group">
-            <SettingsSectionHeader
-              eyebrow="Accessibility"
-              title="Motion"
-              description="Control nonessential interface movement and animated cosmetics. System reduced-motion preferences remain respected automatically."
-            />
-            <Card className="product-settings-section product-settings-appearance-card">
-              <div className="product-settings-control-block">
-                <AnimationControl />
-              </div>
-            </Card>
           </section>
         </div>
       </div>

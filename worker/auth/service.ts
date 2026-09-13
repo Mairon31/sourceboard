@@ -133,6 +133,7 @@ export interface AuthService {
     context: AuthServiceContext,
   ): Promise<{ changed: true; cookies: AuthCookie[] }>;
   listSessions(context: AuthServiceContext): Promise<SessionView[]>;
+  signOutOtherSessions(context: AuthServiceContext): Promise<void>;
   revokeSession(sessionId: string, context: AuthServiceContext): Promise<void>;
   changeRole(
     input: {
@@ -1366,6 +1367,17 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     });
   }
 
+  async function signOutOtherSessions(context: AuthServiceContext): Promise<void> {
+    const current = await currentSession(context);
+    await dependencies.store.revokeOtherSessions(current!.user.id, current!.session.id, now());
+    await writeAudit(context, {
+      actorUserId: current!.user.id,
+      action: "auth.other_sessions_revoked",
+      targetType: "user",
+      targetId: current!.user.id,
+    });
+  }
+
   async function revokeSession(sessionId: string, context: AuthServiceContext): Promise<void> {
     const current = await currentSession(context);
     await dependencies.store.revokeSession(sessionId, current!.user.id, now());
@@ -1436,6 +1448,7 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     resetPassword,
     changePassword,
     listSessions,
+    signOutOtherSessions,
     revokeSession,
     changeRole,
     getAuthorization,
