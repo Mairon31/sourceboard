@@ -12,8 +12,10 @@ import type {
   CosmeticIdentityVisuals,
   CosmeticVisualDefinition,
 } from "../../../shared/store/custom-cosmetics";
-import { CosmeticIdentity } from "./CosmeticIdentity";
+import { AvatarStage } from "./AvatarStage";
+import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 import { ProfileIdentityCard } from "./ProfileIdentityCard";
+import "./profile-cosmetic-preview.css";
 
 export type ProfileCosmeticPreviewType = "PROFILE_BANNER" | "PROFILE_EFFECT" | "AVATAR_FRAME";
 
@@ -95,15 +97,15 @@ export function ProfileCosmeticPreview({
         {communityStyles?.map((style) => (
           <style key={style.id}>{style.css}</style>
         ))}
-        <div className="profile-card product-cosmetic-preview__frame-surface">
-          <CosmeticIdentity
-            displayName={name}
+        <div className="product-cosmetic-preview__frame-surface">
+          <AvatarStage
             avatarUrl={avatarUrl}
-            avatarFrame={frame}
-            visuals={visuals}
-            creatorPro={structured}
-            mode="preview"
-            nameAs="strong"
+            alt={name}
+            frame={frame}
+            size="preview"
+            className={cosmeticVisualClass(visual).trim() || undefined}
+            style={cosmeticVisualStyle(visual)}
+            creatorPro={creatorPro}
           />
         </div>
       </div>
@@ -121,8 +123,8 @@ export function ProfileCosmeticPreview({
       communityStyles={communityStyles}
       mode={mode}
     >
-      <div className="profile-header product-cosmetic-preview__header">
-        <CosmeticIdentity displayName={name} avatarUrl={avatarUrl} mode="preview" nameAs="strong" />
+      <div className="product-cosmetic-preview__subject">
+        <AvatarStage avatarUrl={avatarUrl} alt={name} size="preview" />
       </div>
     </ProfileIdentityCard>
   );
