@@ -10,6 +10,7 @@ export default [
   route("category", "routes/category-index.tsx"),
   route("category/:categorySlug", "routes/category.tsx"),
   route("resources/feed/:kind", "routes/feed-resource.tsx"),
+  route("resources/locale", "routes/locale-preference.tsx"),
   route("post/new", "routes/post-new.tsx"),
   route("posts/:postId", "routes/post-detail.tsx"),
   route("posts/:postId/:slug", "routes/post-detail.tsx", { id: "post-detail-slug" }),
