@@ -25,9 +25,13 @@ jobs:
         run: node --import tsx scripts/generate-cms-seed.ts
       - name: Typecheck
         run: npm run typecheck
-      - name: Unit tests
-        run: npm test -- --run
+      - name: Unit tests with captured output
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test -- --run 2>&1 | tee /tmp/platform-overhaul-unit-tests.txt
       - name: Apply clean migration chain
+        if: success()
         run: npm run db:migrations:apply
       - name: Capture generated artifacts
         if: always()
@@ -39,6 +43,7 @@ jobs:
         with:
           name: platform-overhaul-diagnostics
           path: |
+            /tmp/platform-overhaul-unit-tests.txt
             /tmp/platform-overhaul-formatted.patch
             /tmp/0034_cms_seed_existing_content.sql
           if-no-files-found: warn
