@@ -7,6 +7,7 @@ import { AVATAR_FRAME_DEFINITIONS, AVATAR_STAGE_LAYER_ORDER } from "./avatar-fra
 import { creatorProVisualStyle } from "./creator-pro-visual";
 import "./avatar-stage.css";
 import "./avatar-frames.css";
+import "./creator-pro-visual.css";
 
 export interface AvatarStageProps {
   avatarUrl?: string;
