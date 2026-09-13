@@ -5,6 +5,7 @@ import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { FriendsWorkspace } from "../components/product/FriendsWorkspace";
 import { ProductShell } from "../components/product/ProductShell";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { useI18n } from "../i18n/I18nProvider";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
   return withServerSession(
@@ -28,14 +29,15 @@ export const meta: MetaFunction = () => [
 ];
 
 export default function FriendsRoute() {
+  const { t } = useI18n();
   const data = useLoaderData<LoaderData>();
   return (
     <ProductShell>
       <header className="product-friends-lead">
-        <span className="product-eyebrow">Social</span>
+        <span className="product-eyebrow">{t("friends.eyebrow")}</span>
         <div>
-          <h1>Friends</h1>
-          <p>Connections, requests and account discovery in one place.</p>
+          <h1>{t("friends.title")}</h1>
+          <p>{t("friends.description")}</p>
         </div>
       </header>
       {data.authenticated ? (
@@ -44,8 +46,8 @@ export default function FriendsRoute() {
         <AuthRequiredCard unavailable />
       ) : (
         <AuthRequiredCard
-          title="Sign in to manage friends"
-          description="Friend requests and blocks are private account data. Sign in or create an account to manage your connections."
+          title={t("friends.authTitle")}
+          description={t("friends.authDescription")}
         />
       )}
     </ProductShell>
