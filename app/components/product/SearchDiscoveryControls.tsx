@@ -1,6 +1,8 @@
 import { Link } from "react-router";
 import { POST_CATEGORIES, getPostCategory } from "../../../shared/posts/categories";
 import type { SearchFilter, SearchKind } from "../../../worker/search/service";
+import type { MessageKey } from "../../i18n";
+import { useI18n } from "../../i18n/I18nProvider";
 import {
   buildSearchHref,
   writeSearchViewPreference,
@@ -9,25 +11,25 @@ import {
 } from "../../data/search-state";
 import { GalleryIcon, GridIcon, ListIcon } from "../ui";
 
-const KINDS: Array<{ value: SearchKind; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "posts", label: "Posts" },
-  { value: "profiles", label: "Users" },
-  { value: "sources", label: "Accepted Sources" },
+const KINDS: Array<{ value: SearchKind; labelKey: MessageKey }> = [
+  { value: "all", labelKey: "search.kind.all" },
+  { value: "posts", labelKey: "search.kind.posts" },
+  { value: "profiles", labelKey: "search.kind.users" },
+  { value: "sources", labelKey: "search.kind.sources" },
 ];
 
-const FILTERS: Array<{ value: SearchFilter; label: string }> = [
-  { value: "relevant", label: "Relevant" },
-  { value: "recent", label: "Recent" },
-  { value: "unanswered", label: "Unanswered" },
-  { value: "answered", label: "Answered" },
-  { value: "verified", label: "Verified" },
+const FILTERS: Array<{ value: SearchFilter; labelKey: MessageKey }> = [
+  { value: "relevant", labelKey: "search.filter.relevant" },
+  { value: "recent", labelKey: "search.filter.recent" },
+  { value: "unanswered", labelKey: "search.filter.unanswered" },
+  { value: "answered", labelKey: "search.filter.answered" },
+  { value: "verified", labelKey: "search.filter.verified" },
 ];
 
-const VIEWS: Array<{ value: SearchView; label: string; icon: typeof ListIcon }> = [
-  { value: "list", label: "List view", icon: ListIcon },
-  { value: "gallery", label: "Gallery view", icon: GalleryIcon },
-  { value: "grid", label: "Detailed Grid view", icon: GridIcon },
+const VIEWS: Array<{ value: SearchView; labelKey: MessageKey; icon: typeof ListIcon }> = [
+  { value: "list", labelKey: "search.view.list", icon: ListIcon },
+  { value: "gallery", labelKey: "search.view.gallery", icon: GalleryIcon },
+  { value: "grid", labelKey: "search.view.grid", icon: GridIcon },
 ];
 
 function persistSearchView(view: SearchView) {
@@ -39,12 +41,13 @@ function persistSearchView(view: SearchView) {
 }
 
 export function SearchDiscoveryControls({ state }: { state: SearchRouteState }) {
+  const { t } = useI18n();
   const postBearing = state.kind !== "profiles";
   const category = state.categorySlug ? getPostCategory(state.categorySlug) : null;
 
   return (
-    <div className="product-search-controls" aria-label="Discovery filters">
-      <nav className="product-store-filter-tabs" aria-label="Search result type">
+    <div className="product-search-controls" aria-label={t("search.filtersAria")}>
+      <nav className="product-store-filter-tabs" aria-label={t("search.resultTypeAria")}>
         {KINDS.map((item) => (
           <Link
             key={item.value}
@@ -52,14 +55,14 @@ export function SearchDiscoveryControls({ state }: { state: SearchRouteState }) 
             to={buildSearchHref(state, { kind: item.value })}
             aria-current={state.kind === item.value ? "page" : undefined}
           >
-            {item.label}
+            {t(item.labelKey)}
           </Link>
         ))}
       </nav>
 
       {postBearing ? (
         <div className="product-search-structured-row">
-          <nav className="product-chip-row" aria-label="Search post filter">
+          <nav className="product-chip-row" aria-label={t("search.postFilterAria")}>
             {FILTERS.map((item) => (
               <Link
                 key={item.value}
@@ -67,7 +70,7 @@ export function SearchDiscoveryControls({ state }: { state: SearchRouteState }) 
                 to={buildSearchHref(state, { filter: item.value })}
                 aria-current={state.filter === item.value ? "page" : undefined}
               >
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             ))}
           </nav>
@@ -75,8 +78,8 @@ export function SearchDiscoveryControls({ state }: { state: SearchRouteState }) 
           <div className="product-search-structured-actions">
             <details className="product-search-category-menu">
               <summary>
-                <span>Category</span>
-                <strong>{category?.label ?? "All"}</strong>
+                <span>{t("search.category")}</span>
+                <strong>{category?.label ?? t("search.all")}</strong>
               </summary>
               <div className="product-search-category-menu__panel">
                 <Link
@@ -84,7 +87,7 @@ export function SearchDiscoveryControls({ state }: { state: SearchRouteState }) 
                   to={buildSearchHref(state, { categorySlug: null })}
                   aria-current={!state.categorySlug ? "page" : undefined}
                 >
-                  All categories
+                  {t("search.allCategories")}
                 </Link>
                 {POST_CATEGORIES.map((item) => (
                   <Link
@@ -99,17 +102,18 @@ export function SearchDiscoveryControls({ state }: { state: SearchRouteState }) 
               </div>
             </details>
 
-            <nav className="product-search-view-switcher" aria-label="Search result view">
+            <nav className="product-search-view-switcher" aria-label={t("search.viewAria")}>
               {VIEWS.map((item) => {
                 const Icon = item.icon;
+                const label = t(item.labelKey);
                 return (
                   <Link
                     key={item.value}
                     className={state.view === item.value ? "is-active" : undefined}
                     to={buildSearchHref(state, { view: item.value })}
-                    aria-label={item.label}
+                    aria-label={label}
                     aria-current={state.view === item.value ? "page" : undefined}
-                    title={item.label}
+                    title={label}
                     onClick={() => persistSearchView(item.value)}
                   >
                     <Icon width="18" height="18" />
