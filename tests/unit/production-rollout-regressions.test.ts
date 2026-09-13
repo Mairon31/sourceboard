@@ -28,7 +28,7 @@ describe("production rollout regressions", () => {
     expect(securityHeaders).toContain("content-type");
   });
 
-  it("applies remote D1 migrations through the DB binding before deploying the Worker", () => {
+  it("applies committed remote D1 migrations before deploying the Worker", () => {
     expect(packageJson.scripts?.deploy).toBe(
       "npm run db:migrations:apply:remote && wrangler deploy",
     );
@@ -36,7 +36,14 @@ describe("production rollout regressions", () => {
       "wrangler d1 migrations list DB --remote",
     );
     expect(packageJson.scripts?.["db:migrations:apply:remote"]).toBe(
-      "npm run db:cms-seed:generate && wrangler d1 migrations apply DB --remote",
+      "wrangler d1 migrations apply DB --remote",
+    );
+    expect(packageJson.scripts?.["db:migrations:apply"]).toBe(
+      "wrangler d1 migrations apply DB --local",
+    );
+    expect(packageJson.scripts?.test).toBe("vitest run");
+    expect(packageJson.scripts?.["db:cms-seed:generate"]).toBe(
+      "node --import tsx scripts/generate-cms-seed.ts",
     );
   });
 });
