@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
 
 export type MediaPickerKind = "GIF" | "STICKER" | "EMOTE";
 
@@ -59,6 +60,7 @@ export function MediaPicker({
   onSelect: (item: MediaPickerSelection) => void;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<KlipyMediaItem[]>([]);
   const [packs, setPacks] = useState<EmotePack[]>([]);
@@ -69,6 +71,19 @@ export function MediaPicker({
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const emotePackCacheRef = useRef<EmotePack[] | null>(null);
+
+  const kindLabel =
+    kind === "GIF"
+      ? t("mediaPicker.gifs")
+      : kind === "STICKER"
+        ? t("mediaPicker.stickers")
+        : t("mediaPicker.emotes");
+  const searchLabel =
+    kind === "GIF"
+      ? t("mediaPicker.searchGifs")
+      : kind === "STICKER"
+        ? t("mediaPicker.searchStickers")
+        : t("mediaPicker.searchEmotes");
 
   useEffect(() => {
     setQuery("");
@@ -83,7 +98,7 @@ export function MediaPicker({
         const payload = (await response.json().catch(() => null)) as {
           packs?: StickerPack[];
         } | null;
-        if (!response.ok) throw new Error("SourceBoard stickers are unavailable.");
+        if (!response.ok) throw new Error(t("mediaPicker.stickersUnavailable"));
         setStickerPacks(Array.isArray(payload?.packs) ? payload.packs : []);
       })
       .catch((cause: unknown) => {
@@ -91,7 +106,7 @@ export function MediaPicker({
         setStickerPacks([]);
       });
     return () => controller.abort();
-  }, [kind]);
+  }, [kind, t]);
 
   useEffect(() => {
     requestRef.current?.abort();
@@ -112,17 +127,17 @@ export function MediaPicker({
             packs?: EmotePack[];
             error?: { message?: string };
           } | null;
-          if (!response.ok) throw new Error(payload?.error?.message ?? "Emotes are unavailable.");
+          if (!response.ok) throw new Error(payload?.error?.message ?? t("mediaPicker.emotesUnavailable"));
           const next = Array.isArray(payload?.packs) ? payload.packs : [];
           emotePackCacheRef.current = next;
           setPacks(next);
           setActivePackId(next[0]?.id);
-          if (!next.length) setStatus("You do not have any emote packs yet.");
+          if (!next.length) setStatus(t("mediaPicker.noEmotePacks"));
         })
         .catch((cause: unknown) => {
           if (cause instanceof DOMException && cause.name === "AbortError") return;
           setPacks([]);
-          setStatus(cause instanceof Error ? cause.message : "Emotes are unavailable.");
+          setStatus(cause instanceof Error ? cause.message : t("mediaPicker.emotesUnavailable"));
         })
         .finally(() => {
           if (!controller.signal.aborted) setBusy(false);
@@ -136,7 +151,7 @@ export function MediaPicker({
     if (cached) {
       setItems(cached);
       setBusy(false);
-      if (!cached.length) setStatus(trimmed ? "No results found." : "No featured media found.");
+      if (!cached.length) setStatus(trimmed ? t("mediaPicker.noResults") : t("mediaPicker.noFeatured"));
       return () => controller.abort();
     }
 
@@ -151,17 +166,16 @@ export function MediaPicker({
             items?: KlipyMediaItem[];
             error?: { message?: string };
           } | null;
-          if (!response.ok)
-            throw new Error(payload?.error?.message ?? "Media search is unavailable.");
+          if (!response.ok) throw new Error(payload?.error?.message ?? t("mediaPicker.searchUnavailable"));
           const next = Array.isArray(payload?.items) ? payload.items : [];
           mediaCache.set(cacheKey, next);
           setItems(next);
-          if (!next.length) setStatus(trimmed ? "No results found." : "No featured media found.");
+          if (!next.length) setStatus(trimmed ? t("mediaPicker.noResults") : t("mediaPicker.noFeatured"));
         })
         .catch((cause: unknown) => {
           if (cause instanceof DOMException && cause.name === "AbortError") return;
           setItems([]);
-          setStatus(cause instanceof Error ? cause.message : "Media search is unavailable.");
+          setStatus(cause instanceof Error ? cause.message : t("mediaPicker.searchUnavailable"));
         })
         .finally(() => {
           if (!controller.signal.aborted) setBusy(false);
@@ -172,7 +186,7 @@ export function MediaPicker({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [kind, query]);
+  }, [kind, query, t]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -204,45 +218,47 @@ export function MediaPicker({
   }
 
   return (
-    <div ref={pickerRef} className="product-comment-media-picker" aria-label="Media picker">
+    <div ref={pickerRef} className="product-comment-media-picker" aria-label={t("mediaPicker.aria")}>
       <div className="product-comment-media-picker__header">
-        <strong>Add media</strong>
+        <strong>{t("mediaPicker.title")}</strong>
         <button
           className="product-comment-media-picker__close"
           type="button"
           onClick={onClose}
-          aria-label="Close media picker"
+          aria-label={t("mediaPicker.close")}
         >
           ×
         </button>
       </div>
-      <div className="product-comment-media-picker__tabs" role="tablist" aria-label="Media type">
-        {(["GIF", "STICKER", "EMOTE"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-label={value === "GIF" ? "GIFs" : value === "STICKER" ? "Stickers" : "Emotes"}
-            aria-selected={kind === value}
-            className={kind === value ? "is-active" : undefined}
-            onClick={() => onKindChange(value)}
-          >
-            {value === "GIF" ? "GIFs" : value === "STICKER" ? "Stickers" : "Emotes"}
-          </button>
-        ))}
+      <div className="product-comment-media-picker__tabs" role="tablist" aria-label={t("mediaPicker.typeAria")}>
+        {(["GIF", "STICKER", "EMOTE"] as const).map((value) => {
+          const label =
+            value === "GIF"
+              ? t("mediaPicker.gifs")
+              : value === "STICKER"
+                ? t("mediaPicker.stickers")
+                : t("mediaPicker.emotes");
+          return (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-label={label}
+              aria-selected={kind === value}
+              className={kind === value ? "is-active" : undefined}
+              onClick={() => onKindChange(value)}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
       <div className="product-comment-media-picker__search">
         <input
           type="search"
           value={query}
-          aria-label={`Search ${kind.toLowerCase()}s`}
-          placeholder={
-            kind === "GIF"
-              ? "Search GIFs"
-              : kind === "STICKER"
-                ? "Search stickers"
-                : "Search emotes"
-          }
+          aria-label={searchLabel}
+          placeholder={searchLabel}
           onChange={(event) => setQuery(event.target.value)}
         />
       </div>
@@ -250,7 +266,7 @@ export function MediaPicker({
       {kind === "EMOTE" ? (
         <>
           {packs.length ? (
-            <nav className="product-comment-media-picker__packbar" aria-label="Emote packs">
+            <nav className="product-comment-media-picker__packbar" aria-label={t("mediaPicker.emotePacks")}>
               {packs.map((pack) => (
                 <button
                   key={pack.id}
@@ -277,8 +293,7 @@ export function MediaPicker({
               const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-pack-id]"));
               const current = sections.reduce<HTMLElement | null>((best, section) => {
                 if (!best) return section;
-                return Math.abs(section.offsetTop - root.scrollTop) <
-                  Math.abs(best.offsetTop - root.scrollTop)
+                return Math.abs(section.offsetTop - root.scrollTop) < Math.abs(best.offsetTop - root.scrollTop)
                   ? section
                   : best;
               }, null);
@@ -294,7 +309,7 @@ export function MediaPicker({
                       key={emote.id}
                       type="button"
                       title={`${emote.label} ${emote.shortcode}`}
-                      aria-label={`Add ${emote.label}`}
+                      aria-label={t("mediaPicker.addItem", { name: emote.label })}
                       onClick={() => onSelect(emote)}
                     >
                       <img src={emote.url} alt={emote.label} loading="lazy" />
@@ -309,13 +324,13 @@ export function MediaPicker({
         <div
           className="product-comment-media-picker__results product-comment-media-picker__results--gif"
           data-media-kind="gif"
-          aria-label="GIF results"
+          aria-label={t("mediaPicker.gifResults")}
         >
           {items.map((item) => (
             <button
               key={item.id}
               type="button"
-              aria-label={`Add ${item.title}`}
+              aria-label={t("mediaPicker.addItem", { name: item.title })}
               onClick={() => onSelect(item)}
             >
               <img src={item.url || item.preview} alt={item.title} loading="lazy" />
@@ -331,14 +346,14 @@ export function MediaPicker({
                   <h3>{pack.label}</h3>
                   <div
                     className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
-                    aria-label={`${pack.label} stickers`}
+                    aria-label={t("mediaPicker.packStickers", { name: pack.label })}
                   >
                     {pack.stickers.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         className="is-sticker"
-                        aria-label={`Add ${item.label}`}
+                        aria-label={t("mediaPicker.addItem", { name: item.label })}
                         onClick={() => onSelect(item)}
                       >
                         <img src={item.url} alt={item.label} loading="lazy" />
@@ -352,14 +367,14 @@ export function MediaPicker({
           ) : null}
           <div
             className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
-            aria-label="STICKER results"
+            aria-label={t("mediaPicker.stickerResults")}
           >
             {items.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 className="is-sticker"
-                aria-label={`Add ${item.title}`}
+                aria-label={t("mediaPicker.addItem", { name: item.title })}
                 onClick={() => onSelect(item)}
               >
                 <img src={item.url || item.preview} alt={item.title} loading="lazy" />
@@ -368,7 +383,7 @@ export function MediaPicker({
           </div>
         </div>
       )}
-      {busy ? <small role="status">Loading…</small> : null}
+      {busy ? <small role="status">{t("mediaPicker.loading")}</small> : null}
       {!busy && status ? <small role="status">{status}</small> : null}
     </div>
   );
