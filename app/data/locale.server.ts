@@ -65,11 +65,15 @@ export function resolveLocale(input: LocaleResolutionInput): Locale {
 
 export function requestedLocale(request: Request, accountLocale?: string | null): Locale {
   const url = new URL(request.url);
+  const firstSegment = url.pathname.split("/").filter(Boolean)[0] ?? null;
+  const pathLocale = isLocale(firstSegment) ? firstSegment : null;
+  const queryLocale = url.searchParams.get("lang");
   return resolveLocale({
-    explicitLang: url.searchParams.get("lang"),
+    explicitLang: pathLocale ?? queryLocale,
     cookieLocale: readLocaleCookie(request.headers.get("cookie")),
     accountLocale,
     acceptLanguage: request.headers.get("accept-language"),
-    shortLinkDefaultEnglish: url.pathname.startsWith("/sh/") && !url.searchParams.has("lang"),
+    shortLinkDefaultEnglish:
+      url.pathname.startsWith("/sh/") && !url.searchParams.has("lang"),
   });
 }
