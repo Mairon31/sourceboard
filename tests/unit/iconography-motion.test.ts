@@ -26,9 +26,9 @@ describe("SourceBoard iconography and motion preferences", () => {
     expect(topBar).toContain("<BellIcon");
   });
 
-  it("keeps icon-only mobile navigation actions accessible by name", () => {
-    for (const label of ["Home", "Friends", "Create post", "Profile", "Store"]) {
-      expect(productNav).toContain(`aria-label="${label}"`);
+  it("keeps icon-only mobile navigation actions accessible by localized name", () => {
+    for (const key of ["nav.home", "nav.friends", "nav.create", "nav.profile", "nav.store"]) {
+      expect(productNav).toContain(`aria-label={t("${key}")}`);
     }
   });
 
