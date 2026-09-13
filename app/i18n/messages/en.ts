@@ -37,6 +37,7 @@ export const enMessages = {
   "errors.notFound.title": "Page not found",
   "errors.notFound.description": "The page may have moved, been removed, or may not be available to you.",
   "errors.notFound.home": "Go home",
+  "errors.notFound.back": "Go back",
   "auth.login": "Log in",
   "auth.register": "Create account",
   "docs.title": "Docs",
