@@ -19,16 +19,26 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --strict-allow-scripts
-      - name: Inspect lint toolchain before audit
+      - name: Inspect lint toolchain after install
         shell: bash
         run: |
           {
-            echo "=== before audit ==="
+            echo "=== after install ==="
             npm ls @eslint/js eslint || true
             node -e "import('@eslint/js').then(() => console.log('@eslint/js import: ok')).catch((error) => { console.error(error); process.exitCode = 1; })" || true
           } |& tee /tmp/platform-overhaul-lint-toolchain.txt
+      - name: Normalize formatting in ephemeral checkout
+        run: npx prettier --write .
+      - name: Inspect lint toolchain after prettier
+        shell: bash
+        run: |
+          {
+            echo "=== after prettier ==="
+            npm ls @eslint/js eslint || true
+            node -e "import('@eslint/js').then(() => console.log('@eslint/js import: ok')).catch((error) => { console.error(error); process.exitCode = 1; })" || true
+          } |& tee -a /tmp/platform-overhaul-lint-toolchain.txt
       - name: Production audit probe
-        run: npm audit --omit=dev
+        run: npm run audit:prod
       - name: Inspect lint toolchain after audit
         shell: bash
         run: |
@@ -38,8 +48,6 @@ jobs:
             node -e "import('@eslint/js').then(() => console.log('@eslint/js import: ok')).catch((error) => { console.error(error); process.exitCode = 1; })" || true
             npm run lint || true
           } |& tee -a /tmp/platform-overhaul-lint-toolchain.txt
-      - name: Normalize formatting in ephemeral checkout
-        run: npx prettier --write .
       - name: Generate deterministic CMS seed
         run: node --import tsx scripts/generate-cms-seed.ts
       - name: Typecheck
