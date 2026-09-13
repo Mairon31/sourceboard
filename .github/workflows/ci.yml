@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: tenki-standard-medium-4c-8g
+    runs-on: tenki-standard-small-2c-4g
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
