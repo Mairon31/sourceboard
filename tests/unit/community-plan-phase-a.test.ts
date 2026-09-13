@@ -36,8 +36,13 @@ describe("community plan phase A", () => {
 
   it("removes feed counters while preserving the four Home filters", () => {
     const home = read("../../app/routes/_index.tsx");
-    for (const label of ["Recent", "Friends", "Answered", "Verified"]) {
-      expect(home).toContain(`label: "${label}"`);
+    for (const labelKey of [
+      "home.feed.recent",
+      "home.feed.friends",
+      "home.feed.answered",
+      "home.feed.verified",
+    ]) {
+      expect(home).toContain(`label: "${labelKey}"`);
     }
     expect(home).not.toContain("product-feed-filter-tabs__count");
   });

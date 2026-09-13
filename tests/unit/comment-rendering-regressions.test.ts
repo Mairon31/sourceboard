@@ -20,7 +20,7 @@ describe("comment rendering regressions", () => {
   });
 
   it("keeps accepted-source dates deterministic between SSR and the browser", () => {
-    expect(sourceResolution).toContain('toLocaleDateString("en-US"');
+    expect(sourceResolution).toContain("const { t, date } = useI18n()");
     expect(sourceResolution).not.toContain("toLocaleDateString()</span>");
   });
 

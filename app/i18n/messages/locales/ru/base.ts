@@ -1,7 +1,6 @@
-import type { MessageKey } from "./en";
-import { settingsMessageSets } from "./settings";
+import type { BaseMessages } from "../../types";
 
-export const ruMessages = {
+export const ruBaseMessages = {
   "nav.home": "Главная",
   "nav.search": "Поиск",
   "nav.friends": "Друзья",
@@ -22,12 +21,12 @@ export const ruMessages = {
   "settings.security.title": "Безопасность",
   "settings.language.title": "Язык",
   "settings.language.description": "Выберите язык интерфейса SourceBoard.",
-  ...settingsMessageSets.ru,
   "security.sessions.title": "Активные сеансы",
   "security.sessions.revokeOthers": "Завершить другие сеансы",
   "notifications.title": "Уведомления",
   "notifications.eyebrow": "Активность",
-  "notifications.description": "Обновления о ваших публикациях, источниках, друзьях и активности SourceBoard. Повторяющиеся события низкой важности группируются без изменения истории событий.",
+  "notifications.description":
+    "Обновления о ваших публикациях, источниках, друзьях и активности SourceBoard. Повторяющиеся события низкой важности группируются без изменения истории событий.",
   "notifications.all": "Все",
   "notifications.unread": "Непрочитанные",
   "notifications.activity": "Активность",
@@ -36,20 +35,29 @@ export const ruMessages = {
   "notifications.markAllRead": "Отметить всё прочитанным",
   "notifications.clear": "Очистить уведомления",
   "notifications.clearTitle": "Очистить все уведомления?",
-  "notifications.clearDescription": "Это навсегда удалит все уведомления, находящиеся сейчас в вашем списке.",
+  "notifications.clearDescription":
+    "Это навсегда удалит все уведомления, находящиеся сейчас в вашем списке.",
   "notifications.unavailable": "Уведомления сейчас недоступны.",
   "notifications.authTitle": "Войдите, чтобы увидеть уведомления",
-  "notifications.authDescription": "Уведомления относятся к вашей личной учётной записи. Войдите или создайте аккаунт, чтобы следить за активностью SourceBoard.",
+  "notifications.authDescription":
+    "Уведомления относятся к вашей личной учётной записи. Войдите или создайте аккаунт, чтобы следить за активностью SourceBoard.",
   "notifications.filtersLabel": "Фильтры уведомлений",
   "notifications.caughtUpTitle": "Вы всё просмотрели.",
-  "notifications.caughtUpDescription": "Здесь появятся новые комментарии, реакции, активность друзей и обновления источников.",
+  "notifications.caughtUpDescription":
+    "Здесь появятся новые комментарии, реакции, активность друзей и обновления источников.",
   "notifications.noFilterTitle": "В этом фильтре нет уведомлений.",
-  "notifications.noFilterDescription": "Выберите другой фильтр, чтобы увидеть больше истории уведомлений.",
+  "notifications.noFilterDescription":
+    "Выберите другой фильтр, чтобы увидеть больше истории уведомлений.",
   "notifications.updateError": "Не удалось обновить уведомления.",
   "notifications.groupUpdateError": "Не удалось обновить эту группу уведомлений.",
   "notifications.clearError": "Не удалось очистить уведомления.",
   "notifications.actions": "Действия с уведомлением",
   "notifications.markRead": "Отметить прочитанным",
+  "notifications.viewAll": "Показать все",
+  "notifications.unreadCount.one": "{count} непрочитанное уведомление",
+  "notifications.unreadCount.other": "{count} непрочитанных уведомлений",
+  "notifications.loadingTitle": "Загрузка уведомлений…",
+  "notifications.loadingDescription": "Проверяем последнюю активность SourceBoard.",
   "notifications.grouped": "Связанных событий: {count}",
   "notifications.new": "новое",
   "store.title": "Магазин",
@@ -64,13 +72,27 @@ export const ruMessages = {
   "errors.notFound.back": "Назад",
   "auth.login": "Войти",
   "auth.register": "Создать аккаунт",
+  "auth.accountAccess": "Доступ к аккаунту",
+  "auth.defaultTitle": "Здесь требуется ваш аккаунт",
+  "auth.defaultDescription":
+    "Войдите или создайте бесплатный аккаунт, чтобы открыть эту приватную область SourceBoard.",
+  "auth.unavailableTitle": "Сервис временно недоступен",
+  "auth.unavailableDescription": "Повторите попытку чуть позже.",
+  "theme.preference": "Настройка темы",
+  "theme.system": "Системная тема",
+  "theme.light": "Светлая тема",
+  "theme.dark": "Тёмная тема",
+  "animations.label": "Анимации",
+  "animations.description":
+    "Управляет микроанимациями SourceBoard и анимированными косметическими эффектами в этом браузере. Системные настройки уменьшения движения всегда имеют приоритет.",
   "docs.title": "Документация",
   "legal.title": "Правовая информация",
   "content.englishFallback": "Сейчас эта страница доступна на английском языке.",
   "admin.title": "Администрирование",
   "admin.content": "Контент",
   "admin.store": "Управление магазином",
-  "footer.tagline": "Находите первоисточник изображений с помощью проверяемой цепочки доказательств.",
+  "footer.tagline":
+    "Находите первоисточник изображений с помощью проверяемой цепочки доказательств.",
   "footer.product": "Продукт",
   "footer.docs": "Документация",
   "footer.help": "Помощь",
@@ -87,4 +109,4 @@ export const ruMessages = {
   "footer.aiPublicContent": "ИИ и публичный контент",
   "footer.accountVerification": "Аккаунт и верификация",
   "footer.legal": "Правовая информация",
-} as const satisfies Record<MessageKey, string>;
+} satisfies BaseMessages;

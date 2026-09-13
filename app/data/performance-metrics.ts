@@ -1,3 +1,5 @@
+import { isLocale } from "../../shared/i18n/locales";
+
 const navigationStarts = new Map<string, string>();
 let navigationSequence = 0;
 
@@ -16,6 +18,14 @@ export type NavigationFamily =
   | "other";
 
 export function classifyNavigationPath(pathname: string): NavigationFamily {
+  const pathOnly = pathname.split("?", 1)[0] ?? pathname;
+  const segments = pathOnly.split("/").filter(Boolean);
+  const normalizedPath = isLocale(segments[0])
+    ? segments.length === 1
+      ? "/"
+      : `/${segments.slice(1).join("/")}`
+    : pathOnly;
+  pathname = normalizedPath;
   if (pathname === "/") return "home";
   if (pathname === "/store") return "store";
   if (pathname === "/friends") return "friends";

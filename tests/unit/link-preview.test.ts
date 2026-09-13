@@ -107,6 +107,29 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
+  it("retries a blocked public document once with a browser-compatible user agent", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(
+        new Response('<meta property="og:title" content="Recovered">', {
+          headers: { "content-type": "text/html" },
+        }),
+      ) as unknown as typeof fetch;
+    const resolveHost = vi.fn(async () => ["93.184.216.34"]);
+    const service = createLinkPreviewService({ fetchImpl, resolveHost });
+
+    await expect(service.preview("https://www.imdb.com/title/tt0245429/")).resolves.toMatchObject({
+      title: "Recovered",
+      metadataStatus: "PARTIAL",
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(resolveHost).toHaveBeenCalledTimes(2);
+    expect((fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[1]?.[1]).toMatchObject({
+      headers: expect.objectContaining({ "user-agent": expect.stringContaining("Mozilla/") }),
+    });
+  });
+
   it("extracts bounded readable metadata and resolves a relative image", async () => {
     const html = `<!doctype html><html><head>
       <meta property="og:title" content="Example &amp; title">

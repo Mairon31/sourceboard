@@ -20,6 +20,7 @@ const postCard = readOptionalSource("../../app/components/product/PostCard.tsx")
 const commentThread = readOptionalSource("../../app/components/product/CommentThread.tsx");
 const postNew = readOptionalSource("../../app/routes/post-new.tsx");
 const postComposer = readOptionalSource("../../app/components/product/PostComposer.tsx");
+const productNav = readOptionalSource("../../app/components/product/ProductNav.tsx");
 
 describe("public cosmetic identity contracts", () => {
   it("exposes profile effects", () => {
@@ -63,6 +64,13 @@ describe("public cosmetic identity contracts", () => {
     expect(postNew).toContain("<PostComposer");
     expect(postComposer).toContain('mode="preview"');
     expect(postComposer).toContain('authorMode === "ANONYMOUS"');
-    expect(postComposer).toContain("Anonymous Author");
+    expect(postComposer).toContain('t("composer.anonymousAuthor")');
+  });
+
+  it("renders the authenticated navigation identity with the shared cosmetic primitive", () => {
+    expect(root).toContain("navigationIdentity");
+    expect(productNav).toContain("<CosmeticIdentity");
+    expect(productNav).toContain("rootData?.navigationIdentity");
+    expect(productNav).not.toContain("user.username.slice(0, 2).toUpperCase()");
   });
 });

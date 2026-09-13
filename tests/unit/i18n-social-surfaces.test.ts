@@ -11,6 +11,7 @@ const searchControls = read("app/components/product/SearchDiscoveryControls.tsx"
 const searchGallery = read("app/components/product/SearchPostGallery.tsx");
 const searchGrid = read("app/components/product/SearchPostGrid.tsx");
 const categoryRoute = read("app/routes/category.tsx");
+const categoryBadge = read("app/components/product/PostCategoryBadge.tsx");
 const friendsRoute = read("app/routes/friends.tsx");
 const friendsWorkspace = read("app/components/product/FriendsWorkspace.tsx");
 const profileRoute = read("app/routes/profile.tsx");
@@ -49,8 +50,8 @@ describe("social surface internationalization", () => {
     expect(searchRoute).toContain('t("search.title")');
     expect(searchRoute).toContain('tp("search.results"');
     expect(searchControls).toContain("useI18n");
-    expect(searchControls).toContain('t("search.kind.sources")');
-    expect(searchControls).toContain('search.filter.open');
+    expect(searchControls).toContain('labelKey: "search.kind.sources"');
+    expect(searchControls).toContain("search.filter.open");
     expect(searchGallery).toContain("useI18n");
     expect(searchGallery).toContain('t("post.openAria"');
     expect(searchGallery).not.toContain("Accepted source");
@@ -59,6 +60,9 @@ describe("social surface internationalization", () => {
     expect(searchGrid).not.toContain("Anonymous Author");
     expect(categoryRoute).toContain("useI18n");
     expect(categoryRoute).toContain('t("category.allPosts")');
+    expect(categoryBadge).toContain("useI18n");
+    expect(categoryBadge).toContain('t("category.browsePosts"');
+    expect(categoryBadge).not.toContain("`Browse ${category.label} posts`");
   });
 
   it("localizes friends and profile chrome", () => {

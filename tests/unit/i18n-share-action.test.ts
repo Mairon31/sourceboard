@@ -20,7 +20,7 @@ describe("ShareAction internationalization", () => {
   });
 
   it("registers localized share messages in the typed i18n catalog", () => {
-    expect(i18nIndex).toContain("commonMessageSets");
-    expect(i18nIndex).toContain("CommonMessageKey");
+    expect(i18nIndex).toContain("messages/catalog");
+    expect(i18nIndex).toContain("MessageKey");
   });
 });

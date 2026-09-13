@@ -1,8 +1,10 @@
 export const enStoreMessages = {
-  "store.metaDescription": "Equip profile cosmetics and collect expressive emote packs on SourceBoard.",
+  "store.metaDescription":
+    "Equip profile cosmetics and collect expressive emote packs on SourceBoard.",
   "store.eyebrow": "Personalization Store",
   "store.heroTitle": "Make SourceBoard yours",
-  "store.heroDescription": "Unlock profile frames, effects, fonts and community emote packs with points.",
+  "store.heroDescription":
+    "Unlock profile frames, effects, fonts and community emote packs with points.",
   "store.createCosmetic": "Create cosmetic",
   "store.adminAccess": "Admin access",
   "store.balance": "Balance",
@@ -22,13 +24,16 @@ export const enStoreMessages = {
   "store.allItemsDescription": "Full catalog in the selected category.",
   "store.memberDefault": "SourceBoard member",
   "store.redeemError": "This item could not be redeemed.",
-  "store.redeemConnectionError": "This item could not be redeemed. Check your connection and try again.",
+  "store.redeemConnectionError":
+    "This item could not be redeemed. Check your connection and try again.",
   "store.unlockedFeedback": "{name} unlocked.",
   "store.equipError": "This cosmetic could not be equipped.",
-  "store.equipConnectionError": "This cosmetic could not be equipped. Check your connection and try again.",
+  "store.equipConnectionError":
+    "This cosmetic could not be equipped. Check your connection and try again.",
   "store.equippedFeedback": "{name} equipped.",
   "store.unequipError": "This cosmetic could not be unequipped.",
-  "store.unequipConnectionError": "This cosmetic could not be unequipped. Check your connection and try again.",
+  "store.unequipConnectionError":
+    "This cosmetic could not be unequipped. Check your connection and try again.",
   "store.unequippedFeedback": "{name} unequipped.",
   "store.filter.all": "All",
   "store.filter.profileThemes": "Profile Themes",
@@ -66,5 +71,3 @@ export const enStoreMessages = {
   "store.available": "Available",
   "store.working": "Working…",
 } as const;
-
-export type StoreMessageKey = keyof typeof enStoreMessages;

@@ -1,7 +1,6 @@
-import type { MessageKey } from "./en";
-import { settingsMessageSets } from "./settings";
+import type { BaseMessages } from "../../types";
 
-export const ptMessages = {
+export const ptBaseMessages = {
   "nav.home": "Início",
   "nav.search": "Pesquisar",
   "nav.friends": "Amigos",
@@ -22,12 +21,12 @@ export const ptMessages = {
   "settings.security.title": "Segurança",
   "settings.language.title": "Idioma",
   "settings.language.description": "Escolha o idioma usado pela interface do SourceBoard.",
-  ...settingsMessageSets.pt,
   "security.sessions.title": "Sessões ativas",
   "security.sessions.revokeOthers": "Encerrar outras sessões",
   "notifications.title": "Notificações",
   "notifications.eyebrow": "Atividade",
-  "notifications.description": "Atualizações sobre suas publicações, fontes, amigos e atividade no SourceBoard. Atividades repetidas de baixa importância são agrupadas sem alterar o histórico de eventos.",
+  "notifications.description":
+    "Atualizações sobre suas publicações, fontes, amigos e atividade no SourceBoard. Atividades repetidas de baixa importância são agrupadas sem alterar o histórico de eventos.",
   "notifications.all": "Todas",
   "notifications.unread": "Não lidas",
   "notifications.activity": "Atividade",
@@ -36,20 +35,29 @@ export const ptMessages = {
   "notifications.markAllRead": "Marcar tudo como lido",
   "notifications.clear": "Limpar notificações",
   "notifications.clearTitle": "Limpar todas as notificações?",
-  "notifications.clearDescription": "Isso remove permanentemente todas as notificações atualmente na sua caixa de entrada.",
+  "notifications.clearDescription":
+    "Isso remove permanentemente todas as notificações atualmente na sua caixa de entrada.",
   "notifications.unavailable": "As notificações não estão disponíveis agora.",
   "notifications.authTitle": "Entre para ver suas notificações",
-  "notifications.authDescription": "As notificações pertencem à sua conta privada. Entre ou crie uma conta para acompanhar a atividade do SourceBoard.",
+  "notifications.authDescription":
+    "As notificações pertencem à sua conta privada. Entre ou crie uma conta para acompanhar a atividade do SourceBoard.",
   "notifications.filtersLabel": "Filtros de notificações",
   "notifications.caughtUpTitle": "Você está em dia.",
-  "notifications.caughtUpDescription": "Novos comentários, reações, atividades de amigos e atualizações de fontes aparecerão aqui.",
+  "notifications.caughtUpDescription":
+    "Novos comentários, reações, atividades de amigos e atualizações de fontes aparecerão aqui.",
   "notifications.noFilterTitle": "Não há notificações neste filtro.",
-  "notifications.noFilterDescription": "Escolha outro filtro para ver mais do seu histórico de notificações.",
+  "notifications.noFilterDescription":
+    "Escolha outro filtro para ver mais do seu histórico de notificações.",
   "notifications.updateError": "Não foi possível atualizar as notificações.",
   "notifications.groupUpdateError": "Não foi possível atualizar este grupo de notificações.",
   "notifications.clearError": "Não foi possível limpar as notificações.",
   "notifications.actions": "Ações da notificação",
   "notifications.markRead": "Marcar como lida",
+  "notifications.viewAll": "Ver todas",
+  "notifications.unreadCount.one": "{count} notificação não lida",
+  "notifications.unreadCount.other": "{count} notificações não lidas",
+  "notifications.loadingTitle": "Carregando notificações…",
+  "notifications.loadingDescription": "Verificando sua atividade mais recente no SourceBoard.",
   "notifications.grouped": "{count} eventos relacionados",
   "notifications.new": "novo",
   "store.title": "Loja",
@@ -59,11 +67,25 @@ export const ptMessages = {
   "comments.summary.one": "{count} comentário",
   "comments.summary.other": "{count} comentários",
   "errors.notFound.title": "Página não encontrada",
-  "errors.notFound.description": "A página pode ter sido movida, removida ou não estar disponível para você.",
+  "errors.notFound.description":
+    "A página pode ter sido movida, removida ou não estar disponível para você.",
   "errors.notFound.home": "Ir para o início",
   "errors.notFound.back": "Voltar",
   "auth.login": "Entrar",
   "auth.register": "Criar conta",
+  "auth.accountAccess": "Acesso à conta",
+  "auth.defaultTitle": "Sua conta é necessária aqui",
+  "auth.defaultDescription":
+    "Entre ou crie uma conta gratuita para acessar esta área privada do SourceBoard.",
+  "auth.unavailableTitle": "Serviço temporariamente indisponível",
+  "auth.unavailableDescription": "Tente novamente em instantes.",
+  "theme.preference": "Preferência de tema",
+  "theme.system": "Tema do sistema",
+  "theme.light": "Tema claro",
+  "theme.dark": "Tema escuro",
+  "animations.label": "Animações",
+  "animations.description":
+    "Controla as microinterações do SourceBoard e os cosméticos animados neste navegador. As preferências de movimento reduzido do sistema sempre têm prioridade.",
   "docs.title": "Documentação",
   "legal.title": "Legal",
   "content.englishFallback": "Esta página está disponível atualmente em inglês.",
@@ -87,4 +109,4 @@ export const ptMessages = {
   "footer.aiPublicContent": "IA e conteúdo público",
   "footer.accountVerification": "Conta e verificação",
   "footer.legal": "Legal",
-} as const satisfies Record<MessageKey, string>;
+} satisfies BaseMessages;

@@ -2,11 +2,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const settings = readFileSync("app/routes/settings.tsx", "utf8");
+const authRequired = readFileSync("app/components/product/AuthRequiredCard.tsx", "utf8");
+const themeControl = readFileSync("app/components/layout/ThemeControl.tsx", "utf8");
+const animationControl = readFileSync("app/components/layout/AnimationControl.tsx", "utf8");
 
 describe("Settings internationalization and navigation", () => {
   it("uses the global i18n layer and exposes the language selector inside Settings", () => {
-    expect(settings).toContain('useI18n');
-    expect(settings).toContain('<LanguageSelector');
+    expect(settings).toContain("useI18n");
+    expect(settings).toContain("<LanguageSelector");
     expect(settings).toContain('t("settings.title")');
     expect(settings).toContain('t("settings.general.title")');
     expect(settings).toContain('t("settings.security.title")');
@@ -34,5 +37,18 @@ describe("Settings internationalization and navigation", () => {
     expect(settings).not.toContain('title="Settings"');
     expect(settings).not.toContain('title="General preferences"');
     expect(settings).not.toContain('title="Account security"');
+  });
+
+  it("localizes shared account, theme and motion controls rendered inside Settings", () => {
+    expect(authRequired).toContain("useI18n");
+    expect(authRequired).toContain('t("auth.accountAccess")');
+    expect(themeControl).toContain("useI18n");
+    expect(themeControl).toContain('labelKey: "theme.system"');
+    expect(themeControl).toContain("t(choice.labelKey)");
+    expect(animationControl).toContain("useI18n");
+    expect(animationControl).toContain('t("animations.label")');
+    expect(authRequired).not.toContain('aria-label="Account access"');
+    expect(themeControl).not.toContain('label: "System theme"');
+    expect(animationControl).not.toContain('label="Animations"');
   });
 });

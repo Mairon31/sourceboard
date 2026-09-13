@@ -1,0 +1,136 @@
+export const enSettingsMessages = {
+  "settings.page.eyebrow": "Account",
+  "settings.page.description":
+    "Use General for everyday preferences and Security for credentials and active-session controls.",
+  "settings.nav.aria": "Settings sections",
+  "settings.nav.label": "Settings",
+  "settings.nav.profile": "Profile",
+  "settings.nav.content": "Content",
+  "settings.nav.notifications": "Notifications",
+  "settings.nav.appearance": "Appearance",
+  "settings.nav.language": "Language",
+  "settings.nav.privacy": "Privacy & data",
+  "settings.nav.accessibility": "Accessibility",
+  "settings.nav.sessions": "Sessions",
+  "settings.general.heading": "General preferences",
+  "settings.general.description":
+    "Manage your profile, content, notifications, appearance, privacy and accessibility preferences.",
+  "settings.profile.eyebrow": "Profile",
+  "settings.profile.title": "Public identity",
+  "settings.profile.description":
+    "Avatar, banner, display name, bio, social links and profile visibility are edited directly on your profile so the result is visible while you edit.",
+  "settings.profile.editTitle": "Edit profile",
+  "settings.profile.editDescription":
+    "Open the inline profile editor and preview changes in place.",
+  "settings.profile.open": "Open profile",
+  "settings.content.eyebrow": "Content",
+  "settings.content.title": "Content preferences",
+  "settings.content.description":
+    "Control how sensitive posts and media are exposed. These rules are enforced by the server and media gateway.",
+  "settings.content.hideNsfw.label": "Hide NSFW posts",
+  "settings.content.hideNsfw.description":
+    "Exclude sensitive posts from feeds and search when your account policy requires it.",
+  "settings.content.blurNsfw.label": "Blur NSFW media",
+  "settings.content.blurNsfw.description":
+    "Keep eligible sensitive media blurred until you explicitly reveal it.",
+  "settings.notifications.eyebrow": "Notifications",
+  "settings.notifications.title": "Notification preferences",
+  "settings.notifications.description":
+    "Choose which private activity events should be stored in your notification feed.",
+  "settings.notifications.activity.label": "Post and comment activity",
+  "settings.notifications.activity.description":
+    "Replies, accepted sources, likes and other activity on your contributions.",
+  "settings.notifications.friendships.label": "Friendship activity",
+  "settings.notifications.friendships.description":
+    "Friend requests, accepts and related account activity.",
+  "settings.appearance.eyebrow": "Appearance",
+  "settings.appearance.title": "Theme",
+  "settings.appearance.description":
+    "Follow your operating system or use a SourceBoard light or dark override on this browser.",
+  "settings.appearance.themeTitle": "Theme",
+  "settings.appearance.themeDescription": "Choose the interface color scheme used on this device.",
+  "settings.language.eyebrow": "Language",
+  "settings.privacy.eyebrow": "Privacy & data",
+  "settings.privacy.title": "Social privacy",
+  "settings.privacy.description":
+    "Control who can initiate social contact and manage profile visibility and blocked accounts.",
+  "settings.privacy.friendRequests.label": "Allow friend requests",
+  "settings.privacy.friendRequests.description":
+    "When disabled, your account is excluded from friend discovery and new requests are rejected server-side.",
+  "settings.privacy.blocked.title": "Blocked accounts",
+  "settings.privacy.blocked.description": "Review and unblock accounts from the Friends workspace.",
+  "settings.privacy.blocked.action": "Manage blocks",
+  "settings.accessibility.eyebrow": "Accessibility",
+  "settings.accessibility.title": "Motion",
+  "settings.accessibility.description":
+    "Control nonessential interface movement and animated cosmetics. System reduced-motion preferences remain respected automatically.",
+  "settings.auth.title": "Sign in to save your preferences",
+  "settings.auth.description":
+    "Your privacy and social settings are private account data. Sign in or create an account to manage them.",
+  "settings.save.saved": "Saved",
+  "settings.save.error": "Could not save this preference. Your previous setting was restored.",
+  "settings.save.saving": "Saving…",
+  "settings.security.heading": "Account security",
+  "settings.security.description":
+    "Manage your username and password, then review the authenticated sessions that currently have access to your account.",
+  "settings.username.title": "Username",
+  "settings.username.description":
+    "Usernames are unique. You can change yours up to 3 times in a rolling 15-day window, with at least 24 hours between changes.",
+  "settings.username.label": "Username",
+  "settings.username.changesAvailable": "{remaining} of {maximum} changes available",
+  "settings.username.nextChange": "Next change: {date}",
+  "settings.username.availableNow": "Available now",
+  "settings.username.change": "Change username",
+  "settings.username.updated": "Username updated.",
+  "settings.username.error": "The username could not be changed.",
+  "settings.username.networkError":
+    "The username could not be changed. Check your connection and try again.",
+  "settings.password.title": "Password",
+  "settings.password.description":
+    "Changing your password invalidates existing authenticated sessions.",
+  "settings.password.current": "Current password",
+  "settings.password.new": "New password",
+  "settings.password.confirm": "Confirm new password",
+  "settings.password.change": "Change password",
+  "settings.password.tooShort": "New passwords must contain at least 12 characters.",
+  "settings.password.mismatch": "The new passwords do not match.",
+  "settings.password.error": "The password could not be changed.",
+  "settings.password.networkError":
+    "The password could not be changed. Check your connection and try again.",
+  "settings.sessions.eyebrow": "Sessions",
+  "settings.sessions.description":
+    "Review observed browser, operating system, activity, approximate location and IP details, revoke one session, or sign out every other session while keeping this device signed in.",
+  "settings.sessions.loading": "Loading sessions…",
+  "settings.sessions.authTitle": "Sign in to manage sessions",
+  "settings.sessions.authDescription":
+    "Active sessions are stored securely and can be reviewed after signing in.",
+  "settings.sessions.count.one": "{count} active session",
+  "settings.sessions.count.other": "{count} active sessions",
+  "settings.sessions.thisDevice": "This device",
+  "settings.sessions.details": "Details",
+  "settings.sessions.hideDetails": "Hide details",
+  "settings.sessions.revoke": "Revoke",
+  "settings.sessions.browser": "Browser",
+  "settings.sessions.os": "Operating system",
+  "settings.sessions.deviceType": "Device type",
+  "settings.sessions.ip": "IP address",
+  "settings.sessions.location": "Approximate location",
+  "settings.sessions.created": "Created",
+  "settings.sessions.lastActive": "Last active",
+  "settings.sessions.expires": "Expires",
+  "settings.sessions.unavailable": "Unavailable",
+  "settings.sessions.unknown": "Unknown",
+  "settings.sessions.unknownSession": "Unknown session",
+  "settings.sessions.browserOnOs": "{browser} on {os}",
+  "settings.sessions.lastActiveAt": "Last active {date}",
+  "settings.sessions.loadError": "Sessions could not be loaded. Try again shortly.",
+  "settings.sessions.unavailableError": "Session security is temporarily unavailable.",
+  "settings.sessions.revokeError": "That session could not be revoked.",
+  "settings.sessions.revoked": "Session revoked.",
+  "settings.sessions.revokeNetworkError":
+    "That session could not be revoked. Check your connection and try again.",
+  "settings.sessions.signOutError": "Other sessions could not be signed out.",
+  "settings.sessions.signedOut": "Other sessions signed out.",
+  "settings.sessions.signOutNetworkError":
+    "Other sessions could not be signed out. Check your connection and try again.",
+} as const;

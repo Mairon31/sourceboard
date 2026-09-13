@@ -12,9 +12,7 @@ describe("profile editor username degradation", () => {
     expect(editor).toContain("Promise.allSettled");
     expect(editor).toContain("usernameSettingsUnavailable");
     expect(editor).toContain("if (!draft)");
-    expect(editor).toContain(
-      "Username changes are temporarily unavailable. You can still edit the rest of your profile.",
-    );
+    expect(editor).toContain('t("profileEditor.usernameUnavailable")');
     expect(editor).toContain("busy || usernameSettingsUnavailable || !usernameStatus?.canChange");
   });
 });

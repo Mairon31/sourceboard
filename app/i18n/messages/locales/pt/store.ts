@@ -1,9 +1,12 @@
-import type { StoreMessageKey } from "./store.en";
+import type { StoreMessages } from "../../types";
+
 export const ptStoreMessages = {
-  "store.metaDescription": "Equipe cosméticos de perfil e colecione pacotes de emotes no SourceBoard.",
+  "store.metaDescription":
+    "Equipe cosméticos de perfil e colecione pacotes de emotes no SourceBoard.",
   "store.eyebrow": "Loja de personalização",
   "store.heroTitle": "Deixe o SourceBoard com a sua cara",
-  "store.heroDescription": "Desbloqueie molduras, efeitos, fontes e pacotes de emotes da comunidade com pontos.",
+  "store.heroDescription":
+    "Desbloqueie molduras, efeitos, fontes e pacotes de emotes da comunidade com pontos.",
   "store.createCosmetic": "Criar cosmético",
   "store.adminAccess": "Acesso de administração",
   "store.balance": "Saldo",
@@ -23,13 +26,16 @@ export const ptStoreMessages = {
   "store.allItemsDescription": "Catálogo completo da categoria selecionada.",
   "store.memberDefault": "Membro do SourceBoard",
   "store.redeemError": "Não foi possível resgatar este item.",
-  "store.redeemConnectionError": "Não foi possível resgatar este item. Verifique sua conexão e tente novamente.",
+  "store.redeemConnectionError":
+    "Não foi possível resgatar este item. Verifique sua conexão e tente novamente.",
   "store.unlockedFeedback": "{name} desbloqueado.",
   "store.equipError": "Não foi possível equipar este cosmético.",
-  "store.equipConnectionError": "Não foi possível equipar este cosmético. Verifique sua conexão e tente novamente.",
+  "store.equipConnectionError":
+    "Não foi possível equipar este cosmético. Verifique sua conexão e tente novamente.",
   "store.equippedFeedback": "{name} equipado.",
   "store.unequipError": "Não foi possível desequipar este cosmético.",
-  "store.unequipConnectionError": "Não foi possível desequipar este cosmético. Verifique sua conexão e tente novamente.",
+  "store.unequipConnectionError":
+    "Não foi possível desequipar este cosmético. Verifique sua conexão e tente novamente.",
   "store.unequippedFeedback": "{name} desequipado.",
   "store.filter.all": "Todos",
   "store.filter.profileThemes": "Temas de perfil",
@@ -66,4 +72,4 @@ export const ptStoreMessages = {
   "store.morePointsRequired": "Mais pontos necessários",
   "store.available": "Disponível",
   "store.working": "Processando…",
-} as const satisfies Record<StoreMessageKey, string>;
+} satisfies StoreMessages;

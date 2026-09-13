@@ -20,6 +20,9 @@ const MAX_REDIRECTS = 5;
 const FETCH_TIMEOUT_MS = 5000;
 const CACHE_TTL_SECONDS = 21600;
 const MAX_CNAME_DEPTH = 4;
+const PREVIEW_USER_AGENT = "SourceBoard-LinkPreview/1.0";
+const BROWSER_COMPATIBLE_USER_AGENT =
+  "Mozilla/5.0 (compatible; SourceBoard-LinkPreview/1.0; +https://srcboard.me)";
 
 function linkError(status: number, code: string, message: string): PostError {
   return new PostError(status, code, message);
@@ -391,14 +394,20 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
       try {
         for (let redirects = 0; ; redirects += 1) {
           await assertPublicTarget(current, dependencies.resolveHost);
-          const response = await dependencies.fetchImpl(current.toString(), {
-            redirect: "manual",
-            signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-            headers: {
-              accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",
-              "user-agent": "SourceBoard-LinkPreview/1.0",
-            },
-          });
+          const requestDocument = (userAgent: string) =>
+            dependencies.fetchImpl(current.toString(), {
+              redirect: "manual",
+              signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+              headers: {
+                accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",
+                "user-agent": userAgent,
+              },
+            });
+          let response = await requestDocument(PREVIEW_USER_AGENT);
+          if (response.status === 403) {
+            await assertPublicTarget(current, dependencies.resolveHost);
+            response = await requestDocument(BROWSER_COMPATIBLE_USER_AGENT);
+          }
           if (isRedirect(response.status)) {
             if (redirects >= MAX_REDIRECTS) {
               throw linkError(

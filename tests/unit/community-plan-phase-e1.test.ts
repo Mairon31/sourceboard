@@ -154,7 +154,7 @@ describe("community plan phase E1", () => {
   it("wires the inline profile editor to the existing username policy endpoint", () => {
     const editor = read("../../app/components/product/ProfileEditor.tsx");
     expect(editor).toContain('fetch("/api/profile/me/username"');
-    expect(editor).toContain('label="Username"');
+    expect(editor).toContain('label={t("profileEditor.username")}');
     expect(editor).toContain('fetch("/api/profile/me/username", {');
     expect(editor).toContain('method: "PATCH"');
   });

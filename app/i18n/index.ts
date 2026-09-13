@@ -1,69 +1,7 @@
 import type { Locale } from "../../shared/i18n/locales";
-import { commonMessageSets, type CommonMessageKey } from "./messages/common";
-import { deMessages } from "./messages/de";
-import { editingMessageSets, type EditingMessageKey } from "./messages/editing";
-import { enMessages, type MessageKey as BaseMessageKey } from "./messages/en";
-import { esMessages } from "./messages/es";
-import { frMessages } from "./messages/fr";
-import { productMessageSets, type ProductMessageKey } from "./messages/product";
-import { ptMessages } from "./messages/pt";
-import { ruMessages } from "./messages/ru";
-import { socialMessageSets, type SocialMessageKey } from "./messages/social";
-import { deStoreMessages } from "./messages/store.de";
-import { enStoreMessages, type StoreMessageKey } from "./messages/store.en";
-import { esStoreMessages } from "./messages/store.es";
-import { frStoreMessages } from "./messages/store.fr";
-import { ptStoreMessages } from "./messages/store.pt";
-import { ruStoreMessages } from "./messages/store.ru";
+import { allMessages, type MessageKey } from "./messages/catalog";
 
-export type MessageKey =
-  | BaseMessageKey
-  | StoreMessageKey
-  | SocialMessageKey
-  | CommonMessageKey
-  | ProductMessageKey
-  | EditingMessageKey;
-
-const baseMessages: Record<Locale, Record<BaseMessageKey, string>> = {
-  en: enMessages,
-  es: esMessages,
-  pt: ptMessages,
-  fr: frMessages,
-  ru: ruMessages,
-  de: deMessages,
-};
-
-const storeMessages: Record<Locale, Record<StoreMessageKey, string>> = {
-  en: enStoreMessages,
-  es: esStoreMessages,
-  pt: ptStoreMessages,
-  fr: frStoreMessages,
-  ru: ruStoreMessages,
-  de: deStoreMessages,
-};
-
-const englishMessages: Record<MessageKey, string> = {
-  ...enMessages,
-  ...enStoreMessages,
-  ...socialMessageSets.en,
-  ...commonMessageSets.en,
-  ...productMessageSets.en,
-  ...editingMessageSets.en,
-};
-
-export const allMessages = Object.fromEntries(
-  (Object.keys(baseMessages) as Locale[]).map((locale) => [
-    locale,
-    {
-      ...baseMessages[locale],
-      ...storeMessages[locale],
-      ...socialMessageSets[locale],
-      ...commonMessageSets[locale],
-      ...productMessageSets[locale],
-      ...editingMessageSets[locale],
-    },
-  ]),
-) as Record<Locale, Record<MessageKey, string>>;
+export { allMessages, type MessageKey };
 
 function interpolate(template: string, vars?: Record<string, string | number>): string {
   if (!vars) return template;
@@ -77,7 +15,7 @@ export function translate(
   key: MessageKey,
   vars?: Record<string, string | number>,
 ): string {
-  return interpolate(allMessages[locale][key] ?? englishMessages[key], vars);
+  return interpolate(allMessages[locale][key] ?? allMessages.en[key], vars);
 }
 
 export function translatePlural(
@@ -99,7 +37,9 @@ export function formatDateTime(
   value: Date | number,
   options?: Intl.DateTimeFormatOptions,
 ): string {
-  return new Intl.DateTimeFormat(locale, options).format(value instanceof Date ? value : new Date(value));
+  return new Intl.DateTimeFormat(locale, options).format(
+    value instanceof Date ? value : new Date(value),
+  );
 }
 
 export function formatRelativeTime(locale: Locale, deltaSeconds: number): string {
@@ -109,4 +49,12 @@ export function formatRelativeTime(locale: Locale, deltaSeconds: number): string
   if (abs < 3600) return formatter.format(Math.round(deltaSeconds / 60), "minute");
   if (abs < 86400) return formatter.format(Math.round(deltaSeconds / 3600), "hour");
   return formatter.format(Math.round(deltaSeconds / 86400), "day");
+}
+
+export function formatNumber(
+  locale: Locale,
+  value: number,
+  options?: Intl.NumberFormatOptions,
+): string {
+  return new Intl.NumberFormat(locale, options).format(value);
 }

@@ -413,6 +413,7 @@ export async function handleCommentApiRequest(
           url.searchParams.get("cursor"),
           Number(url.searchParams.get("limit") ?? 50),
           parseCommentSort(url.searchParams.get("sort")),
+          { refreshUrlOnlyPreview: true },
         ),
         requestId,
       );

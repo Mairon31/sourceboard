@@ -14,7 +14,10 @@ const packageJson = JSON.parse(read("../../package.json")) as {
 describe("production rollout regressions", () => {
   it("does not empty the public Store when community review tables are not deployed yet", () => {
     expect(storeService).toContain("isMissingCommunityReviewTable");
-    expect(storeService).toContain("return { isSubmission: false, metadata: null }");
+    expect(storeService).toContain("if (isMissingCommunityReviewTable(error)) return lookups");
+    expect(storeService).toContain(
+      "communityByItem.get(item.id) ?? { isSubmission: false, metadata: null }",
+    );
   });
 
   it("keeps Admin Reputation readable before reputation_reward_rules migration 0021", () => {

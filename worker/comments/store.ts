@@ -30,6 +30,7 @@ export interface CommentStore {
     attachmentJson: string | null;
     linkPreview?: CommentLinkPreviewSnapshot | null;
   }): Promise<void>;
+  updateLinkPreview?(commentId: string, preview: CommentLinkPreviewSnapshot): Promise<void>;
   updateComment(input: {
     comment: CommentRecord;
     richtextJson: string;
@@ -430,6 +431,33 @@ export function createD1CommentStore(db: D1Database): CommentStore {
         if (!linkPreview || !isMissingCommentLinkPreviewTable(error)) throw error;
         linkPreviewSchemaAvailable = false;
         await db.batch(baseStatements);
+      }
+    },
+
+    async updateLinkPreview(commentId, linkPreview) {
+      if (linkPreviewSchemaAvailable === false) return;
+      try {
+        await db
+          .prepare(
+            `UPDATE comment_link_previews
+             SET canonical_url = ?, site_name = ?, title = ?, description = ?, image_url = ?,
+                 fetched_at = ?, metadata_status = ?
+             WHERE comment_id = ?`,
+          )
+          .bind(
+            linkPreview.canonicalUrl,
+            linkPreview.siteName,
+            linkPreview.title,
+            linkPreview.description,
+            linkPreview.imageUrl,
+            linkPreview.fetchedAt,
+            linkPreview.metadataStatus,
+            commentId,
+          )
+          .run();
+      } catch (error) {
+        if (!isMissingCommentLinkPreviewTable(error)) throw error;
+        linkPreviewSchemaAvailable = false;
       }
     },
 

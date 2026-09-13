@@ -13,15 +13,17 @@ import { readViewerLikedPostIds } from "../data/viewer-post-likes";
 import { PostCard } from "../components/product/PostCard";
 import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
+import { useI18n } from "../i18n/I18nProvider";
+import type { MessageKey } from "../i18n";
 
 type LoaderArgs = ServerLoaderArgs;
 type FeedMode = "recent" | "friends" | "answered" | "verified";
 
-const feedOptions: Array<{ value: FeedMode; label: string; description: string }> = [
-  { value: "recent", label: "Recent", description: "Latest public source requests" },
-  { value: "friends", label: "Friends", description: "Requests from your network" },
-  { value: "answered", label: "Answered", description: "Requests with accepted sources" },
-  { value: "verified", label: "Verified", description: "Sources verified by SourceBoard" },
+const feedOptions: Array<{ value: FeedMode; label: MessageKey; description: MessageKey }> = [
+  { value: "recent", label: "home.feed.recent", description: "home.feed.recentDescription" },
+  { value: "friends", label: "home.feed.friends", description: "home.feed.friendsDescription" },
+  { value: "answered", label: "home.feed.answered", description: "home.feed.answeredDescription" },
+  { value: "verified", label: "home.feed.verified", description: "home.feed.verifiedDescription" },
 ];
 
 function feedCacheKey(feed: FeedMode, categorySlug: PostCategorySlug | null) {
@@ -85,18 +87,19 @@ function FeedCollection({
   loading?: boolean;
   error?: string | null;
 }) {
+  const { t } = useI18n();
   if (loading) {
     return (
       <div className="product-empty-state product-empty-state--compact" role="status">
-        <strong>Loading feed…</strong>
-        <p>Fetching this view without blocking the rest of Home.</p>
+        <strong>{t("home.feed.loadingTitle")}</strong>
+        <p>{t("home.feed.loadingDescription")}</p>
       </div>
     );
   }
   if (error) {
     return (
       <div className="product-empty-state product-empty-state--compact" role="alert">
-        <strong>Feed unavailable</strong>
+        <strong>{t("home.feed.unavailableTitle")}</strong>
         <p>{error}</p>
       </div>
     );
@@ -104,16 +107,16 @@ function FeedCollection({
   if (unavailable) {
     return (
       <Card className="product-empty-state">
-        <strong>Feed unavailable</strong>
-        <p>The post service is not configured in this environment yet.</p>
+        <strong>{t("home.feed.unavailableTitle")}</strong>
+        <p>{t("home.feed.unavailableDescription")}</p>
       </Card>
     );
   }
   if (!posts.length) {
     return (
       <div className="product-empty-state product-empty-state--compact">
-        <strong>No source requests here yet</strong>
-        <p>Try another feed or category, or publish an image for the community to investigate.</p>
+        <strong>{t("home.feed.emptyTitle")}</strong>
+        <p>{t("home.feed.emptyDescription")}</p>
       </div>
     );
   }
@@ -128,6 +131,7 @@ function FeedCollection({
 
 export default function HomeRoute() {
   const data = useLoaderData<LoaderData>();
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawCategory = searchParams.get("category");
   const categorySlug = rawCategory ? parsePostCategorySlug(rawCategory) : null;
@@ -166,14 +170,14 @@ export default function HomeRoute() {
       });
       const payload = (await response.json().catch(() => null)) as FeedResourceResponse | null;
       if (!response.ok || !payload || payload.unavailable) {
-        throw new Error("This feed could not be loaded. Try again.");
+        throw new Error(t("home.feed.loadError"));
       }
       setFeedCache((current) => ({ ...current, [key]: payload.posts }));
       setLoadedKeys((current) => new Set(current).add(key));
     } catch (error) {
       setFeedError((current) => ({
         ...current,
-        [key]: error instanceof Error ? error.message : "This feed could not be loaded.",
+        [key]: error instanceof Error ? error.message : t("home.feed.loadError"),
       }));
     } finally {
       setLoadingKey((current) => (current === key ? null : current));
@@ -237,33 +241,30 @@ export default function HomeRoute() {
     <ProductShell wide>
       <section className="product-home-compact-lead">
         <div className="product-home-compact-lead__copy">
-          <span className="product-eyebrow">Image-source community</span>
-          <h1>Find the original source</h1>
-          <p>
-            Publish one image and let the community trace its creator, post or publication with
-            evidence.
-          </p>
+          <span className="product-eyebrow">{t("home.hero.eyebrow")}</span>
+          <h1>{t("home.hero.title")}</h1>
+          <p>{t("home.hero.description")}</p>
         </div>
         <Link className="product-nav__create product-home-create" to="/post/new" prefetch="intent">
-          Create post
+          {t("nav.create")}
         </Link>
       </section>
 
       <section className="product-feed-workspace" aria-labelledby="feed-heading">
         <div className="product-feed-workspace__heading">
           <div>
-            <span className="product-eyebrow">Feed</span>
-            <h2 id="feed-heading">{active.label}</h2>
-            <p>{active.description}</p>
+            <span className="product-eyebrow">{t("home.feed.eyebrow")}</span>
+            <h2 id="feed-heading">{t(active.label)}</h2>
+            <p>{t(active.description)}</p>
           </div>
           <label className="product-field-native product-home-category-filter">
-            <span>Category</span>
+            <span>{t("home.feed.category")}</span>
             <select
-              aria-label="Category filter"
+              aria-label={t("home.feed.categoryAria")}
               value={categorySlug ?? ""}
               onChange={(event) => selectCategory(event.currentTarget.value)}
             >
-              <option value="">All categories</option>
+              <option value="">{t("home.feed.allCategories")}</option>
               {POST_CATEGORIES.map((category) => (
                 <option key={category.slug} value={category.slug}>
                   {category.label}
@@ -274,7 +275,7 @@ export default function HomeRoute() {
         </div>
         <nav
           className="product-store-filter-bar product-feed-filter-tabs"
-          aria-label="Feed filters"
+          aria-label={t("home.feed.filtersAria")}
           role="tablist"
         >
           {feedOptions.map((option, index) => {
@@ -294,7 +295,7 @@ export default function HomeRoute() {
                 onClick={() => selectFeed(option.value)}
                 onKeyDown={(event) => handleFeedKeyDown(event, index)}
               >
-                <span className="product-feed-filter-tabs__label">{option.label}</span>
+                <span className="product-feed-filter-tabs__label">{t(option.label)}</span>
               </button>
             );
           })}

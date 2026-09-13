@@ -1,9 +1,12 @@
-import type { StoreMessageKey } from "./store.en";
+import type { StoreMessages } from "../../types";
+
 export const deStoreMessages = {
-  "store.metaDescription": "Rüste Profilkosmetik aus und sammle ausdrucksstarke Emote-Pakete auf SourceBoard.",
+  "store.metaDescription":
+    "Rüste Profilkosmetik aus und sammle ausdrucksstarke Emote-Pakete auf SourceBoard.",
   "store.eyebrow": "Personalisierungs-Store",
   "store.heroTitle": "Mach SourceBoard zu deinem",
-  "store.heroDescription": "Schalte Profilrahmen, Effekte, Schriften und Community-Emote-Pakete mit Punkten frei.",
+  "store.heroDescription":
+    "Schalte Profilrahmen, Effekte, Schriften und Community-Emote-Pakete mit Punkten frei.",
   "store.createCosmetic": "Kosmetik erstellen",
   "store.adminAccess": "Admin-Zugriff",
   "store.balance": "Guthaben",
@@ -23,13 +26,16 @@ export const deStoreMessages = {
   "store.allItemsDescription": "Vollständiger Katalog der ausgewählten Kategorie.",
   "store.memberDefault": "SourceBoard-Mitglied",
   "store.redeemError": "Dieser Artikel konnte nicht eingelöst werden.",
-  "store.redeemConnectionError": "Dieser Artikel konnte nicht eingelöst werden. Prüfe deine Verbindung und versuche es erneut.",
+  "store.redeemConnectionError":
+    "Dieser Artikel konnte nicht eingelöst werden. Prüfe deine Verbindung und versuche es erneut.",
   "store.unlockedFeedback": "{name} freigeschaltet.",
   "store.equipError": "Diese Kosmetik konnte nicht ausgerüstet werden.",
-  "store.equipConnectionError": "Diese Kosmetik konnte nicht ausgerüstet werden. Prüfe deine Verbindung und versuche es erneut.",
+  "store.equipConnectionError":
+    "Diese Kosmetik konnte nicht ausgerüstet werden. Prüfe deine Verbindung und versuche es erneut.",
   "store.equippedFeedback": "{name} ausgerüstet.",
   "store.unequipError": "Diese Kosmetik konnte nicht abgelegt werden.",
-  "store.unequipConnectionError": "Diese Kosmetik konnte nicht abgelegt werden. Prüfe deine Verbindung und versuche es erneut.",
+  "store.unequipConnectionError":
+    "Diese Kosmetik konnte nicht abgelegt werden. Prüfe deine Verbindung und versuche es erneut.",
   "store.unequippedFeedback": "{name} abgelegt.",
   "store.filter.all": "Alle",
   "store.filter.profileThemes": "Profil-Themes",
@@ -66,4 +72,4 @@ export const deStoreMessages = {
   "store.morePointsRequired": "Mehr Punkte erforderlich",
   "store.available": "Verfügbar",
   "store.working": "Wird verarbeitet…",
-} as const satisfies Record<StoreMessageKey, string>;
+} satisfies StoreMessages;

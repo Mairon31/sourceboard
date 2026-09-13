@@ -230,13 +230,12 @@ test("new comment immediately shows the authenticated author's real identity", a
   expect(response?.status()).toBe(200);
   await waitForUiReady(page);
 
-  await page.getByLabel("Add a comment").fill("Identity appears immediately");
+  const body = `Identity appears immediately ${Date.now()}`;
+  await page.getByLabel("Add a comment").fill(body);
   await page.getByRole("button", { name: "Comment", exact: true }).click();
   await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
 
-  const comment = page
-    .locator("article.product-comment")
-    .filter({ hasText: "Identity appears immediately" });
+  const comment = page.locator("article.product-comment").filter({ hasText: body });
   await expect(comment).toBeVisible();
   await expect(comment.getByText("E2E Navigator", { exact: true })).toBeVisible();
   await expect(comment.getByText("SourceBoard member", { exact: true })).toHaveCount(0);

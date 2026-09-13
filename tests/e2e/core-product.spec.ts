@@ -81,7 +81,7 @@ test("create-post surface requests authentication before showing the composer", 
   await expect(
     page.getByRole("heading", { name: "Sign in to publish a source request" }),
   ).toBeVisible();
-  await expect(page.getByRole("region").getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("region").getByRole("link", { name: "Log in" })).toBeVisible();
   await expect(page.getByText(/\b(?:D1|R2|Worker|binding|bindings)\b/)).toHaveCount(0);
 });
 
@@ -132,9 +132,7 @@ test("post detail protects missing persisted data", async ({ page }) => {
 
   expect([404, 503]).toContain(status);
   if (status === 404) {
-    await expect(
-      page.getByRole("heading", { name: "Page not found", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Page not found", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Go home", exact: true })).toHaveAttribute(
       "href",
       "/",

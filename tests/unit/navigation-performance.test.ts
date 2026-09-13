@@ -82,7 +82,9 @@ describe("navigation session performance", () => {
 
     expect(productNav).toContain('prefetch="intent"');
     expect(productNav).not.toContain('prefetch="viewport"');
-    expect(productNav).toContain('to="/store"');
+    expect(productNav).toContain("localizedHref");
+    expect(productNav).toContain('localizedHref(locale, "store")');
+    expect(productNav).not.toContain('to="/store"');
     expect(postCard).not.toContain('prefetch="viewport"');
   });
 

@@ -1,6 +1,4 @@
-import { settingsMessageSets } from "./settings";
-
-export const enMessages = {
+export const enBaseMessages = {
   "nav.home": "Home",
   "nav.search": "Search",
   "nav.friends": "Friends",
@@ -21,12 +19,12 @@ export const enMessages = {
   "settings.security.title": "Security",
   "settings.language.title": "Language",
   "settings.language.description": "Choose the language SourceBoard uses for its interface.",
-  ...settingsMessageSets.en,
   "security.sessions.title": "Active sessions",
   "security.sessions.revokeOthers": "Sign out other sessions",
   "notifications.title": "Notifications",
   "notifications.eyebrow": "Activity",
-  "notifications.description": "Updates about your posts, sources, friends and SourceBoard activity. Repeated low-importance activity is grouped without changing event history.",
+  "notifications.description":
+    "Updates about your posts, sources, friends and SourceBoard activity. Repeated low-importance activity is grouped without changing event history.",
   "notifications.all": "All",
   "notifications.unread": "Unread",
   "notifications.activity": "Activity",
@@ -35,20 +33,29 @@ export const enMessages = {
   "notifications.markAllRead": "Mark all as read",
   "notifications.clear": "Clear notifications",
   "notifications.clearTitle": "Clear all notifications?",
-  "notifications.clearDescription": "This permanently removes every notification currently in your inbox.",
+  "notifications.clearDescription":
+    "This permanently removes every notification currently in your inbox.",
   "notifications.unavailable": "Notifications are unavailable right now.",
   "notifications.authTitle": "Sign in to see your notifications",
-  "notifications.authDescription": "Notifications belong to your private account. Sign in or create an account to keep up with SourceBoard activity.",
+  "notifications.authDescription":
+    "Notifications belong to your private account. Sign in or create an account to keep up with SourceBoard activity.",
   "notifications.filtersLabel": "Notification filters",
   "notifications.caughtUpTitle": "You are all caught up.",
-  "notifications.caughtUpDescription": "New comments, reactions, friend activity and source updates will appear here.",
+  "notifications.caughtUpDescription":
+    "New comments, reactions, friend activity and source updates will appear here.",
   "notifications.noFilterTitle": "No notifications in this filter.",
-  "notifications.noFilterDescription": "Choose another filter to see more of your notification history.",
+  "notifications.noFilterDescription":
+    "Choose another filter to see more of your notification history.",
   "notifications.updateError": "Notifications could not be updated.",
   "notifications.groupUpdateError": "This notification group could not be updated.",
   "notifications.clearError": "Notifications could not be cleared.",
   "notifications.actions": "Notification actions",
   "notifications.markRead": "Mark as read",
+  "notifications.viewAll": "View all",
+  "notifications.unreadCount.one": "{count} unread notification",
+  "notifications.unreadCount.other": "{count} unread notifications",
+  "notifications.loadingTitle": "Loading notifications…",
+  "notifications.loadingDescription": "Checking your latest SourceBoard activity.",
   "notifications.grouped": "{count} related events",
   "notifications.new": "new",
   "store.title": "Store",
@@ -58,11 +65,25 @@ export const enMessages = {
   "comments.summary.one": "{count} comment",
   "comments.summary.other": "{count} comments",
   "errors.notFound.title": "Page not found",
-  "errors.notFound.description": "The page may have moved, been removed, or may not be available to you.",
+  "errors.notFound.description":
+    "The page may have moved, been removed, or may not be available to you.",
   "errors.notFound.home": "Go home",
   "errors.notFound.back": "Go back",
   "auth.login": "Log in",
   "auth.register": "Create account",
+  "auth.accountAccess": "Account access",
+  "auth.defaultTitle": "Your account is needed here",
+  "auth.defaultDescription":
+    "Sign in or create a free account to access this private SourceBoard area.",
+  "auth.unavailableTitle": "Service temporarily unavailable",
+  "auth.unavailableDescription": "Please try again shortly.",
+  "theme.preference": "Theme preference",
+  "theme.system": "System theme",
+  "theme.light": "Light theme",
+  "theme.dark": "Dark theme",
+  "animations.label": "Animations",
+  "animations.description":
+    "Controls SourceBoard microinteractions and animated cosmetics on this browser. Reduced-motion system preferences always take priority.",
   "docs.title": "Docs",
   "legal.title": "Legal",
   "content.englishFallback": "This page is currently available in English.",
@@ -87,5 +108,3 @@ export const enMessages = {
   "footer.accountVerification": "Account & verification",
   "footer.legal": "Legal",
 } as const;
-
-export type MessageKey = keyof typeof enMessages;

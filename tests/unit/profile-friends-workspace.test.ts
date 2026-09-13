@@ -37,11 +37,11 @@ describe("profile and friends workspace", () => {
 
   it("provides Friends, Incoming, Outgoing, Add and Discover modes with search", () => {
     expect(friendsRoute).toContain("<FriendsWorkspace");
-    expect(friendsWorkspace).toContain('friends: "Friends"');
-    expect(friendsWorkspace).toContain('incoming: "Incoming"');
-    expect(friendsWorkspace).toContain('outgoing: "Outgoing"');
-    expect(friendsWorkspace).toContain('add: "Add"');
-    expect(friendsWorkspace).toContain('discover: "Discover"');
+    expect(friendsWorkspace).toContain("t(workspaceLabelKeys[mode])");
+    expect(friendsWorkspace).toContain('mode="incoming"');
+    expect(friendsWorkspace).toContain('mode="outgoing"');
+    expect(friendsWorkspace).toContain('mode="add"');
+    expect(friendsWorkspace).toContain('mode="discover"');
     expect(friendsWorkspace).toContain('type="search"');
     expect(friendsWorkspace).toContain("searchFriendSuggestions");
     expect(friendsWorkspace).toContain("<CosmeticIdentity");
@@ -52,7 +52,7 @@ describe("profile and friends workspace", () => {
     expect(friendsWorkspace).toContain('action="accept"');
     expect(friendsWorkspace).toContain('action="decline"');
     expect(friendsWorkspace).toContain('action="remove"');
-    expect(friendsWorkspace).toContain("Remove friend?");
+    expect(friendsWorkspace).toContain('t("friends.confirm.removeTitle")');
   });
 
   it("bounds relationship and discovery queries and excludes private or blocked suggestions", () => {

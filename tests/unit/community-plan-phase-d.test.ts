@@ -124,8 +124,9 @@ describe("community plan phase D", () => {
     for (const action of ["APPROVE", "REJECT", "HIDE", "RESTORE", "ARCHIVE", "REMOVE"]) {
       expect(api).toContain(`"${action}"`);
     }
-    expect(service).toContain("community_state = 'PUBLISHED'");
-    expect(service).toContain("moderation_state = 'CLEAR'");
+    expect(service).toContain('row.communityState === "PUBLISHED"');
+    expect(service).toContain('row.moderationState === "CLEAR"');
+    expect(service).toContain('row.reviewState === "APPROVED"');
     expect(service).toContain("creatorUsername");
     expect(service).toContain("creatorDisplayName");
   });

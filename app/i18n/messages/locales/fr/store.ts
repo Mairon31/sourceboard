@@ -1,9 +1,12 @@
-import type { StoreMessageKey } from "./store.en";
+import type { StoreMessages } from "../../types";
+
 export const frStoreMessages = {
-  "store.metaDescription": "Équipez des cosmétiques de profil et collectionnez des packs d’emotes sur SourceBoard.",
+  "store.metaDescription":
+    "Équipez des cosmétiques de profil et collectionnez des packs d’emotes sur SourceBoard.",
   "store.eyebrow": "Boutique de personnalisation",
   "store.heroTitle": "Personnalisez SourceBoard",
-  "store.heroDescription": "Débloquez des cadres, effets, polices et packs d’emotes communautaires avec des points.",
+  "store.heroDescription":
+    "Débloquez des cadres, effets, polices et packs d’emotes communautaires avec des points.",
   "store.createCosmetic": "Créer un cosmétique",
   "store.adminAccess": "Accès administration",
   "store.balance": "Solde",
@@ -23,13 +26,16 @@ export const frStoreMessages = {
   "store.allItemsDescription": "Catalogue complet de la catégorie sélectionnée.",
   "store.memberDefault": "Membre SourceBoard",
   "store.redeemError": "Impossible d’obtenir cet article.",
-  "store.redeemConnectionError": "Impossible d’obtenir cet article. Vérifiez votre connexion et réessayez.",
+  "store.redeemConnectionError":
+    "Impossible d’obtenir cet article. Vérifiez votre connexion et réessayez.",
   "store.unlockedFeedback": "{name} débloqué.",
   "store.equipError": "Impossible d’équiper ce cosmétique.",
-  "store.equipConnectionError": "Impossible d’équiper ce cosmétique. Vérifiez votre connexion et réessayez.",
+  "store.equipConnectionError":
+    "Impossible d’équiper ce cosmétique. Vérifiez votre connexion et réessayez.",
   "store.equippedFeedback": "{name} équipé.",
   "store.unequipError": "Impossible de retirer ce cosmétique.",
-  "store.unequipConnectionError": "Impossible de retirer ce cosmétique. Vérifiez votre connexion et réessayez.",
+  "store.unequipConnectionError":
+    "Impossible de retirer ce cosmétique. Vérifiez votre connexion et réessayez.",
   "store.unequippedFeedback": "{name} retiré.",
   "store.filter.all": "Tous",
   "store.filter.profileThemes": "Thèmes de profil",
@@ -66,4 +72,4 @@ export const frStoreMessages = {
   "store.morePointsRequired": "Davantage de points requis",
   "store.available": "Disponible",
   "store.working": "Traitement…",
-} as const satisfies Record<StoreMessageKey, string>;
+} satisfies StoreMessages;

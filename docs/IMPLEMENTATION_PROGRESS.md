@@ -823,6 +823,53 @@ migration `0030` and the Block A application changes have been deployed to the
 production Worker/D1 database. Those remain integration/release actions after
 review and the broader Platform Overhaul sequence.
 
+## Hotfix PR #39 — Settings i18n, comment previews and navigation observability
+
+Status: **IN REVIEW — final repository gates pending**
+
+- Settings and the related public product surfaces use the global `useI18n()` API;
+  user-generated content remains data and is never passed through translations.
+- Translation catalogs are now organized as `app/i18n/messages/locales/<locale>/<namespace>.ts`.
+  English is the typed canonical shape, every supported locale satisfies it, and
+  unit coverage rejects incomplete namespace catalogs. See `docs/I18N.md`.
+- A comment containing a valid URL may be submitted without pressing Preview link.
+  Link metadata remains server-derived and protected by URL, DNS, redirect,
+  timeout, content-type and response-size controls. A single 403 retry uses a
+  browser-compatible identifier only after the target is revalidated.
+- Existing stale `URL_ONLY` comment previews are refreshed lazily only through
+  the comments API, at most one per page and no more frequently than every
+  thirty minutes; SSR post rendering does not wait for that refresh.
+- Navigation coverage records a route-ready mark and asserts the tested post
+  navigation remains SPA without a document reload. Local measurements and the
+  final CI evidence are recorded only after the final verification run.
+- The dominant Store-navigation cost was an N+1 lookup of
+  `cosmetic_submission_reviews`, once per catalog item. Store projection now
+  loads community-review metadata in one bounded query while retaining the
+  existing missing-table/schema-lag fallback. Controlled local-development
+  measurements improved Store route-ready from roughly **517–591 ms** to
+  **284–410 ms**, with `store.data` falling from roughly **245–365 ms** to
+  **76–153 ms**. Post-detail/profile navigations remained roughly
+  **180–280 ms / 190–250 ms**; these are development measurements, not
+  production benchmarks.
+- Product navigation now links directly to localized official Home/Store paths,
+  so those clicks no longer take the alias/redirect path before the real route.
+  The maintained navigation E2E also verifies that post navigation stays SPA
+  and records a bounded route-ready metric.
+- Final local candidate verification on 2026-09-13 passed production dependency
+  audit (**0 vulnerabilities**), ESLint, changed-file Prettier validation,
+  strict TypeScript, **143/143 unit files / 574/574 unit tests**, production
+  build and Worker deploy dry-run. A fresh local D1 ledger applied all **35
+  migrations (`0000`–`0034`)** and a second apply reported no migrations to
+  apply. The 227-test Playwright pass validated 226 cases and exposed one
+  repeatability collision caused by a fixed comment body left in the persisted
+  E2E database; after making that body unique per execution, the affected test
+  passed **2/2** consecutive reruns. The exact-HEAD standard CI remains the
+  authoritative complete Playwright/release gate before merge.
+- The refactored i18n client chunk is currently about **277.25 kB raw / 68.70
+  kB gzip** in the production build. Dynamic per-locale loading is deliberately
+  deferred until profiling demonstrates that its SSR/hydration complexity is
+  justified.
+
 ## Platform Overhaul — Block B: Public Profiles, Settings and Session Security
 
 Status: **PRE-MERGE VERIFIED — production migration-first smoke remains the final release check**

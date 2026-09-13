@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { Locale } from "../../shared/i18n/locales";
 import {
   formatDateTime,
+  formatNumber,
   formatRelativeTime,
   translate,
   translatePlural,
@@ -13,6 +14,7 @@ export interface I18nContextValue {
   t: (key: MessageKey, vars?: Record<string, string | number>) => string;
   tp: (baseKey: string, count: number, vars?: Record<string, string | number>) => string;
   date: (value: Date | number, options?: Intl.DateTimeFormatOptions) => string;
+  number: (value: number, options?: Intl.NumberFormatOptions) => string;
   relative: (deltaSeconds: number) => string;
 }
 
@@ -25,6 +27,7 @@ export function I18nProvider({ locale, children }: { locale: Locale; children: R
       t: (key, vars) => translate(locale, key, vars),
       tp: (baseKey, count, vars) => translatePlural(locale, baseKey, count, vars),
       date: (input, options) => formatDateTime(locale, input, options),
+      number: (input, options) => formatNumber(locale, input, options),
       relative: (deltaSeconds) => formatRelativeTime(locale, deltaSeconds),
     }),
     [locale],

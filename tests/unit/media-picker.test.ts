@@ -26,7 +26,7 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(picker).toContain("250");
     expect(picker).toContain("mediaCache");
     expect(picker).toContain('role="tablist"');
-    expect(picker).toContain('"Emotes"');
+    expect(picker).toContain('t("mediaPicker.emotes")');
     expect(thread).toContain('from "./MediaPicker"');
     expect(thread).not.toContain("function MediaPicker(");
   });

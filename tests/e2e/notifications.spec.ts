@@ -53,12 +53,15 @@ test("notification popover renders grouped human copy and exact unread count", a
   await expect(page.getByLabel("2 unread notifications")).toBeVisible();
   await trigger.click();
 
-  const popover = page.getByRole("dialog", { name: "Recent notifications" });
+  const popover = page.getByRole("dialog", { name: "Notifications" });
   await expect(popover).toBeVisible();
-  await expect(popover.getByText("2 unread", { exact: true })).toBeVisible();
+  await expect(popover.getByText("2 unread notifications", { exact: true })).toBeVisible();
   await expect(popover.getByText(/E2E Liker One and 1 other liked your post/)).toBeVisible();
   await expect(popover.getByText("2 related events · new")).toBeVisible();
-  await expect(popover.getByRole("link", { name: "View all" })).toHaveAttribute("href", "/notifications");
+  await expect(popover.getByRole("link", { name: "View all" })).toHaveAttribute(
+    "href",
+    "/notifications",
+  );
   await expect(popover).not.toContainText("**");
   await expect(popover).not.toContainText("emt_");
 
@@ -66,7 +69,9 @@ test("notification popover renders grouped human copy and exact unread count", a
   await expect(popover).toHaveCount(0);
 });
 
-test("mobile notification cards keep content width and actions below the main copy", async ({ page }) => {
+test("mobile notification cards keep content width and actions below the main copy", async ({
+  page,
+}) => {
   await installNotificationFixture(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/notifications");

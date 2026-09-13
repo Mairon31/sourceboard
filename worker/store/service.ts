@@ -129,52 +129,87 @@ async function listStoreCatalog(db: D1Database, now: number): Promise<StoreItemI
 
 type CommunityLookup = { isSubmission: boolean; metadata: CommunityStoreMetadata | null };
 
-async function communityStoreMetadata(
+interface CommunityReviewRow {
+  cosmeticId: string;
+  communityState: string | null;
+  moderationState: string | null;
+  reviewState: string | null;
+  creatorUsername: string | null;
+  creatorDisplayName: string | null;
+}
+
+async function listCommunityStoreMetadata(
   db: D1Database,
-  item: StoreItemInput,
-): Promise<CommunityLookup> {
-  let exists: { present: number } | null;
+  items: StoreItemInput[],
+): Promise<Map<string, CommunityLookup>> {
+  const lookups = new Map<string, CommunityLookup>();
+  if (items.length === 0) return lookups;
+
+  const itemById = new Map(items.map((item) => [item.id, item]));
   try {
-    exists = await db
-      .prepare("SELECT 1 AS present FROM cosmetic_submission_reviews WHERE store_item_id = ?")
-      .bind(item.id)
-      .first<{ present: number }>();
-  } catch (error) {
-    if (isMissingCommunityReviewTable(error)) return { isSubmission: false, metadata: null };
-    throw error;
-  }
-  if (!exists) return { isSubmission: false, metadata: null };
-  try {
-    const row = await db
+    const rows = await db
       .prepare(
-        `SELECT r.store_item_id AS cosmeticId, u.username AS creatorUsername,
-              COALESCE(p.display_name, u.username) AS creatorDisplayName
-       FROM cosmetic_submission_reviews r
-       JOIN users u ON u.id = r.submitted_by_user_id
-       LEFT JOIN user_profiles p ON p.user_id = u.id
-       WHERE r.store_item_id = ? AND r.community_state = 'PUBLISHED'
-         AND r.moderation_state = 'CLEAR' AND r.review_state = 'APPROVED'`,
+        `SELECT r.store_item_id AS cosmeticId,
+                r.community_state AS communityState,
+                r.moderation_state AS moderationState,
+                r.review_state AS reviewState,
+                u.username AS creatorUsername,
+                COALESCE(p.display_name, u.username) AS creatorDisplayName
+         FROM cosmetic_submission_reviews r
+         LEFT JOIN users u ON u.id = r.submitted_by_user_id
+         LEFT JOIN user_profiles p ON p.user_id = u.id`,
       )
-      .bind(item.id)
-      .first<{ cosmeticId: string; creatorUsername: string; creatorDisplayName: string }>();
-    if (!row) return { isSubmission: true, metadata: null };
-    let config: Record<string, unknown> = {};
-    try {
-      config = JSON.parse(item.configJson) as Record<string, unknown>;
-    } catch {
-      return { isSubmission: true, metadata: null };
+      .all<CommunityReviewRow>();
+
+    for (const row of rows.results) {
+      const item = itemById.get(row.cosmeticId);
+      if (!item) continue;
+      const published =
+        row.communityState === "PUBLISHED" &&
+        row.moderationState === "CLEAR" &&
+        row.reviewState === "APPROVED" &&
+        Boolean(row.creatorUsername);
+      if (!published) {
+        lookups.set(row.cosmeticId, { isSubmission: true, metadata: null });
+        continue;
+      }
+      let config: Record<string, unknown> = {};
+      try {
+        config = JSON.parse(item.configJson) as Record<string, unknown>;
+      } catch {
+        lookups.set(row.cosmeticId, { isSubmission: true, metadata: null });
+        continue;
+      }
+      const css = typeof config.communityCss === "string" ? config.communityCss : "";
+      lookups.set(row.cosmeticId, {
+        isSubmission: true,
+        metadata: {
+          cosmeticId: row.cosmeticId,
+          creatorUsername: row.creatorUsername ?? "",
+          creatorDisplayName: row.creatorDisplayName ?? row.creatorUsername ?? "",
+          css,
+        },
+      });
     }
-    const css = typeof config.communityCss === "string" ? config.communityCss : "";
-    return { isSubmission: true, metadata: { ...row, css } };
+    return lookups;
   } catch (error) {
-    if (isMissingCommunityReviewTable(error)) return { isSubmission: false, metadata: null };
+    if (isMissingCommunityReviewTable(error)) return lookups;
     const message =
       error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
     if (
       message.includes("no such column") &&
       (message.includes("community_state") || message.includes("moderation_state"))
-    )
-      return { isSubmission: true, metadata: null };
+    ) {
+      const legacyRows = await db
+        .prepare("SELECT store_item_id AS cosmeticId FROM cosmetic_submission_reviews")
+        .all<{ cosmeticId: string }>();
+      for (const row of legacyRows.results) {
+        if (itemById.has(row.cosmeticId)) {
+          lookups.set(row.cosmeticId, { isSubmission: true, metadata: null });
+        }
+      }
+      return lookups;
+    }
     throw error;
   }
 }
@@ -220,9 +255,11 @@ export function createStoreService(db: D1Database) {
     async list(now = Date.now()): Promise<StoreCatalogRow[]> {
       await ensureBuiltInStoreCatalog(db);
       const result = await listStoreCatalog(db, now);
-      const checked = await Promise.all(
-        result.map(async (item) => ({ item, community: await communityStoreMetadata(db, item) })),
-      );
+      const communityByItem = await listCommunityStoreMetadata(db, result);
+      const checked = result.map((item) => ({
+        item,
+        community: communityByItem.get(item.id) ?? { isSubmission: false, metadata: null },
+      }));
       const publicItems = checked.filter(
         ({ community }) => !community.isSubmission || Boolean(community.metadata),
       );

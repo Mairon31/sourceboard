@@ -1,7 +1,6 @@
-import type { MessageKey } from "./en";
-import { settingsMessageSets } from "./settings";
+import type { BaseMessages } from "../../types";
 
-export const deMessages = {
+export const deBaseMessages = {
   "nav.home": "Startseite",
   "nav.search": "Suchen",
   "nav.friends": "Freunde",
@@ -22,12 +21,12 @@ export const deMessages = {
   "settings.security.title": "Sicherheit",
   "settings.language.title": "Sprache",
   "settings.language.description": "Wähle die Sprache für die SourceBoard-Benutzeroberfläche.",
-  ...settingsMessageSets.de,
   "security.sessions.title": "Aktive Sitzungen",
   "security.sessions.revokeOthers": "Andere Sitzungen abmelden",
   "notifications.title": "Benachrichtigungen",
   "notifications.eyebrow": "Aktivität",
-  "notifications.description": "Neuigkeiten zu deinen Beiträgen, Quellen, Freunden und SourceBoard-Aktivitäten. Wiederholte Aktivitäten mit geringer Bedeutung werden gruppiert, ohne den Ereignisverlauf zu verändern.",
+  "notifications.description":
+    "Neuigkeiten zu deinen Beiträgen, Quellen, Freunden und SourceBoard-Aktivitäten. Wiederholte Aktivitäten mit geringer Bedeutung werden gruppiert, ohne den Ereignisverlauf zu verändern.",
   "notifications.all": "Alle",
   "notifications.unread": "Ungelesen",
   "notifications.activity": "Aktivität",
@@ -36,20 +35,30 @@ export const deMessages = {
   "notifications.markAllRead": "Alle als gelesen markieren",
   "notifications.clear": "Benachrichtigungen löschen",
   "notifications.clearTitle": "Alle Benachrichtigungen löschen?",
-  "notifications.clearDescription": "Dadurch werden alle Benachrichtigungen in deinem Posteingang dauerhaft entfernt.",
+  "notifications.clearDescription":
+    "Dadurch werden alle Benachrichtigungen in deinem Posteingang dauerhaft entfernt.",
   "notifications.unavailable": "Benachrichtigungen sind derzeit nicht verfügbar.",
   "notifications.authTitle": "Melde dich an, um deine Benachrichtigungen zu sehen",
-  "notifications.authDescription": "Benachrichtigungen gehören zu deinem privaten Konto. Melde dich an oder erstelle ein Konto, um SourceBoard-Aktivitäten zu verfolgen.",
+  "notifications.authDescription":
+    "Benachrichtigungen gehören zu deinem privaten Konto. Melde dich an oder erstelle ein Konto, um SourceBoard-Aktivitäten zu verfolgen.",
   "notifications.filtersLabel": "Benachrichtigungsfilter",
   "notifications.caughtUpTitle": "Du bist auf dem neuesten Stand.",
-  "notifications.caughtUpDescription": "Neue Kommentare, Reaktionen, Freundesaktivitäten und Quellenaktualisierungen erscheinen hier.",
+  "notifications.caughtUpDescription":
+    "Neue Kommentare, Reaktionen, Freundesaktivitäten und Quellenaktualisierungen erscheinen hier.",
   "notifications.noFilterTitle": "Keine Benachrichtigungen in diesem Filter.",
-  "notifications.noFilterDescription": "Wähle einen anderen Filter, um mehr aus deinem Benachrichtigungsverlauf zu sehen.",
+  "notifications.noFilterDescription":
+    "Wähle einen anderen Filter, um mehr aus deinem Benachrichtigungsverlauf zu sehen.",
   "notifications.updateError": "Benachrichtigungen konnten nicht aktualisiert werden.",
-  "notifications.groupUpdateError": "Diese Benachrichtigungsgruppe konnte nicht aktualisiert werden.",
+  "notifications.groupUpdateError":
+    "Diese Benachrichtigungsgruppe konnte nicht aktualisiert werden.",
   "notifications.clearError": "Benachrichtigungen konnten nicht gelöscht werden.",
   "notifications.actions": "Benachrichtigungsaktionen",
   "notifications.markRead": "Als gelesen markieren",
+  "notifications.viewAll": "Alle anzeigen",
+  "notifications.unreadCount.one": "{count} ungelesene Benachrichtigung",
+  "notifications.unreadCount.other": "{count} ungelesene Benachrichtigungen",
+  "notifications.loadingTitle": "Benachrichtigungen werden geladen…",
+  "notifications.loadingDescription": "Deine neuesten SourceBoard-Aktivitäten werden geprüft.",
   "notifications.grouped": "{count} zusammengehörige Ereignisse",
   "notifications.new": "neu",
   "store.title": "Store",
@@ -59,18 +68,33 @@ export const deMessages = {
   "comments.summary.one": "{count} Kommentar",
   "comments.summary.other": "{count} Kommentare",
   "errors.notFound.title": "Seite nicht gefunden",
-  "errors.notFound.description": "Die Seite wurde möglicherweise verschoben, entfernt oder ist für dich nicht verfügbar.",
+  "errors.notFound.description":
+    "Die Seite wurde möglicherweise verschoben, entfernt oder ist für dich nicht verfügbar.",
   "errors.notFound.home": "Zur Startseite",
   "errors.notFound.back": "Zurück",
   "auth.login": "Anmelden",
   "auth.register": "Konto erstellen",
+  "auth.accountAccess": "Kontozugriff",
+  "auth.defaultTitle": "Hier wird dein Konto benötigt",
+  "auth.defaultDescription":
+    "Melde dich an oder erstelle ein kostenloses Konto, um auf diesen privaten SourceBoard-Bereich zuzugreifen.",
+  "auth.unavailableTitle": "Dienst vorübergehend nicht verfügbar",
+  "auth.unavailableDescription": "Bitte versuche es in Kürze erneut.",
+  "theme.preference": "Theme-Einstellung",
+  "theme.system": "System-Theme",
+  "theme.light": "Helles Theme",
+  "theme.dark": "Dunkles Theme",
+  "animations.label": "Animationen",
+  "animations.description":
+    "Steuert SourceBoard-Mikrointeraktionen und animierte Kosmetik in diesem Browser. Die Systemeinstellung für reduzierte Bewegung hat immer Vorrang.",
   "docs.title": "Dokumentation",
   "legal.title": "Rechtliches",
   "content.englishFallback": "Diese Seite ist derzeit auf Englisch verfügbar.",
   "admin.title": "Administration",
   "admin.content": "Inhalte",
   "admin.store": "Store-Verwaltung",
-  "footer.tagline": "Verfolge Bilder mit einer überprüfbaren Beweiskette bis zu ihrer Originalquelle zurück.",
+  "footer.tagline":
+    "Verfolge Bilder mit einer überprüfbaren Beweiskette bis zu ihrer Originalquelle zurück.",
   "footer.product": "Produkt",
   "footer.docs": "Dokumentation",
   "footer.help": "Hilfe",
@@ -87,4 +111,4 @@ export const deMessages = {
   "footer.aiPublicContent": "KI & öffentliche Inhalte",
   "footer.accountVerification": "Konto & Verifizierung",
   "footer.legal": "Rechtliches",
-} as const satisfies Record<MessageKey, string>;
+} satisfies BaseMessages;

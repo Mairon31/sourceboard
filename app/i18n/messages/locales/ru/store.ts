@@ -1,4 +1,5 @@
-import type { StoreMessageKey } from "./store.en";
+import type { StoreMessages } from "../../types";
+
 export const ruStoreMessages = {
   "store.metaDescription": "Используйте косметику профиля и собирайте наборы эмотов в SourceBoard.",
   "store.eyebrow": "Магазин персонализации",
@@ -23,13 +24,16 @@ export const ruStoreMessages = {
   "store.allItemsDescription": "Полный каталог выбранной категории.",
   "store.memberDefault": "Участник SourceBoard",
   "store.redeemError": "Не удалось получить этот предмет.",
-  "store.redeemConnectionError": "Не удалось получить этот предмет. Проверьте соединение и повторите попытку.",
+  "store.redeemConnectionError":
+    "Не удалось получить этот предмет. Проверьте соединение и повторите попытку.",
   "store.unlockedFeedback": "{name} разблокирован.",
   "store.equipError": "Не удалось экипировать эту косметику.",
-  "store.equipConnectionError": "Не удалось экипировать эту косметику. Проверьте соединение и повторите попытку.",
+  "store.equipConnectionError":
+    "Не удалось экипировать эту косметику. Проверьте соединение и повторите попытку.",
   "store.equippedFeedback": "{name} экипирован.",
   "store.unequipError": "Не удалось снять эту косметику.",
-  "store.unequipConnectionError": "Не удалось снять эту косметику. Проверьте соединение и повторите попытку.",
+  "store.unequipConnectionError":
+    "Не удалось снять эту косметику. Проверьте соединение и повторите попытку.",
   "store.unequippedFeedback": "{name} снят.",
   "store.filter.all": "Все",
   "store.filter.profileThemes": "Темы профиля",
@@ -66,4 +70,4 @@ export const ruStoreMessages = {
   "store.morePointsRequired": "Требуется больше баллов",
   "store.available": "Доступно",
   "store.working": "Обработка…",
-} as const satisfies Record<StoreMessageKey, string>;
+} satisfies StoreMessages;

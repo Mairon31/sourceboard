@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { getPostCategory, type PostCategorySlug } from "../../../shared/posts/categories";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Badge } from "../ui";
 import "./post-category-badge.css";
 
@@ -8,6 +9,7 @@ type PostCategoryBadgeProps =
   | { categorySlug?: never; slug: PostCategorySlug; linked?: boolean };
 
 export function PostCategoryBadge({ categorySlug, slug, linked = true }: PostCategoryBadgeProps) {
+  const { t } = useI18n();
   const category = getPostCategory(categorySlug ?? slug);
   const badge = <Badge>{category.label}</Badge>;
 
@@ -19,7 +21,7 @@ export function PostCategoryBadge({ categorySlug, slug, linked = true }: PostCat
     <Link
       to={`/category/${category.slug}`}
       className="product-post-category-badge"
-      aria-label={`Browse ${category.label} posts`}
+      aria-label={t("category.browsePosts", { category: category.label })}
     >
       {badge}
     </Link>

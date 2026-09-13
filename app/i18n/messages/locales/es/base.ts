@@ -1,7 +1,6 @@
-import type { MessageKey } from "./en";
-import { settingsMessageSets } from "./settings";
+import type { BaseMessages } from "../../types";
 
-export const esMessages = {
+export const esBaseMessages = {
   "nav.home": "Inicio",
   "nav.search": "Buscar",
   "nav.friends": "Amigos",
@@ -22,12 +21,12 @@ export const esMessages = {
   "settings.security.title": "Seguridad",
   "settings.language.title": "Idioma",
   "settings.language.description": "Elige el idioma que SourceBoard usa en su interfaz.",
-  ...settingsMessageSets.es,
   "security.sessions.title": "Sesiones activas",
   "security.sessions.revokeOthers": "Cerrar las demás sesiones",
   "notifications.title": "Notificaciones",
   "notifications.eyebrow": "Actividad",
-  "notifications.description": "Novedades sobre tus publicaciones, fuentes, amigos y actividad de SourceBoard. La actividad repetida de baja importancia se agrupa sin modificar el historial de eventos.",
+  "notifications.description":
+    "Novedades sobre tus publicaciones, fuentes, amigos y actividad de SourceBoard. La actividad repetida de baja importancia se agrupa sin modificar el historial de eventos.",
   "notifications.all": "Todas",
   "notifications.unread": "No leídas",
   "notifications.activity": "Actividad",
@@ -36,20 +35,29 @@ export const esMessages = {
   "notifications.markAllRead": "Marcar todo como leído",
   "notifications.clear": "Borrar notificaciones",
   "notifications.clearTitle": "¿Borrar todas las notificaciones?",
-  "notifications.clearDescription": "Esto elimina permanentemente todas las notificaciones que están actualmente en tu bandeja.",
+  "notifications.clearDescription":
+    "Esto elimina permanentemente todas las notificaciones que están actualmente en tu bandeja.",
   "notifications.unavailable": "Las notificaciones no están disponibles en este momento.",
   "notifications.authTitle": "Inicia sesión para ver tus notificaciones",
-  "notifications.authDescription": "Las notificaciones pertenecen a tu cuenta privada. Inicia sesión o crea una cuenta para seguir la actividad de SourceBoard.",
+  "notifications.authDescription":
+    "Las notificaciones pertenecen a tu cuenta privada. Inicia sesión o crea una cuenta para seguir la actividad de SourceBoard.",
   "notifications.filtersLabel": "Filtros de notificaciones",
   "notifications.caughtUpTitle": "Estás al día.",
-  "notifications.caughtUpDescription": "Aquí aparecerán nuevos comentarios, reacciones, actividad de amigos y actualizaciones de fuentes.",
+  "notifications.caughtUpDescription":
+    "Aquí aparecerán nuevos comentarios, reacciones, actividad de amigos y actualizaciones de fuentes.",
   "notifications.noFilterTitle": "No hay notificaciones en este filtro.",
-  "notifications.noFilterDescription": "Elige otro filtro para ver más de tu historial de notificaciones.",
+  "notifications.noFilterDescription":
+    "Elige otro filtro para ver más de tu historial de notificaciones.",
   "notifications.updateError": "No se pudieron actualizar las notificaciones.",
   "notifications.groupUpdateError": "No se pudo actualizar este grupo de notificaciones.",
   "notifications.clearError": "No se pudieron borrar las notificaciones.",
   "notifications.actions": "Acciones de notificación",
   "notifications.markRead": "Marcar como leída",
+  "notifications.viewAll": "Ver todas",
+  "notifications.unreadCount.one": "{count} notificación sin leer",
+  "notifications.unreadCount.other": "{count} notificaciones sin leer",
+  "notifications.loadingTitle": "Cargando notificaciones…",
+  "notifications.loadingDescription": "Revisando tu actividad más reciente de SourceBoard.",
   "notifications.grouped": "{count} eventos relacionados",
   "notifications.new": "nuevo",
   "store.title": "Tienda",
@@ -59,18 +67,33 @@ export const esMessages = {
   "comments.summary.one": "{count} comentario",
   "comments.summary.other": "{count} comentarios",
   "errors.notFound.title": "Página no encontrada",
-  "errors.notFound.description": "La página puede haberse movido, eliminado o no estar disponible para ti.",
+  "errors.notFound.description":
+    "La página puede haberse movido, eliminado o no estar disponible para ti.",
   "errors.notFound.home": "Ir al inicio",
   "errors.notFound.back": "Volver",
   "auth.login": "Iniciar sesión",
   "auth.register": "Crear cuenta",
+  "auth.accountAccess": "Acceso a la cuenta",
+  "auth.defaultTitle": "Necesitas tu cuenta aquí",
+  "auth.defaultDescription":
+    "Inicia sesión o crea una cuenta gratuita para acceder a esta zona privada de SourceBoard.",
+  "auth.unavailableTitle": "Servicio temporalmente no disponible",
+  "auth.unavailableDescription": "Vuelve a intentarlo en unos instantes.",
+  "theme.preference": "Preferencia de tema",
+  "theme.system": "Tema del sistema",
+  "theme.light": "Tema claro",
+  "theme.dark": "Tema oscuro",
+  "animations.label": "Animaciones",
+  "animations.description":
+    "Controla las microinteracciones de SourceBoard y los cosméticos animados en este navegador. Las preferencias de movimiento reducido del sistema siempre tienen prioridad.",
   "docs.title": "Documentación",
   "legal.title": "Legal",
   "content.englishFallback": "Esta página está disponible actualmente en inglés.",
   "admin.title": "Administración",
   "admin.content": "Contenido",
   "admin.store": "Gestión de la tienda",
-  "footer.tagline": "Rastrea imágenes hasta su fuente original con un historial de evidencia auditable.",
+  "footer.tagline":
+    "Rastrea imágenes hasta su fuente original con un historial de evidencia auditable.",
   "footer.product": "Producto",
   "footer.docs": "Documentación",
   "footer.help": "Ayuda",
@@ -87,4 +110,4 @@ export const esMessages = {
   "footer.aiPublicContent": "IA y contenido público",
   "footer.accountVerification": "Cuenta y verificación",
   "footer.legal": "Legal",
-} as const satisfies Record<MessageKey, string>;
+} satisfies BaseMessages;

@@ -220,7 +220,11 @@ export function MediaPicker({
   }
 
   return (
-    <div ref={pickerRef} className="product-comment-media-picker" aria-label={t("mediaPicker.aria")}>
+    <div
+      ref={pickerRef}
+      className="product-comment-media-picker"
+      aria-label={t("mediaPicker.aria")}
+    >
       <div className="product-comment-media-picker__header">
         <strong>{t("mediaPicker.title")}</strong>
         <button

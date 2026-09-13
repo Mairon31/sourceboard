@@ -4,6 +4,9 @@ import { FriendsIcon, HomeIcon, PlusIcon, StoreIcon, UserIcon } from "../ui";
 import type { RootLoaderData } from "../../root";
 import { markNavigationStart } from "../../data/performance-metrics";
 import { useI18n } from "../../i18n/I18nProvider";
+import { localizedHref } from "../../i18n/routes";
+import type { Locale } from "../../../shared/i18n/locales";
+import { CosmeticIdentity } from "./CosmeticIdentity";
 
 const primaryLinks = [
   { href: "/", key: "nav.home" as const },
@@ -16,27 +19,37 @@ function navClass({ isActive }: { isActive: boolean }) {
   return `product-nav__link${isActive ? " product-nav__link--active" : ""}`;
 }
 
+function productNavHref(locale: Locale, href: string): string {
+  if (href === "/") return localizedHref(locale, "home");
+  if (href === "/store") return localizedHref(locale, "store");
+  return href;
+}
+
 export function ProductNav() {
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const user = rootData?.session?.user ?? null;
-  const { t } = useI18n();
+  const navigationIdentity = rootData?.navigationIdentity ?? null;
+  const { locale, t } = useI18n();
 
   return (
     <nav className="product-nav" aria-label="Primary navigation">
       <div className="product-nav__links">
-        {primaryLinks.map((item) => (
-          <NavLink
-            key={item.href}
-            to={item.href}
-            className={navClass}
-            end={item.href === "/"}
-            prefetch="intent"
-            onClick={() => markNavigationStart(item.href)}
-          >
-            <span className="product-nav__dot" aria-hidden="true" />
-            <span>{t(item.key)}</span>
-          </NavLink>
-        ))}
+        {primaryLinks.map((item) => {
+          const href = productNavHref(locale, item.href);
+          return (
+            <NavLink
+              key={item.href}
+              to={href}
+              className={navClass}
+              end={item.href === "/"}
+              prefetch="intent"
+              onClick={() => markNavigationStart(href)}
+            >
+              <span className="product-nav__dot" aria-hidden="true" />
+              <span>{t(item.key)}</span>
+            </NavLink>
+          );
+        })}
       </div>
 
       <NavLink
@@ -56,10 +69,16 @@ export function ProductNav() {
             prefetch="intent"
             onClick={() => markNavigationStart("/u/:username")}
           >
-            <span className="product-nav__avatar" aria-hidden="true">
-              {user.username.slice(0, 2).toUpperCase()}
-            </span>
-            <span>{user.username}</span>
+            <CosmeticIdentity
+              mode="compact"
+              displayName={navigationIdentity?.displayName ?? user.username}
+              avatarUrl={navigationIdentity?.avatarUrl}
+              avatarFrame={navigationIdentity?.cosmetics.avatarFrame}
+              nameFont={navigationIdentity?.cosmetics.nameFont}
+              nameEffect={navigationIdentity?.cosmetics.nameEffect}
+              visuals={navigationIdentity?.cosmetics.visuals}
+              creatorPro={navigationIdentity?.cosmetics.creatorPro}
+            />
           </NavLink>
         ) : (
           <NavLink
@@ -90,7 +109,9 @@ export function MobileProductNav() {
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const user = rootData?.session?.user ?? null;
   const profileHref = user ? `/u/${encodeURIComponent(user.username)}` : "/login";
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
+  const homeHref = productNavHref(locale, "/");
+  const storeHref = productNavHref(locale, "/store");
 
   return (
     <nav
@@ -98,13 +119,13 @@ export function MobileProductNav() {
       aria-label="Primary navigation"
     >
       <NavLink
-        to="/"
+        to={homeHref}
         className={navClass}
         end
         aria-label={t("nav.home")}
         title={t("nav.home")}
         prefetch="intent"
-        onClick={() => markNavigationStart("/")}
+        onClick={() => markNavigationStart(homeHref)}
       >
         <HomeIcon />
       </NavLink>
@@ -139,12 +160,12 @@ export function MobileProductNav() {
         <UserIcon />
       </NavLink>
       <NavLink
-        to="/store"
+        to={storeHref}
         className={navClass}
         aria-label={t("nav.store")}
         title={t("nav.store")}
         prefetch="intent"
-        onClick={() => markNavigationStart("/store")}
+        onClick={() => markNavigationStart(storeHref)}
       >
         <StoreIcon />
       </NavLink>
@@ -153,22 +174,20 @@ export function MobileProductNav() {
 }
 
 export function ProductContextRail() {
+  const { t } = useI18n();
   return (
     <div className="product-context-rail">
       <section className="product-context-card">
         <span className="product-eyebrow">SourceBoard</span>
-        <h2>Search with context</h2>
-        <p>
-          Good requests include where you found the image, what reverse-search tools you tried and
-          what kind of source you need.
-        </p>
+        <h2>{t("context.search.title")}</h2>
+        <p>{t("context.search.description")}</p>
       </section>
       <section className="product-context-card product-context-card--quiet">
-        <h2>Production community</h2>
-        <p>Source requests are connected to the community service.</p>
+        <h2>{t("context.community.title")}</h2>
+        <p>{t("context.community.description")}</p>
       </section>
       <div className="product-context-theme">
-        <span>Appearance</span>
+        <span>{t("context.appearance")}</span>
         <ThemeControl />
       </div>
     </div>

@@ -10,10 +10,12 @@ import {
 } from "../../data/notifications-realtime";
 import { markNavigationStart } from "../../data/performance-metrics";
 import { readCsrfToken } from "../../data/csrf";
+import { useI18n } from "../../i18n/I18nProvider";
 import { ThemeControl } from "./ThemeControl";
 
 export function TopBar() {
   const navigate = useNavigate();
+  const { t, tp } = useI18n();
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifications, setRecentNotifications] = useState<NotificationCardView[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -176,18 +178,18 @@ export function TopBar() {
         className="sb-topbar-search"
         onSubmit={submitSearch}
         role="search"
-        aria-label="Search SourceBoard"
+        aria-label={t("search.label")}
         action="/search"
         method="get"
       >
-        <span className="sr-only">Search SourceBoard</span>
+        <span className="sr-only">{t("search.label")}</span>
         <SearchIcon width="18" height="18" />
         <input
           type="search"
           name="q"
           defaultValue=""
-          placeholder="Search SourceBoard"
-          aria-label="Search SourceBoard"
+          placeholder={t("search.label")}
+          aria-label={t("search.label")}
         />
       </form>
 
@@ -196,7 +198,7 @@ export function TopBar() {
         <div className="sb-topbar-notification" ref={notificationMenuRef}>
           <button
             type="button"
-            aria-label="Notifications"
+            aria-label={t("nav.notifications")}
             aria-expanded={notificationsOpen}
             aria-controls="sourceboard-notification-menu"
             className="sb-topbar-notification-link sb-topbar-notification-trigger focus-ring"
@@ -206,7 +208,7 @@ export function TopBar() {
             {unreadCount ? (
               <span
                 className="sb-topbar-notification-count"
-                aria-label={`${unreadCount} unread notifications`}
+                aria-label={tp("notifications.unreadCount", unreadCount)}
               >
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
@@ -217,17 +219,21 @@ export function TopBar() {
               id="sourceboard-notification-menu"
               className="sb-topbar-notification-menu"
               role="dialog"
-              aria-label="Recent notifications"
+              aria-label={t("notifications.title")}
             >
               <div className="sb-topbar-notification-menu__header">
                 <div>
-                  <strong>Notifications</strong>
-                  <span>{unreadCount ? `${unreadCount} unread` : "You're caught up"}</span>
+                  <strong>{t("notifications.title")}</strong>
+                  <span>
+                    {unreadCount
+                      ? tp("notifications.unreadCount", unreadCount)
+                      : t("notifications.caughtUpTitle")}
+                  </span>
                 </div>
                 <div className="sb-topbar-notification-menu__header-actions">
                   {unreadCount ? (
                     <button type="button" onClick={() => void markAllRead()}>
-                      Mark read
+                      {t("notifications.markRead")}
                     </button>
                   ) : null}
                   <Link
@@ -238,14 +244,14 @@ export function TopBar() {
                       setNotificationsOpen(false);
                     }}
                   >
-                    View all
+                    {t("notifications.viewAll")}
                   </Link>
                 </div>
               </div>
               {notificationsLoading ? (
                 <div className="sb-topbar-notification-menu__empty" role="status">
-                  <strong>Loading notifications…</strong>
-                  <span>Checking your latest SourceBoard activity.</span>
+                  <strong>{t("notifications.loadingTitle")}</strong>
+                  <span>{t("notifications.loadingDescription")}</span>
                 </div>
               ) : recentNotifications.length ? (
                 <div className="sb-topbar-notification-menu__list">
@@ -265,8 +271,8 @@ export function TopBar() {
                 </div>
               ) : (
                 <div className="sb-topbar-notification-menu__empty">
-                  <strong>No notifications yet</strong>
-                  <span>New activity will appear here.</span>
+                  <strong>{t("notifications.caughtUpTitle")}</strong>
+                  <span>{t("notifications.caughtUpDescription")}</span>
                 </div>
               )}
             </div>

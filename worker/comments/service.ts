@@ -13,6 +13,7 @@ import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
 
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_LIMIT = 100;
+const URL_ONLY_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 
 export interface CommentServiceDependencies {
   store: CommentStore;
@@ -33,6 +34,7 @@ export interface CommentService {
     cursor: string | null,
     limit: number,
     sort: CommentSort,
+    options?: { refreshUrlOnlyPreview?: boolean },
   ): Promise<{
     comments: CommentView[];
     nextCursor: string | null;
@@ -198,7 +200,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
   }
 
   return {
-    async listForPost(postId, viewerId, cursor, limit, sort) {
+    async listForPost(postId, viewerId, cursor, limit, sort, options) {
       await requireVisiblePost(postId, viewerId);
       const page = await dependencies.store.listForPost({
         postId,
@@ -206,6 +208,33 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         limit: Math.min(Math.max(1, Math.floor(limit)), MAX_LIMIT),
         sort,
       });
+      if (
+        options?.refreshUrlOnlyPreview &&
+        dependencies.previewLink &&
+        dependencies.store.updateLinkPreview
+      ) {
+        const stalePreview = page.comments.find(
+          (record) =>
+            record.comment.state === "VISIBLE" &&
+            record.linkPreview?.metadataStatus === "URL_ONLY" &&
+            now() - record.linkPreview.fetchedAt >= URL_ONLY_REFRESH_INTERVAL_MS,
+        );
+        if (stalePreview?.linkPreview) {
+          try {
+            const refreshed = await dependencies.previewLink(stalePreview.linkPreview.canonicalUrl);
+            await dependencies.store.updateLinkPreview(stalePreview.comment.id, refreshed);
+            stalePreview.linkPreview = refreshed;
+          } catch {
+            const cooledDown = { ...stalePreview.linkPreview, fetchedAt: now() };
+            try {
+              await dependencies.store.updateLinkPreview(stalePreview.comment.id, cooledDown);
+              stalePreview.linkPreview = cooledDown;
+            } catch {
+              // Historical preview refresh is best-effort and must never block comment reads.
+            }
+          }
+        }
+      }
       const likedIds = viewerId
         ? dependencies.store.getLikedCommentIds
           ? await dependencies.store.getLikedCommentIds(

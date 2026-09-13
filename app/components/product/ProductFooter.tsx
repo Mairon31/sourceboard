@@ -1,10 +1,11 @@
 import { Link, useRouteLoaderData } from "react-router";
 import type { RootLoaderData } from "../../root";
 import { useI18n } from "../../i18n/I18nProvider";
+import { switchLocaleHref } from "../../i18n/routes";
 import { LanguageSelector } from "../layout/LanguageSelector";
 
 export function ProductFooter() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const cmsItems = rootData?.footerNavigation ?? [];
   const cmsGroups = new Map<string, typeof cmsItems>();
@@ -81,7 +82,7 @@ export function ProductFooter() {
                     {items.map((item) => {
                       const slug = item.href?.split("?")[0].split("/").filter(Boolean).at(-1) ?? "";
                       return (
-                        <Link key={item.id} to={item.href!}>
+                        <Link key={item.id} to={switchLocaleHref(item.href!, "", locale)}>
                           {cmsLinkLabels[slug] ?? item.label}
                         </Link>
                       );
@@ -93,7 +94,7 @@ export function ProductFooter() {
                 <nav key={group.label} aria-label={group.label}>
                   <strong>{group.label}</strong>
                   {group.links.map(([label, href]) => (
-                    <Link key={href} to={href}>
+                    <Link key={href} to={switchLocaleHref(href, "", locale)}>
                       {label}
                     </Link>
                   ))}

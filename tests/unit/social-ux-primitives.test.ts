@@ -33,6 +33,6 @@ describe("social UX primitives", () => {
     expect(share).toContain('fetch("/api/share-links"');
     expect(share).toContain("response.status >= 500");
     expect(share).toContain('searchParams.get("lang")');
-    expect(share).toContain("SHARE_LOCALES.has(locale)");
+    expect(share).toContain("isLocale(locale)");
   });
 });

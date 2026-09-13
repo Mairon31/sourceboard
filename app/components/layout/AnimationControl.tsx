@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ANIMATIONS_STORAGE_KEY } from "../../../shared/design/theme";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Switch } from "../ui";
 
 function readAnimationsEnabled(): boolean {
@@ -18,6 +19,7 @@ function applyAnimations(enabled: boolean): void {
 }
 
 export function AnimationControl() {
+  const { t } = useI18n();
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
@@ -26,8 +28,8 @@ export function AnimationControl() {
 
   return (
     <Switch
-      label="Animations"
-      description="Controls SourceBoard microinteractions and animated cosmetics on this browser. Reduced-motion system preferences always take priority."
+      label={t("animations.label")}
+      description={t("animations.description")}
       checked={enabled}
       onCheckedChange={(checked) => {
         setEnabled(checked);

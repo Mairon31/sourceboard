@@ -6,19 +6,21 @@ import {
   type ThemeMediaSource,
   type ThemePreference,
 } from "../../../shared/design/theme";
+import { useI18n } from "../../i18n/I18nProvider";
 import { MonitorIcon, MoonIcon, SunIcon } from "../ui/icons";
 
 const choices: Array<{
   value: ThemePreference;
-  label: string;
+  labelKey: "theme.system" | "theme.light" | "theme.dark";
   icon: typeof MonitorIcon;
 }> = [
-  { value: "system", label: "System theme", icon: MonitorIcon },
-  { value: "light", label: "Light theme", icon: SunIcon },
-  { value: "dark", label: "Dark theme", icon: MoonIcon },
+  { value: "system", labelKey: "theme.system", icon: MonitorIcon },
+  { value: "light", labelKey: "theme.light", icon: SunIcon },
+  { value: "dark", labelKey: "theme.dark", icon: MoonIcon },
 ];
 
 export function ThemeControl() {
+  const { t } = useI18n();
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
   const controllerRef = useRef<ThemeController | null>(null);
 
@@ -69,15 +71,16 @@ export function ThemeControl() {
   }
 
   return (
-    <div className="sb-theme-control" aria-label="Theme preference">
+    <div className="sb-theme-control" aria-label={t("theme.preference")}>
       {choices.map((choice) => {
         const Icon = choice.icon;
+        const label = t(choice.labelKey);
         return (
           <button
             key={choice.value}
             type="button"
             className="sb-theme-control__button motion-interactive focus-ring"
-            aria-label={choice.label}
+            aria-label={label}
             aria-pressed={preference === choice.value}
             onClick={() => chooseTheme(choice.value)}
           >

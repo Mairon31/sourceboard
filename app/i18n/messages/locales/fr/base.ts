@@ -1,7 +1,6 @@
-import type { MessageKey } from "./en";
-import { settingsMessageSets } from "./settings";
+import type { BaseMessages } from "../../types";
 
-export const frMessages = {
+export const frBaseMessages = {
   "nav.home": "Accueil",
   "nav.search": "Rechercher",
   "nav.friends": "Amis",
@@ -22,12 +21,12 @@ export const frMessages = {
   "settings.security.title": "Sécurité",
   "settings.language.title": "Langue",
   "settings.language.description": "Choisissez la langue utilisée par l’interface SourceBoard.",
-  ...settingsMessageSets.fr,
   "security.sessions.title": "Sessions actives",
   "security.sessions.revokeOthers": "Déconnecter les autres sessions",
   "notifications.title": "Notifications",
   "notifications.eyebrow": "Activité",
-  "notifications.description": "Mises à jour sur vos publications, sources, amis et l’activité SourceBoard. Les activités répétitives de faible importance sont regroupées sans modifier l’historique des événements.",
+  "notifications.description":
+    "Mises à jour sur vos publications, sources, amis et l’activité SourceBoard. Les activités répétitives de faible importance sont regroupées sans modifier l’historique des événements.",
   "notifications.all": "Toutes",
   "notifications.unread": "Non lues",
   "notifications.activity": "Activité",
@@ -36,20 +35,29 @@ export const frMessages = {
   "notifications.markAllRead": "Tout marquer comme lu",
   "notifications.clear": "Effacer les notifications",
   "notifications.clearTitle": "Effacer toutes les notifications ?",
-  "notifications.clearDescription": "Cette action supprime définitivement toutes les notifications actuellement dans votre boîte de réception.",
+  "notifications.clearDescription":
+    "Cette action supprime définitivement toutes les notifications actuellement dans votre boîte de réception.",
   "notifications.unavailable": "Les notifications sont indisponibles pour le moment.",
   "notifications.authTitle": "Connectez-vous pour voir vos notifications",
-  "notifications.authDescription": "Les notifications appartiennent à votre compte privé. Connectez-vous ou créez un compte pour suivre l’activité SourceBoard.",
+  "notifications.authDescription":
+    "Les notifications appartiennent à votre compte privé. Connectez-vous ou créez un compte pour suivre l’activité SourceBoard.",
   "notifications.filtersLabel": "Filtres de notifications",
   "notifications.caughtUpTitle": "Vous êtes à jour.",
-  "notifications.caughtUpDescription": "Les nouveaux commentaires, réactions, activités d’amis et mises à jour de sources apparaîtront ici.",
+  "notifications.caughtUpDescription":
+    "Les nouveaux commentaires, réactions, activités d’amis et mises à jour de sources apparaîtront ici.",
   "notifications.noFilterTitle": "Aucune notification dans ce filtre.",
-  "notifications.noFilterDescription": "Choisissez un autre filtre pour voir davantage de votre historique de notifications.",
+  "notifications.noFilterDescription":
+    "Choisissez un autre filtre pour voir davantage de votre historique de notifications.",
   "notifications.updateError": "Impossible de mettre à jour les notifications.",
   "notifications.groupUpdateError": "Impossible de mettre à jour ce groupe de notifications.",
   "notifications.clearError": "Impossible d’effacer les notifications.",
   "notifications.actions": "Actions de notification",
   "notifications.markRead": "Marquer comme lue",
+  "notifications.viewAll": "Tout voir",
+  "notifications.unreadCount.one": "{count} notification non lue",
+  "notifications.unreadCount.other": "{count} notifications non lues",
+  "notifications.loadingTitle": "Chargement des notifications…",
+  "notifications.loadingDescription": "Vérification de votre activité SourceBoard récente.",
   "notifications.grouped": "{count} événements associés",
   "notifications.new": "nouveau",
   "store.title": "Boutique",
@@ -59,18 +67,33 @@ export const frMessages = {
   "comments.summary.one": "{count} commentaire",
   "comments.summary.other": "{count} commentaires",
   "errors.notFound.title": "Page introuvable",
-  "errors.notFound.description": "La page a peut-être été déplacée, supprimée ou n’est pas disponible pour vous.",
+  "errors.notFound.description":
+    "La page a peut-être été déplacée, supprimée ou n’est pas disponible pour vous.",
   "errors.notFound.home": "Aller à l’accueil",
   "errors.notFound.back": "Retour",
   "auth.login": "Se connecter",
   "auth.register": "Créer un compte",
+  "auth.accountAccess": "Accès au compte",
+  "auth.defaultTitle": "Votre compte est requis ici",
+  "auth.defaultDescription":
+    "Connectez-vous ou créez un compte gratuit pour accéder à cette zone privée de SourceBoard.",
+  "auth.unavailableTitle": "Service temporairement indisponible",
+  "auth.unavailableDescription": "Veuillez réessayer dans quelques instants.",
+  "theme.preference": "Préférence de thème",
+  "theme.system": "Thème du système",
+  "theme.light": "Thème clair",
+  "theme.dark": "Thème sombre",
+  "animations.label": "Animations",
+  "animations.description":
+    "Contrôle les micro-interactions de SourceBoard et les cosmétiques animés dans ce navigateur. Les préférences système de réduction des mouvements restent toujours prioritaires.",
   "docs.title": "Documentation",
   "legal.title": "Mentions légales",
   "content.englishFallback": "Cette page est actuellement disponible en anglais.",
   "admin.title": "Administration",
   "admin.content": "Contenu",
   "admin.store": "Gestion de la boutique",
-  "footer.tagline": "Retrouvez la source originale des images grâce à une piste de preuves vérifiable.",
+  "footer.tagline":
+    "Retrouvez la source originale des images grâce à une piste de preuves vérifiable.",
   "footer.product": "Produit",
   "footer.docs": "Documentation",
   "footer.help": "Aide",
@@ -87,4 +110,4 @@ export const frMessages = {
   "footer.aiPublicContent": "IA et contenu public",
   "footer.accountVerification": "Compte et vérification",
   "footer.legal": "Mentions légales",
-} as const satisfies Record<MessageKey, string>;
+} satisfies BaseMessages;

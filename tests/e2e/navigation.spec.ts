@@ -90,6 +90,37 @@ test("post title opens canonical detail", async ({ page }) => {
   await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
 });
 
+test("post navigation remains SPA and records a bounded route-ready metric", async ({ page }) => {
+  await page.goto("/");
+  await waitForUiReady(page);
+  const documentNavigations: string[] = [];
+  page.on("request", (request) => {
+    if (request.isNavigationRequest() && request.resourceType() === "document") {
+      documentNavigations.push(request.url());
+    }
+  });
+
+  const title = page
+    .locator(".product-post", { hasText: "E2E navigation post" })
+    .locator(".product-post__title");
+  await title.click();
+  await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const entry = performance.getEntriesByName("sourceboard:navigation:post").at(-1);
+        return entry?.duration ?? null;
+      }),
+    )
+    .not.toBeNull();
+
+  const duration = await page.evaluate(
+    () => performance.getEntriesByName("sourceboard:navigation:post").at(-1)?.duration ?? Infinity,
+  );
+  expect(documentNavigations).toEqual([]);
+  expect(duration).toBeLessThan(2_500);
+});
+
 test("post author opens the public profile without triggering card navigation", async ({
   page,
 }) => {
