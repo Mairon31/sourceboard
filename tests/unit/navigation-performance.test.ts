@@ -53,7 +53,7 @@ describe("navigation session performance", () => {
     const now = 1_000_000;
     const touchSession = vi.fn(async () => undefined);
     const store = {
-      findActiveSessionByTokenHash: vi.fn(async () => session(now - 10 * 60_000)),
+      findActiveSessionByTokenHash: vi.fn(async () => session(now - 16 * 60_000)),
       touchSession,
     } as unknown as AuthStore;
     const service = createAuthService({

@@ -24,6 +24,7 @@ export async function canViewUser(
   ]);
   if (blockedByViewer || blockingViewer) return false;
   if (profile.profileVisibility === "PUBLIC") return true;
+  if (profile.profileVisibility === "PRIVATE") return false;
   return (await dependencies.store.getRelationship(viewerId, targetId)) === "FRIEND";
 }
 

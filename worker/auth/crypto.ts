@@ -11,6 +11,7 @@ import { Buffer } from "node:buffer";
 
 const PASSWORD_VERSION = "scrypt-v1";
 const EMAIL_KEY_VERSION = "v1";
+export const SESSION_IP_KEY_VERSION = "v1";
 const SESSION_TOKEN_BYTES = 32;
 
 const PASSWORD_PARAMS = {
@@ -208,25 +209,27 @@ function decodeBase64Url(value: string): Buffer {
   return Buffer.from(value, "base64url");
 }
 
-export function encryptEmail(normalizedEmail: string, secret: string): string {
+function encryptAesEnvelope(value: string, secret: string, version: string): string {
   const key = decodeAesSecret(secret);
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([cipher.update(normalizedEmail, "utf8"), cipher.final()]);
+  const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
 
-  return [
-    EMAIL_KEY_VERSION,
-    encodeBase64Url(iv),
-    encodeBase64Url(tag),
-    encodeBase64Url(ciphertext),
-  ].join(".");
+  return [version, encodeBase64Url(iv), encodeBase64Url(tag), encodeBase64Url(ciphertext)].join(
+    ".",
+  );
 }
 
-export function decryptEmail(encryptedEmail: string, secret: string): string {
-  const [version, ivEncoded, tagEncoded, ciphertextEncoded] = encryptedEmail.split(".");
-  if (version !== EMAIL_KEY_VERSION || !ivEncoded || !tagEncoded || !ciphertextEncoded) {
-    throw new Error("Unsupported encrypted email envelope");
+function decryptAesEnvelope(
+  encryptedValue: string,
+  secret: string,
+  version: string,
+  label: string,
+): string {
+  const [envelopeVersion, ivEncoded, tagEncoded, ciphertextEncoded] = encryptedValue.split(".");
+  if (envelopeVersion !== version || !ivEncoded || !tagEncoded || !ciphertextEncoded) {
+    throw new Error(`Unsupported encrypted ${label} envelope`);
   }
 
   const decipher = createDecipheriv(
@@ -239,4 +242,20 @@ export function decryptEmail(encryptedEmail: string, secret: string): string {
     decipher.update(decodeBase64Url(ciphertextEncoded)),
     decipher.final(),
   ]).toString("utf8");
+}
+
+export function encryptEmail(normalizedEmail: string, secret: string): string {
+  return encryptAesEnvelope(normalizedEmail, secret, EMAIL_KEY_VERSION);
+}
+
+export function decryptEmail(encryptedEmail: string, secret: string): string {
+  return decryptAesEnvelope(encryptedEmail, secret, EMAIL_KEY_VERSION, "email");
+}
+
+export function encryptSessionIp(ipAddress: string, secret: string): string {
+  return encryptAesEnvelope(ipAddress, secret, SESSION_IP_KEY_VERSION);
+}
+
+export function decryptSessionIp(encryptedIp: string, secret: string): string {
+  return decryptAesEnvelope(encryptedIp, secret, SESSION_IP_KEY_VERSION, "session IP");
 }

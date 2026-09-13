@@ -17,7 +17,17 @@ export interface UserRecord {
   lastSeenAt: number | null;
 }
 
-export interface SessionRecord {
+export interface SessionContextFields {
+  ipEncrypted: string | null;
+  ipKeyVersion: string | null;
+  userAgent: string | null;
+  cfCity: string | null;
+  cfRegion: string | null;
+  cfCountry: string | null;
+  contextUpdatedAt: number | null;
+}
+
+export interface SessionRecord extends Partial<SessionContextFields> {
   id: string;
   userId: string;
   tokenHash: string;
@@ -28,6 +38,8 @@ export interface SessionRecord {
   ipPrefixHash: string | null;
   userAgentHash: string | null;
 }
+
+export type SessionContextUpdate = SessionContextFields;
 
 export interface ActiveSessionRecord extends SessionRecord {
   username: string;
@@ -107,9 +119,10 @@ export interface AuthStore {
   updatePasswordRecord(userId: string, password: PasswordRecord, now: number): Promise<void>;
   createSession(session: SessionRecord): Promise<void>;
   findActiveSessionByTokenHash(tokenHash: string, now: number): Promise<ActiveSessionRecord | null>;
-  touchSession(sessionId: string, now: number): Promise<void>;
+  touchSession(sessionId: string, now: number, context?: SessionContextUpdate): Promise<void>;
   revokeSession(sessionId: string, userId: string, now: number): Promise<void>;
   revokeAllSessions(userId: string, now: number): Promise<void>;
+  revokeOtherSessions(userId: string, currentSessionId: string, now: number): Promise<void>;
   listSessions(userId: string, now: number): Promise<SessionRecord[]>;
   getLoginFailureState(keyHash: string): Promise<LoginFailureState | null>;
   recordLoginFailure(keyHash: string, now: number, windowMs: number): Promise<void>;
@@ -228,6 +241,13 @@ function mapSession(row: SessionRow): SessionRecord {
     revokedAt: row.revokedAt,
     ipPrefixHash: row.ipPrefixHash,
     userAgentHash: row.userAgentHash,
+    ipEncrypted: row.ipEncrypted ?? null,
+    ipKeyVersion: row.ipKeyVersion ?? null,
+    userAgent: row.userAgent ?? null,
+    cfCity: row.cfCity ?? null,
+    cfRegion: row.cfRegion ?? null,
+    cfCountry: row.cfCountry ?? null,
+    contextUpdatedAt: row.contextUpdatedAt ?? null,
   };
 }
 
@@ -470,8 +490,9 @@ export function createD1AuthStore(db: D1Database): AuthStore {
         .prepare(
           `INSERT INTO sessions (
              id, user_id, token_hash, created_at, last_used_at, expires_at,
-             revoked_at, ip_prefix_hash, user_agent_hash
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             revoked_at, ip_prefix_hash, user_agent_hash, ip_encrypted, ip_key_version,
+             user_agent, cf_city, cf_region, cf_country, context_updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           session.id,
@@ -483,6 +504,13 @@ export function createD1AuthStore(db: D1Database): AuthStore {
           session.revokedAt,
           session.ipPrefixHash,
           session.userAgentHash,
+          session.ipEncrypted ?? null,
+          session.ipKeyVersion ?? null,
+          session.userAgent ?? null,
+          session.cfCity ?? null,
+          session.cfRegion ?? null,
+          session.cfCountry ?? null,
+          session.contextUpdatedAt ?? null,
         )
         .run();
     },
@@ -494,6 +522,9 @@ export function createD1AuthStore(db: D1Database): AuthStore {
                   s.created_at AS createdAt, s.last_used_at AS lastUsedAt,
                   s.expires_at AS expiresAt, s.revoked_at AS revokedAt,
                   s.ip_prefix_hash AS ipPrefixHash, s.user_agent_hash AS userAgentHash,
+                  s.ip_encrypted AS ipEncrypted, s.ip_key_version AS ipKeyVersion,
+                  s.user_agent AS userAgent, s.cf_city AS cfCity, s.cf_region AS cfRegion,
+                  s.cf_country AS cfCountry, s.context_updated_at AS contextUpdatedAt,
                   u.username, u.status, u.email_verified_at
            FROM sessions s JOIN users u ON u.id = s.user_id
            WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?`,
@@ -510,10 +541,32 @@ export function createD1AuthStore(db: D1Database): AuthStore {
         : null;
     },
 
-    async touchSession(sessionId, now) {
+    async touchSession(sessionId, now, context) {
+      if (!context) {
+        await db
+          .prepare(`UPDATE sessions SET last_used_at = ? WHERE id = ?`)
+          .bind(now, sessionId)
+          .run();
+        return;
+      }
       await db
-        .prepare(`UPDATE sessions SET last_used_at = ? WHERE id = ?`)
-        .bind(now, sessionId)
+        .prepare(
+          `UPDATE sessions
+           SET last_used_at = ?, ip_encrypted = ?, ip_key_version = ?, user_agent = ?,
+               cf_city = ?, cf_region = ?, cf_country = ?, context_updated_at = ?
+           WHERE id = ?`,
+        )
+        .bind(
+          now,
+          context.ipEncrypted,
+          context.ipKeyVersion,
+          context.userAgent,
+          context.cfCity,
+          context.cfRegion,
+          context.cfCountry,
+          context.contextUpdatedAt,
+          sessionId,
+        )
         .run();
     },
 
@@ -533,13 +586,27 @@ export function createD1AuthStore(db: D1Database): AuthStore {
         .run();
     },
 
+    async revokeOtherSessions(userId, currentSessionId, now) {
+      await db
+        .prepare(
+          `UPDATE sessions
+           SET revoked_at = ?
+           WHERE user_id = ? AND id <> ? AND revoked_at IS NULL AND expires_at > ?`,
+        )
+        .bind(now, userId, currentSessionId, now)
+        .run();
+    },
+
     async listSessions(userId, now) {
       const result = await db
         .prepare(
           `SELECT id, user_id AS userId, token_hash AS tokenHash,
                   created_at AS createdAt, last_used_at AS lastUsedAt,
                   expires_at AS expiresAt, revoked_at AS revokedAt,
-                  ip_prefix_hash AS ipPrefixHash, user_agent_hash AS userAgentHash
+                  ip_prefix_hash AS ipPrefixHash, user_agent_hash AS userAgentHash,
+                  ip_encrypted AS ipEncrypted, ip_key_version AS ipKeyVersion,
+                  user_agent AS userAgent, cf_city AS cfCity, cf_region AS cfRegion,
+                  cf_country AS cfCountry, context_updated_at AS contextUpdatedAt
            FROM sessions
            WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ?
            ORDER BY last_used_at DESC`,

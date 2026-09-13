@@ -267,6 +267,10 @@ const authRouteHandlers: Record<string, AuthRouteHandler> = {
   },
   "GET /api/auth/sessions": async ({ requestId, service, context }) =>
     jsonResponse({ sessions: await service.listSessions(context) }, requestId),
+  "DELETE /api/auth/sessions": async ({ requestId, service, context }) => {
+    await service.signOutOtherSessions(context);
+    return jsonResponse({ revoked: true }, requestId);
+  },
   "GET /api/auth/me/authorization": async ({ requestId, service, context }) => {
     const authorization = await service.getAuthorization(context);
     return jsonResponse(

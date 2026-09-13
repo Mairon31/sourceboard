@@ -8,7 +8,7 @@ import type {
 } from "../../shared/store/cosmetics";
 import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
 
-export type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY";
+export type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY" | "PRIVATE";
 
 export type FriendshipStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
 
