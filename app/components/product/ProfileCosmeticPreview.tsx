@@ -123,9 +123,7 @@ export function ProfileCosmeticPreview({
       communityStyles={communityStyles}
       mode={mode}
     >
-      <div className="product-cosmetic-preview__subject">
-        <AvatarStage avatarUrl={avatarUrl} alt={name} size="preview" />
-      </div>
+      <div className="product-cosmetic-preview__subject" aria-hidden="true" />
     </ProfileIdentityCard>
   );
 }

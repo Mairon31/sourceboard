@@ -5,10 +5,11 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, path), "utf8");
 
 describe("Store cosmetic preview composition", () => {
-  it("renders cosmetic subjects without mounting a full profile identity", () => {
+  it("keeps full profile identity content out of cosmetic-only previews", () => {
     const preview = read("../../app/components/product/ProfileCosmeticPreview.tsx");
 
     expect(preview).toContain("AvatarStage");
+    expect(preview.match(/<AvatarStage/g) ?? []).toHaveLength(1);
     expect(preview).not.toContain("<CosmeticIdentity");
     expect(preview).not.toContain('className="profile-header product-cosmetic-preview__header"');
   });
