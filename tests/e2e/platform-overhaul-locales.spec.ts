@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { seedNavigationPostFixture } from "./test-helpers";
 
 const locales = ["en", "es", "pt", "fr", "ru", "de"] as const;
 
 test.describe("platform overhaul six-locale matrix", () => {
+  test.beforeAll(() => seedNavigationPostFixture());
+
   for (const locale of locales) {
     test(`${locale} official routes are SSR-stable`, async ({ page }) => {
       for (const path of ["", "/store", "/docs", "/legal"]) {
