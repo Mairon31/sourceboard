@@ -1,0 +1,169 @@
+name: Block B Production Public Smoke
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - ".github/workflows/block-b-production-public-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  public-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify deployed public Block B surfaces
+        env:
+          BASE_URL: https://srcboard.me
+        run: |
+          python - <<'PY'
+          import html
+          import json
+          import os
+          import re
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from html.parser import HTMLParser
+
+          base = os.environ["BASE_URL"].rstrip("/")
+
+          class VisibleTextParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.parts = []
+                  self.hidden_depth = 0
+
+              def handle_starttag(self, tag, attrs):
+                  if tag in {"script", "style", "template", "noscript"}:
+                      self.hidden_depth += 1
+
+              def handle_endtag(self, tag):
+                  if tag in {"script", "style", "template", "noscript"} and self.hidden_depth:
+                      self.hidden_depth -= 1
+
+              def handle_data(self, data):
+                  if not self.hidden_depth:
+                      value = data.strip()
+                      if value:
+                          self.parts.append(value)
+
+          def visible_text(markup):
+              parser = VisibleTextParser()
+              parser.feed(markup)
+              return " ".join(parser.parts)
+
+          def request(target, accept="text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8"):
+              url = target if target.startswith("http://") or target.startswith("https://") else base + target
+              req = urllib.request.Request(
+                  url,
+                  headers={
+                      "User-Agent": "Mozilla/5.0 SourceBoard-BlockB-Production-Smoke/1.0",
+                      "Accept": accept,
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as response:
+                      body = response.read()
+                      status = response.status
+                      headers = dict(response.headers.items())
+              except urllib.error.HTTPError as error:
+                  body = error.read()
+                  status = error.code
+                  headers = dict(error.headers.items())
+              print(f"GET {url} -> {status}")
+              return status, body, headers
+
+          status, root_body, root_headers = request("/")
+          if status != 200:
+              raise AssertionError(f"production root returned {status}")
+          root_html = root_body.decode("utf-8", errors="replace")
+          if "sourceboard" not in visible_text(root_html).lower():
+              raise AssertionError("production root did not render SourceBoard content")
+          print("PASS root SSR")
+
+          status, settings_body, _ = request("/settings")
+          if status != 200:
+              raise AssertionError(f"Settings returned {status}")
+          settings_text = html.unescape(visible_text(settings_body.decode("utf-8", errors="replace")))
+          settings_lower = re.sub(r"\s+", " ", settings_text).lower()
+          general_index = settings_lower.find("general")
+          security_index = settings_lower.find("security")
+          if general_index < 0 or security_index < 0:
+              raise AssertionError("Settings did not render General and Security surfaces")
+          if general_index > security_index:
+              raise AssertionError("Security rendered before General")
+          username_index = settings_lower.find("change username")
+          password_index = settings_lower.find("change password")
+          if username_index >= 0 and username_index < security_index:
+              raise AssertionError("Change username rendered before Security")
+          if password_index >= 0 and password_index < security_index:
+              raise AssertionError("Change password rendered before Security")
+          print("PASS Settings General -> Security ordering")
+
+          public_profile = None
+          public_profile_with_avatar = None
+          seen = set()
+          for query in ["a", "e", "i", "o", "u", "s", "m", "r", "n", "t", "c", "l", "d", "p"]:
+              path = "/api/search?" + urllib.parse.urlencode({"q": query, "kind": "profiles", "limit": 20})
+              code, body, _ = request(path, "application/json")
+              if code != 200:
+                  continue
+              payload = json.loads(body.decode("utf-8"))
+              for profile in payload.get("profiles", []):
+                  username = profile.get("username")
+                  if not username or username in seen:
+                      continue
+                  seen.add(username)
+                  public_profile = public_profile or profile
+                  if profile.get("avatarUrl"):
+                      public_profile_with_avatar = profile
+                  if public_profile and public_profile_with_avatar:
+                      break
+              if public_profile and public_profile_with_avatar:
+                  break
+
+          if not public_profile:
+              raise AssertionError("could not discover any anonymous-visible public profile through production search")
+
+          username = public_profile["username"]
+          profile_path = "/u/" + urllib.parse.quote(username, safe="")
+          code, profile_body, _ = request(profile_path)
+          if code != 200:
+              raise AssertionError(f"signed-out public profile @{username} returned {code}")
+          profile_text = visible_text(profile_body.decode("utf-8", errors="replace")).lower()
+          if username.lower() not in profile_text:
+              raise AssertionError(f"signed-out public profile @{username} did not render identity text")
+          print(f"PASS signed-out public profile @{username}")
+
+          if public_profile_with_avatar:
+              avatar_url = public_profile_with_avatar["avatarUrl"]
+              code, avatar_body, avatar_headers = request(avatar_url, "image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8")
+              content_type = avatar_headers.get("Content-Type", avatar_headers.get("content-type", ""))
+              if code != 200 or not avatar_body:
+                  raise AssertionError(f"signed-out public avatar returned {code}")
+              if content_type and not content_type.lower().startswith("image/"):
+                  raise AssertionError(f"avatar returned unexpected content type {content_type}")
+              print(f"PASS signed-out public avatar for @{public_profile_with_avatar['username']}")
+          else:
+              print("SKIP signed-out avatar: no discoverable public profile currently has avatarUrl")
+
+          missing = "/u/__block_b_production_smoke_missing_profile__"
+          code, missing_body, _ = request(missing)
+          if code != 404:
+              raise AssertionError(f"missing profile did not use unified 404 boundary: {code}")
+          missing_text = visible_text(missing_body.decode("utf-8", errors="replace")).lower()
+          if not any(token in missing_text for token in ["not found", "unavailable", "404"]):
+              raise AssertionError("404 response did not render the unavailable/not-found surface")
+          print("PASS unified profile 404 boundary")
+
+          code, _, _ = request("/api/auth/sessions", "application/json")
+          if code not in {401, 403}:
+              raise AssertionError(f"anonymous sessions endpoint returned unexpected status {code}")
+          print("PASS sessions API remains authenticated-only")
+
+          print("PUBLIC_PRODUCTION_SMOKE_OK")
+          PY
