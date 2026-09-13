@@ -21,6 +21,7 @@ const KINDS: Array<{ value: SearchKind; labelKey: MessageKey }> = [
 const FILTERS: Array<{ value: SearchFilter; labelKey: MessageKey }> = [
   { value: "relevant", labelKey: "search.filter.relevant" },
   { value: "recent", labelKey: "search.filter.recent" },
+  { value: "open", labelKey: "search.filter.open" },
   { value: "unanswered", labelKey: "search.filter.unanswered" },
   { value: "answered", labelKey: "search.filter.answered" },
   { value: "verified", labelKey: "search.filter.verified" },
