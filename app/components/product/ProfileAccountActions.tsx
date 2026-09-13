@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { readCsrfToken } from "../../data/csrf";
+import { useI18n } from "../../i18n/I18nProvider";
 
 export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdmin?: boolean }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -17,12 +19,12 @@ export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdm
         headers: { "x-csrf-token": readCsrfToken() },
       });
       if (!response.ok) {
-        setStatus("Could not log out. Try again.");
+        setStatus(t("profileAccount.logoutError"));
         return;
       }
       navigate("/login");
     } catch {
-      setStatus("Could not log out. Try again.");
+      setStatus(t("profileAccount.logoutError"));
     } finally {
       setBusy(false);
     }
@@ -31,38 +33,36 @@ export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdm
   return (
     <section className="product-profile-account product-profile-account--plain">
       <div className="product-profile-account__heading">
-        <span className="product-eyebrow">Account</span>
-        <h2>Account options</h2>
+        <span className="product-eyebrow">{t("profileAccount.eyebrow")}</span>
+        <h2>{t("profileAccount.title")}</h2>
       </div>
       <div className="product-profile-account__actions">
         <Link className="product-profile-account__action" to="/settings">
           <span>
-            <strong>Settings</strong>
-            <small>Privacy, appearance and active sessions</small>
+            <strong>{t("profileAccount.settings")}</strong>
+            <small>{t("profileAccount.settingsDescription")}</small>
           </span>
           <span aria-hidden="true">›</span>
         </Link>
         <Link className="product-profile-account__action" to="/settings#settings-privacy">
           <span>
-            <strong>Privacy & data</strong>
-            <small>Friend-request privacy, blocks and your account data controls</small>
+            <strong>{t("profileAccount.privacy")}</strong>
+            <small>{t("profileAccount.privacyDescription")}</small>
           </span>
           <span aria-hidden="true">›</span>
         </Link>
         <a className="product-profile-account__action" href="/api/profile/me/export" download>
           <span>
-            <strong>Download my data</strong>
-            <small>
-              Export your SourceBoard profile, contributions, relationships and point ledger as JSON
-            </small>
+            <strong>{t("profileAccount.download")}</strong>
+            <small>{t("profileAccount.downloadDescription")}</small>
           </span>
           <span aria-hidden="true">↓</span>
         </a>
         {canAccessAdmin ? (
           <Link className="product-profile-account__action" to="/admin">
             <span>
-              <strong>Admin Panel</strong>
-              <small>Moderation, Store and operational controls</small>
+              <strong>{t("profileAccount.admin")}</strong>
+              <small>{t("profileAccount.adminDescription")}</small>
             </span>
             <span aria-hidden="true">›</span>
           </Link>
@@ -74,8 +74,8 @@ export function ProfileAccountActions({ canAccessAdmin = false }: { canAccessAdm
           onClick={() => void logoutCurrentSession()}
         >
           <span>
-            <strong>{busy ? "Logging out…" : "Log out"}</strong>
-            <small>End this browser session</small>
+            <strong>{busy ? t("profileAccount.loggingOut") : t("profileAccount.logout")}</strong>
+            <small>{t("profileAccount.logoutDescription")}</small>
           </span>
           <span aria-hidden="true">↗</span>
         </button>
