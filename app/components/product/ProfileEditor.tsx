@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLocation, useNavigate, useRevalidator } from "react-router";
-import type { PublicProfileDto } from "../../../worker/profile/types";
-import type { UsernameChangeStatus } from "../../../worker/profile/username-policy";
 import {
   canonicalSocialPlatform,
   normalizeSocialUrl,
@@ -10,6 +8,10 @@ import {
   socialHandleFromUrl,
   type SocialPlatform,
 } from "../../../shared/profile/social-links";
+import type { PublicProfileDto } from "../../../worker/profile/types";
+import type { UsernameChangeStatus } from "../../../worker/profile/username-policy";
+import type { MessageKey } from "../../i18n";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Button, Card, Checkbox, Input, Textarea } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ProfileHero } from "./ProfileHero";
@@ -17,6 +19,12 @@ import { ProfileIdentityCard } from "./ProfileIdentityCard";
 import { SocialIcon } from "./SocialIcon";
 
 type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY";
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+type TranslatePlural = (
+  baseKey: string,
+  count: number,
+  vars?: Record<string, string | number>,
+) => string;
 
 type MyProfileResponse = {
   profile: {
@@ -35,9 +43,7 @@ type MyProfileResponse = {
   }>;
 };
 
-type UsernameResponse = {
-  username: UsernameChangeStatus;
-};
+type UsernameResponse = { username: UsernameChangeStatus };
 
 type SocialLinkDraft = {
   key: string;
@@ -99,17 +105,18 @@ function createDraft(data: MyProfileResponse): ProfileDraft {
   };
 }
 
-function normalizeSocialLinks(links: SocialLinkDraft[]) {
+function normalizeSocialLinks(links: SocialLinkDraft[], t: Translate) {
   const seen = new Set<SocialPlatform>();
   return links.flatMap((link, index) => {
     const value = link.url.trim();
     if (!value) return [];
+    const platformLabel = SOCIAL_PLATFORM_CATALOG[link.platform].label;
     if (seen.has(link.platform)) {
-      throw new Error(`Only one ${SOCIAL_PLATFORM_CATALOG[link.platform].label} link is allowed.`);
+      throw new Error(t("profileEditor.socialDuplicate", { platform: platformLabel }));
     }
     const url = normalizeSocialUrl(link.platform, value);
     if (!url) {
-      throw new Error(`Enter a valid ${SOCIAL_PLATFORM_CATALOG[link.platform].label} profile.`);
+      throw new Error(t("profileEditor.socialInvalid", { platform: platformLabel }));
     }
     seen.add(link.platform);
     return [
@@ -127,6 +134,7 @@ async function uploadProfileMedia(
   purpose: "AVATAR" | "BANNER",
   file: File,
   csrfToken: string,
+  t: Translate,
 ): Promise<string> {
   const formData = new FormData();
   formData.set("purpose", purpose);
@@ -138,24 +146,27 @@ async function uploadProfileMedia(
   });
   if (!response.ok) {
     throw new Error(
-      await readErrorMessage(response, `Could not upload the ${purpose.toLowerCase()}.`),
+      await readErrorMessage(
+        response,
+        t("profileEditor.uploadError", { purpose: purpose.toLowerCase() }),
+      ),
     );
   }
   const result = (await response.json()) as { assetId: string };
   return result.assetId;
 }
 
-function validateImage(file: File | null): void {
+function validateImage(file: File | null, t: Translate): void {
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) throw new Error("Profile images must be 5 MB or smaller.");
+  if (file.size > 5 * 1024 * 1024) throw new Error(t("profileEditor.imageSize"));
   if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
-    throw new Error("Use a PNG, JPEG, WebP or GIF image.");
+    throw new Error(t("profileEditor.imageType"));
   }
 }
 
-function validateUsername(username: string): void {
+function validateUsername(username: string, t: Translate): void {
   if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) {
-    throw new Error("Username must be 3–32 letters, numbers or underscores.");
+    throw new Error(t("profileEditor.usernameInvalid"));
   }
 }
 
@@ -184,13 +195,23 @@ function socialPreview(link: SocialLinkDraft): string {
   return normalized ? socialHandleFromUrl(link.platform, normalized) : value;
 }
 
-function usernamePolicyMessage(status: UsernameChangeStatus): string {
-  const remaining = `${status.remainingChanges} change${status.remainingChanges === 1 ? "" : "s"} available`;
-  if (status.canChange) return `${remaining} in the current ${status.windowDays}-day window.`;
-  if (status.nextChangeAt) {
-    return `${remaining}. Next username change: ${new Date(status.nextChangeAt).toLocaleString()}.`;
+function usernamePolicyMessage(
+  status: UsernameChangeStatus,
+  t: Translate,
+  tp: TranslatePlural,
+  formatDate: (value: Date | number, options?: Intl.DateTimeFormatOptions) => string,
+): string {
+  const remaining = tp("profileEditor.usernameChanges", status.remainingChanges);
+  if (status.canChange) {
+    return t("profileEditor.usernameWindow", { remaining, days: status.windowDays });
   }
-  return `Username change limit reached for the current ${status.windowDays}-day window.`;
+  if (status.nextChangeAt) {
+    return t("profileEditor.usernameNext", {
+      remaining,
+      date: formatDate(new Date(status.nextChangeAt), { dateStyle: "medium", timeStyle: "short" }),
+    });
+  }
+  return t("profileEditor.usernameLimit", { days: status.windowDays });
 }
 
 export function ProfileEditor({
@@ -200,6 +221,7 @@ export function ProfileEditor({
   profile: PublicProfileDto;
   onEditingChange?: (editing: boolean) => void;
 }) {
+  const { t, tp, date } = useI18n();
   const revalidator = useRevalidator();
   const location = useLocation();
   const navigate = useNavigate();
@@ -218,7 +240,7 @@ export function ProfileEditor({
   const bannerPreview = useObjectUrl(bannerFile);
   const profileDirty = Boolean(
     draft &&
-    (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
+      (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
   );
   const usernameDirty = Boolean(usernameStatus && usernameDraft.trim() !== usernameStatus.username);
   const dirty = profileDirty || usernameDirty;
@@ -230,13 +252,15 @@ export function ProfileEditor({
     setUsernameSettingsUnavailable(false);
     void Promise.allSettled([
       fetch("/api/profile/me", { cache: "no-store" }).then(async (response) => {
-        if (!response.ok)
-          throw new Error(await readErrorMessage(response, "Could not load your profile."));
+        if (!response.ok) {
+          throw new Error(await readErrorMessage(response, t("profileEditor.loadProfileError")));
+        }
         return (await response.json()) as MyProfileResponse;
       }),
       fetch("/api/profile/me/username", { cache: "no-store" }).then(async (response) => {
-        if (!response.ok)
-          throw new Error(await readErrorMessage(response, "Could not load username settings."));
+        if (!response.ok) {
+          throw new Error(await readErrorMessage(response, t("profileEditor.loadUsernameError")));
+        }
         return (await response.json()) as UsernameResponse;
       }),
     ]).then(([profileResult, usernameResult]) => {
@@ -245,7 +269,7 @@ export function ProfileEditor({
         setStatus(
           profileResult.reason instanceof Error
             ? profileResult.reason.message
-            : "Could not load your profile.",
+            : t("profileEditor.loadProfileError"),
         );
         return;
       }
@@ -269,7 +293,7 @@ export function ProfileEditor({
     return () => {
       cancelled = true;
     };
-  }, [draft, editing, profile.username]);
+  }, [draft, editing, profile.username, t]);
 
   const availablePlatforms = useMemo(() => {
     const selected = new Set(draft?.socialLinks.map((link) => link.platform) ?? []);
@@ -340,18 +364,18 @@ export function ProfileEditor({
     try {
       const displayName = draft.displayName.trim();
       const nextUsername = usernameDraft.trim();
-      if (!displayName) throw new Error("Display name cannot be empty.");
-      if (usernameDirty) validateUsername(nextUsername);
-      validateImage(avatarFile);
-      validateImage(bannerFile);
-      const socialLinks = normalizeSocialLinks(draft.socialLinks);
+      if (!displayName) throw new Error(t("profileEditor.displayNameEmpty"));
+      if (usernameDirty) validateUsername(nextUsername, t);
+      validateImage(avatarFile, t);
+      validateImage(bannerFile, t);
+      const socialLinks = normalizeSocialLinks(draft.socialLinks, t);
       const csrfToken = readCookie("__Host-sourceboard_csrf") ?? "";
       let avatarAssetId = source.profile.avatarAssetId;
       let bannerAssetId = source.profile.bannerAssetId;
       let profileSaved = false;
 
-      if (avatarFile) avatarAssetId = await uploadProfileMedia("AVATAR", avatarFile, csrfToken);
-      if (bannerFile) bannerAssetId = await uploadProfileMedia("BANNER", bannerFile, csrfToken);
+      if (avatarFile) avatarAssetId = await uploadProfileMedia("AVATAR", avatarFile, csrfToken, t);
+      if (bannerFile) bannerAssetId = await uploadProfileMedia("BANNER", bannerFile, csrfToken, t);
 
       if (profileDirty) {
         const response = await fetch("/api/profile/me", {
@@ -366,8 +390,9 @@ export function ProfileEditor({
             socialLinks,
           }),
         });
-        if (!response.ok)
-          throw new Error(await readErrorMessage(response, "Could not save your profile."));
+        if (!response.ok) {
+          throw new Error(await readErrorMessage(response, t("profileEditor.saveError")));
+        }
 
         profileSaved = true;
         const persistedDraft = { ...draft, displayName };
@@ -400,9 +425,9 @@ export function ProfileEditor({
           body: JSON.stringify({ username: nextUsername }),
         });
         if (!response.ok) {
-          const message = await readErrorMessage(response, "Could not change your username.");
+          const message = await readErrorMessage(response, t("profileEditor.usernameSaveError"));
           if (profileSaved) {
-            setStatus(`Profile saved. Username was not changed: ${message}`);
+            setStatus(t("profileEditor.partialSave", { message }));
             revalidator.revalidate();
             return;
           }
@@ -419,7 +444,9 @@ export function ProfileEditor({
         setInitialFingerprint("");
         setAvatarFile(null);
         setBannerFile(null);
-        setStatus(profileSaved ? "Profile and username updated." : "Username updated.");
+        setStatus(
+          profileSaved ? t("profileEditor.bothUpdated") : t("profileEditor.usernameUpdated"),
+        );
         const oldPath = `/u/${encodeURIComponent(oldUsername)}`;
         if (location.pathname === oldPath) {
           navigate(`/u/${encodeURIComponent(result.username.username)}`, { replace: true });
@@ -436,10 +463,10 @@ export function ProfileEditor({
       setInitialFingerprint("");
       setAvatarFile(null);
       setBannerFile(null);
-      setStatus("Profile updated.");
+      setStatus(t("profileEditor.profileUpdated"));
       revalidator.revalidate();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not save your profile.");
+      setStatus(error instanceof Error ? error.message : t("profileEditor.saveError"));
     } finally {
       setBusy(false);
     }
@@ -453,7 +480,7 @@ export function ProfileEditor({
           isOwnProfile
           editControl={
             <Button variant="secondary" size="sm" onClick={beginEditing}>
-              Edit profile
+              {t("profileEditor.edit")}
             </Button>
           }
         />
@@ -470,11 +497,11 @@ export function ProfileEditor({
     return (
       <Card className="product-profile-hero product-profile-editor-inline">
         <div className="product-profile-editor-loading">
-          <span className="product-eyebrow">Edit profile</span>
-          <strong>Loading your profile…</strong>
+          <span className="product-eyebrow">{t("profileEditor.edit")}</span>
+          <strong>{t("profileEditor.loading")}</strong>
           {status ? <span role="alert">{status}</span> : null}
           <Button variant="ghost" size="sm" onClick={cancelEditing}>
-            Cancel
+            {t("common.cancel")}
           </Button>
         </div>
       </Card>
@@ -491,8 +518,11 @@ export function ProfileEditor({
       communityStyles={profile.cosmetics?.communityStyles}
       className="product-profile-editor-inline"
     >
-      <label className="product-profile-theme-edit" title="Change profile background">
-        <span>Change background</span>
+      <label
+        className="product-profile-theme-edit"
+        title={t("profileEditor.changeBackgroundTitle")}
+      >
+        <span>{t("profileEditor.changeBackground")}</span>
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif"
@@ -505,7 +535,7 @@ export function ProfileEditor({
         onSubmit={(event) => void saveProfile(event)}
       >
         <div className="product-profile-editor-inline__identity">
-          <label className="product-profile-avatar-edit" title="Change avatar">
+          <label className="product-profile-avatar-edit" title={t("profileEditor.changeAvatarTitle")}>
             <CosmeticIdentity
               displayName={draft.displayName.trim() || usernameDraft.trim() || profile.username}
               avatarUrl={avatarPreview ?? profile.avatarUrl}
@@ -516,7 +546,7 @@ export function ProfileEditor({
               mode="profile"
               nameAs="h1"
             />
-            <span>Change</span>
+            <span>{t("profileEditor.change")}</span>
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
@@ -526,21 +556,27 @@ export function ProfileEditor({
           <div className="product-profile-editor-inline__identity-copy">
             <strong>{draft.displayName.trim() || usernameDraft.trim() || profile.username}</strong>
             <span>@{usernameDraft.trim() || profile.username}</span>
-            <small>Tap the avatar or banner to replace the image.</small>
+            <small>{t("profileEditor.imageHint")}</small>
           </div>
         </div>
 
         <div className="product-profile-editor-inline__toolbar">
           <div>
-            <span className="product-eyebrow">Edit profile</span>
-            <strong>{dirty ? "Unsaved changes" : "Profile preview"}</strong>
+            <span className="product-eyebrow">{t("profileEditor.edit")}</span>
+            <strong>{dirty ? t("profileEditor.unsaved") : t("profileEditor.preview")}</strong>
           </div>
           <div className="product-chip-row">
             <Button type="submit" size="sm" loading={busy} disabled={!dirty}>
-              Save
+              {t("common.save")}
             </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={cancelEditing}>
-              Cancel
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={cancelEditing}
+            >
+              {t("common.cancel")}
             </Button>
           </div>
         </div>
@@ -548,7 +584,7 @@ export function ProfileEditor({
         <div className="product-profile-editor-inline__fields">
           <div className="product-profile-editor-inline__username">
             <Input
-              label="Username"
+              label={t("profileEditor.username")}
               value={usernameDraft}
               maxLength={32}
               disabled={busy || usernameSettingsUnavailable || !usernameStatus?.canChange}
@@ -556,14 +592,14 @@ export function ProfileEditor({
             />
             <small className="product-profile-editor-inline__username-policy">
               {usernameSettingsUnavailable
-                ? "Username changes are temporarily unavailable. You can still edit the rest of your profile."
+                ? t("profileEditor.usernameUnavailable")
                 : usernameStatus
-                  ? usernamePolicyMessage(usernameStatus)
-                  : "Loading username settings…"}
+                  ? usernamePolicyMessage(usernameStatus, t, tp, date)
+                  : t("profileEditor.usernameLoading")}
             </small>
           </div>
           <Input
-            label="Display name"
+            label={t("profileEditor.displayName")}
             value={draft.displayName}
             maxLength={80}
             onChange={(event) =>
@@ -573,7 +609,7 @@ export function ProfileEditor({
             }
           />
           <Textarea
-            label="Bio"
+            label={t("profileEditor.bio")}
             value={draft.bio}
             maxLength={5000}
             rows={4}
@@ -582,7 +618,7 @@ export function ProfileEditor({
             }
           />
           <label className="product-field-native">
-            <span>Profile visibility</span>
+            <span>{t("profileEditor.visibility")}</span>
             <select
               value={draft.profileVisibility}
               onChange={(event) =>
@@ -593,8 +629,8 @@ export function ProfileEditor({
                 )
               }
             >
-              <option value="PUBLIC">Public</option>
-              <option value="FRIENDS_ONLY">Friends only</option>
+              <option value="PUBLIC">{t("profileEditor.visibility.public")}</option>
+              <option value="FRIENDS_ONLY">{t("profileEditor.visibility.friends")}</option>
             </select>
           </label>
         </div>
@@ -602,9 +638,9 @@ export function ProfileEditor({
         <section className="product-profile-editor-socials">
           <div className="product-section-heading product-profile-editor-socials__heading">
             <div>
-              <span className="product-eyebrow">Social links</span>
-              <h2>Connected profiles</h2>
-              <p>Add recognizable handles. SourceBoard builds and validates the profile URL.</p>
+              <span className="product-eyebrow">{t("profileEditor.social.eyebrow")}</span>
+              <h2>{t("profileEditor.social.title")}</h2>
+              <p>{t("profileEditor.social.description")}</p>
             </div>
             <Button
               type="button"
@@ -613,7 +649,7 @@ export function ProfileEditor({
               disabled={!availablePlatforms.length || draft.socialLinks.length >= 10}
               onClick={addLink}
             >
-              Add link
+              {t("profileEditor.social.add")}
             </Button>
           </div>
 
@@ -637,7 +673,7 @@ export function ProfileEditor({
                     </span>
                   </div>
                   <label className="product-field-native product-profile-editor-social__platform">
-                    <span>Platform</span>
+                    <span>{t("profileEditor.social.platform")}</span>
                     <select
                       value={link.platform}
                       onChange={(event) =>
@@ -654,7 +690,7 @@ export function ProfileEditor({
                     </select>
                   </label>
                   <Input
-                    label={definition.inputLabel}
+                    label={t("profileEditor.social.value")}
                     value={link.url}
                     maxLength={2048}
                     placeholder={definition.placeholder}
@@ -662,7 +698,7 @@ export function ProfileEditor({
                   />
                   <div className="product-profile-editor-social__actions">
                     <Checkbox
-                      label="Visible"
+                      label={t("profileEditor.social.visible")}
                       checked={link.isVisible}
                       onCheckedChange={(checked) =>
                         updateLink(link.key, { isVisible: checked === true })
@@ -674,7 +710,7 @@ export function ProfileEditor({
                       size="sm"
                       onClick={() => removeLink(link.key)}
                     >
-                      Remove
+                      {t("profileEditor.social.remove")}
                     </Button>
                   </div>
                 </div>
@@ -682,10 +718,7 @@ export function ProfileEditor({
             })}
             {!draft.socialLinks.length ? (
               <div className="product-empty-state product-empty-state--compact">
-                <p>
-                  No social profiles added yet. Add one to show a recognizable handle on your public
-                  profile.
-                </p>
+                <p>{t("profileEditor.social.empty")}</p>
               </div>
             ) : null}
           </div>
