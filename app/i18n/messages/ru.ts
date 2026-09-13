@@ -39,6 +39,7 @@ export const ruMessages = {
   "errors.notFound.title": "Страница не найдена",
   "errors.notFound.description": "Страница могла быть перемещена, удалена или недоступна вам.",
   "errors.notFound.home": "На главную",
+  "errors.notFound.back": "Назад",
   "auth.login": "Войти",
   "auth.register": "Создать аккаунт",
   "docs.title": "Документация",
