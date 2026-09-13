@@ -1,0 +1,45 @@
+name: Platform Overhaul Diagnostics
+
+on:
+  push:
+    branches:
+      - feature/platform-overhaul-c-through-i
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --strict-allow-scripts
+      - name: Normalize formatting in ephemeral checkout
+        run: npx prettier --write .
+      - name: Generate deterministic CMS seed
+        run: node --import tsx scripts/generate-cms-seed.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test -- --run
+      - name: Apply clean migration chain
+        run: npm run db:migrations:apply
+      - name: Capture generated artifacts
+        if: always()
+        run: |
+          git diff --no-color > /tmp/platform-overhaul-formatted.patch || true
+          cp migrations/0034_cms_seed_existing_content.sql /tmp/0034_cms_seed_existing_content.sql 2>/dev/null || true
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: platform-overhaul-diagnostics
+          path: |
+            /tmp/platform-overhaul-formatted.patch
+            /tmp/0034_cms_seed_existing_content.sql
+          if-no-files-found: warn
+          retention-days: 1
