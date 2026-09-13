@@ -31,7 +31,7 @@ describe("notifications route", () => {
     const source = readFileSync(new URL("../../app/routes/notifications.tsx", import.meta.url), "utf8");
     expect(source).toContain("<NotificationCard");
     for (const filter of ["ALL", "UNREAD", "ACTIVITY", "SOCIAL", "SYSTEM"]) {
-      expect(source).toContain(`value: \"${filter}\"`);
+      expect(source).toContain(`value: "${filter}"`);
     }
     expect(source).toContain("/api/notifications/read-batch");
   });
