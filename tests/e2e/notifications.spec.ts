@@ -33,10 +33,8 @@ test("groups related notification records and marks the entire group read", asyn
 
   await expect(page.getByText("2 related events · new")).toBeVisible();
   await expect(page.getByText(/E2E Liker One and 1 other liked your post/)).toBeVisible();
-  await page.getByRole("group").filter({ has: page.getByText(/liked your post/) }).getByText("•••").click().catch(async () => {
-    await page.getByLabel("Notification actions").click();
-  });
-  await page.getByRole("button", { name: "Mark read" }).click();
+  await page.getByLabel("Notification actions").click();
+  await page.getByRole("button", { name: "Mark as read" }).click();
   await expect(page.getByText("2 related events", { exact: true })).toBeVisible();
   await expect(page.getByText("2 related events · new")).toHaveCount(0);
 
