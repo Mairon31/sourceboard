@@ -56,43 +56,42 @@ export function CosmeticConfigEditor({
         </Button>
       </div>
       <div className="admin-cosmetic-config-editor__controls">
-        <label>
-          Primary color
-          <Input
-            type="color"
-            value={draft.palette[0] ?? "#7c8cff"}
-            onChange={(event) => update({ ...draft, palette: [event.currentTarget.value, ...draft.palette.slice(1)] })}
-          />
-        </label>
-        <label>
-          Duration (ms)
-          <Input
-            type="number"
-            min={300}
-            max={60000}
-            value={duration}
-            onChange={(event) =>
-              update({
-                ...draft,
-                animation: {
-                  ...(draft.animation ?? DEFAULT_CONFIG.animation!),
-                  durationMs: Number(event.currentTarget.value),
-                },
-              })
-            }
-          />
-        </label>
-        <label>
-          Intensity
-          <Input
-            type="number"
-            min={0}
-            max={1}
-            step={0.05}
-            value={intensity}
-            onChange={(event) => update({ ...draft, intensity: Number(event.currentTarget.value) })}
-          />
-        </label>
+        <Input
+          label="Primary color"
+          type="color"
+          value={draft.palette[0] ?? "#7c8cff"}
+          onChange={(event) =>
+            update({
+              ...draft,
+              palette: [event.currentTarget.value, ...draft.palette.slice(1)],
+            })
+          }
+        />
+        <Input
+          label="Duration (ms)"
+          type="number"
+          min={300}
+          max={60000}
+          value={duration}
+          onChange={(event) =>
+            update({
+              ...draft,
+              animation: {
+                ...(draft.animation ?? DEFAULT_CONFIG.animation!),
+                durationMs: Number(event.currentTarget.value),
+              },
+            })
+          }
+        />
+        <Input
+          label="Intensity"
+          type="number"
+          min={0}
+          max={1}
+          step={0.05}
+          value={intensity}
+          onChange={(event) => update({ ...draft, intensity: Number(event.currentTarget.value) })}
+        />
       </div>
       <p role="status">{validation}</p>
       <details>
