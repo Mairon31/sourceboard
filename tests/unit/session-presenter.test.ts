@@ -8,11 +8,7 @@ import {
   presentSession,
 } from "../../worker/auth/session-presenter";
 import { SESSION_COOKIE_NAME } from "../../worker/auth/security";
-import type {
-  ActiveSessionRecord,
-  AuthStore,
-  SessionRecord,
-} from "../../worker/auth/store";
+import type { ActiveSessionRecord, AuthStore, SessionRecord } from "../../worker/auth/store";
 import type { SourceBoardEnvironment } from "../../worker/environment";
 
 const chromeWindows =

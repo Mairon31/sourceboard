@@ -25,6 +25,7 @@ import {
   type FirebasePasswordAuthResult,
 } from "./firebase";
 import { assertCanChangeRole, type AuthorizationSnapshot, type RoleSlug } from "./rbac";
+import { presentSession, type SessionView } from "./session-presenter";
 import {
   CSRF_COOKIE_NAME,
   SESSION_COOKIE_NAME,
@@ -40,7 +41,6 @@ import type {
   AuthStore,
   SessionContextUpdate,
   SessionRecord,
-  SessionSummary,
   UserRecord,
 } from "./store";
 
@@ -132,7 +132,7 @@ export interface AuthService {
     input: { currentPassword: string; newPassword: string },
     context: AuthServiceContext,
   ): Promise<{ changed: true; cookies: AuthCookie[] }>;
-  listSessions(context: AuthServiceContext): Promise<SessionSummary[]>;
+  listSessions(context: AuthServiceContext): Promise<SessionView[]>;
   revokeSession(sessionId: string, context: AuthServiceContext): Promise<void>;
   changeRole(
     input: {
@@ -1352,17 +1352,18 @@ export function createAuthService(dependencies: AuthServiceDependencies): AuthSe
     return { changed: true, cookies: clearSessionCookies() };
   }
 
-  async function listSessions(context: AuthServiceContext): Promise<SessionSummary[]> {
+  async function listSessions(context: AuthServiceContext): Promise<SessionView[]> {
     const current = await currentSession(context);
     const sessions = await dependencies.store.listSessions(current!.user.id, now());
-    return sessions.map((session: SessionRecord) => ({
-      id: session.id,
-      createdAt: session.createdAt,
-      lastUsedAt: session.lastUsedAt,
-      expiresAt: session.expiresAt,
-      current: session.id === current!.session.id,
-      userAgentHash: session.userAgentHash,
-    }));
+    return sessions.map((session: SessionRecord) => {
+      let ipAddress: string | null = null;
+      try {
+        ipAddress = decryptStoredSessionIp(session);
+      } catch {
+        // Corrupt legacy context must not prevent the owner from managing sessions.
+      }
+      return presentSession(session, session.id === current!.session.id, ipAddress);
+    });
   }
 
   async function revokeSession(sessionId: string, context: AuthServiceContext): Promise<void> {
