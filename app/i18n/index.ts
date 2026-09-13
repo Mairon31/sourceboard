@@ -5,6 +5,7 @@ import { esMessages } from "./messages/es";
 import { frMessages } from "./messages/fr";
 import { ptMessages } from "./messages/pt";
 import { ruMessages } from "./messages/ru";
+import { socialMessageSets, type SocialMessageKey } from "./messages/social";
 import { deStoreMessages } from "./messages/store.de";
 import { enStoreMessages, type StoreMessageKey } from "./messages/store.en";
 import { esStoreMessages } from "./messages/store.es";
@@ -12,7 +13,7 @@ import { frStoreMessages } from "./messages/store.fr";
 import { ptStoreMessages } from "./messages/store.pt";
 import { ruStoreMessages } from "./messages/store.ru";
 
-export type MessageKey = BaseMessageKey | StoreMessageKey;
+export type MessageKey = BaseMessageKey | StoreMessageKey | SocialMessageKey;
 
 const baseMessages: Record<Locale, Record<BaseMessageKey, string>> = {
   en: enMessages,
@@ -32,12 +33,16 @@ const storeMessages: Record<Locale, Record<StoreMessageKey, string>> = {
   de: deStoreMessages,
 };
 
-const englishMessages: Record<MessageKey, string> = { ...enMessages, ...enStoreMessages };
+const englishMessages: Record<MessageKey, string> = {
+  ...enMessages,
+  ...enStoreMessages,
+  ...socialMessageSets.en,
+};
 
 export const allMessages = Object.fromEntries(
   (Object.keys(baseMessages) as Locale[]).map((locale) => [
     locale,
-    { ...baseMessages[locale], ...storeMessages[locale] },
+    { ...baseMessages[locale], ...storeMessages[locale], ...socialMessageSets[locale] },
   ]),
 ) as Record<Locale, Record<MessageKey, string>>;
 
