@@ -20,6 +20,7 @@ import {
 } from "../../../shared/richtext/markdown";
 import type { CommentSort } from "../../../worker/comments/types";
 import { readCsrfToken } from "../../data/csrf";
+import { useI18n } from "../../i18n/I18nProvider";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { RichText } from "./RichText";
@@ -112,16 +113,17 @@ function commentPreviewNodes(
 }
 
 const REPORT_CATEGORIES = [
-  ["SPAM", "Spam"],
-  ["HARASSMENT", "Harassment"],
-  ["MISLEADING_SOURCE", "Misleading source"],
-  ["NSFW", "Sensitive content"],
-  ["PRIVACY", "Privacy"],
-  ["COPYRIGHT", "Copyright"],
-  ["OTHER", "Other"],
+  ["SPAM", "comments.report.category.spam"],
+  ["HARASSMENT", "comments.report.category.harassment"],
+  ["MISLEADING_SOURCE", "comments.report.category.misleadingSource"],
+  ["NSFW", "comments.report.category.nsfw"],
+  ["PRIVACY", "comments.report.category.privacy"],
+  ["COPYRIGHT", "comments.report.category.copyright"],
+  ["OTHER", "comments.report.category.other"],
 ] as const;
 
 function ReportForm({ commentId, onClose }: { commentId: string; onClose: () => void }) {
+  const { t } = useI18n();
   const [category, setCategory] = useState<(typeof REPORT_CATEGORIES)[number][0]>("SPAM");
   const [detail, setDetail] = useState("");
   const [status, setStatus] = useState<string>();
@@ -139,14 +141,14 @@ function ReportForm({ commentId, onClose }: { commentId: string; onClose: () => 
       });
       if (!response.ok) {
         setStatus(
-          response.status === 409 ? "You already reported this comment." : "Report unavailable.",
+          response.status === 409 ? t("comments.report.already") : t("comments.report.unavailable"),
         );
         return;
       }
-      setStatus("Report sent. Thanks for helping keep SourceBoard useful.");
+      setStatus(t("comments.report.sent"));
       setDetail("");
     } catch {
-      setStatus("Report unavailable.");
+      setStatus(t("comments.report.unavailable"));
     } finally {
       setBusy(false);
     }
@@ -155,30 +157,30 @@ function ReportForm({ commentId, onClose }: { commentId: string; onClose: () => 
   return (
     <form className="product-comment-report" onSubmit={(event) => void submit(event)}>
       <label className="product-field-native">
-        <span>Report reason</span>
+        <span>{t("comments.report.reason")}</span>
         <select
           value={category}
           onChange={(event) => setCategory(event.target.value as typeof category)}
         >
-          {REPORT_CATEGORIES.map(([value, label]) => (
+          {REPORT_CATEGORIES.map(([value, labelKey]) => (
             <option key={value} value={value}>
-              {label}
+              {t(labelKey)}
             </option>
           ))}
         </select>
       </label>
       <Textarea
-        label="Note (optional)"
+        label={t("comments.report.note")}
         value={detail}
         maxLength={2000}
         onChange={(event) => setDetail(event.target.value)}
       />
       <div className="product-chip-row">
         <Button type="submit" size="sm" loading={busy}>
-          Send report
+          {t("comments.report.send")}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onClose}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
       {status ? <small role="status">{status}</small> : null}
@@ -203,6 +205,7 @@ function CommentItem({
   onUpdated: (comment: CommentView) => void;
   onDeleted: (commentId: string) => void;
 }) {
+  const { t, tp, date } = useI18n();
   const [showReplies, setShowReplies] = useState(depth === 0);
   const [liked, setLiked] = useState(comment.reaction.viewerReacted);
   const [likes, setLikes] = useState(comment.reaction.count);
@@ -282,7 +285,7 @@ function CommentItem({
     } catch {
       setLiked(previousLiked);
       setLikes(previousLikes);
-      setStatus("Like unavailable.");
+      setStatus(t("comments.error.likeUnavailable"));
     } finally {
       likeInFlightRef.current = false;
       setLikeBusy(false);
@@ -303,13 +306,13 @@ function CommentItem({
         headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
         body: JSON.stringify({ markdown: editBody }),
       });
-      if (!response.ok) throw new Error("Could not save this comment.");
+      if (!response.ok) throw new Error(t("comments.error.save"));
       const payload = (await response.json()) as { comment: CommentView };
       onUpdated(payload.comment);
       setEditing(false);
       setPreviewingEdit(false);
     } catch (cause) {
-      setStatus(cause instanceof Error ? cause.message : "Could not save this comment.");
+      setStatus(cause instanceof Error ? cause.message : t("comments.error.save"));
     } finally {
       setBusy(false);
     }
@@ -323,11 +326,11 @@ function CommentItem({
         method: "DELETE",
         headers: { "x-csrf-token": readCsrfToken() },
       });
-      if (!response.ok) throw new Error("Could not delete this comment.");
+      if (!response.ok) throw new Error(t("comments.error.delete"));
       setDeleting(false);
       onDeleted(comment.id);
     } catch (cause) {
-      setStatus(cause instanceof Error ? cause.message : "Could not delete this comment.");
+      setStatus(cause instanceof Error ? cause.message : t("comments.error.delete"));
     } finally {
       setDeleteBusy(false);
     }
@@ -347,7 +350,7 @@ function CommentItem({
             {comment.author.mode === "ANONYMOUS" ? (
               <>
                 <CosmeticIdentity anonymous mode="compact" avatarSize="sm" nameAs="strong" />
-                <Badge>Anonymous</Badge>
+                <Badge>{t("comments.badges.anonymous")}</Badge>
               </>
             ) : (
               <CosmeticIdentity
@@ -362,13 +365,13 @@ function CommentItem({
                 nameAs="strong"
               />
             )}
-            {comment.isPostAuthor ? <Badge tone="accent">Author</Badge> : null}
+            {comment.isPostAuthor ? <Badge tone="accent">{t("comments.badges.author")}</Badge> : null}
           </div>
           <a
             className="product-comment__date"
             href={comment.commentHref ?? `#comment-${comment.id}`}
           >
-            {new Date(comment.createdAt).toLocaleDateString("en-US", {
+            {date(new Date(comment.createdAt), {
               month: "short",
               day: "numeric",
               timeZone: "UTC",
@@ -376,15 +379,15 @@ function CommentItem({
           </a>
           {hasMenuActions ? (
             <Dropdown
-              label="More"
-              ariaLabel="More actions"
+              label={t("comments.actions.more")}
+              ariaLabel={t("comments.actions.moreAria")}
               triggerIcon={<MoreIcon width="18" height="18" />}
               iconOnly
               items={[
                 ...(comment.canEdit
                   ? [
                       {
-                        label: "Edit",
+                        label: t("comments.actions.edit"),
                         icon: <EditIcon width="16" height="16" />,
                         onSelect: () => {
                           setEditBody(editableCommentMarkdown(comment));
@@ -397,7 +400,7 @@ function CommentItem({
                 ...(comment.canDelete
                   ? [
                       {
-                        label: "Delete",
+                        label: t("comments.actions.delete"),
                         icon: <TrashIcon width="16" height="16" />,
                         destructive: true,
                         onSelect: () => setDeleting(true),
@@ -407,7 +410,7 @@ function CommentItem({
                 ...(comment.canReport
                   ? [
                       {
-                        label: "Report",
+                        label: t("comments.actions.report"),
                         icon: <FlagIcon width="16" height="16" />,
                         onSelect: () => setReporting(true),
                       },
@@ -424,7 +427,7 @@ function CommentItem({
               <div
                 className="product-comment-editor-tabs"
                 role="tablist"
-                aria-label="Comment editor"
+                aria-label={t("comments.editor.aria")}
               >
                 <button
                   type="button"
@@ -433,7 +436,7 @@ function CommentItem({
                   className={!previewingEdit ? "is-active" : undefined}
                   onClick={() => setPreviewingEdit(false)}
                 >
-                  Write
+                  {t("comments.editor.write")}
                 </button>
                 <button
                   type="button"
@@ -442,7 +445,7 @@ function CommentItem({
                   className={previewingEdit ? "is-active" : undefined}
                   onClick={() => setPreviewingEdit(true)}
                 >
-                  Preview
+                  {t("comments.editor.preview")}
                 </button>
               </div>
               {previewingEdit ? (
@@ -450,19 +453,19 @@ function CommentItem({
                   {editBody.trim() ? (
                     <RichText nodes={commentPreviewNodes(editBody, comment.richtext)} />
                   ) : (
-                    <span>Nothing to preview yet.</span>
+                    <span>{t("comments.editor.empty")}</span>
                   )}
                 </div>
               ) : (
                 <Textarea
-                  label="Edit comment"
+                  label={t("comments.editor.label")}
                   value={editBody}
                   onChange={(event) => setEditBody(event.target.value)}
                 />
               )}
               <div className="product-chip-row">
                 <Button size="sm" loading={busy} onClick={() => void saveEdit()}>
-                  Save
+                  {t("common.save")}
                 </Button>
                 <Button
                   size="sm"
@@ -473,7 +476,7 @@ function CommentItem({
                     setEditing(false);
                   }}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </div>
             </>
@@ -493,7 +496,7 @@ function CommentItem({
             className={`product-comment__action product-comment__action--like${liked ? " is-active" : ""}`}
             type="button"
             aria-pressed={liked}
-            aria-label={liked ? "Unlike comment" : "Like comment"}
+            aria-label={liked ? t("comments.actions.unlike") : t("comments.actions.like")}
             disabled={likeBusy}
             onClick={() => void toggleLike()}
           >
@@ -506,7 +509,7 @@ function CommentItem({
             onClick={() => onReply(comment.id)}
           >
             <MessageIcon width="15" height="15" />
-            <span>Reply</span>
+            <span>{t("comments.actions.reply")}</span>
           </button>
           {canAcceptSource && comment.state === "VISIBLE" && sourceEligible ? (
             <button
@@ -515,7 +518,7 @@ function CommentItem({
               onClick={() => onAcceptSource?.(comment.id)}
             >
               <CheckIcon width="15" height="15" />
-              <span>Accept source</span>
+              <span>{t("comments.actions.acceptSource")}</span>
             </button>
           ) : null}
           <ShareAction
@@ -524,21 +527,23 @@ function CommentItem({
             target={{ resourceType: "COMMENT", resourceId: comment.id }}
           />
           {comment.editedAt ? (
-            <span className="product-comment__edited" title="This comment was edited">
+            <span className="product-comment__edited" title={t("comments.editedTitle")}>
               <EditIcon width="13" height="13" />
-              <span>Edited</span>
+              <span>{t("comments.edited")}</span>
             </span>
           ) : null}
           {hidden ? (
             <span className="product-comment__action-meta">
-              {comment.state === "HIDDEN" ? "Moderated" : "Deleted"}
+              {comment.state === "HIDDEN"
+                ? t("comments.state.moderated")
+                : t("comments.state.deleted")}
             </span>
           ) : null}
         </div>
         <ConfirmDialog
-          title="Delete this comment?"
-          description="This removes the comment from the discussion."
-          confirmLabel="Delete comment"
+          title={t("comments.delete.title")}
+          description={t("comments.delete.description")}
+          confirmLabel={t("comments.delete.confirm")}
           destructive
           open={deleting}
           busy={deleteBusy}
@@ -554,7 +559,11 @@ function CommentItem({
               aria-expanded={showReplies}
               onClick={() => setShowReplies((value) => !value)}
             >
-              {showReplies ? "Hide replies" : `View ${comment.replies.length} replies`}
+              {showReplies
+                ? t("comments.replies.hide")
+                : t("comments.replies.view", {
+                    count: tp("comments.replies", comment.replies.length),
+                  })}
             </button>
             {showReplies ? (
               <div className="product-comment__replies">
@@ -653,6 +662,7 @@ export function CommentThread({
   canAcceptSource?: boolean;
   onAcceptSource?: (commentId: string) => void;
 }) {
+  const { t, tp } = useI18n();
   const submitInFlightRef = useRef(false);
   const pendingFocusIdRef = useRef<string | null>(null);
   const location = useLocation();
@@ -723,7 +733,7 @@ export function CommentThread({
   async function previewLink() {
     const candidate = linkUrl.trim();
     if (!candidate) {
-      setLinkStatus("Enter a link to preview.");
+      setLinkStatus(t("comments.link.enter"));
       return;
     }
     setLinkBusy(true);
@@ -738,9 +748,9 @@ export function CommentThread({
         preview?: CommentLinkPreviewView;
       } | null;
       if (!response.ok || !payload?.preview) {
-        if (response.status === 429) throw new Error("Too many link previews. Try again later.");
-        if (response.status === 400) throw new Error("That link is invalid or not allowed.");
-        throw new Error("Link metadata is unavailable right now.");
+        if (response.status === 429) throw new Error(t("comments.link.tooMany"));
+        if (response.status === 400) throw new Error(t("comments.link.invalid"));
+        throw new Error(t("comments.link.metadataUnavailable"));
       }
       setLinkPreview(payload.preview);
       setLinkUrl(payload.preview.canonicalUrl);
@@ -748,7 +758,7 @@ export function CommentThread({
       setMediaKind(null);
     } catch (cause) {
       setLinkPreview(null);
-      setLinkStatus(cause instanceof Error ? cause.message : "Link preview unavailable.");
+      setLinkStatus(cause instanceof Error ? cause.message : t("comments.link.previewUnavailable"));
     } finally {
       setLinkBusy(false);
     }
@@ -772,7 +782,7 @@ export function CommentThread({
       });
       const payload = (await response.json().catch(() => null)) as { comment?: CommentView } | null;
       if (!response.ok || !payload?.comment)
-        throw new Error(response.status === 401 ? "Sign in to comment." : "Comment unavailable.");
+        throw new Error(response.status === 401 ? t("comments.error.signIn") : t("comments.error.unavailable"));
       const created = payload.comment;
       pendingFocusIdRef.current = created.id;
       setItems((current) => insertRootComment(current, created, sort));
@@ -784,9 +794,9 @@ export function CommentThread({
       setLinkPreview(null);
       setLinkStatus(undefined);
       setReplyTo(null);
-      setStatus("Comment posted.");
+      setStatus(t("comments.status.posted"));
     } catch (cause) {
-      setStatus(cause instanceof Error ? cause.message : "Comment unavailable.");
+      setStatus(cause instanceof Error ? cause.message : t("comments.error.unavailable"));
     } finally {
       submitInFlightRef.current = false;
       setSubmitting(false);
@@ -797,37 +807,32 @@ export function CommentThread({
     <section id="comments" className="product-comments" aria-labelledby="comments-heading">
       <header className="product-section-heading">
         <div>
-          <span className="product-eyebrow">Discussion</span>
-          <h2 id="comments-heading">Comments</h2>
+          <span className="product-eyebrow">{t("comments.heading.eyebrow")}</span>
+          <h2 id="comments-heading">{t("comments.heading.title")}</h2>
         </div>
         <div className="product-comments__heading-actions">
-          <span>
-            {threadCount.comments} {threadCount.comments === 1 ? "comment" : "comments"}
-          </span>
+          <span>{tp("comments.summary", threadCount.comments)}</span>
           <select
             className="product-comments__sort"
-            aria-label="Sort comments"
+            aria-label={t("comments.sort.aria")}
             value={sort}
             onChange={(event) => changeSort(event.target.value as CommentSort)}
           >
-            <option value="recent">Recent</option>
-            <option value="popular">Popular</option>
-            <option value="oldest">Oldest</option>
+            <option value="recent">{t("comments.sort.recent")}</option>
+            <option value="popular">{t("comments.sort.popular")}</option>
+            <option value="oldest">{t("comments.sort.oldest")}</option>
           </select>
         </div>
       </header>
       {!authenticated ? (
         <AuthRequiredCard
-          title="Sign in to join the discussion"
-          description="Create an account or sign in to comment, reply and react to source requests."
+          title={t("comments.auth.title")}
+          description={t("comments.auth.description")}
         />
       ) : commentsClosed ? (
         <div className="product-comment-locked glass-panel" role="status">
-          <strong>Comments are closed</strong>
-          <span>
-            The author accepted a source and closed this discussion. Existing comments remain
-            visible.
-          </span>
+          <strong>{t("comments.closed.title")}</strong>
+          <span>{t("comments.closed.description")}</span>
         </div>
       ) : (
         <div className="product-comment-composer glass-panel">
@@ -849,10 +854,10 @@ export function CommentThread({
           <div className="product-comment-composer__field">
             <Textarea
               id="comment-composer"
-              label={replyTo ? "Add a reply" : "Add a comment"}
+              label={replyTo ? t("comments.composer.addReply") : t("comments.composer.addComment")}
               value={body}
               onChange={(event) => setBody(event.target.value)}
-              placeholder="Add context, a source link, or explain how you verified it…"
+              placeholder={t("comments.composer.placeholder")}
             />
             {attachment ? <CommentAttachment attachment={attachment} /> : null}
             <div className="product-comment-composer__toolbar">
@@ -870,8 +875,8 @@ export function CommentThread({
                 <button
                   className={`product-comment-composer__media-action${mediaKind === "STICKER" ? " is-active" : ""}`}
                   type="button"
-                  aria-label="Sticker"
-                  title="Sticker"
+                  aria-label={t("comments.composer.sticker")}
+                  title={t("comments.composer.sticker")}
                   aria-expanded={mediaKind === "STICKER"}
                   onClick={() => changeMediaKind(mediaKind === "STICKER" ? null : "STICKER")}
                 >
@@ -880,8 +885,8 @@ export function CommentThread({
                 <button
                   className={`product-comment-composer__media-action${mediaKind === "EMOTE" ? " is-active" : ""}`}
                   type="button"
-                  aria-label="Emote"
-                  title="Emote"
+                  aria-label={t("comments.composer.emote")}
+                  title={t("comments.composer.emote")}
                   aria-expanded={mediaKind === "EMOTE"}
                   onClick={() => changeMediaKind(mediaKind === "EMOTE" ? null : "EMOTE")}
                 >
@@ -890,8 +895,8 @@ export function CommentThread({
                 <button
                   className={`product-comment-composer__media-action${linkOpen ? " is-active" : ""}`}
                   type="button"
-                  aria-label="Link"
-                  title="Link"
+                  aria-label={t("comments.composer.link")}
+                  title={t("comments.composer.link")}
                   aria-expanded={linkOpen}
                   onClick={() => {
                     const nextOpen = !linkOpen;
@@ -903,7 +908,7 @@ export function CommentThread({
                 </button>
                 {attachment ? (
                   <button type="button" onClick={() => setAttachment(null)}>
-                    Remove media
+                    {t("comments.composer.removeMedia")}
                   </button>
                 ) : null}
               </div>
@@ -913,11 +918,11 @@ export function CommentThread({
                 disabled={submitting || (!body.trim() && !attachment && !linkPreview)}
                 onClick={() => void submit()}
               >
-                {replyTo ? "Reply" : "Comment"}
+                {replyTo ? t("comments.actions.reply") : t("post.actions.comment")}
               </Button>
               {replyTo ? (
                 <button type="button" onClick={() => setReplyTo(null)}>
-                  Cancel reply
+                  {t("comments.composer.cancelReply")}
                 </button>
               ) : null}
             </div>
@@ -951,7 +956,7 @@ export function CommentThread({
             {linkOpen ? (
               <div className="product-comment-composer__link-panel">
                 <Input
-                  label="Link URL"
+                  label={t("comments.composer.linkUrl")}
                   type="url"
                   inputMode="url"
                   placeholder="https://example.com/source"
@@ -970,11 +975,11 @@ export function CommentThread({
                 />
                 <div className="product-comment-composer__link-actions">
                   <Button size="sm" loading={linkBusy} onClick={() => void previewLink()}>
-                    Preview link
+                    {t("comments.composer.previewLink")}
                   </Button>
                   {linkPreview ? (
                     <Button size="sm" variant="ghost" onClick={clearLinkPreview}>
-                      Remove link
+                      {t("comments.composer.removeLink")}
                     </Button>
                   ) : null}
                 </div>
@@ -1000,14 +1005,10 @@ export function CommentThread({
         ))}
       </div>
       {threadCount.comments > 0 ? (
-        <div className="product-comments__summary" aria-label="Comment thread summary">
-          <span>
-            {threadCount.comments} {threadCount.comments === 1 ? "comment" : "comments"}
-          </span>
+        <div className="product-comments__summary" aria-label={t("comments.summaryAria")}>
+          <span>{tp("comments.summary", threadCount.comments)}</span>
           <span aria-hidden="true">·</span>
-          <span>
-            {threadCount.replies} {threadCount.replies === 1 ? "reply" : "replies"}
-          </span>
+          <span>{tp("comments.replies", threadCount.replies)}</span>
         </div>
       ) : null}
     </section>
