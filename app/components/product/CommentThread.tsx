@@ -765,7 +765,8 @@ export function CommentThread({
   }
 
   async function submit() {
-    if (submitInFlightRef.current || (!body.trim() && !attachment && !linkPreview)) return;
+    const linkCandidate = linkPreview?.canonicalUrl ?? linkUrl.trim();
+    if (submitInFlightRef.current || (!body.trim() && !attachment && !linkCandidate)) return;
     submitInFlightRef.current = true;
     setSubmitting(true);
     setStatus(undefined);
@@ -777,7 +778,7 @@ export function CommentThread({
           markdown: body,
           parentCommentId: replyTo,
           attachment,
-          linkPreviewUrl: linkPreview?.canonicalUrl,
+          linkPreviewUrl: linkCandidate || undefined,
         }),
       });
       const payload = (await response.json().catch(() => null)) as { comment?: CommentView } | null;
@@ -915,7 +916,7 @@ export function CommentThread({
               <Button
                 size="sm"
                 loading={submitting}
-                disabled={submitting || (!body.trim() && !attachment && !linkPreview)}
+                disabled={submitting || (!body.trim() && !attachment && !linkPreview && !linkUrl.trim())}
                 onClick={() => void submit()}
               >
                 {replyTo ? t("comments.actions.reply") : t("post.actions.comment")}
