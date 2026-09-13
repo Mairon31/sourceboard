@@ -15,7 +15,7 @@ export interface ProfileEffectLayerProps {
   mode?: CreatorProRenderContext;
 }
 
-const DEFAULT_EFFECT_NODES = 6;
+const DEFAULT_EFFECT_NODES = [0, 1, 2, 3, 4, 5] as const;
 
 export function ProfileEffectLayer({
   preset,
@@ -26,16 +26,19 @@ export function ProfileEffectLayer({
   const hasEffect = Boolean((preset && preset !== "none") || visual || creatorPro);
   if (!hasEffect) return null;
 
-  const creatorNodeCount = creatorProParticleNodeCount(creatorPro, mode);
-  const nodeCount = creatorPro?.particles ? creatorNodeCount : DEFAULT_EFFECT_NODES;
-  const effectNodes = Array.from({ length: nodeCount }, (_, index) => index);
+  const effectNodes = creatorPro?.particles
+    ? Array.from({ length: creatorProParticleNodeCount(creatorPro, mode) }, (_, index) => index)
+    : DEFAULT_EFFECT_NODES;
 
   return (
     <div
       className={`product-profile-effect-layer${
         preset && preset !== "none" ? ` product-profile-effect-layer--${preset}` : ""
       }${cosmeticVisualClass(visual)}`}
-      style={{ ...(cosmeticVisualStyle(visual) ?? {}), ...(creatorProVisualStyle(creatorPro, "effect") ?? {}) }}
+      style={{
+        ...(cosmeticVisualStyle(visual) ?? {}),
+        ...(creatorProVisualStyle(creatorPro, "effect") ?? {}),
+      }}
       data-profile-effect={preset ?? "custom"}
       data-creator-pro={creatorPro ? "true" : undefined}
       data-creator-particle-path={creatorPro?.particles?.path}
