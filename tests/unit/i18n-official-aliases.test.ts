@@ -30,7 +30,7 @@ describe("localized official aliases", () => {
 
   it("never locale-prefixes UGC routes", () => {
     for (const path of ["posts/:postId", "sh/:shortId", "u/:username"]) {
-      expect(routes).not.toContain(`route(\"${path}\", \"routes/official-alias.tsx\"`);
+      expect(routes).not.toContain(`route("${path}", "routes/official-alias.tsx"`);
     }
   });
 });
