@@ -6,6 +6,7 @@ export interface HreflangVariant {
 }
 
 export interface HreflangLink {
+  [key: string]: unknown;
   tagName: "link";
   rel: "alternate";
   hrefLang: string;
