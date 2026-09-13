@@ -45,7 +45,7 @@ test("signed-out home does not render a fixture account", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByText("Aurora Vale")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Log in" })).toBeVisible();
 });
 
 test("search surface accepts a public discovery query", async ({ page }) => {
@@ -133,9 +133,9 @@ test("post detail protects missing persisted data", async ({ page }) => {
   expect([404, 503]).toContain(status);
   if (status === 404) {
     await expect(
-      page.getByRole("heading", { name: "This page isn't available", exact: true }),
+      page.getByRole("heading", { name: "Page not found", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Go to Home", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Go home", exact: true })).toHaveAttribute(
       "href",
       "/",
     );
