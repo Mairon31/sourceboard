@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import type { PostDetail, PostSummary } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
 import { markNavigationStart } from "../../data/performance-metrics";
+import { useI18n } from "../../i18n/I18nProvider";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
 import { ShareAction } from "./ShareAction";
@@ -52,6 +53,7 @@ export function PostCard({
   onChanged?: () => void;
 }) {
   const navigate = useNavigate();
+  const { t, tp, date } = useI18n();
   const [showNsfw, setShowNsfw] = useState(post.nsfwPresentation === "VISIBLE");
   const [liked, setLiked] = useState(post.reaction.viewerReacted);
   const [likes, setLikes] = useState(post.reaction.count);
@@ -78,6 +80,13 @@ export function PostCard({
   });
   editingRef.current = editing;
   const detailHref = postDetailHref(post);
+  const statusLabel = {
+    OPEN: t("post.status.open"),
+    ANSWERED: t("post.status.answered"),
+    VERIFIED: t("post.status.verified"),
+    ARCHIVED: t("post.status.archived"),
+    LOCKED: t("post.status.locked"),
+  }[post.status];
 
   useEffect(() => {
     setMediaFailed(false);
@@ -158,7 +167,9 @@ export function PostCard({
       if (!response.ok) {
         setLiked(previousLiked);
         setLikes(previousLikes);
-        setReactionStatus(response.status === 401 ? "Sign in to like posts." : "Like unavailable.");
+        setReactionStatus(
+          response.status === 401 ? t("post.error.signInLike") : t("post.error.likeUnavailable"),
+        );
         return;
       }
       const result = (await response.json()) as { liked: boolean };
@@ -169,7 +180,7 @@ export function PostCard({
     } catch {
       setLiked(previousLiked);
       setLikes(previousLikes);
-      setReactionStatus("Like unavailable.");
+      setReactionStatus(t("post.error.likeUnavailable"));
     } finally {
       reactionInFlightRef.current = false;
       setReactionBusy(false);
@@ -196,14 +207,14 @@ export function PostCard({
           isNsfw: post.isNsfw,
         }),
       });
-      if (!response.ok) throw new Error("Could not save this post.");
+      if (!response.ok) throw new Error(t("post.error.save"));
       setDisplayTitle(editTitle.trim());
       setDisplayDescription(editDescription);
       setEditing(false);
-      setManageStatus("Post updated.");
+      setManageStatus(t("post.statusMessage.updated"));
       onChanged?.();
     } catch (error) {
-      setManageStatus(error instanceof Error ? error.message : "Could not save this post.");
+      setManageStatus(error instanceof Error ? error.message : t("post.error.save"));
     } finally {
       setSaving(false);
     }
@@ -214,8 +225,8 @@ export function PostCard({
       method: "POST",
       headers: { "x-csrf-token": readCsrfToken() },
     });
-    if (!response.ok) throw new Error("Could not archive this post.");
-    setManageStatus("Post archived.");
+    if (!response.ok) throw new Error(t("post.error.archive"));
+    setManageStatus(t("post.statusMessage.archived"));
     setConfirmArchive(false);
     onChanged?.();
   }
@@ -225,7 +236,7 @@ export function PostCard({
       method: "DELETE",
       headers: { "x-csrf-token": readCsrfToken() },
     });
-    if (!response.ok) throw new Error("Could not delete this post.");
+    if (!response.ok) throw new Error(t("post.error.delete"));
     setConfirmDelete(false);
     navigate("/");
   }
@@ -239,17 +250,14 @@ export function PostCard({
         `/api/posts/${encodeURIComponent(post.id)}/${closed ? "close-comments" : "reopen-comments"}`,
         { method: "POST", headers: { "x-csrf-token": readCsrfToken() } },
       );
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: { message?: string };
-        } | null;
-        throw new Error(payload?.error?.message ?? "Could not update comments.");
-      }
-      setManageStatus(closed ? "Comments closed." : "Comments reopened.");
+      if (!response.ok) throw new Error(t("post.error.commentsUpdate"));
+      setManageStatus(
+        closed ? t("post.statusMessage.commentsClosed") : t("post.statusMessage.commentsReopened"),
+      );
       onChanged?.();
     } catch (error) {
       setCommentsClosedState(previous);
-      setManageStatus(error instanceof Error ? error.message : "Could not update comments.");
+      setManageStatus(error instanceof Error ? error.message : t("post.error.commentsUpdate"));
     }
   }
 
@@ -258,7 +266,7 @@ export function PostCard({
         ...(permissions?.canEdit
           ? [
               {
-                label: "Edit post",
+                label: t("post.menu.edit"),
                 icon: <EditIcon width="16" height="16" />,
                 onSelect: () => setEditing(true),
               },
@@ -267,21 +275,26 @@ export function PostCard({
         ...(permissions?.canArchive
           ? [
               {
-                label: "Archive post",
+                label: t("post.menu.archive"),
                 onSelect: () => setConfirmArchive(true),
               },
             ]
           : []),
         ...(canManageComments && !commentsClosed
-          ? [{ label: "Close comments", onSelect: () => void setCommentsClosed(true) }]
+          ? [{ label: t("post.menu.closeComments"), onSelect: () => void setCommentsClosed(true) }]
           : []),
         ...(canManageComments && commentsClosed
-          ? [{ label: "Reopen comments", onSelect: () => void setCommentsClosed(false) }]
+          ? [
+              {
+                label: t("post.menu.reopenComments"),
+                onSelect: () => void setCommentsClosed(false),
+              },
+            ]
           : []),
         ...(permissions?.canDelete
           ? [
               {
-                label: "Delete post",
+                label: t("post.menu.delete"),
                 icon: <TrashIcon width="16" height="16" />,
                 destructive: true,
                 onSelect: () => setConfirmDelete(true),
@@ -323,7 +336,7 @@ export function PostCard({
         )}
         <div className="product-post__author">
           <span>
-            {new Date(post.createdAt).toLocaleDateString("en-US", {
+            {date(new Date(post.createdAt), {
               month: "short",
               day: "numeric",
               timeZone: "UTC",
@@ -331,17 +344,17 @@ export function PostCard({
           </span>
         </div>
         <div className="product-post__badges">
-          {post.author.mode === "ANONYMOUS" ? <Badge>Anonymous</Badge> : null}
+          {post.author.mode === "ANONYMOUS" ? <Badge>{t("post.badges.anonymous")}</Badge> : null}
           {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
           <PostCategoryBadge
             slug={post.categorySlug}
             linked={post.visibility === "PUBLIC" && post.status !== "ARCHIVED"}
           />
-          <Badge tone={statusTone(post.status)}>{post.status.toLowerCase()}</Badge>
+          <Badge tone={statusTone(post.status)}>{statusLabel}</Badge>
           {menuItems.length ? (
             <Dropdown
-              label="More"
-              ariaLabel="More post actions"
+              label={t("post.actions.more")}
+              ariaLabel={t("post.actions.moreAria")}
               triggerIcon={<MoreIcon width="18" height="18" />}
               iconOnly
               className="product-post__menu"
@@ -355,19 +368,19 @@ export function PostCard({
         {editing ? (
           <div className="product-post__inline-editor" onClick={(event) => event.stopPropagation()}>
             <Input
-              label="Title"
+              label={t("post.editor.title")}
               value={editTitle}
               onChange={(event) => setEditTitle(event.target.value)}
               required
             />
             <Textarea
-              label="Description"
+              label={t("post.editor.description")}
               value={editDescription}
               onChange={(event) => setEditDescription(event.target.value)}
             />
             <div className="product-chip-row">
               <Button size="sm" loading={saving} onClick={() => void saveEdit()}>
-                Save changes
+                {t("post.editor.save")}
               </Button>
               <Button
                 size="sm"
@@ -378,7 +391,7 @@ export function PostCard({
                   setEditing(false);
                 }}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -402,18 +415,18 @@ export function PostCard({
             <Badge tone="danger">NSFW</Badge>
             <strong>
               {post.nsfwPresentation === "HIDDEN"
-                ? "Content hidden by your NSFW preference"
-                : "Sensitive media blurred by your preference"}
+                ? t("post.nsfw.hiddenTitle")
+                : t("post.nsfw.blurredTitle")}
             </strong>
             <p>
               {post.nsfwPresentation === "HIDDEN"
-                ? "This presentation does not load or expose sensitive imagery."
-                : "Reveal it for this view if your server-side preference allows access."}
+                ? t("post.nsfw.hiddenDescription")
+                : t("post.nsfw.blurredDescription")}
             </p>
           </div>
           {post.nsfwPresentation === "BLURRED" ? (
             <Button variant="secondary" size="sm" onClick={() => setShowNsfw(true)}>
-              Show once
+              {t("post.nsfw.showOnce")}
             </Button>
           ) : null}
         </div>
@@ -421,7 +434,7 @@ export function PostCard({
         <Link
           to={detailHref}
           className={mediaClass}
-          aria-label={`Open post: ${displayTitle}`}
+          aria-label={t("post.openAria", { title: displayTitle })}
           onClick={() => markNavigationStart(detailHref)}
         >
           {post.imageUrl && !mediaFailed ? (
@@ -436,8 +449,8 @@ export function PostCard({
             />
           ) : mediaFailed ? (
             <div className="product-post__media-unavailable" role="img" aria-label={post.imageAlt}>
-              <strong>Image unavailable</strong>
-              <span>This media could not be loaded.</span>
+              <strong>{t("post.media.unavailable")}</strong>
+              <span>{t("post.media.loadError")}</span>
             </div>
           ) : (
             <div className="product-post__media-frame" role="img" aria-label={post.imageAlt}>
@@ -451,14 +464,16 @@ export function PostCard({
 
       <div className="product-post__engagement">
         <div className="product-post__meta">
-          <span>
-            <strong>{post.commentCount}</strong> {post.commentCount === 1 ? "comment" : "comments"}
-          </span>
+          <span>{tp("comments.summary", post.commentCount)}</span>
           {post.acceptedSource ? (
-            <span className="product-meta-success">Source accepted</span>
+            <span className="product-meta-success">{t("post.meta.acceptedSource")}</span>
           ) : null}
-          {post.verifiedSource ? <span className="product-meta-success">Verified</span> : null}
-          {commentsClosed ? <span className="product-meta-success">Comments closed</span> : null}
+          {post.verifiedSource ? (
+            <span className="product-meta-success">{t("post.meta.verified")}</span>
+          ) : null}
+          {commentsClosed ? (
+            <span className="product-meta-success">{t("post.meta.commentsClosed")}</span>
+          ) : null}
         </div>
 
         <footer className="product-post__actions">
@@ -466,7 +481,7 @@ export function PostCard({
             type="button"
             className={`product-post__action product-post__action--like${liked ? " product-post__action--liked" : ""}`}
             aria-pressed={liked}
-            aria-label={liked ? "Unlike post" : "Like post"}
+            aria-label={liked ? t("post.actions.unlike") : t("post.actions.like")}
             disabled={reactionBusy}
             onClick={() => void toggleLike()}
           >
@@ -479,7 +494,7 @@ export function PostCard({
             onClick={() => markNavigationStart(detailHref)}
           >
             <MessageIcon />
-            <span>Comment</span>
+            <span>{t("post.actions.comment")}</span>
           </Link>
           <ShareAction
             url={shareUrl}
@@ -500,17 +515,17 @@ export function PostCard({
         ) : null}
       </div>
       <ConfirmDialog
-        title="Archive this post?"
-        description="The post will no longer appear as an active source request."
-        confirmLabel="Archive post"
+        title={t("post.dialog.archiveTitle")}
+        description={t("post.dialog.archiveDescription")}
+        confirmLabel={t("post.menu.archive")}
         open={confirmArchive}
         onConfirm={() => void archivePost()}
         onOpenChange={setConfirmArchive}
       />
       <ConfirmDialog
-        title="Delete this post?"
-        description="This permanently removes the post from SourceBoard."
-        confirmLabel="Delete post"
+        title={t("post.dialog.deleteTitle")}
+        description={t("post.dialog.deleteDescription")}
+        confirmLabel={t("post.menu.delete")}
         destructive
         open={confirmDelete}
         onConfirm={() => void deletePost()}
