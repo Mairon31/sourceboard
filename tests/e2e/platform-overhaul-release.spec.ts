@@ -22,7 +22,7 @@ test.describe("profiles/security/sessions", () => {
   test("serves signed-out public profiles without exposing account surfaces", async ({ page }) => {
     const response = await page.goto("/u/e2e-navigation-user");
     expect(response?.status()).toBe(200);
-    await expect(page.getByText("E2E Navigator")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "E2E Navigator", exact: true })).toBeVisible();
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
       "https://srcboard.me/u/e2e-navigation-user",
