@@ -1,10 +1,11 @@
 import { useLoaderData } from "react-router";
 import { createAdminReadService } from "../../worker/admin/read";
 import type { AdminAuditFilters, AdminAuditRow } from "../../worker/admin/types";
+import { hasCapability } from "../../worker/auth/rbac";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { Button, Card, Input } from "../components/ui";
-import { loadCapabilityAccess } from "../data/capability-access";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { requireAdminPageAccess } from "../data/admin-access";
+import type { ServerLoaderArgs } from "../data/server-request";
 
 interface AuditQuery {
   actor: string;
@@ -47,26 +48,16 @@ function toAuditFilters(query: AuditQuery): AdminAuditFilters {
 }
 
 export async function loader({ request, context }: ServerLoaderArgs) {
+  const { runtime, authorization } = await requireAdminPageAccess(request, context);
   const query = readQuery(request);
-  return withOptionalServerSession(
-    request,
-    context,
-    (unavailable) => ({
-      access: { authorized: false, unavailable },
-      query,
-      rows: [] as AdminAuditRow[],
-    }),
-    async (runtime) => {
-      const access = await loadCapabilityAccess(request, context, "audit.read");
-      return {
-        access,
-        query,
-        rows: access.authorized
-          ? await createAdminReadService(runtime.db).audit(toAuditFilters(query))
-          : ([] as AdminAuditRow[]),
-      };
-    },
-  );
+  const canReadAudit = hasCapability(authorization, "audit.read");
+  return {
+    canReadAudit,
+    query,
+    rows: canReadAudit
+      ? await createAdminReadService(runtime.db).audit(toAuditFilters(query))
+      : ([] as AdminAuditRow[]),
+  };
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
@@ -109,9 +100,9 @@ function AuditDetails({ row }: { row: AdminAuditRow }) {
 }
 
 export default function AdminAuditRoute() {
-  const { access, query, rows } = useLoaderData<LoaderData>();
+  const { canReadAudit, query, rows } = useLoaderData<LoaderData>();
 
-  if (!access.authorized) {
+  if (!canReadAudit) {
     return (
       <AdminShell>
         <AdminPageHeader
