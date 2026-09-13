@@ -153,7 +153,7 @@ test("private profile resolves to the unified 404 surface for a signed-out viewe
 }) => {
   const response = await page.goto(`/u/${PRIVATE_USERNAME}`);
   expect(response?.status()).toBe(404);
-  await expect(page.getByRole("heading", { name: "This page isn't available" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await expect(page.getByText("Private Profile User", { exact: true })).toHaveCount(0);
 });
 
@@ -176,7 +176,7 @@ test("blocked public profile resolves to the same 404 surface", async ({ page })
 
   const response = await page.goto(`/u/${PUBLIC_USERNAME}`);
   expect(response?.status()).toBe(404);
-  await expect(page.getByRole("heading", { name: "This page isn't available" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await expect(page.getByText("Public Profile User", { exact: true })).toHaveCount(0);
 });
 
