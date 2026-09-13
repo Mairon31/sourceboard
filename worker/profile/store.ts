@@ -194,12 +194,13 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
         communityStyles.push({ id: record.communityCosmeticId, css: record.communityCss });
       }
 
-      let structured = null;
-      try {
-        structured = parseCreatorProStoreConfig(config);
-      } catch {
-        structured = null;
-      }
+      const structured = (() => {
+        try {
+          return parseCreatorProStoreConfig(config);
+        } catch {
+          return null;
+        }
+      })();
       if (structured) {
         if (row.type === "AVATAR_FRAME") creatorPro.avatarFrame = structured;
         if (row.type === "PROFILE_BANNER") creatorPro.profileBanner = structured;
