@@ -72,12 +72,6 @@ export function MediaPicker({
   const requestRef = useRef<AbortController | null>(null);
   const emotePackCacheRef = useRef<EmotePack[] | null>(null);
 
-  const kindLabel =
-    kind === "GIF"
-      ? t("mediaPicker.gifs")
-      : kind === "STICKER"
-        ? t("mediaPicker.stickers")
-        : t("mediaPicker.emotes");
   const searchLabel =
     kind === "GIF"
       ? t("mediaPicker.searchGifs")
@@ -127,7 +121,9 @@ export function MediaPicker({
             packs?: EmotePack[];
             error?: { message?: string };
           } | null;
-          if (!response.ok) throw new Error(payload?.error?.message ?? t("mediaPicker.emotesUnavailable"));
+          if (!response.ok) {
+            throw new Error(payload?.error?.message ?? t("mediaPicker.emotesUnavailable"));
+          }
           const next = Array.isArray(payload?.packs) ? payload.packs : [];
           emotePackCacheRef.current = next;
           setPacks(next);
@@ -151,7 +147,9 @@ export function MediaPicker({
     if (cached) {
       setItems(cached);
       setBusy(false);
-      if (!cached.length) setStatus(trimmed ? t("mediaPicker.noResults") : t("mediaPicker.noFeatured"));
+      if (!cached.length) {
+        setStatus(trimmed ? t("mediaPicker.noResults") : t("mediaPicker.noFeatured"));
+      }
       return () => controller.abort();
     }
 
@@ -166,11 +164,15 @@ export function MediaPicker({
             items?: KlipyMediaItem[];
             error?: { message?: string };
           } | null;
-          if (!response.ok) throw new Error(payload?.error?.message ?? t("mediaPicker.searchUnavailable"));
+          if (!response.ok) {
+            throw new Error(payload?.error?.message ?? t("mediaPicker.searchUnavailable"));
+          }
           const next = Array.isArray(payload?.items) ? payload.items : [];
           mediaCache.set(cacheKey, next);
           setItems(next);
-          if (!next.length) setStatus(trimmed ? t("mediaPicker.noResults") : t("mediaPicker.noFeatured"));
+          if (!next.length) {
+            setStatus(trimmed ? t("mediaPicker.noResults") : t("mediaPicker.noFeatured"));
+          }
         })
         .catch((cause: unknown) => {
           if (cause instanceof DOMException && cause.name === "AbortError") return;
@@ -230,7 +232,11 @@ export function MediaPicker({
           ×
         </button>
       </div>
-      <div className="product-comment-media-picker__tabs" role="tablist" aria-label={t("mediaPicker.typeAria")}>
+      <div
+        className="product-comment-media-picker__tabs"
+        role="tablist"
+        aria-label={t("mediaPicker.typeAria")}
+      >
         {(["GIF", "STICKER", "EMOTE"] as const).map((value) => {
           const label =
             value === "GIF"
@@ -266,7 +272,10 @@ export function MediaPicker({
       {kind === "EMOTE" ? (
         <>
           {packs.length ? (
-            <nav className="product-comment-media-picker__packbar" aria-label={t("mediaPicker.emotePacks")}>
+            <nav
+              className="product-comment-media-picker__packbar"
+              aria-label={t("mediaPicker.emotePacks")}
+            >
               {packs.map((pack) => (
                 <button
                   key={pack.id}
@@ -293,7 +302,8 @@ export function MediaPicker({
               const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-pack-id]"));
               const current = sections.reduce<HTMLElement | null>((best, section) => {
                 if (!best) return section;
-                return Math.abs(section.offsetTop - root.scrollTop) < Math.abs(best.offsetTop - root.scrollTop)
+                return Math.abs(section.offsetTop - root.scrollTop) <
+                  Math.abs(best.offsetTop - root.scrollTop)
                   ? section
                   : best;
               }, null);
