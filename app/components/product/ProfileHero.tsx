@@ -5,22 +5,24 @@ import {
   SOCIAL_PLATFORM_CATALOG,
   socialHandleFromUrl,
 } from "../../../shared/profile/social-links";
+import { readCsrfToken } from "../../data/csrf";
+import type { MessageKey } from "../../i18n";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Badge } from "../ui";
+import { ConfirmAction } from "./ConfirmAction";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ProfileIdentityCard } from "./ProfileIdentityCard";
-import { ConfirmAction } from "./ConfirmAction";
 import { ShareAction } from "./ShareAction";
 import { SocialActionButton } from "./SocialActionButton";
 import { SocialIcon } from "./SocialIcon";
-import { readCsrfToken } from "../../data/csrf";
 
-const relationshipLabel = {
-  NONE: "Not connected",
-  FRIEND: "Friends",
-  INCOMING: "Incoming request",
-  OUTGOING: "Request sent",
-  BLOCKED: "Blocked",
-} as const;
+const relationshipLabelKeys: Record<Relationship, MessageKey> = {
+  NONE: "profile.relationship.none",
+  FRIEND: "profile.relationship.friend",
+  INCOMING: "profile.relationship.incoming",
+  OUTGOING: "profile.relationship.outgoing",
+  BLOCKED: "profile.relationship.blocked",
+};
 
 interface ProfileHeroProps {
   profile: PublicProfileDto;
@@ -29,6 +31,7 @@ interface ProfileHeroProps {
 }
 
 function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
+  const { t } = useI18n();
   const links = profile.socialLinks
     .map((link) => {
       const platform = canonicalSocialPlatform(link.platform);
@@ -36,10 +39,10 @@ function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
     })
     .filter((link): link is NonNullable<typeof link> => Boolean(link));
   if (!links.length) {
-    return <small className="product-profile-social-empty">No public social profiles added.</small>;
+    return <small className="product-profile-social-empty">{t("profile.socialEmpty")}</small>;
   }
   return (
-    <div className="product-social-links" aria-label="Social links">
+    <div className="product-social-links" aria-label={t("profile.socialLinksAria")}>
       {links.map((link) => {
         const definition = SOCIAL_PLATFORM_CATALOG[link.platform];
         return (
@@ -64,10 +67,6 @@ function ProfileSocialLinks({ profile }: { profile: PublicProfileDto }) {
   );
 }
 
-function relationshipLabelFor(relationship: Relationship) {
-  return relationshipLabel[relationship];
-}
-
 function RelationshipAction({
   profile,
   isOwnProfile,
@@ -77,6 +76,7 @@ function RelationshipAction({
   relationship: Relationship;
   onRelationshipChange: (relationship: Relationship) => void;
 }) {
+  const { t } = useI18n();
   if (isOwnProfile) return null;
   if (relationship === "NONE" && profile.canRequestFriend) {
     return (
@@ -85,9 +85,9 @@ function RelationshipAction({
         method="POST"
         variant="secondary"
         onSuccess={() => onRelationshipChange("OUTGOING")}
-        successLabel="Request sent"
+        successLabel={t("profile.action.requestSent")}
       >
-        Send friend request
+        {t("profile.action.sendRequest")}
       </SocialActionButton>
     );
   }
@@ -98,9 +98,9 @@ function RelationshipAction({
         method="POST"
         variant="secondary"
         onSuccess={() => onRelationshipChange("FRIEND")}
-        successLabel="Friends"
+        successLabel={t("profile.action.friends")}
       >
-        Accept request
+        {t("profile.action.acceptRequest")}
       </SocialActionButton>
     );
   }
@@ -110,26 +110,26 @@ function RelationshipAction({
         endpoint={`/api/friends/${encodeURIComponent(profile.id)}/cancel`}
         method="POST"
         onSuccess={() => onRelationshipChange("NONE")}
-        successLabel="Request cancelled"
+        successLabel={t("profile.action.requestCancelled")}
       >
-        Cancel request
+        {t("profile.action.cancelRequest")}
       </SocialActionButton>
     );
   }
   if (relationship === "FRIEND" && (profile.canRemoveFriend || profile.canAcceptFriend)) {
     return (
       <ConfirmAction
-        title="Remove friend?"
-        description={`Remove ${profile.displayName} from your friends. Friends-only access will end immediately.`}
-        triggerLabel="Remove friend"
-        confirmLabel="Remove friend"
+        title={t("friends.confirm.removeTitle")}
+        description={t("profile.action.removeDescription", { name: profile.displayName })}
+        triggerLabel={t("profile.action.removeFriend")}
+        confirmLabel={t("profile.action.removeFriend")}
         destructive
         onConfirm={async () => {
           const response = await fetch(`/api/friends/${encodeURIComponent(profile.id)}`, {
             method: "DELETE",
             headers: { "x-csrf-token": readCsrfToken() },
           });
-          if (!response.ok) throw new Error("Could not remove this friend.");
+          if (!response.ok) throw new Error(t("profile.action.removeError"));
           onRelationshipChange("NONE");
         }}
       />
@@ -147,20 +147,21 @@ function BlockAction({
   relationship: Relationship;
   onRelationshipChange: (relationship: Relationship) => void;
 }) {
+  const { t } = useI18n();
   if (!profile.canBlock || relationship === "BLOCKED") return null;
   return (
     <ConfirmAction
-      title="Block this account?"
-      description={`${profile.displayName} will not be able to interact with you or view content that your privacy settings protect.`}
-      triggerLabel="Block"
-      confirmLabel="Block account"
+      title={t("profile.action.blockTitle")}
+      description={t("profile.action.blockDescription", { name: profile.displayName })}
+      triggerLabel={t("profile.action.block")}
+      confirmLabel={t("profile.action.blockAccount")}
       destructive
       onConfirm={async () => {
         const response = await fetch(`/api/users/${encodeURIComponent(profile.id)}/block`, {
           method: "POST",
           headers: { "x-csrf-token": readCsrfToken() },
         });
-        if (!response.ok) throw new Error("Could not block this account.");
+        if (!response.ok) throw new Error(t("profile.action.blockError"));
         onRelationshipChange("BLOCKED");
       }}
     />
@@ -168,6 +169,7 @@ function BlockAction({
 }
 
 export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroProps) {
+  const { t, tp } = useI18n();
   const [relationship, setRelationship] = useState<Relationship>(profile.relationship);
   useEffect(() => {
     setRelationship(profile.relationship);
@@ -186,7 +188,7 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
         <div className="product-profile-identity">
           <div className="product-profile-name">
             <span className="product-eyebrow">
-              {isOwnProfile ? "Your profile" : "Public profile"}
+              {isOwnProfile ? t("profile.ownEyebrow") : t("profile.publicEyebrow")}
             </span>
             <CosmeticIdentity
               displayName={profile.displayName}
@@ -204,7 +206,7 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
           <div className="product-chip-row product-profile-actions">
             {!isOwnProfile ? (
               <Badge tone={relationship === "BLOCKED" ? "warning" : "neutral"}>
-                {relationshipLabelFor(relationship)}
+                {t(relationshipLabelKeys[relationship])}
               </Badge>
             ) : null}
             <RelationshipAction
@@ -221,7 +223,7 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
             {editControl}
             <ShareAction
               url={`/u/${encodeURIComponent(profile.username)}`}
-              title={`${profile.displayName} on SourceBoard`}
+              title={t("profile.shareTitle", { name: profile.displayName })}
             />
           </div>
         </div>
@@ -230,13 +232,14 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
 
         <div
           className="product-profile-summary product-profile-stats--compact"
-          aria-label="Profile summary"
+          aria-label={t("profile.summaryAria")}
         >
+          <span>{tp("profile.friendCount", profile.friendCount)}</span>
           <span>
-            <strong>{profile.friendCount}</strong>{" "}
-            {profile.friendCount === 1 ? "friend" : "friends"}
+            {profile.profileVisibility === "PUBLIC"
+              ? t("profile.visibility.public")
+              : t("profile.visibility.friendsOnly")}
           </span>
-          <span>{profile.profileVisibility === "PUBLIC" ? "Public" : "Friends only"}</span>
         </div>
 
         <ProfileSocialLinks profile={profile} />
