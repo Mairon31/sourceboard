@@ -44,4 +44,21 @@ describe("Admin Creator Pro cosmetic editor", () => {
     expect(laboratory).toContain("AdminStoreEditor");
     expect(laboratory).toContain("ProfileCosmeticPreview");
   });
+
+  it("documents Creator Pro separately from legacy Community CSS", () => {
+    const guide = read("../../app/components/admin/store/AdminCosmeticGuide.tsx");
+    for (const contract of [
+      "Creator Pro structured schema",
+      "Palette and gradient",
+      "300ms",
+      "60000ms",
+      "48 particles",
+      "Reduced motion",
+      "Avatar frame safe zone",
+      "Google Fonts",
+      "Legacy / Community CSS",
+    ]) {
+      expect(guide).toContain(contract);
+    }
+  });
 });
