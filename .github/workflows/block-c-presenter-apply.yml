@@ -24,7 +24,6 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path("worker/notifications/presenter.ts")
           text = path.read_text()
@@ -39,22 +38,21 @@ jobs:
           if start < 0 or end < 0 or end <= start:
               raise SystemExit("legacy grouping block not found")
           text = text[:start] + text[end:]
-
           text = text.replace(
               '): Promise<PresentedNotification[]> {',
               '): Promise<NotificationCardView[]> {',
               1,
           )
           old = '  return groupPresentedNotifications(records.map((record) => presentNotification(record, context)));\n}'
-          new = '''  return groupNotificationCards(\n    records.map((record) => {\n      const notification = presentNotification(record, context);\n      return {\n        id: notification.id,\n        type: notification.type,\n        entityType: notification.entityType,\n        entityId: notification.entityId,\n        href: notification.href,\n        title: notification.title,\n        ...(notificationPreviewText({ bodyPlaintext: notification.body })\n          ? { preview: notificationPreviewText({ bodyPlaintext: notification.body }) }\n          : {}),\n        ...(notification.ctaLabel ? { ctaLabel: notification.ctaLabel } : {}),\n        createdAt: notification.createdAt,\n        unread: !notification.readAt,\n        ...(notification.actor\n          ? {\n              actor: {\n                userId: notification.actor.id,\n                id: notification.actor.id,\n                username: notification.actor.username,\n                displayName: notification.actor.displayName,\n                ...(notification.actor.avatarUrl\n                  ? { avatarUrl: notification.actor.avatarUrl }\n                  : {}),\n                ...(notification.actor.cosmetics\n                  ? { cosmetics: notification.actor.cosmetics }\n                  : {}),\n              },\n            }\n          : {}),\n      };\n    }),\n  );\n}'''
+          new = '''  return groupNotificationCards(\n    records.map((record) => {\n      const notification = presentNotification(record, context);\n      const preview = notificationPreviewText({ bodyPlaintext: notification.body });\n      return {\n        id: notification.id,\n        type: notification.type,\n        entityType: notification.entityType,\n        entityId: notification.entityId,\n        href: notification.href,\n        title: notification.title,\n        ...(preview ? { preview } : {}),\n        ...(notification.ctaLabel ? { ctaLabel: notification.ctaLabel } : {}),\n        createdAt: notification.createdAt,\n        unread: !notification.readAt,\n        ...(notification.actor\n          ? {\n              actor: {\n                userId: notification.actor.id,\n                id: notification.actor.id,\n                username: notification.actor.username,\n                displayName: notification.actor.displayName,\n                ...(notification.actor.avatarUrl ? { avatarUrl: notification.actor.avatarUrl } : {}),\n                ...(notification.actor.cosmetics ? { cosmetics: notification.actor.cosmetics } : {}),\n              },\n            }\n          : {}),\n      };\n    }),\n  );\n}'''
           if old not in text:
               raise SystemExit("presenter return anchor missing")
-          text = text.replace(old, new, 1)
-          path.write_text(text)
+          path.write_text(text.replace(old, new, 1))
           PY
           npx prettier --write worker/notifications/presenter.ts
-      - run: npm test -- --run tests/unit/notification-grouping.test.ts tests/unit/notification-preview-text.test.ts
+      - run: npm test -- --run tests/unit/notification-grouping.test.ts tests/unit/notification-preview-text.test.ts tests/unit/notification-presenter.test.ts
       - run: npm run typecheck
+      - run: npm run lint
       - name: Commit clean product diff
         run: |
           git rm .github/workflows/block-c-presenter-apply.yml
