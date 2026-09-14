@@ -1260,11 +1260,40 @@
 }
 
 .product-richtext p,
+.product-richtext h1,
+.product-richtext h2,
+.product-richtext h3,
 .product-richtext blockquote,
 .product-richtext pre,
 .product-richtext ul,
 .product-richtext ol {
   margin: 0;
+}
+
+.product-post__description {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.product-post__description h1,
+.product-post__description h2,
+.product-post__description h3 {
+  color: var(--text-primary);
+  line-height: 1.22;
+}
+
+.product-post__description h1 {
+  font-size: var(--text-xl);
+}
+
+.product-post__description h2 {
+  font-size: var(--text-lg);
+}
+
+.product-post__description h3 {
+  font-size: var(--text-base);
 }
 
 .product-richtext blockquote {

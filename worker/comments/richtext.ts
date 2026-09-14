@@ -120,6 +120,7 @@ function flattenMarkdown(nodes: SafeRichTextNode[]): RichTextNode[] {
   };
   nodes.forEach((node, index) => {
     if (node.type === "paragraph") appendInline(node.children);
+    if (node.type === "heading") appendInline(node.children);
     if (node.type === "code-block")
       flattened.push({ type: "text", text: node.code, marks: { code: true } });
     if (node.type === "list") {

@@ -1,4 +1,5 @@
 import type { PostCategorySlug } from "../../shared/posts/categories";
+import { parseMarkdown } from "../../shared/richtext/markdown";
 import type { PostDetail, PostSummary, PublicPostAuthor } from "../../shared/ui/contracts";
 import { createIdentifier } from "../auth/crypto";
 import { canViewNsfwPost, canViewUser } from "../privacy/policy";
@@ -89,6 +90,17 @@ function validatePostFields(input: {
   }
   if (description.length > MAX_DESCRIPTION_LENGTH) {
     throw new PostError(400, "INVALID_POST_DESCRIPTION", "The description is too long.");
+  }
+  if (description) {
+    try {
+      parseMarkdown(description);
+    } catch {
+      throw new PostError(
+        400,
+        "INVALID_POST_DESCRIPTION",
+        "The description contains unsupported Markdown.",
+      );
+    }
   }
   if (!isPostVisibility(input.visibility)) {
     throw new PostError(400, "INVALID_POST_VISIBILITY", "The post visibility is invalid.");

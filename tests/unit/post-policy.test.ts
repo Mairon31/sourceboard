@@ -406,6 +406,34 @@ describe("Phase 4 post policy", () => {
     expect(store.createPost).not.toHaveBeenCalled();
   });
 
+  it("rejects unsafe Markdown descriptions before writing", async () => {
+    const { profileStore, store } = dependencies();
+    const service = createPostService({ store, profileStore, now: () => 2 });
+    await expect(
+      service.createPost({
+        id: "post-markdown",
+        authorId: "author-1",
+        authorMode: "IDENTIFIED",
+        isNsfw: false,
+        title: "Unsafe source request",
+        description: "<script>alert(1)</script>",
+        categorySlug: "other",
+        visibility: "PUBLIC",
+        image: {
+          id: "asset-2",
+          r2Key: "posts/random/asset-2",
+          contentType: "image/png",
+          byteSize: 100,
+          width: 1,
+          height: 1,
+          checksumSha256: "hash",
+          createdAt: 2,
+        },
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_POST_DESCRIPTION" });
+    expect(store.createPost).not.toHaveBeenCalled();
+  });
+
   it("serializes anonymous posts without identity-bearing public fields", async () => {
     const { profileStore, store, getPost } = dependencies();
     getPost.mockResolvedValue(post({ authorMode: "ANONYMOUS" }));

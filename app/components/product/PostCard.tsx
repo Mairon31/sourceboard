@@ -13,6 +13,8 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
 import { ShareAction } from "./ShareAction";
+import { RichText } from "./RichText";
+import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
 import {
   Badge,
   Button,
@@ -34,6 +36,16 @@ function statusTone(status: PostSummary["status"]) {
   if (status === "ANSWERED") return "accent" as const;
   if (status === "LOCKED") return "warning" as const;
   return "neutral" as const;
+}
+
+function postDescriptionNodes(description: string) {
+  try {
+    return renderMarkdownPreview(description);
+  } catch {
+    return [
+      { type: "paragraph" as const, children: [{ type: "text" as const, text: description }] },
+    ];
+  }
 }
 
 function isInteractivePostTarget(target: EventTarget | null): boolean {
@@ -493,7 +505,12 @@ export function PostCard({
             >
               {displayTitle}
             </Link>
-            {displayDescription ? <p>{displayDescription}</p> : null}
+            {displayDescription ? (
+              <RichText
+                className="product-post__description"
+                nodes={postDescriptionNodes(displayDescription)}
+              />
+            ) : null}
           </>
         )}
       </div>

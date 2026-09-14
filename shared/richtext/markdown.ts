@@ -19,6 +19,7 @@ export type SafeInlineRichTextNode =
 
 export type SafeRichTextNode =
   | { type: "paragraph"; children: SafeInlineRichTextNode[] }
+  | { type: "heading"; level: 1 | 2 | 3; children: SafeInlineRichTextNode[] }
   | { type: "quote"; children: SafeRichTextNode[] }
   | {
       type: "list";
@@ -192,6 +193,12 @@ function isQuote(line: string): boolean {
   return /^\s*>/.test(line);
 }
 
+function heading(line: string): { level: 1 | 2 | 3; content: string } | null {
+  const match = line.match(/^\s*(#{1,3})\s+(.+?)\s*#*\s*$/);
+  if (!match) return null;
+  return { level: match[1].length as 1 | 2 | 3, content: match[2] ?? "" };
+}
+
 function parseBlocks(lines: string[], depth: number): SafeRichTextNode[] {
   if (depth > MAX_DEPTH) invalid("blocks are nested too deeply.");
   const nodes: SafeRichTextNode[] = [];
@@ -224,6 +231,16 @@ function parseBlocks(lines: string[], depth: number): SafeRichTextNode[] {
       nodes.push({ type: "quote", children: parseBlocks(quote, depth + 1) });
       continue;
     }
+    const headingNode = heading(line);
+    if (headingNode) {
+      nodes.push({
+        type: "heading",
+        level: headingNode.level,
+        children: parseInline(headingNode.content, depth + 1),
+      });
+      index += 1;
+      continue;
+    }
     if (isList(line)) {
       const items: Array<{ type: "list-item"; children: SafeInlineRichTextNode[] }> = [];
       const ordered = /^\s*\d+[.)]\s+/.test(line);
@@ -241,6 +258,7 @@ function parseBlocks(lines: string[], depth: number): SafeRichTextNode[] {
       (paragraph.length === 0 || Boolean(lines[index]?.trim())) &&
       !isFence(lines[index] ?? "") &&
       !isQuote(lines[index] ?? "") &&
+      !heading(lines[index] ?? "") &&
       !isList(lines[index] ?? "")
     ) {
       paragraph.push(lines[index] ?? "");
