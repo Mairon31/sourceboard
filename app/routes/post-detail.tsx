@@ -43,6 +43,7 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
       unavailable,
       authenticated: false,
       viewerIdentity: null as PublicPostAuthor | null,
+      canModerateComments: false,
       commentSort,
       canonicalUrl: requested.toString(),
     }),
@@ -94,8 +95,13 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
             .then((authorization) => ({
               canVerifySource: hasCapability(authorization, "source.verify"),
               canModerate: hasCapability(authorization, "post.moderate"),
+              canModerateComments: hasCapability(authorization, "comment.moderate"),
             }))
-        : Promise.resolve({ canVerifySource: false, canModerate: false });
+        : Promise.resolve({
+            canVerifySource: false,
+            canModerate: false,
+            canModerateComments: false,
+          });
       const [post, commentsResult, viewerIdentity, moderationAccess] = await Promise.all([
         service.getPost(postId, userId),
         commentsPromise,
@@ -128,6 +134,7 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
         unavailable: false,
         authenticated: Boolean(userId),
         viewerIdentity,
+        canModerateComments: moderationAccess.canModerateComments,
         commentSort,
         canonicalUrl: requested.toString(),
       };
@@ -316,7 +323,8 @@ function PostServiceUnavailable() {
 }
 
 export default function PostDetailRoute() {
-  const { post, authenticated, viewerIdentity, commentSort } = useLoaderData<LoaderData>();
+  const { post, authenticated, viewerIdentity, canModerateComments, commentSort } =
+    useLoaderData<LoaderData>();
   const location = useLocation();
   const revalidator = useRevalidator();
 
@@ -373,7 +381,9 @@ export default function PostDetailRoute() {
         viewerIdentity={viewerIdentity}
         commentsClosed={currentPost.commentsClosed}
         canAcceptSource={currentPost.permissions.canAcceptSource}
+        canModerateComments={canModerateComments}
         onAcceptSource={(commentId) => void acceptSource(commentId)}
+        onCommentsChanged={() => revalidator.revalidate()}
       />
     </ProductShell>
   );

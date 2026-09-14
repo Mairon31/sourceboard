@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import { hashOpaqueToken } from "../../worker/auth/crypto";
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/security";
+import { NOTIFICATION_GROUP_WINDOW_MS } from "../../worker/notifications/grouping";
 
 export const notificationFixture = {
   viewerId: "e2e-notification-viewer",
@@ -33,8 +34,10 @@ export async function installNotificationFixture(page: Page): Promise<void> {
   const csrfToken = "sourceboard-e2e-notification-csrf-token";
   const tokenHash = hashOpaqueToken(sessionToken);
   const expiresAt = now + 24 * 60 * 60 * 1000;
-  const firstCreatedAt = now - 60_000;
-  const secondCreatedAt = now - 120_000;
+  const currentGroupBucketStart =
+    Math.floor(now / NOTIFICATION_GROUP_WINDOW_MS) * NOTIFICATION_GROUP_WINDOW_MS;
+  const firstCreatedAt = currentGroupBucketStart - 60_000;
+  const secondCreatedAt = currentGroupBucketStart - 120_000;
 
   const sql = `
     DELETE FROM notifications WHERE id IN ('${notificationFixture.firstNotificationId}', '${notificationFixture.secondNotificationId}');

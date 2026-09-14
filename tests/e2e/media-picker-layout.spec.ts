@@ -135,6 +135,140 @@ async function mockMediaApis(page: Page) {
   });
 }
 
+async function mockInteractiveMediaApis(page: Page, requests: string[]) {
+  await page.route("**/api/comments/media/search?**", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    const type = requestUrl.searchParams.get("type") ?? "GIF";
+    const query = requestUrl.searchParams.get("q") ?? "";
+    const pos = requestUrl.searchParams.get("pos") ?? "";
+    requests.push(`${type}:${query}:${pos}`);
+    if (query === "slow") {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          items: [
+            {
+              id: "slow-result",
+              title: "Slow result",
+              label: "Slow result",
+              url: IMAGE,
+              preview: IMAGE,
+              type: "GIF",
+              provider: "klipy",
+            },
+          ],
+          next: null,
+        }),
+      });
+      return;
+    }
+    if (query === "fast") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          items: [
+            {
+              id: "fast-result",
+              title: "Fast result",
+              label: "Fast result",
+              url: IMAGE,
+              preview: IMAGE,
+              type: "GIF",
+              provider: "klipy",
+            },
+          ],
+          next: null,
+        }),
+      });
+      return;
+    }
+    const isSticker = type === "STICKER";
+    const pageItems = isSticker
+      ? [
+          {
+            id: "interactive-sticker",
+            title: "Interactive sticker",
+            label: "Interactive sticker",
+            url: STICKER,
+            preview: STICKER,
+            type: "STICKER",
+            provider: "klipy",
+          },
+        ]
+      : pos
+        ? [
+            {
+              id: "interactive-gif-2",
+              title: "Interactive GIF duplicate",
+              label: "Interactive GIF duplicate",
+              url: IMAGE,
+              preview: IMAGE,
+              type: "GIF",
+              provider: "klipy",
+            },
+            {
+              id: "interactive-gif-3",
+              title: "Interactive GIF 3",
+              label: "Interactive GIF 3",
+              url: IMAGE,
+              preview: IMAGE,
+              type: "GIF",
+              provider: "klipy",
+            },
+          ]
+        : [
+            {
+              id: "interactive-gif-1",
+              title: "Interactive GIF 1",
+              label: "Interactive GIF 1",
+              url: IMAGE,
+              preview: IMAGE,
+              type: "GIF",
+              provider: "klipy",
+            },
+            {
+              id: "interactive-gif-2",
+              title: "Interactive GIF 2",
+              label: "Interactive GIF 2",
+              url: IMAGE,
+              preview: IMAGE,
+              type: "GIF",
+              provider: "klipy",
+            },
+          ];
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: pageItems, next: !isSticker && !pos ? "cursor-2" : null }),
+    });
+  });
+  await page.route("**/api/comments/stickers", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: '{"packs":[]}' });
+  });
+  await page.route("**/api/comments/emotes", async (route) => {
+    const packs = Array.from({ length: 3 }, (_, packIndex) => ({
+      id: `interactive-pack-${packIndex}`,
+      label: `Interactive Pack ${packIndex + 1}`,
+      emotes: Array.from({ length: 24 }, (_, index) => ({
+        id: `interactive-emote-${packIndex}-${index}`,
+        label: `Interactive emote ${packIndex + 1}-${index + 1}`,
+        shortcode: `interactive_${packIndex}_${index}`,
+        url: EMOTE,
+        type: "EMOTE",
+        packId: `interactive-pack-${packIndex}`,
+      })),
+    }));
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ packs }),
+    });
+  });
+}
+
 async function expectSquareNonOverlapping(page: Page, selector: string) {
   const boxes = await page.locator(selector).evaluateAll((nodes) =>
     nodes.slice(0, 6).map((node) => {
@@ -250,3 +384,94 @@ for (const viewport of [
     await expect(emoteSurface.locator("img").first()).toHaveCSS("object-fit", "contain");
   });
 }
+
+test("media picker paginates, replaces attachments and keeps multi-emote insertion state", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installSession(page);
+  const requests: string[] = [];
+  await mockInteractiveMediaApis(page, requests);
+  await openPost(page);
+
+  const composer = page.getByLabel("Add a comment");
+  await composer.fill("left right");
+  await page.getByRole("button", { name: "GIF", exact: true }).click();
+  const gifSurface = page.locator('[data-media-kind="gif"]');
+  await expect(gifSurface).toBeVisible();
+  await expect.poll(() => requests.some((request) => request.endsWith(":cursor-2"))).toBe(true);
+  await expect(gifSurface.locator("button")).toHaveCount(3);
+
+  await page.getByRole("button", { name: "Add Interactive GIF 1" }).click();
+  await expect(page.locator(".product-comment-attachment--gif")).toHaveCount(1);
+  await expect(composer).toHaveValue("left right");
+  await page.getByRole("button", { name: "Remove GIF" }).click();
+  await expect(page.locator(".product-comment-attachment")).toHaveCount(0);
+  await expect(composer).toHaveValue("left right");
+
+  await page.getByRole("button", { name: "GIF", exact: true }).click();
+  await page.getByRole("button", { name: "Add Interactive GIF 1" }).click();
+  await page.getByRole("button", { name: "Sticker", exact: true }).click();
+  await page.getByRole("button", { name: "Add Interactive sticker" }).click();
+  await expect(page.locator(".product-comment-attachment")).toHaveCount(1);
+  await expect(page.locator(".product-comment-attachment--sticker")).toBeVisible();
+  await expect(page.locator(".product-comment-attachment--gif")).toHaveCount(0);
+  await page.getByRole("button", { name: "Remove sticker" }).click();
+
+  await page.getByRole("button", { name: "GIF", exact: true }).click();
+  const searchGif = page.getByLabel("Search GIFs");
+  await searchGif.fill("slow");
+  await page.waitForTimeout(300);
+  await searchGif.fill("fast");
+  await expect(page.getByRole("button", { name: "Add Fast result" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add Slow result" })).toHaveCount(0);
+  await expect(searchGif).toHaveValue("fast");
+  await page.getByRole("button", { name: "Close media picker" }).click();
+
+  await composer.evaluate((element) => {
+    const textarea = element as HTMLTextAreaElement;
+    textarea.focus();
+    textarea.setSelectionRange(4, 4);
+  });
+  await page.getByRole("button", { name: "Emote", exact: true }).click();
+  const emoteSurface = page.locator('[data-media-kind="emote"]');
+  await expect(emoteSurface).toBeVisible();
+  const packButtons = page.locator(".product-comment-media-picker__packbar > button");
+  await expect(packButtons).toHaveCount(3);
+  const beforePackScroll = await emoteSurface.evaluate((element) => element.scrollTop);
+  await packButtons.nth(1).click();
+  await expect(packButtons.nth(1)).toHaveClass(/is-active/);
+  await expect
+    .poll(async () => emoteSurface.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(beforePackScroll);
+
+  const emoteSearch = page.getByLabel("Search emotes");
+  await emoteSearch.fill("Interactive emote");
+  await page.getByRole("button", { name: "Add Interactive emote 2-1", exact: true }).click();
+  await expect(page.locator(".product-comment-media-picker")).toBeVisible();
+  await expect(emoteSearch).toHaveValue("Interactive emote");
+  await page.getByRole("button", { name: "Add Interactive emote 2-2", exact: true }).click();
+  await expect(page.locator(".product-comment-media-picker")).toBeVisible();
+  await expect(composer).toHaveValue(/:interactive_1_0:.*:interactive_1_1:/);
+
+  await emoteSearch.clear();
+  await expect(emoteSearch).toHaveValue("");
+  await expect(emoteSurface.locator("[data-pack-id]")).toHaveCount(3);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+  await emoteSurface.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await expect(packButtons.nth(2)).toHaveClass(/is-active/, { timeout: 10_000 });
+  const packbarBox = await page.locator(".product-comment-media-picker__packbar").boundingBox();
+  const activeBox = await packButtons.nth(2).boundingBox();
+  expect(activeBox?.x ?? 0).toBeGreaterThanOrEqual((packbarBox?.x ?? 0) - 1);
+  expect((activeBox?.x ?? 0) + (activeBox?.width ?? 0)).toBeLessThanOrEqual(
+    (packbarBox?.x ?? 0) + (packbarBox?.width ?? 0) + 1,
+  );
+});

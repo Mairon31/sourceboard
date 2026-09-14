@@ -31,6 +31,49 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(thread).not.toContain("function MediaPicker(");
   });
 
+  it("paginates KLIPY results with an observer, deduplication and opaque next positions", () => {
+    expect(commentsApi).toContain('url.searchParams.get("pos")');
+    expect(commentsApi).toContain('upstream.searchParams.set("pos"');
+    expect(commentsApi).toContain("next:");
+    expect(picker).toContain("IntersectionObserver");
+    expect(picker).toContain("nextPos");
+    expect(picker).toContain("loadMore");
+    expect(picker).toContain("new Map");
+    expect(picker).toContain('t("mediaPicker.loadingMore")');
+    expect(picker).toContain('t("mediaPicker.retry")');
+  });
+
+  it("stops stalled KLIPY cursors and keeps pack navigation scoped to the picker", () => {
+    expect(picker).toContain("rawNextPosition === position ? null : rawNextPosition");
+    expect(picker).toContain("activeButton.offsetLeft");
+    expect(picker).toContain("packBarRef.current.scrollTo");
+    expect(picker).not.toContain("activeButton?.scrollIntoView");
+    expect(picker).toContain(
+      "section.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop",
+    );
+  });
+
+  it("keeps the emote picker open and uses observer-based pack scroll spy", () => {
+    expect(picker).toContain("packObserverRef");
+    expect(picker).toContain("IntersectionObserver");
+    expect(picker).not.toContain("onScroll={(event) =>");
+    expect(thread).toContain('if (item.type !== "EMOTE") changeMediaKind(null)');
+  });
+
+  it("selects the final pack when the scroll container reaches its boundary", () => {
+    expect(picker).toContain("root.scrollTop + root.clientHeight >= root.scrollHeight - 1");
+    expect(picker).toContain("lastPack");
+  });
+
+  it("renders an accessible attachment-preview remove control without clearing composer text", () => {
+    expect(thread).toContain("onRemove?: () => void");
+    expect(thread).toContain("product-comment-attachment__remove");
+    expect(thread).toContain('attachment.type === "GIF"');
+    expect(thread).toContain('"comments.composer.removeGif"');
+    expect(thread).toContain('"comments.composer.removeSticker"');
+    expect(thread).toContain("onRemove={() => setAttachment(null)}");
+  });
+
   it("loads only entitled emote packs and keeps server entitlement enforcement", () => {
     expect(commentsApi).toContain('url.pathname === "/api/comments/emotes"');
     expect(commentsApi).toContain("listEntitledEmotePacks");

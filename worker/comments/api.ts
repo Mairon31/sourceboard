@@ -113,6 +113,12 @@ function normalizeKlipyResults(payload: unknown, kind: KlipyMediaKind) {
   });
 }
 
+function klipyNextPosition(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const next = (payload as Record<string, unknown>).next;
+  return typeof next === "string" || typeof next === "number" ? String(next) : null;
+}
+
 async function searchKlipy(
   request: Request,
   requestId: string,
@@ -143,14 +149,18 @@ async function searchKlipy(
     );
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim() ?? "";
+  const position = url.searchParams.get("pos")?.trim() ?? "";
   const kind = url.searchParams.get("type")?.toUpperCase() === "STICKER" ? "STICKER" : "GIF";
   if (query.length > 80)
     throw new PostError(400, "INVALID_MEDIA_QUERY", "Search must be 80 characters or fewer.");
+  if (position.length > 240)
+    throw new PostError(400, "INVALID_MEDIA_POSITION", "Media pagination position is invalid.");
   const upstream = new URL(
     query ? "https://api.klipy.com/v2/search" : "https://api.klipy.com/v2/featured",
   );
   upstream.searchParams.set("key", env.KLIPY_API_KEY);
   if (query) upstream.searchParams.set("q", query);
+  if (position) upstream.searchParams.set("pos", position);
   upstream.searchParams.set("country", "CR");
   upstream.searchParams.set("locale", "es");
   upstream.searchParams.set("contentfilter", "high");
@@ -171,7 +181,14 @@ async function searchKlipy(
   } catch {
     throw new PostError(502, "KLIPY_INVALID_RESPONSE", "Klipy returned an invalid response.");
   }
-  return json({ items: normalizeKlipyResults(payload, kind), provider: "klipy" }, requestId);
+  return json(
+    {
+      items: normalizeKlipyResults(payload, kind),
+      next: klipyNextPosition(payload),
+      provider: "klipy",
+    },
+    requestId,
+  );
 }
 
 function database(env: SourceBoardEnvironment): D1Database {

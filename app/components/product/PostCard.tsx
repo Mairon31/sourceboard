@@ -76,6 +76,10 @@ export function PostCard({
   const [manageStatus, setManageStatus] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [archiveError, setArchiveError] = useState<string>();
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string>();
   const [reportOpen, setReportOpen] = useState(false);
   const [reportCategory, setReportCategory] = useState("SPAM");
   const [reportDetail, setReportDetail] = useState("");
@@ -233,24 +237,42 @@ export function PostCard({
   }
 
   async function archivePost() {
-    const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}/archive`, {
-      method: "POST",
-      headers: { "x-csrf-token": readCsrfToken() },
-    });
-    if (!response.ok) throw new Error(t("post.error.archive"));
-    setManageStatus(t("post.statusMessage.archived"));
-    setConfirmArchive(false);
-    onChanged?.();
+    if (archiveBusy) return;
+    setArchiveBusy(true);
+    setArchiveError(undefined);
+    try {
+      const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}/archive`, {
+        method: "POST",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      if (!response.ok) throw new Error(t("post.error.archive"));
+      setManageStatus(t("post.statusMessage.archived"));
+      setConfirmArchive(false);
+      onChanged?.();
+    } catch (error) {
+      setArchiveError(error instanceof Error ? error.message : t("post.error.archive"));
+    } finally {
+      setArchiveBusy(false);
+    }
   }
 
   async function deletePost() {
-    const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}`, {
-      method: "DELETE",
-      headers: { "x-csrf-token": readCsrfToken() },
-    });
-    if (!response.ok) throw new Error(t("post.error.delete"));
-    setConfirmDelete(false);
-    navigate("/");
+    if (deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError(undefined);
+    try {
+      const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}`, {
+        method: "DELETE",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      if (!response.ok) throw new Error(t("post.error.delete"));
+      setConfirmDelete(false);
+      navigate("/");
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : t("post.error.delete"));
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   async function setCommentsClosed(closed: boolean) {
@@ -331,7 +353,10 @@ export function PostCard({
             ? [
                 {
                   label: t("post.menu.archive"),
-                  onSelect: () => setConfirmArchive(true),
+                  onSelect: () => {
+                    setArchiveError(undefined);
+                    setConfirmArchive(true);
+                  },
                 },
               ]
             : []),
@@ -357,7 +382,10 @@ export function PostCard({
                   label: t("post.menu.delete"),
                   icon: <TrashIcon width="16" height="16" />,
                   destructive: true,
-                  onSelect: () => setConfirmDelete(true),
+                  onSelect: () => {
+                    setDeleteError(undefined);
+                    setConfirmDelete(true);
+                  },
                 },
               ]
             : []),
@@ -582,6 +610,8 @@ export function PostCard({
         description={t("post.dialog.archiveDescription")}
         confirmLabel={t("post.menu.archive")}
         open={confirmArchive}
+        busy={archiveBusy}
+        error={archiveError}
         onConfirm={() => void archivePost()}
         onOpenChange={setConfirmArchive}
       />
@@ -632,6 +662,8 @@ export function PostCard({
         confirmLabel={t("post.menu.delete")}
         destructive
         open={confirmDelete}
+        busy={deleteBusy}
+        error={deleteError}
         onConfirm={() => void deletePost()}
         onOpenChange={setConfirmDelete}
       />

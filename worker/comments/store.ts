@@ -151,7 +151,12 @@ function toRecord(row: CommentRow): CommentWithAuthor {
     richtext: body.richtext,
     plaintext: row.body_plaintext,
     attachment: body.attachment,
-    state: row.state === "HIDDEN" || row.state === "DELETED" ? row.state : "VISIBLE",
+    state:
+      row.deleted_at !== null || row.state === "DELETED"
+        ? "DELETED"
+        : row.hidden_at !== null || row.state === "HIDDEN"
+          ? "HIDDEN"
+          : "VISIBLE",
     likeCount: row.like_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -478,7 +483,10 @@ export function createD1CommentStore(db: D1Database): CommentStore {
           comment.updatedAt,
         )
         .run();
-      if (result.meta.changes !== 1) return false;
+      // D1 includes writes performed by AFTER UPDATE triggers in meta.changes.
+      // public_post_search_comments_au can therefore make a single matched
+      // comment update report more than one change.
+      if (result.meta.changes < 1) return false;
       await db
         .prepare(
           `INSERT INTO comment_revisions
@@ -506,7 +514,7 @@ export function createD1CommentStore(db: D1Database): CommentStore {
         )
         .bind(now, now, commentId, authorId)
         .run();
-      if (result.meta.changes !== 1) return false;
+      if (result.meta.changes < 1) return false;
       const comment = await db
         .prepare(`SELECT post_id FROM comments WHERE id = ?`)
         .bind(commentId)

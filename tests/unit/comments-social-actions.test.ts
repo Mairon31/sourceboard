@@ -111,6 +111,27 @@ describe("comment social actions", () => {
     expect(postCardSource).not.toContain('label="…"');
   });
 
+  it("uses the canonical comment moderation capability and backend action endpoint", () => {
+    expect(postDetailSource).toContain('hasCapability(authorization, "comment.moderate")');
+    expect(postDetailSource).toContain("canModerateComments");
+    expect(threadSource).toContain('targetType: "COMMENT"');
+    expect(threadSource).toContain('action: comment.state === "HIDDEN" ? "RESTORE" : "HIDE"');
+    expect(threadSource).toContain('fetch("/api/admin/moderation/action"');
+  });
+
+  it("revalidates post detail after editing an accepted comment", () => {
+    expect(postDetailSource).toContain("onCommentsChanged={() => revalidator.revalidate()}");
+    expect(threadSource).toContain("onCommentsChanged?: () => void");
+    expect(threadSource).toContain("onCommentsChanged?.()");
+  });
+
+  it("uses a share-nodes glyph rather than the upload-box glyph", () => {
+    expect(iconsSource).toContain('<circle cx="18" cy="5" r="3" />');
+    expect(iconsSource).toContain('<circle cx="6" cy="12" r="3" />');
+    expect(iconsSource).toContain('<circle cx="18" cy="19" r="3" />');
+    expect(iconsSource).not.toContain('<path d="M12 16V4" />');
+  });
+
   it("offers post reporting to a signed-in non-owner and keeps the comment count navigable", () => {
     expect(postCardSource).toContain("permissions?.canReport");
     expect(postCardSource).toContain('targetType: "POST"');
