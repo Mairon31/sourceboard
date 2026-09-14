@@ -39,7 +39,7 @@ const row = {
   post_hidden_at: null,
 };
 
-function createReadSchemaLagDb() {
+function createReadSchemaLagDb(readRow = row) {
   const prepared: string[] = [];
   const db = {
     prepare: vi.fn((sql: string) => {
@@ -48,12 +48,12 @@ function createReadSchemaLagDb() {
         all: vi.fn(async <T>() => {
           prepared.push(sql);
           if (sql.includes("comment_link_previews")) throw missingPreviewTable;
-          return { results: (sql.includes("WITH RECURSIVE") ? [] : [row]) as T[] };
+          return { results: (sql.includes("WITH RECURSIVE") ? [] : [readRow]) as T[] };
         }),
         first: vi.fn(async <T>() => {
           prepared.push(sql);
           if (sql.includes("comment_link_previews")) throw missingPreviewTable;
-          return row as T;
+          return readRow as T;
         }),
       };
       return statement;
@@ -120,6 +120,15 @@ describe("comment link-preview production schema compatibility", () => {
     expect(listed.comments[0]?.linkPreview).toBeNull();
     expect(fetched?.linkPreview).toBeNull();
     expect(prepared.some((sql) => sql.includes("NULL AS link_preview_canonical_url"))).toBe(true);
+  });
+
+  it("maps a persisted hidden_at timestamp to the hidden comment state", async () => {
+    const { db } = createReadSchemaLagDb({ ...row, hidden_at: 150 });
+    const store = createD1CommentStore(db);
+
+    await expect(store.getComment("comment-1")).resolves.toMatchObject({
+      comment: { state: "HIDDEN", hiddenAt: 150 },
+    });
   });
 
   it("preserves the comment when an optional preview cannot be persisted yet", async () => {

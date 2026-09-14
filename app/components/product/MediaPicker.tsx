@@ -335,6 +335,14 @@ export function MediaPicker({
           const id = section.dataset.packId;
           if (id) ratios.set(id, entry.isIntersecting ? entry.intersectionRatio : 0);
         }
+        const lastPack = [...root.querySelectorAll<HTMLElement>("[data-pack-id]")].at(-1);
+        if (
+          lastPack?.dataset.packId &&
+          root.scrollTop + root.clientHeight >= root.scrollHeight - 1
+        ) {
+          setActivePackId(lastPack.dataset.packId);
+          return;
+        }
         const best = [...ratios.entries()].sort((left, right) => right[1] - left[1])[0];
         if (best && best[1] > 0) setActivePackId(best[0]);
       },

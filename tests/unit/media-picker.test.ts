@@ -60,6 +60,11 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(thread).toContain('if (item.type !== "EMOTE") changeMediaKind(null)');
   });
 
+  it("selects the final pack when the scroll container reaches its boundary", () => {
+    expect(picker).toContain("root.scrollTop + root.clientHeight >= root.scrollHeight - 1");
+    expect(picker).toContain("lastPack");
+  });
+
   it("renders an accessible attachment-preview remove control without clearing composer text", () => {
     expect(thread).toContain("onRemove?: () => void");
     expect(thread).toContain("product-comment-attachment__remove");

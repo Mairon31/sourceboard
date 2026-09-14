@@ -151,7 +151,12 @@ function toRecord(row: CommentRow): CommentWithAuthor {
     richtext: body.richtext,
     plaintext: row.body_plaintext,
     attachment: body.attachment,
-    state: row.state === "HIDDEN" || row.state === "DELETED" ? row.state : "VISIBLE",
+    state:
+      row.deleted_at !== null || row.state === "DELETED"
+        ? "DELETED"
+        : row.hidden_at !== null || row.state === "HIDDEN"
+          ? "HIDDEN"
+          : "VISIBLE",
     likeCount: row.like_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
