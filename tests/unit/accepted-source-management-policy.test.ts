@@ -20,13 +20,17 @@ describe("accepted source management policy", () => {
 
   it("enforces the shared policy in the source API", () => {
     const api = read("../../worker/source/api.ts");
-    expect(api).toContain('hasCapability(await current.store.getAuthorization(current.id), "source.verify")');
+    expect(api).toContain(
+      'hasCapability(await current.store.getAuthorization(current.id), "source.verify")',
+    );
     expect(api).toContain("canManageAcceptedSource({ isPostAuthor, canVerifySource })");
   });
 
   it("exposes the action in post detail for source.verify capability holders", () => {
     const route = read("../../app/routes/post-detail.tsx");
     expect(route).toContain('hasCapability(authorization, "source.verify")');
-    expect(route).toContain("canAcceptSource: post.permissions.canAcceptSource || canVerifySource");
+    expect(route).toContain(
+      "canAcceptSource: post.permissions.canAcceptSource || moderationAccess.canVerifySource",
+    );
   });
 });
