@@ -88,16 +88,19 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
               : null,
           )
         : Promise.resolve(null);
-      const canVerifySourcePromise = userId
+      const moderationAccessPromise = userId
         ? createD1AuthStore(runtime.db)
             .getAuthorization(userId)
-            .then((authorization) => hasCapability(authorization, "source.verify"))
-        : Promise.resolve(false);
-      const [post, commentsResult, viewerIdentity, canVerifySource] = await Promise.all([
+            .then((authorization) => ({
+              canVerifySource: hasCapability(authorization, "source.verify"),
+              canModerate: hasCapability(authorization, "post.moderate"),
+            }))
+        : Promise.resolve({ canVerifySource: false, canModerate: false });
+      const [post, commentsResult, viewerIdentity, moderationAccess] = await Promise.all([
         service.getPost(postId, userId),
         commentsPromise,
         viewerIdentityPromise,
-        canVerifySourcePromise,
+        moderationAccessPromise,
       ]);
       const likedIds = post
         ? await readViewerLikedPostIds(runtime.db, userId, [post.id])
@@ -107,7 +110,8 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
             ...post,
             permissions: {
               ...post.permissions,
-              canAcceptSource: post.permissions.canAcceptSource || canVerifySource,
+              canAcceptSource: post.permissions.canAcceptSource || moderationAccess.canVerifySource,
+              canModerate: moderationAccess.canModerate,
             },
             reaction: {
               ...post.reaction,

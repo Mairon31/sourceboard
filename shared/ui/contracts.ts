@@ -164,6 +164,7 @@ export interface PostPermissionView {
   canDelete: boolean;
   canAcceptSource: boolean;
   canModerate: boolean;
+  canReport?: boolean;
   canVerifySource: boolean;
   canRevealAnonymous: boolean;
   canMarkNsfw: boolean;

@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { Link, useNavigate } from "react-router";
 import type { PostDetail, PostSummary } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
@@ -18,6 +24,7 @@ import {
   Input,
   MessageIcon,
   MoreIcon,
+  Modal,
   Textarea,
   TrashIcon,
 } from "../ui";
@@ -69,6 +76,11 @@ export function PostCard({
   const [manageStatus, setManageStatus] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportCategory, setReportCategory] = useState("SPAM");
+  const [reportDetail, setReportDetail] = useState("");
+  const [reportStatus, setReportStatus] = useState<string | null>(null);
+  const [reportBusy, setReportBusy] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const mediaRef = useRef<HTMLImageElement>(null);
   const editingRef = useRef(editing);
@@ -261,48 +273,97 @@ export function PostCard({
     }
   }
 
-  const menuItems = manage
-    ? [
-        ...(permissions?.canEdit
-          ? [
-              {
-                label: t("post.menu.edit"),
-                icon: <EditIcon width="16" height="16" />,
-                onSelect: () => setEditing(true),
-              },
-            ]
-          : []),
-        ...(permissions?.canArchive
-          ? [
-              {
-                label: t("post.menu.archive"),
-                onSelect: () => setConfirmArchive(true),
-              },
-            ]
-          : []),
-        ...(canManageComments && !commentsClosed
-          ? [{ label: t("post.menu.closeComments"), onSelect: () => void setCommentsClosed(true) }]
-          : []),
-        ...(canManageComments && commentsClosed
-          ? [
-              {
-                label: t("post.menu.reopenComments"),
-                onSelect: () => void setCommentsClosed(false),
-              },
-            ]
-          : []),
-        ...(permissions?.canDelete
-          ? [
-              {
-                label: t("post.menu.delete"),
-                icon: <TrashIcon width="16" height="16" />,
-                destructive: true,
-                onSelect: () => setConfirmDelete(true),
-              },
-            ]
-          : []),
-      ]
-    : [];
+  async function submitReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setReportBusy(true);
+    setReportStatus(null);
+    try {
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({
+          targetType: "POST",
+          targetId: post.id,
+          category: reportCategory,
+          detail: reportDetail,
+        }),
+      });
+      if (!response.ok) {
+        setReportStatus(
+          response.status === 409 ? t("post.report.already") : t("post.report.unavailable"),
+        );
+        return;
+      }
+      setReportStatus(t("post.report.sent"));
+      setReportDetail("");
+    } catch {
+      setReportStatus(t("post.report.unavailable"));
+    } finally {
+      setReportBusy(false);
+    }
+  }
+
+  const menuItems = [
+    ...(permissions?.canReport
+      ? [{ label: t("post.menu.report"), onSelect: () => setReportOpen(true) }]
+      : []),
+    ...(permissions?.canModerate
+      ? [
+          {
+            label: t("post.menu.moderate"),
+            onSelect: () =>
+              navigate(`/admin/moderation?target=POST&targetId=${encodeURIComponent(post.id)}`),
+          },
+        ]
+      : []),
+    ...(manage
+      ? [
+          ...(permissions?.canEdit
+            ? [
+                {
+                  label: t("post.menu.edit"),
+                  icon: <EditIcon width="16" height="16" />,
+                  onSelect: () => setEditing(true),
+                },
+              ]
+            : []),
+          ...(permissions?.canArchive
+            ? [
+                {
+                  label: t("post.menu.archive"),
+                  onSelect: () => setConfirmArchive(true),
+                },
+              ]
+            : []),
+          ...(canManageComments && !commentsClosed
+            ? [
+                {
+                  label: t("post.menu.closeComments"),
+                  onSelect: () => void setCommentsClosed(true),
+                },
+              ]
+            : []),
+          ...(canManageComments && commentsClosed
+            ? [
+                {
+                  label: t("post.menu.reopenComments"),
+                  onSelect: () => void setCommentsClosed(false),
+                },
+              ]
+            : []),
+          ...(permissions?.canDelete
+            ? [
+                {
+                  label: t("post.menu.delete"),
+                  icon: <TrashIcon width="16" height="16" />,
+                  destructive: true,
+                  onSelect: () => setConfirmDelete(true),
+                },
+              ]
+            : []),
+        ]
+      : []),
+  ];
 
   const shareUrl =
     typeof window === "undefined"
@@ -464,7 +525,9 @@ export function PostCard({
 
       <div className="product-post__engagement">
         <div className="product-post__meta">
-          <span>{tp("comments.summary", post.commentCount)}</span>
+          <Link to={`${detailHref}#comments`} onClick={() => markNavigationStart(detailHref)}>
+            {tp("comments.summary", post.commentCount)}
+          </Link>
           {post.acceptedSource ? (
             <span className="product-meta-success">{t("post.meta.acceptedSource")}</span>
           ) : null}
@@ -522,6 +585,47 @@ export function PostCard({
         onConfirm={() => void archivePost()}
         onOpenChange={setConfirmArchive}
       />
+      <Modal
+        title={t("post.report.title")}
+        description={t("post.report.description")}
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+      >
+        <form className="product-comment-report" onSubmit={(event) => void submitReport(event)}>
+          <label className="product-field-native">
+            <span>{t("post.report.reason")}</span>
+            <select
+              value={reportCategory}
+              onChange={(event) => setReportCategory(event.target.value)}
+            >
+              <option value="SPAM">{t("comments.report.category.spam")}</option>
+              <option value="HARASSMENT">{t("comments.report.category.harassment")}</option>
+              <option value="MISLEADING_SOURCE">
+                {t("comments.report.category.misleadingSource")}
+              </option>
+              <option value="NSFW">{t("comments.report.category.nsfw")}</option>
+              <option value="PRIVACY">{t("comments.report.category.privacy")}</option>
+              <option value="COPYRIGHT">{t("comments.report.category.copyright")}</option>
+              <option value="OTHER">{t("comments.report.category.other")}</option>
+            </select>
+          </label>
+          <Textarea
+            label={t("post.report.note")}
+            value={reportDetail}
+            maxLength={2000}
+            onChange={(event) => setReportDetail(event.target.value)}
+          />
+          <div className="product-chip-row">
+            <Button type="submit" size="sm" loading={reportBusy}>
+              {t("post.report.send")}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setReportOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+          </div>
+          {reportStatus ? <small role="status">{reportStatus}</small> : null}
+        </form>
+      </Modal>
       <ConfirmDialog
         title={t("post.dialog.deleteTitle")}
         description={t("post.dialog.deleteDescription")}

@@ -101,6 +101,90 @@
   font-weight: 700;
 }
 
+.product-language-selector {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.product-language-selector__label {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 750;
+}
+
+.product-language-selector__control {
+  position: relative;
+  display: inline-flex;
+  min-width: min(100%, 15rem);
+}
+
+.product-language-selector__control::after {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  content: "";
+  pointer-events: none;
+  transform: translateY(-65%) rotate(45deg);
+}
+
+.product-language-selector select {
+  width: 100%;
+  min-height: 44px;
+  appearance: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 12%, var(--surface-solid)),
+    var(--surface-solid)
+  );
+  padding: 0 var(--space-7) 0 var(--space-4);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.product-language-selector select:hover {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border-strong));
+}
+
+.product-language-selector select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.product-language-selector select:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.product-language-selector--compact {
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+
+.product-language-selector--compact .product-language-selector__label {
+  font-size: var(--text-xs);
+}
+
+.product-language-selector--compact .product-language-selector__control {
+  min-width: 8.5rem;
+}
+
+.product-language-selector--compact select {
+  min-height: 34px;
+  padding-left: var(--space-3);
+}
+
 .product-settings-appearance-card,
 .product-settings-password-card {
   gap: 0;
