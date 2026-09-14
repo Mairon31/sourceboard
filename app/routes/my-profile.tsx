@@ -42,9 +42,8 @@ type LoaderData = Awaited<ReturnType<typeof loader>>;
 
 export default function MyProfileRoute() {
   const data = useLoaderData<LoaderData>();
-  const requiresAuthentication = !data.authenticated || !data.profile;
 
-  if (requiresAuthentication) {
+  if (!data.authenticated || !data.profile) {
     return (
       <ProductShell wide>
         <AuthRequiredCard unavailable={data.unavailable} />
