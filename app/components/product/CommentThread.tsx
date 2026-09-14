@@ -20,6 +20,7 @@ import {
 } from "../../../shared/richtext/markdown";
 import type { CommentSort } from "../../../worker/comments/types";
 import { readCsrfToken } from "../../data/csrf";
+import { prepareImageForUpload } from "../../data/media-preparation";
 import { useI18n } from "../../i18n/I18nProvider";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
@@ -981,7 +982,8 @@ export function CommentThread({
     setStatus(undefined);
     try {
       const form = new FormData();
-      form.set("file", file);
+      const prepared = await prepareImageForUpload(file, { maxDimension: 3_000 });
+      form.set("file", prepared, prepared.name);
       const response = await fetch("/api/comments/media", {
         method: "POST",
         headers: { "x-csrf-token": readCsrfToken() },

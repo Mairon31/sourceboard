@@ -30,6 +30,9 @@ describe("editing surface internationalization", () => {
   it("localizes profile editing and account controls", () => {
     expect(profileEditor).toContain("useI18n");
     expect(profileEditor).toContain('t("profileEditor.edit")');
+    expect(profileEditor).toContain('t("profileEditor.bioPreview")');
+    expect(profileEditor).toContain('t("profileEditor.bioBold")');
+    expect(profileEditor).toContain("renderMarkdownPreview");
     expect(profileEditor).toContain('t("profileEditor.social.title")');
     expect(profileAccount).toContain("useI18n");
     expect(profileAccount).toContain('t("profileAccount.title")');

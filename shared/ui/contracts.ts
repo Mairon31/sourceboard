@@ -162,6 +162,7 @@ export interface PostPermissionView {
   canEdit: boolean;
   canArchive: boolean;
   canDelete: boolean;
+  canRestore?: boolean;
   canAcceptSource: boolean;
   canModerate: boolean;
   canReport?: boolean;

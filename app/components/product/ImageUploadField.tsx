@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { prepareImageForUpload } from "../../data/media-preparation";
 import type { MessageKey } from "../../i18n";
 import { useI18n } from "../../i18n/I18nProvider";
 
@@ -21,54 +22,8 @@ function validatePostImageFile(file: File): MessageKey | null {
   return null;
 }
 
-async function readBitmap(file: File): Promise<ImageBitmap | null> {
-  if (typeof createImageBitmap !== "function") return null;
-  try {
-    return await createImageBitmap(file);
-  } catch {
-    return null;
-  }
-}
-
 export async function preparePostImageForUpload(file: File): Promise<File> {
-  if (file.type === "image/gif") return file;
-
-  const bitmap = await readBitmap(file);
-  if (!bitmap) return file;
-  try {
-    if (bitmap.width < 1 || bitmap.height < 1) {
-      throw new Error("IMAGE_DIMENSIONS_INVALID");
-    }
-
-    if (
-      file.type !== "image/jpeg" &&
-      file.type !== "image/png" &&
-      Math.max(bitmap.width, bitmap.height) <= MAX_POST_IMAGE_DIMENSION
-    ) {
-      return file;
-    }
-
-    const canvas = document.createElement("canvas");
-    const scale = Math.min(1, MAX_POST_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext("2d", { alpha: true });
-    if (!context) return file;
-    context.drawImage(bitmap, 0, 0);
-
-    const optimized = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, "image/webp", 0.86);
-    });
-    if (!optimized || optimized.size >= file.size) return file;
-
-    const stem = file.name.replace(/\.[^.]+$/, "") || "source-image";
-    return new File([optimized], `${stem}.webp`, {
-      type: "image/webp",
-      lastModified: file.lastModified,
-    });
-  } finally {
-    bitmap.close();
-  }
+  return prepareImageForUpload(file, { maxDimension: MAX_POST_IMAGE_DIMENSION });
 }
 
 export function ImageUploadField({

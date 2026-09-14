@@ -93,6 +93,8 @@ export function PostCard({
   const [archiveError, setArchiveError] = useState<string>();
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string>();
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const [restoreError, setRestoreError] = useState<string>();
   const [reportOpen, setReportOpen] = useState(false);
   const [reportCategory, setReportCategory] = useState("SPAM");
   const [reportDetail, setReportDetail] = useState("");
@@ -289,6 +291,25 @@ export function PostCard({
     }
   }
 
+  async function restorePost() {
+    if (restoreBusy) return;
+    setRestoreBusy(true);
+    setRestoreError(undefined);
+    try {
+      const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}/restore`, {
+        method: "POST",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      if (!response.ok) throw new Error(t("post.error.restore"));
+      setManageStatus(t("post.statusMessage.restored"));
+      onChanged?.();
+    } catch (error) {
+      setRestoreError(error instanceof Error ? error.message : t("post.error.restore"));
+    } finally {
+      setRestoreBusy(false);
+    }
+  }
+
   async function setCommentsClosed(closed: boolean) {
     setManageStatus(null);
     const previous = commentsClosed;
@@ -340,6 +361,9 @@ export function PostCard({
   }
 
   const menuItems = [
+    ...(manage && permissions?.canRestore
+      ? [{ label: t("post.menu.restore"), onSelect: () => void restorePost() }]
+      : []),
     ...(permissions?.canReport
       ? [{ label: t("post.menu.report"), onSelect: () => setReportOpen(true) }]
       : []),
@@ -641,6 +665,11 @@ export function PostCard({
         {manageStatus ? (
           <small className="product-post__reaction-status" role="status">
             {manageStatus}
+          </small>
+        ) : null}
+        {restoreError ? (
+          <small className="product-post__reaction-status" role="alert">
+            {restoreError}
           </small>
         ) : null}
       </div>

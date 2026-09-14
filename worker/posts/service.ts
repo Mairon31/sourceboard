@@ -231,6 +231,7 @@ async function toPostSummary(
   post: PostWithAuthor,
   viewerId: string | null,
   dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
+  allowDeletedOwner = false,
 ): Promise<PostSummary> {
   const profileVisible =
     post.post.authorMode === "IDENTIFIED"
@@ -242,7 +243,9 @@ async function toPostSummary(
   const cosmetics = profileVisible
     ? await dependencies.profileStore.getEquippedCosmetics?.(post.post.authorId)
     : undefined;
-  const nsfwVisible = await canViewPost(viewerId, post.post, dependencies);
+  const nsfwVisible = allowDeletedOwner
+    ? true
+    : await canViewPost(viewerId, post.post, dependencies);
   const nsfwPresentation = !post.post.isNsfw
     ? "VISIBLE"
     : !nsfwVisible
@@ -254,7 +257,8 @@ async function toPostSummary(
           )?.blurNsfw
         ? "BLURRED"
         : "VISIBLE";
-  const isMediaVisible = nsfwPresentation !== "HIDDEN" && post.media.status === "ACTIVE";
+  const isMediaVisible =
+    !allowDeletedOwner && nsfwPresentation !== "HIDDEN" && post.media.status === "ACTIVE";
   return {
     id: post.post.id,
     slug: post.post.slug,
@@ -300,8 +304,9 @@ async function toPostDetail(
   post: PostWithAuthor,
   viewerId: string | null,
   dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
+  allowDeletedOwner = false,
 ): Promise<PostDetail> {
-  const summary = await toPostSummary(post, viewerId, dependencies);
+  const summary = await toPostSummary(post, viewerId, dependencies, allowDeletedOwner);
   const isOwner = viewerId === post.post.authorId;
   const canEdit =
     isOwner && post.post.editDeadlineAt >= dependencies.now() && post.post.status !== "LOCKED";
@@ -312,6 +317,7 @@ async function toPostDetail(
       canEdit,
       canArchive: isOwner && !post.post.deletedAt,
       canDelete: isOwner && !post.post.deletedAt,
+      canRestore: allowDeletedOwner,
       canAcceptSource: isOwner && !post.post.deletedAt && post.post.status !== "LOCKED",
       canModerate: false,
       canReport: Boolean(viewerId) && !isOwner && !post.post.deletedAt,
@@ -360,8 +366,16 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
 
     async getPost(postId, viewerId) {
       const post = await dependencies.store.getPost(postId);
-      if (!post || !(await canViewPost(viewerId, post.post, policyDependencies))) return null;
-      return toPostDetail(post, viewerId, policyDependencies);
+      if (!post) return null;
+      const restoreAvailable = Boolean(
+        viewerId === post.post.authorId &&
+        post.post.deletedAt &&
+        now() - post.post.deletedAt < SOFT_DELETE_RETENTION_MS,
+      );
+      if (!restoreAvailable && !(await canViewPost(viewerId, post.post, policyDependencies))) {
+        return null;
+      }
+      return toPostDetail(post, viewerId, policyDependencies, restoreAvailable);
     },
 
     async listFeed({ viewerId, kind, categorySlug, cursor, limit }) {
