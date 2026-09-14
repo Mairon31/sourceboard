@@ -11,6 +11,8 @@ import {
   type MetaFunction,
 } from "react-router";
 import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
+import { hasCapability } from "../../worker/auth/rbac";
+import { createD1AuthStore } from "../../worker/auth/store";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
@@ -86,10 +88,16 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
               : null,
           )
         : Promise.resolve(null);
-      const [post, commentsResult, viewerIdentity] = await Promise.all([
+      const canVerifySourcePromise = userId
+        ? createD1AuthStore(runtime.db)
+            .getAuthorization(userId)
+            .then((authorization) => hasCapability(authorization, "source.verify"))
+        : Promise.resolve(false);
+      const [post, commentsResult, viewerIdentity, canVerifySource] = await Promise.all([
         service.getPost(postId, userId),
         commentsPromise,
         viewerIdentityPromise,
+        canVerifySourcePromise,
       ]);
       const likedIds = post
         ? await readViewerLikedPostIds(runtime.db, userId, [post.id])
@@ -97,6 +105,10 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
       const viewerPost = post
         ? {
             ...post,
+            permissions: {
+              ...post.permissions,
+              canAcceptSource: post.permissions.canAcceptSource || canVerifySource,
+            },
             reaction: {
               ...post.reaction,
               viewerReacted: likedIds.has(post.id),
