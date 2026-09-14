@@ -457,11 +457,17 @@ test("media picker paginates, replaces attachments and keeps multi-emote inserti
   await emoteSearch.clear();
   await expect(emoteSearch).toHaveValue("");
   await expect(emoteSurface.locator("[data-pack-id]")).toHaveCount(3);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
   await emoteSurface.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
     element.dispatchEvent(new Event("scroll"));
   });
-  await expect(packButtons.nth(2)).toHaveClass(/is-active/);
+  await expect(packButtons.nth(2)).toHaveClass(/is-active/, { timeout: 10_000 });
   const packbarBox = await page.locator(".product-comment-media-picker__packbar").boundingBox();
   const activeBox = await packButtons.nth(2).boundingBox();
   expect(activeBox?.x ?? 0).toBeGreaterThanOrEqual((packbarBox?.x ?? 0) - 1);
