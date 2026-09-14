@@ -39,7 +39,9 @@ const row = {
   post_hidden_at: null,
 };
 
-function createReadSchemaLagDb(readRow = row) {
+type ReadCommentRow = Omit<typeof row, "hidden_at"> & { hidden_at: number | null };
+
+function createReadSchemaLagDb(readRow: ReadCommentRow = row) {
   const prepared: string[] = [];
   const db = {
     prepare: vi.fn((sql: string) => {
