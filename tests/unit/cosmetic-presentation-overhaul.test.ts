@@ -228,7 +228,7 @@ describe("Cosmetic presentation overhaul", () => {
     }
     const store = read("../../app/components/product/StoreItemCard.tsx");
     expect(store).not.toContain('<div className="product-profile-theme-layer"');
-    expect(store).not.toContain("product-store-preview--${config.preset");
+    expect(store).toContain("preset={config.preset}");
   });
 
   it("validates shared preview presets through the canonical registries", () => {

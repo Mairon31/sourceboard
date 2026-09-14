@@ -83,6 +83,7 @@ describe("social surface internationalization", () => {
     expect(commentThread).not.toMatch(/\bTranslate\b/);
     expect(postCard).toContain("{displayTitle}");
     expect(commentThread).toContain("comment.body");
-    expect(profileHero).toContain("{profile.bio}");
+    expect(profileHero).toContain("profileBioNodes(profile.bio)");
+    expect(profileHero).toContain("profile.bioRichtext");
   });
 });

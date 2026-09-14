@@ -75,6 +75,6 @@ describe("Phase 5 comment rich text", () => {
     ).toMatchObject({ type: "GIF", id: "provider-result" });
     expect(() =>
       normalizeCommentBody({ plaintext: "x", attachment: { type: "IMAGE", id: "file" } }),
-    ).toThrow("GIFs and catalog stickers");
+    ).toThrow("Only an image, provider GIF, or catalog sticker");
   });
 });
