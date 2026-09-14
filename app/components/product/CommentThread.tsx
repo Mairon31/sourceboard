@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import type {
   CommentAttachmentView,
   CommentLinkPreviewView,
@@ -216,8 +216,11 @@ function CommentItem({
   depth = 0,
   onReply,
   canAcceptSource,
+  acceptedSourceCommentId,
+  canUndoAcceptedSource,
   canModerate,
   onAcceptSource,
+  onUndoAcceptedSource,
   onUpdated,
   onDeleted,
   onChanged,
@@ -226,8 +229,11 @@ function CommentItem({
   depth?: number;
   onReply: (commentId: string) => void;
   canAcceptSource?: boolean;
+  acceptedSourceCommentId?: string;
+  canUndoAcceptedSource?: boolean;
   canModerate?: boolean;
   onAcceptSource?: (commentId: string) => void;
+  onUndoAcceptedSource?: (commentId: string, reason: string) => Promise<void>;
   onUpdated: (comment: CommentView) => void;
   onDeleted: (commentId: string) => void;
   onChanged?: () => void;
@@ -253,6 +259,10 @@ function CommentItem({
   const [moderationReason, setModerationReason] = useState("");
   const [moderationBusy, setModerationBusy] = useState(false);
   const [moderationError, setModerationError] = useState<string>();
+  const [undoingAcceptedSource, setUndoingAcceptedSource] = useState(false);
+  const [undoReason, setUndoReason] = useState("");
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [undoError, setUndoError] = useState<string>();
   const [status, setStatus] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -373,7 +383,7 @@ function CommentItem({
   }
 
   async function moderateComment() {
-    if (!moderating || !moderationReason.trim() || moderationBusy) return;
+    if (!moderating || moderationReason.trim().length < 3 || moderationBusy) return;
     setModerationBusy(true);
     setModerationError(undefined);
     try {
@@ -402,6 +412,24 @@ function CommentItem({
     }
   }
 
+  async function undoAcceptedSource() {
+    const trimmedReason = undoReason.trim();
+    if (!trimmedReason || undoBusy || !onUndoAcceptedSource) return;
+    setUndoBusy(true);
+    setUndoError(undefined);
+    try {
+      await onUndoAcceptedSource(comment.id, trimmedReason);
+      setUndoingAcceptedSource(false);
+      setUndoReason("");
+      setStatus(t("comments.sourceUndo.done"));
+      onChanged?.();
+    } catch (cause) {
+      setUndoError(cause instanceof Error ? cause.message : t("comments.sourceUndo.error"));
+    } finally {
+      setUndoBusy(false);
+    }
+  }
+
   const canModerateState = Boolean(
     canModerate && (comment.state === "VISIBLE" || comment.state === "HIDDEN"),
   );
@@ -423,6 +451,20 @@ function CommentItem({
                 <CosmeticIdentity anonymous mode="compact" avatarSize="sm" nameAs="strong" />
                 <Badge>{t("comments.badges.anonymous")}</Badge>
               </>
+            ) : comment.author.profileUrl ? (
+              <Link className="product-comment__identity-link" to={comment.author.profileUrl}>
+                <CosmeticIdentity
+                  displayName={comment.author.displayName}
+                  avatarUrl={comment.author.avatarUrl}
+                  avatarFrame={comment.author.avatarFrame}
+                  nameFont={comment.author.nameFont}
+                  nameEffect={comment.author.nameEffect}
+                  visuals={comment.author.visuals}
+                  mode="compact"
+                  avatarSize="sm"
+                  nameAs="strong"
+                />
+              </Link>
             ) : (
               <CosmeticIdentity
                 displayName={comment.author.displayName}
@@ -599,7 +641,54 @@ function CommentItem({
             <MessageIcon width="15" height="15" />
             <span>{t("comments.actions.reply")}</span>
           </button>
-          {canAcceptSource && comment.state === "VISIBLE" && sourceEligible ? (
+          {acceptedSourceCommentId === comment.id && canUndoAcceptedSource ? (
+            <div className="product-comment__source-undo">
+              {undoingAcceptedSource ? (
+                <>
+                  <Textarea
+                    label={t("comments.sourceUndo.reason")}
+                    value={undoReason}
+                    maxLength={500}
+                    disabled={undoBusy}
+                    onChange={(event) => setUndoReason(event.target.value)}
+                  />
+                  <div className="product-chip-row">
+                    <Button
+                      size="sm"
+                      loading={undoBusy}
+                      disabled={undoReason.trim().length < 10}
+                      onClick={() => void undoAcceptedSource()}
+                    >
+                      {t("comments.sourceUndo.confirm")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={undoBusy}
+                      onClick={() => setUndoingAcceptedSource(false)}
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                  </div>
+                  {undoError ? <small role="alert">{undoError}</small> : null}
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setUndoError(undefined);
+                    setUndoingAcceptedSource(true);
+                  }}
+                >
+                  {t("comments.actions.undoAcceptedSource")}
+                </Button>
+              )}
+            </div>
+          ) : canAcceptSource &&
+            comment.id !== acceptedSourceCommentId &&
+            comment.state === "VISIBLE" &&
+            sourceEligible ? (
             <button
               className="product-comment__action product-comment__action--accept"
               type="button"
@@ -664,7 +753,7 @@ function CommentItem({
             <Button
               size="sm"
               loading={moderationBusy}
-              disabled={!moderationReason.trim()}
+              disabled={moderationReason.trim().length < 3}
               onClick={() => void moderateComment()}
             >
               {moderating === "RESTORE"
@@ -706,8 +795,11 @@ function CommentItem({
                     depth={Math.min(depth + 1, 2)}
                     onReply={onReply}
                     canAcceptSource={canAcceptSource}
+                    acceptedSourceCommentId={acceptedSourceCommentId}
+                    canUndoAcceptedSource={canUndoAcceptedSource}
                     canModerate={canModerate}
                     onAcceptSource={onAcceptSource}
+                    onUndoAcceptedSource={onUndoAcceptedSource}
                     onUpdated={onUpdated}
                     onDeleted={onDeleted}
                     onChanged={onChanged}
@@ -785,8 +877,11 @@ export function CommentThread({
   viewerIdentity,
   commentsClosed = false,
   canAcceptSource,
+  acceptedSourceCommentId,
+  canUndoAcceptedSource,
   canModerateComments,
   onAcceptSource,
+  onUndoAcceptedSource,
   onCommentsChanged,
 }: {
   postId: string;
@@ -796,8 +891,11 @@ export function CommentThread({
   viewerIdentity?: PublicPostAuthor | null;
   commentsClosed?: boolean;
   canAcceptSource?: boolean;
+  acceptedSourceCommentId?: string;
+  canUndoAcceptedSource?: boolean;
   canModerateComments?: boolean;
   onAcceptSource?: (commentId: string) => void;
+  onUndoAcceptedSource?: (commentId: string, reason: string) => Promise<void>;
   onCommentsChanged?: () => void;
 }) {
   const { t, tp } = useI18n();
@@ -1157,8 +1255,11 @@ export function CommentThread({
             comment={comment}
             onReply={setReplyTo}
             canAcceptSource={canAcceptSource}
+            acceptedSourceCommentId={acceptedSourceCommentId}
+            canUndoAcceptedSource={canUndoAcceptedSource}
             canModerate={canModerateComments}
             onAcceptSource={onAcceptSource}
+            onUndoAcceptedSource={onUndoAcceptedSource}
             onUpdated={(next) => setItems((current) => replaceComment(current, next))}
             onDeleted={(id) => setItems((current) => removeComment(current, id))}
             onChanged={() => onCommentsChanged?.()}

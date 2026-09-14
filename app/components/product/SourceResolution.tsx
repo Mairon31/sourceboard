@@ -3,6 +3,7 @@ import type {
   CommentView,
   VerifiedSourceView,
 } from "../../../shared/ui/contracts";
+import { Link } from "react-router";
 import { useI18n } from "../../i18n/I18nProvider";
 import { Badge, Card } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
@@ -22,6 +23,20 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
       <header className="product-source-answer__author">
         {comment.author.mode === "ANONYMOUS" ? (
           <CosmeticIdentity anonymous mode="compact" avatarSize="sm" nameAs="strong" />
+        ) : comment.author.profileUrl ? (
+          <Link className="product-source-answer__identity-link" to={comment.author.profileUrl}>
+            <CosmeticIdentity
+              displayName={comment.author.displayName}
+              avatarUrl={comment.author.avatarUrl}
+              avatarFrame={comment.author.avatarFrame}
+              nameFont={comment.author.nameFont}
+              nameEffect={comment.author.nameEffect}
+              visuals={comment.author.visuals}
+              mode="compact"
+              avatarSize="sm"
+              nameAs="strong"
+            />
+          </Link>
         ) : (
           <CosmeticIdentity
             displayName={comment.author.displayName}
@@ -70,47 +85,37 @@ export function SourceResolution({
   const { t } = useI18n();
   if (!accepted && !verified) return null;
 
+  const resolution = verified ?? accepted;
+  const isVerified = Boolean(verified);
+  const canonicalUrl = resolution?.canonicalUrl;
+  const badge = isVerified ? t("source.verified.badge") : t("source.accepted.badge");
+  const title = isVerified ? t("source.verified.title") : t("source.accepted.title");
+  const referenceLabel = isVerified
+    ? t("source.verified.canonical")
+    : t("source.accepted.openReference");
+
   return (
     <section className="product-source-resolution" aria-label={t("source.resolutionAria")}>
-      {accepted ? (
-        <Card className="product-source-card product-source-card--accepted">
-          <div className="product-source-card__heading">
-            <div className="product-source-card__icon" aria-hidden="true">
-              ✓
-            </div>
-            <div>
-              <Badge tone="accent">{t("source.accepted.badge")}</Badge>
-              <h2>{t("source.accepted.title")}</h2>
-              <p>{t("source.accepted.description")}</p>
-            </div>
-          </div>
-          {acceptedComment ? <AcceptedComment comment={acceptedComment} /> : null}
-          {accepted.canonicalUrl ? (
-            <a href={accepted.canonicalUrl} target="_blank" rel="noreferrer">
-              {t("source.accepted.openReference")}
-            </a>
-          ) : null}
-        </Card>
-      ) : null}
-
-      {verified ? (
-        <Card className="product-source-card product-source-card--verified">
+      <Card
+        className={`product-source-card product-source-card--${isVerified ? "verified" : "accepted"}`}
+      >
+        <div className="product-source-card__heading">
           <div className="product-source-card__icon" aria-hidden="true">
-            ✓
+            {isVerified ? "✓" : "↗"}
           </div>
           <div>
-            <Badge tone="success">{t("source.verified.badge")}</Badge>
-            <h2>{t("source.verified.title")}</h2>
-            <p>{verified.evidenceSummary}</p>
-            <div className="product-source-card__meta">
-              <span>{verified.verifierLabel}</span>
-              <a href={verified.canonicalUrl} target="_blank" rel="noreferrer">
-                {t("source.verified.canonical")}
-              </a>
-            </div>
+            <Badge tone={isVerified ? "success" : "accent"}>{badge}</Badge>
+            <h2>{title}</h2>
+            <p>{isVerified ? verified?.evidenceSummary : t("source.accepted.description")}</p>
           </div>
-        </Card>
-      ) : null}
+        </div>
+        {acceptedComment ? <AcceptedComment comment={acceptedComment} /> : null}
+        {canonicalUrl ? (
+          <a href={canonicalUrl} target="_blank" rel="noreferrer">
+            {referenceLabel}
+          </a>
+        ) : null}
+      </Card>
     </section>
   );
 }

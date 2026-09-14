@@ -759,6 +759,16 @@
   font-size: var(--text-xs);
 }
 
+.product-post__comment-count,
+.product-post__comment-count:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+.product-post__comment-count:hover {
+  color: var(--text-primary);
+}
+
 .product-meta-success {
   color: var(--success);
   font-weight: 720;
@@ -977,6 +987,20 @@
   min-width: 0;
   align-items: center;
   gap: var(--space-2);
+}
+
+.product-comment__identity-link,
+.product-comment__identity-link:hover {
+  display: inline-flex;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.product-comment__source-undo {
+  display: grid;
+  gap: var(--space-2);
+  min-width: min(100%, 360px);
 }
 
 .product-comment__date {
