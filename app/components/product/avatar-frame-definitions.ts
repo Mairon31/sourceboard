@@ -18,6 +18,71 @@ const DEFAULT_RING: AvatarFrameGeometry = {
 };
 
 const STRUCTURAL: Partial<Record<AvatarFramePreset, readonly AvatarFrameGeometry[]>> = {
+  nebula: [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 7200, intensity: 0.74 },
+    { layer: "orbit", anchor: "center", scale: 1.18, offsetX: 0, offsetY: 0, rotation: 18, animationDurationMs: 9000, intensity: 0.6 },
+  ],
+  stellar: [
+    { layer: "inner-ring", anchor: "center", scale: 0.98, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "foreground", anchor: "center", scale: 1.1, offsetX: 0, offsetY: 0, rotation: 8, animationDurationMs: 5200, intensity: 0.7 },
+  ],
+  emerald: [
+    { layer: "outer-ring", anchor: "center", scale: 1.06, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.7 },
+  ],
+  rainbow: [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.82 },
+    { layer: "orbit", anchor: "center", scale: 1.15, offsetX: 0, offsetY: 0, rotation: 20, animationDurationMs: 6400, intensity: 0.72 },
+  ],
+  eclipse: [
+    { layer: "outer-ring", anchor: "center", scale: 1.1, offsetX: 0, offsetY: 0, rotation: -22, intensity: 0.9 },
+    { layer: "orbit", anchor: "center", scale: 1.04, offsetX: 0, offsetY: 0, rotation: 45, animationDurationMs: 10000, intensity: 0.42 },
+  ],
+  ocean: [
+    { layer: "inner-ring", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.76 },
+    { layer: "orbit", anchor: "center", scale: 1.14, offsetX: 0, offsetY: 0, rotation: -12, animationDurationMs: 7600, intensity: 0.55 },
+  ],
+  nova: [
+    { layer: "outer-ring", anchor: "center", scale: 1.15, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.95 },
+    { layer: "foreground", anchor: "center", scale: 1.2, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 3600, intensity: 0.9 },
+  ],
+  cyber: [
+    { layer: "inner-ring", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.8 },
+    { layer: "orbit", anchor: "center", scale: 1.13, offsetX: 0, offsetY: 0, rotation: 45, animationDurationMs: 4200, intensity: 0.85 },
+  ],
+  gold: [
+    { layer: "outer-ring", anchor: "center", scale: 1.07, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.88 },
+  ],
+  shadow: [
+    { layer: "outer-ring", anchor: "center", scale: 1.13, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.72 },
+    { layer: "foreground", anchor: "center", scale: 1.05, offsetX: 0, offsetY: 0, rotation: -8, animationDurationMs: 6800, intensity: 0.45 },
+  ],
+  sakura: [
+    { layer: "foreground", anchor: "center", scale: 1.16, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 5600, intensity: 0.78 },
+  ],
+  inferno: [
+    { layer: "outer-ring", anchor: "center", scale: 1.11, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.9 },
+    { layer: "orbit", anchor: "center", scale: 1.17, offsetX: 0, offsetY: 0, rotation: -20, animationDurationMs: 3200, intensity: 0.82 },
+  ],
+  crystal: [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.82 },
+    { layer: "top-ornament", anchor: "top", scale: 0.75, offsetX: 0, offsetY: -0.18, rotation: 0, intensity: 0.72 },
+  ],
+  holographic: [
+    { layer: "outer-ring", anchor: "center", scale: 1.09, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.86 },
+    { layer: "orbit", anchor: "center", scale: 1.16, offsetX: 0, offsetY: 0, rotation: 28, animationDurationMs: 4800, intensity: 0.7 },
+  ],
+  fire: [
+    { layer: "outer-ring", anchor: "center", scale: 1.11, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.9 },
+    { layer: "foreground", anchor: "center", scale: 1.15, offsetX: 0, offsetY: 0, rotation: 4, animationDurationMs: 3000, intensity: 0.8 },
+  ],
+  ice: [
+    { layer: "inner-ring", anchor: "center", scale: 0.99, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.72 },
+    { layer: "outer-ring", anchor: "center", scale: 1.09, offsetX: 0, offsetY: 0, rotation: 0, intensity: 0.82 },
+  ],
+  electric: [
+    { layer: "orbit", anchor: "center", scale: 1.12, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 2600, intensity: 0.95 },
+    { layer: "orbit", anchor: "center", scale: 1.2, offsetX: 0, offsetY: 0, rotation: 90, animationDurationMs: 4100, intensity: 0.68 },
+  ],
   "cat-ears": [
     { layer: "top-ornament", anchor: "top-left", scale: 0.9, offsetX: -0.16, offsetY: -0.2, rotation: -10 },
     { layer: "top-ornament", anchor: "top-right", scale: 0.9, offsetX: 0.16, offsetY: -0.2, rotation: 10 },
