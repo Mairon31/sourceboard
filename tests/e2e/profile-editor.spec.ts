@@ -160,7 +160,7 @@ test("Edit profile stays usable when username settings are unavailable", async (
   expect((await profileGet).status()).toBe(200);
 
   await expect(page.getByLabel("Display name")).toBeVisible();
-  await expect(page.getByLabel("Bio")).toBeVisible();
+  await expect(page.getByLabel("Bio", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Username")).toBeDisabled();
   await expect(
     page.getByText(
