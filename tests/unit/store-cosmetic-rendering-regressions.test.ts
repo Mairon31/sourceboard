@@ -57,4 +57,62 @@ describe("Store cosmetic rendering regressions", () => {
 
     expect(new Set(signatures).size).toBe(LEGACY_FRAMES.length);
   });
+
+  it("gives profile effects a visible static mechanism backdrop before animation starts", () => {
+    const layer = read("../../app/components/product/ProfileEffectLayer.tsx");
+    const css = read("../../app/components/product/profile-effects.css");
+
+    expect(layer).toContain("data-effect-mechanism");
+    for (const mechanism of [
+      "glow",
+      "grain",
+      "particles",
+      "energy",
+      "smoke",
+      "snow",
+      "rain",
+      "scan",
+      "glitch",
+      "mist",
+      "confetti",
+      "arc",
+    ]) {
+      expect(css).toContain(`[data-effect-mechanism="${mechanism}"]::before`);
+    }
+  });
+
+  it("does not double-render structural avatar frames with legacy pseudo-elements", () => {
+    const css = read("../../app/components/product/avatar-frames.css");
+    for (const preset of [
+      "cat-ears",
+      "cat-ears-black",
+      "cat-ears-white",
+      "fox-ears",
+      "wings",
+      "cyber-wings",
+      "devil-horns",
+      "angel-halo",
+      "crown",
+      "orbit-planets",
+      "black-hole",
+    ]) {
+      expect(css).not.toContain(`data-avatar-frame="${preset}"]::before`);
+      expect(css).not.toContain(`data-avatar-frame="${preset}"]::after`);
+    }
+  });
+
+  it("keeps migrated frame decoration outside the inner avatar element", () => {
+    const css = read("../../app/components/product/avatar-frames.css");
+    for (const preset of ["holographic", "fire", "ice", "electric"]) {
+      expect(css).not.toContain(`.sb-avatar--frame-${preset}`);
+    }
+  });
+
+  it("uses AvatarStage geometry for halo and wing silhouettes", () => {
+    const css = read("../../app/components/product/avatar-stage.css");
+    expect(css).toContain('data-avatar-frame="angel-halo"');
+    expect(css).toContain('data-avatar-frame="cyber-wings"');
+    expect(css).toMatch(/data-avatar-frame="angel-halo"[\s\S]*border-radius:\s*50%/);
+    expect(css).toMatch(/data-avatar-frame="cyber-wings"[\s\S]*clip-path:/);
+  });
 });
