@@ -9,7 +9,7 @@ import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { hasSourceEligibleCommentContent } from "../../shared/richtext/comment-content";
 import { PostError } from "../posts/errors";
 import type { NotificationEvent } from "../notifications/service";
-import { canManageAcceptedSource } from "./policy";
+import { canManageAcceptedSource, isAcceptedSourceUndoable } from "./policy";
 
 function json(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -244,6 +244,9 @@ export async function handleSourceRequest(
     const target = await database
       .prepare(
         `SELECT p.author_id AS post_author_id, p.accepted_comment_id, p.verified_source_id,
+                (SELECT created_at FROM source_resolutions
+                 WHERE post_id = p.id AND resolution_type = 'ACCEPTED' AND state = 'ACTIVE')
+                 AS accepted_resolution_created_at,
                 c.id AS comment_id, c.author_id AS comment_author_id, c.state AS comment_state,
                 c.body_richtext_json AS comment_richtext_json,
                 c.body_plaintext AS comment_plaintext,
@@ -267,7 +270,8 @@ export async function handleSourceRequest(
     if (!capability) {
       const isPostAuthor = current.id === target.post_author_id;
       const canVerifySource =
-        !isPostAuthor && hasCapability(await current.store.getAuthorization(current.id), "source.verify");
+        !isPostAuthor &&
+        hasCapability(await current.store.getAuthorization(current.id), "source.verify");
       if (!canManageAcceptedSource({ isPostAuthor, canVerifySource })) {
         throw new PostError(
           403,
@@ -340,6 +344,17 @@ export async function handleSourceRequest(
     }
     if (kind === "revoke") {
       const revokedAt = Date.now();
+      const revokeReason = reason(body.reason);
+      if (
+        target.accepted_comment_id === target.comment_id &&
+        !isAcceptedSourceUndoable(Number(target.accepted_resolution_created_at), revokedAt)
+      ) {
+        throw new PostError(
+          409,
+          "SOURCE_UNDO_WINDOW_EXPIRED",
+          "An accepted source can only be undone within seven days.",
+        );
+      }
       if (
         !(await revokeResolution(database, {
           postId: id,
@@ -348,7 +363,7 @@ export async function handleSourceRequest(
           resolutionType: "ACCEPTED",
           postSourceColumn: "accepted_comment_id",
           postStatus: "OPEN",
-          revokeReason: reason(body.reason),
+          revokeReason,
           revokedAt,
         }))
       )

@@ -26,6 +26,7 @@ import { CommentThread } from "../components/product/CommentThread";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
 import { SourceResolution } from "../components/product/SourceResolution";
+import { isAcceptedSourceUndoable } from "../../worker/source/policy";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { postId?: string; slug?: string };
@@ -193,13 +194,6 @@ function sourceResolutionJsonLd(post: LoadedPost, pageUrl: string) {
       value: post.verifiedSource.verifiedAt,
     });
   }
-  if (post.verifiedSource?.verifierLabel) {
-    properties.push({
-      "@type": "PropertyValue",
-      name: "Verification authority",
-      value: post.verifiedSource.verifierLabel,
-    });
-  }
   const contributor =
     acceptedComment?.author.mode === "IDENTIFIED"
       ? {
@@ -354,7 +348,13 @@ export default function PostDetailRoute() {
 
   if (!post) return <PostServiceUnavailable />;
   const currentPost = post;
-  const acceptedComment = findComment(currentPost.comments, currentPost.acceptedSource?.commentId);
+  const sourceCommentId =
+    currentPost.verifiedSource?.commentId ?? currentPost.acceptedSource?.commentId;
+  const acceptedComment = findComment(currentPost.comments, sourceCommentId);
+  const canUndoAcceptedSource = Boolean(
+    currentPost.acceptedSource &&
+    isAcceptedSourceUndoable(Date.parse(currentPost.acceptedSource.acceptedAt), Date.now()),
+  );
 
   async function acceptSource(commentId: string) {
     const response = await fetch(`/api/posts/${encodeURIComponent(currentPost.id)}/source/accept`, {
@@ -363,6 +363,16 @@ export default function PostDetailRoute() {
       body: JSON.stringify({ commentId }),
     });
     if (response.ok) revalidator.revalidate();
+  }
+
+  async function revokeAcceptedSource(commentId: string, reason: string) {
+    const response = await fetch(`/api/posts/${encodeURIComponent(currentPost.id)}/source/revoke`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+      body: JSON.stringify({ commentId, reason }),
+    });
+    if (!response.ok) throw new Error("The accepted source could not be undone.");
+    revalidator.revalidate();
   }
 
   return (
@@ -381,8 +391,11 @@ export default function PostDetailRoute() {
         viewerIdentity={viewerIdentity}
         commentsClosed={currentPost.commentsClosed}
         canAcceptSource={currentPost.permissions.canAcceptSource}
+        acceptedSourceCommentId={currentPost.acceptedSource?.commentId}
+        canUndoAcceptedSource={canUndoAcceptedSource}
         canModerateComments={canModerateComments}
         onAcceptSource={(commentId) => void acceptSource(commentId)}
+        onUndoAcceptedSource={revokeAcceptedSource}
         onCommentsChanged={() => revalidator.revalidate()}
       />
     </ProductShell>

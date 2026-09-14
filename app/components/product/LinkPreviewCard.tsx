@@ -1,4 +1,5 @@
 import type { CommentLinkPreviewView } from "../../../shared/ui/contracts";
+import { useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 
 function previewLabel(preview: CommentLinkPreviewView, fallback: string): string {
@@ -12,19 +13,24 @@ function previewLabel(preview: CommentLinkPreviewView, fallback: string): string
 
 export function LinkPreviewCard({ preview }: { preview: CommentLinkPreviewView }) {
   const { t } = useI18n();
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(preview.imageUrl && !imageFailed);
   return (
     <a
       className="product-link-preview-card"
       href={preview.canonicalUrl}
       target="_blank"
       rel="noopener noreferrer"
+      data-metadata-status={preview.metadataStatus}
+      aria-label={preview.title ?? previewLabel(preview, t("link.fallbackLabel"))}
     >
-      {preview.imageUrl ? (
+      {hasImage ? (
         <img
           className="product-link-preview-card__image"
           src={preview.imageUrl}
           alt=""
           loading="lazy"
+          onError={() => setImageFailed(true)}
         />
       ) : null}
       <span className="product-link-preview-card__body">

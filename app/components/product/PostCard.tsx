@@ -553,14 +553,17 @@ export function PostCard({
 
       <div className="product-post__engagement">
         <div className="product-post__meta">
-          <Link to={`${detailHref}#comments`} onClick={() => markNavigationStart(detailHref)}>
+          <Link
+            className="product-post__comment-count"
+            to={`${detailHref}#comments`}
+            onClick={() => markNavigationStart(detailHref)}
+          >
             {tp("comments.summary", post.commentCount)}
           </Link>
-          {post.acceptedSource ? (
-            <span className="product-meta-success">{t("post.meta.acceptedSource")}</span>
-          ) : null}
-          {post.verifiedSource ? (
-            <span className="product-meta-success">{t("post.meta.verified")}</span>
+          {post.verifiedSource || post.acceptedSource ? (
+            <span className="product-meta-success">
+              {post.verifiedSource ? t("post.meta.verified") : t("post.meta.acceptedSource")}
+            </span>
           ) : null}
           {commentsClosed ? (
             <span className="product-meta-success">{t("post.meta.commentsClosed")}</span>

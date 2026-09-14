@@ -10,6 +10,15 @@
 
 Status: **IN PROGRESS — Firebase-backed deployment is live; launch gates remain**
 
+### 2026-09-14 — source integrity and link preview follow-up
+
+- Added a server-authoritative seven-day undo window for accepted sources; the exact expiry boundary is covered by unit tests.
+- Public source resolution now uses one Accepted/Verified card, omits verifier identity from product UI and JSON-LD, and keeps the contributing comment/profile link visible.
+- Added an accessible Undo accepted source flow with a required audit reason and preserved the existing capability checks and source eligibility rules.
+- Comment author identities and post comment totals use canonical SPA links without browser-default underlines.
+- Link previews now expose metadata status, accessible labels, resilient image fallback and reduced-motion-safe hover/focus treatment.
+- Existing PR #43 is merged into green `master`; this follow-up is intentionally isolated for a new pull request and remains pending final CI/browser verification.
+
 ## Phase 0 — Baseline, decisions and contracts
 
 Status: **COMPLETED**
