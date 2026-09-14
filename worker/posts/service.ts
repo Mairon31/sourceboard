@@ -20,6 +20,7 @@ const MAX_TITLE_LENGTH = 160;
 const MAX_DESCRIPTION_LENGTH = 10_000;
 const MAX_FEED_LIMIT = 30;
 const EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const SOFT_DELETE_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 export interface PostServiceDependencies {
   store: PostStore;
@@ -63,6 +64,7 @@ export interface PostService {
   archivePost(postId: string, authorId: string, archived: boolean): Promise<void>;
   setCommentsClosed(postId: string, authorId: string, closed: boolean): Promise<PostDetail>;
   deletePost(postId: string, authorId: string): Promise<void>;
+  restorePost(postId: string, authorId: string): Promise<void>;
   getVisibleMedia(
     assetId: string,
     viewerId: string | null,
@@ -558,6 +560,30 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
     async deletePost(postId, authorId) {
       if (!(await dependencies.store.deletePost(postId, authorId, now()))) {
         throw new PostError(403, "POST_DELETE_FORBIDDEN", "The post could not be deleted.");
+      }
+    },
+
+    async restorePost(postId, authorId) {
+      const current = await requirePost(postId);
+      const deletedAt = current.post.deletedAt;
+      const restoredAt = now();
+      if (
+        current.post.authorId !== authorId ||
+        !deletedAt ||
+        restoredAt - deletedAt >= SOFT_DELETE_RETENTION_MS
+      ) {
+        throw new PostError(
+          409,
+          "POST_RESTORE_UNAVAILABLE",
+          "This post can no longer be restored.",
+        );
+      }
+      if (!(await dependencies.store.restorePost(postId, authorId, deletedAt, restoredAt))) {
+        throw new PostError(
+          409,
+          "POST_RESTORE_STATE_CHANGED",
+          "This post changed before it could be restored. Refresh and try again.",
+        );
       }
     },
 

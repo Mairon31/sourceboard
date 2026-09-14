@@ -4,8 +4,8 @@ import { useI18n } from "../../i18n/I18nProvider";
 
 const POST_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/avif";
 const POST_IMAGE_TYPES = new Set(POST_IMAGE_ACCEPT.split(","));
-const MAX_POST_IMAGE_BYTES = 10 * 1024 * 1024;
-const MAX_POST_IMAGE_DIMENSION = 10_000;
+const MAX_POST_IMAGE_BYTES = 25 * 1024 * 1024;
+const MAX_POST_IMAGE_DIMENSION = 6_000;
 
 interface ImageUploadFieldProps {
   file: File | null;
@@ -36,20 +36,22 @@ export async function preparePostImageForUpload(file: File): Promise<File> {
   const bitmap = await readBitmap(file);
   if (!bitmap) return file;
   try {
-    if (
-      bitmap.width < 1 ||
-      bitmap.height < 1 ||
-      bitmap.width > MAX_POST_IMAGE_DIMENSION ||
-      bitmap.height > MAX_POST_IMAGE_DIMENSION
-    ) {
+    if (bitmap.width < 1 || bitmap.height < 1) {
       throw new Error("IMAGE_DIMENSIONS_INVALID");
     }
 
-    if (file.type !== "image/jpeg" && file.type !== "image/png") return file;
+    if (
+      file.type !== "image/jpeg" &&
+      file.type !== "image/png" &&
+      Math.max(bitmap.width, bitmap.height) <= MAX_POST_IMAGE_DIMENSION
+    ) {
+      return file;
+    }
 
     const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    const scale = Math.min(1, MAX_POST_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
     const context = canvas.getContext("2d", { alpha: true });
     if (!context) return file;
     context.drawImage(bitmap, 0, 0);
@@ -178,7 +180,9 @@ export function ImageUploadField({
             <img src={previewUrl} alt={t("imageUpload.previewAlt")} />
             <div className="product-image-upload-field__preview-meta">
               <strong>{file.name}</strong>
-              <span>{new Intl.NumberFormat(locale).format(Math.max(1, Math.round(file.size / 1024)))} KB</span>
+              <span>
+                {new Intl.NumberFormat(locale).format(Math.max(1, Math.round(file.size / 1024)))} KB
+              </span>
             </div>
             <div className="product-image-upload-field__actions">
               <button

@@ -10,6 +10,7 @@ const uploadField = read("../../app/components/product/ImageUploadField.tsx");
 const composer = read("../../app/components/product/PostComposer.tsx");
 const postRoute = read("../../app/routes/post-new.tsx");
 const imageValidation = read("../../worker/posts/image.ts");
+const mediaPolicy = read("../../worker/media/image-policy.ts");
 const postsApi = read("../../worker/posts/api.ts");
 const postsStore = read("../../worker/posts/store.ts");
 
@@ -28,16 +29,21 @@ describe("new post image upload pipeline", () => {
 
   it("keeps the canonical post upload allowlist and does not silently accept GIF uploads", () => {
     for (const type of ["image/jpeg", "image/png", "image/webp", "image/avif"]) {
-      expect(imageValidation).toContain(`"${type}"`);
+      expect(mediaPolicy).toContain(`"${type}"`);
       expect(uploadField).toContain(type);
     }
-    expect(imageValidation).not.toContain('"image/gif"');
+    expect(mediaPolicy).not.toContain('"image/gif"');
+    expect(imageValidation).toContain('validateUploadedImage(bytes, contentType, "POST")');
     expect(uploadField).toContain('file.type === "image/gif"');
     expect(uploadField).toContain("return file");
+    expect(uploadField).toContain("25 * 1024 * 1024");
+    expect(uploadField).toContain("MAX_POST_IMAGE_DIMENSION = 6_000");
   });
 
-  it("optimizes JPEG/PNG only when a smaller WebP candidate is available", () => {
-    expect(uploadField).toContain('file.type !== "image/jpeg" && file.type !== "image/png"');
+  it("optimizes compatible static images and bounds oversized dimensions before upload", () => {
+    expect(uploadField).toContain(
+      "MAX_POST_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height)",
+    );
     expect(uploadField).toContain("canvas.toBlob");
     expect(uploadField).toContain('"image/webp"');
     expect(uploadField).toContain("optimized.size >= file.size");

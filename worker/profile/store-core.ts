@@ -131,7 +131,7 @@ export interface ProfileStore {
   unblockUser(blockerId: string, blockedId: string): Promise<boolean>;
   listNotifications(userId: string, limit: number): Promise<NotificationRecord[]>;
   getMediaAsset(assetId: string): Promise<MediaAssetRecord | null>;
-  createMediaAssetAndAttach(input: CreateMediaAssetInput): Promise<void>;
+  createMediaAssetAndAttach(input: CreateMediaAssetInput): Promise<MediaAssetRecord | null>;
   clearMediaAsset(
     userId: string,
     purpose: "AVATAR" | "BANNER",
@@ -872,6 +872,20 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
 
     async createMediaAssetAndAttach(input) {
       const assetColumn = input.purpose === "AVATAR" ? "avatar_asset_id" : "banner_asset_id";
+      const current = await db
+        .prepare(`SELECT ${assetColumn} AS asset_id FROM user_profiles WHERE user_id = ?`)
+        .bind(input.ownerUserId)
+        .first<{ asset_id: string | null }>();
+      const previous = current?.asset_id
+        ? await db
+            .prepare(
+              `SELECT id, owner_user_id, purpose, r2_key, content_type, byte_size,
+                      checksum_sha256, status, created_at, deleted_at
+               FROM media_assets WHERE id = ? AND owner_user_id = ? AND purpose = ? AND status = 'ACTIVE'`,
+            )
+            .bind(current.asset_id, input.ownerUserId, input.purpose)
+            .first<MediaAssetRow>()
+        : null;
       await db.batch([
         db
           .prepare(
@@ -892,7 +906,19 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
         db
           .prepare(`UPDATE user_profiles SET ${assetColumn} = ?, updated_at = ? WHERE user_id = ?`)
           .bind(input.id, input.createdAt, input.ownerUserId),
+        ...(previous
+          ? [
+              db
+                .prepare(
+                  `UPDATE media_assets
+                   SET status = 'DELETED', deleted_at = ?
+                   WHERE id = ? AND owner_user_id = ? AND purpose = ? AND status = 'ACTIVE'`,
+                )
+                .bind(input.createdAt, previous.id, input.ownerUserId, input.purpose),
+            ]
+          : []),
       ]);
+      return previous ? toMediaAsset(previous) : null;
     },
 
     async clearMediaAsset(userId, purpose, assetId, now) {

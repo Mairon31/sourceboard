@@ -187,6 +187,27 @@ describe("Phase 4 post policy", () => {
     expect(result.posts[0]?.imageUrl).toBe("/api/media/post/asset-1");
   });
 
+  it("restores an owner's soft-deleted post inside the 24-hour retention window", async () => {
+    const { profileStore, store, getPost } = dependencies();
+    const restorePost = vi.fn(async () => true);
+    Object.assign(store, { restorePost });
+    getPost.mockResolvedValue(post({ deletedAt: 1_000, status: "ARCHIVED" }));
+    const service = createPostService({
+      store,
+      profileStore,
+      now: () => 1_000 + 23 * 60 * 60 * 1_000,
+    });
+
+    await service.restorePost("post-1", "author-1");
+
+    expect(restorePost).toHaveBeenCalledWith(
+      "post-1",
+      "author-1",
+      1_000,
+      1_000 + 23 * 60 * 60 * 1_000,
+    );
+  });
+
   it("keeps profile activity discoverable-only for visitors", async () => {
     const { profileStore, store, getRelationship, listByAuthor } = dependencies();
     listByAuthor.mockResolvedValue({

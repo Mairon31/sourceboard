@@ -2,8 +2,10 @@ const AUTH_TOKEN_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const SESSION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const LOGIN_COUNTER_RETENTION_MS = 24 * 60 * 60 * 1000;
 const DELETED_MEDIA_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const POST_SOFT_DELETE_RETENTION_MS = 24 * 60 * 60 * 1000;
 const ORPHAN_MEDIA_GRACE_MS = 24 * 60 * 60 * 1000;
 const DELETED_MEDIA_BATCH_SIZE = 100;
+const EXPIRED_POST_BATCH_SIZE = 100;
 const ORPHAN_SCAN_PAGE_SIZE = 1_000;
 const MAX_ORPHAN_SCAN_PAGES = 5;
 
@@ -18,6 +20,7 @@ export interface MaintenanceResult {
   deletedResetTokens: number;
   deletedSessions: number;
   deletedLoginCounters: number;
+  deletedExpiredPosts: number;
   deletedMarkedMedia: number;
   deletedOrphanMedia: number;
 }
@@ -27,6 +30,12 @@ interface MediaKeyRow {
 }
 
 interface DeletedMediaRow {
+  r2_key: string;
+}
+
+interface ExpiredPostRow {
+  id: string;
+  deleted_at: number;
   r2_key: string;
 }
 
@@ -127,6 +136,38 @@ async function cleanMarkedMedia(
   return deleted.reduce((total, result) => total + changes(result), 0);
 }
 
+async function purgeExpiredPosts(
+  db: D1Database,
+  media: R2Bucket | undefined,
+  now: number,
+): Promise<number> {
+  if (!media) return 0;
+  const cutoff = now - POST_SOFT_DELETE_RETENTION_MS;
+  const candidates = await db
+    .prepare(
+      `SELECT p.id, p.deleted_at, m.r2_key
+       FROM posts p JOIN media_assets m ON m.id = p.image_asset_id
+       WHERE p.deleted_at IS NOT NULL AND p.deleted_at <= ?
+       ORDER BY p.deleted_at ASC LIMIT ?`,
+    )
+    .bind(cutoff, EXPIRED_POST_BATCH_SIZE)
+    .all<ExpiredPostRow>();
+  let deleted = 0;
+  for (const candidate of candidates.results) {
+    // Delete the DB row first, with the timestamp observed during selection. A concurrent restore
+    // makes this conditional delete a no-op, so its image is never removed by the purge path.
+    const result = await db
+      .prepare(`DELETE FROM posts WHERE id = ? AND deleted_at = ? AND deleted_at <= ?`)
+      .bind(candidate.id, candidate.deleted_at, cutoff)
+      .run();
+    if (changes(result) !== 1) continue;
+    deleted += 1;
+    // A failed R2 delete is safe: the key is now unreferenced and the bounded orphan sweep retries it.
+    await media.delete(candidate.r2_key).catch(() => undefined);
+  }
+  return deleted;
+}
+
 async function referencedMediaKeys(db: D1Database): Promise<Set<string>> {
   const rows = await db
     .prepare(
@@ -182,7 +223,8 @@ export async function runMaintenance(
   const now = dependencies.now?.() ?? Date.now();
   const auth = await cleanAuthState(dependencies.db, now);
   await restoreExpiredUserStatuses(dependencies.db, now);
+  const deletedExpiredPosts = await purgeExpiredPosts(dependencies.db, dependencies.media, now);
   const deletedMarkedMedia = await cleanMarkedMedia(dependencies.db, dependencies.media, now);
   const deletedOrphanMedia = await cleanOrphanMedia(dependencies.db, dependencies.media, now);
-  return { ...auth, deletedMarkedMedia, deletedOrphanMedia };
+  return { ...auth, deletedExpiredPosts, deletedMarkedMedia, deletedOrphanMedia };
 }

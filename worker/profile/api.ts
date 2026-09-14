@@ -7,6 +7,7 @@ import { createAuthService } from "../auth/service";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import {
+  assertProfileImage,
   handleProfileApiRequest as handleCoreProfileApiRequest,
   isSupportedImageBytes,
 } from "./api-core";
@@ -14,7 +15,7 @@ import { ProfileError, isProfileError } from "./errors";
 import { createProfileService } from "./service";
 import { createD1ProfileStore } from "./store";
 
-export { isSupportedImageBytes };
+export { assertProfileImage, isSupportedImageBytes };
 
 function jsonResponse(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
