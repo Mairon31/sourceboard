@@ -1,5 +1,6 @@
 import { normalizeUsername } from "../auth/crypto";
 import { canInteractWithUser, canViewUser } from "../privacy/policy";
+import { parseMarkdown } from "../../shared/richtext/markdown";
 import { ProfileError } from "./errors";
 import type {
   FriendsListDto,
@@ -75,6 +76,14 @@ function validateProfileInput(input: ProfileUpdateInput): void {
   }
   if (input.bio.length > MAX_BIO_LENGTH) {
     throw new ProfileError(400, "INVALID_BIO", "Bio is too long.");
+  }
+  if (input.bio.trim()) {
+    try {
+      if (/^\s*#{1,6}\s/m.test(input.bio)) throw new Error("profile headings are unsupported");
+      parseMarkdown(input.bio);
+    } catch {
+      throw new ProfileError(400, "INVALID_BIO", "Bio contains unsupported Markdown.");
+    }
   }
   if (input.profileVisibility !== "PUBLIC" && input.profileVisibility !== "FRIENDS_ONLY") {
     throw new ProfileError(400, "INVALID_PROFILE_VISIBILITY", "Profile visibility is invalid.");

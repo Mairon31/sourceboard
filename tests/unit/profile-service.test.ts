@@ -190,4 +190,25 @@ describe("profile and social service", () => {
     ).rejects.toBeInstanceOf(ProfileError);
     expect(store.updateProfile).not.toHaveBeenCalled();
   });
+
+  it("rejects unsafe or layout-breaking Markdown in profile bios", async () => {
+    const { store } = createStore();
+    const service = createProfileService({ store, now: () => 10 });
+    for (const bio of ["<script>alert(1)</script>", "# Oversized heading"]) {
+      await expect(
+        service.updateMyProfile(
+          "viewer",
+          {
+            displayName: "Viewer",
+            bio,
+            profileVisibility: "PUBLIC",
+            avatarAssetId: null,
+            bannerAssetId: null,
+          },
+          [],
+        ),
+      ).rejects.toMatchObject({ code: "INVALID_BIO" });
+    }
+    expect(store.updateProfile).not.toHaveBeenCalled();
+  });
 });
