@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { PostCategorySlug } from "../../../shared/posts/categories";
 import { readCsrfToken } from "../../data/csrf";
@@ -7,6 +7,17 @@ import { Button, Card, Input, Switch, Textarea } from "../ui";
 import { CategoryPicker } from "./CategoryPicker";
 import { CosmeticIdentity, type CosmeticIdentityProps } from "./CosmeticIdentity";
 import { ImageUploadField } from "./ImageUploadField";
+import { MediaPicker } from "./MediaPicker";
+import { RichText } from "./RichText";
+import { formatEmoteMarkdown, renderMarkdownPreview } from "../../../shared/richtext/markdown";
+
+function descriptionPreviewNodes(value: string) {
+  try {
+    return renderMarkdownPreview(value);
+  } catch {
+    return [{ type: "paragraph" as const, children: [{ type: "text" as const, text: value }] }];
+  }
+}
 import "./post-composer.css";
 
 export interface PostComposerIdentity {
@@ -29,9 +40,42 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
   const [visibility, setVisibility] = useState<PostVisibility>("PUBLIC");
   const [category, setCategory] = useState<PostCategorySlug | null>(null);
   const [isNsfw, setIsNsfw] = useState(false);
+  const [description, setDescription] = useState("");
+  const [descriptionMode, setDescriptionMode] = useState<"write" | "preview">("write");
+  const [emotePickerOpen, setEmotePickerOpen] = useState(false);
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  function wrapDescription(prefix: string, suffix = prefix) {
+    const input = descriptionRef.current;
+    const start = input?.selectionStart ?? description.length;
+    const end = input?.selectionEnd ?? start;
+    const selected = description.slice(start, end);
+    const next = `${description.slice(0, start)}${prefix}${selected}${suffix}${description.slice(end)}`;
+    setDescription(next);
+    requestAnimationFrame(() => {
+      descriptionRef.current?.focus();
+      const cursor = selected
+        ? start + prefix.length + selected.length + suffix.length
+        : start + prefix.length;
+      descriptionRef.current?.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  function insertEmote(shortcode: string) {
+    const token = `${description && !/\s$/.test(description) ? " " : ""}${formatEmoteMarkdown(shortcode)}${description && !/^\s/.test(description) ? " " : ""}`;
+    const input = descriptionRef.current;
+    const start = input?.selectionStart ?? description.length;
+    const end = input?.selectionEnd ?? start;
+    setDescription(`${description.slice(0, start)}${token}${description.slice(end)}`);
+    setEmotePickerOpen(false);
+    requestAnimationFrame(() => {
+      descriptionRef.current?.focus();
+      descriptionRef.current?.setSelectionRange(start + token.length, start + token.length);
+    });
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -123,13 +167,105 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
             required
             disabled={unavailable || busy}
           />
-          <Textarea
-            label={t("composer.description.label")}
-            name="description"
-            placeholder={t("composer.description.placeholder")}
-            maxLength={10_000}
-            disabled={unavailable || busy}
-          />
+          <div className="product-post-composer__markdown-field">
+            <div className="product-post-composer__markdown-heading">
+              <span className="sb-field__label">{t("composer.description.label")}</span>
+              <small>{t("composer.description.markdownHint")}</small>
+            </div>
+            <div
+              className="product-post-composer__markdown-toolbar"
+              role="toolbar"
+              aria-label={t("composer.description.toolbar")}
+            >
+              <button
+                type="button"
+                aria-label={t("composer.description.bold")}
+                onClick={() => wrapDescription("**")}
+                disabled={unavailable || busy || descriptionMode === "preview"}
+              >
+                B
+              </button>
+              <button
+                type="button"
+                aria-label={t("composer.description.italic")}
+                onClick={() => wrapDescription("*")}
+                disabled={unavailable || busy || descriptionMode === "preview"}
+              >
+                I
+              </button>
+              <button
+                type="button"
+                aria-label={t("composer.description.quote")}
+                onClick={() => wrapDescription("> ", "")}
+                disabled={unavailable || busy || descriptionMode === "preview"}
+              >
+                ❯
+              </button>
+              <button
+                type="button"
+                aria-label={t("composer.description.code")}
+                onClick={() => wrapDescription("`")}
+                disabled={unavailable || busy || descriptionMode === "preview"}
+              >
+                &lt;/&gt;
+              </button>
+              <button
+                type="button"
+                aria-label={t("composer.description.emote")}
+                onClick={() => setEmotePickerOpen((open) => !open)}
+                disabled={unavailable || busy || descriptionMode === "preview"}
+              >
+                ☺
+              </button>
+              <button
+                type="button"
+                className="product-post-composer__markdown-mode"
+                onClick={() =>
+                  setDescriptionMode((mode) => (mode === "write" ? "preview" : "write"))
+                }
+                disabled={unavailable || busy}
+              >
+                {descriptionMode === "write"
+                  ? t("composer.description.preview")
+                  : t("composer.description.write")}
+              </button>
+            </div>
+            {descriptionMode === "preview" ? (
+              <div
+                className="product-post-composer__markdown-preview"
+                role="region"
+                aria-label={t("composer.description.preview")}
+              >
+                {description.trim() ? (
+                  <RichText nodes={descriptionPreviewNodes(description)} />
+                ) : (
+                  <span>{t("composer.description.empty")}</span>
+                )}
+                <input type="hidden" name="description" value={description} />
+              </div>
+            ) : (
+              <Textarea
+                ref={descriptionRef}
+                label={t("composer.description.label")}
+                name="description"
+                placeholder={t("composer.description.placeholder")}
+                maxLength={10_000}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                disabled={unavailable || busy}
+              />
+            )}
+            {emotePickerOpen ? (
+              <MediaPicker
+                kind="EMOTE"
+                onKindChange={() => setEmotePickerOpen(false)}
+                onSelect={(item) => {
+                  if (item.type === "EMOTE") insertEmote(item.shortcode);
+                }}
+                onClose={() => setEmotePickerOpen(false)}
+              />
+            ) : null}
+          </div>
         </section>
 
         <section className="product-post-composer__section" aria-labelledby="post-category-heading">

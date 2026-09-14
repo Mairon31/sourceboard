@@ -70,7 +70,7 @@ export interface VerifiedSourceView {
 }
 
 export interface CommentAttachmentView {
-  type: "EMOTE" | "GIF" | "STICKER";
+  type: "EMOTE" | "IMAGE" | "GIF" | "STICKER";
   label: string;
   id?: string;
   provider?: string;

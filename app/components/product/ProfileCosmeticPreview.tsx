@@ -15,6 +15,7 @@ import type {
 import { AvatarStage } from "./AvatarStage";
 import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
 import { ProfileIdentityCard } from "./ProfileIdentityCard";
+import { CosmeticIdentity } from "./CosmeticIdentity";
 import "./profile-cosmetic-preview.css";
 
 export type ProfileCosmeticPreviewType = "PROFILE_BANNER" | "PROFILE_EFFECT" | "AVATAR_FRAME";
@@ -123,7 +124,9 @@ export function ProfileCosmeticPreview({
       communityStyles={communityStyles}
       mode={mode}
     >
-      <div className="product-cosmetic-preview__subject" aria-hidden="true" />
+      <div className="product-cosmetic-preview__subject">
+        <CosmeticIdentity displayName={name} avatarUrl={avatarUrl} mode="preview" nameAs="strong" />
+      </div>
     </ProfileIdentityCard>
   );
 }

@@ -671,6 +671,43 @@
   background: var(--bg-app-secondary);
 }
 
+.product-post__media-link {
+  display: grid;
+  width: 100%;
+  min-height: inherit;
+  place-items: center;
+}
+
+.product-post__media-expand {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-solid) 86%, transparent);
+  color: var(--text-primary);
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.product-post__media-expand:hover,
+.product-post__media-expand:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.product-post__lightbox-image {
+  display: block;
+  width: 100%;
+  max-height: min(72vh, 760px);
+  object-fit: contain;
+}
+
 .product-post__media-unavailable {
   display: grid;
   gap: var(--space-2);

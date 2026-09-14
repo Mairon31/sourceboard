@@ -22,6 +22,7 @@ import {
   ConfirmDialog,
   Dropdown,
   EditIcon,
+  GalleryIcon,
   HeartIcon,
   Input,
   MessageIcon,
@@ -98,6 +99,7 @@ export function PostCard({
   const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const mediaRef = useRef<HTMLImageElement>(null);
   const editingRef = useRef(editing);
   const reactionInFlightRef = useRef(false);
@@ -537,35 +539,52 @@ export function PostCard({
           ) : null}
         </div>
       ) : (
-        <Link
-          to={detailHref}
-          className={mediaClass}
-          aria-label={t("post.openAria", { title: displayTitle })}
-          onClick={() => markNavigationStart(detailHref)}
-        >
+        <div className={mediaClass}>
+          <Link
+            to={detailHref}
+            className="product-post__media-link"
+            aria-label={t("post.openAria", { title: displayTitle })}
+            onClick={() => markNavigationStart(detailHref)}
+          >
+            {post.imageUrl && !mediaFailed ? (
+              <img
+                ref={mediaRef}
+                src={post.imageUrl}
+                alt={post.imageAlt}
+                width={post.imageWidth}
+                height={post.imageHeight}
+                loading="lazy"
+                onError={() => setMediaFailed(true)}
+              />
+            ) : mediaFailed ? (
+              <div
+                className="product-post__media-unavailable"
+                role="img"
+                aria-label={post.imageAlt}
+              >
+                <strong>{t("post.media.unavailable")}</strong>
+                <span>{t("post.media.loadError")}</span>
+              </div>
+            ) : (
+              <div className="product-post__media-frame" role="img" aria-label={post.imageAlt}>
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+          </Link>
           {post.imageUrl && !mediaFailed ? (
-            <img
-              ref={mediaRef}
-              src={post.imageUrl}
-              alt={post.imageAlt}
-              width={post.imageWidth}
-              height={post.imageHeight}
-              loading="lazy"
-              onError={() => setMediaFailed(true)}
-            />
-          ) : mediaFailed ? (
-            <div className="product-post__media-unavailable" role="img" aria-label={post.imageAlt}>
-              <strong>{t("post.media.unavailable")}</strong>
-              <span>{t("post.media.loadError")}</span>
-            </div>
-          ) : (
-            <div className="product-post__media-frame" role="img" aria-label={post.imageAlt}>
-              <span />
-              <span />
-              <span />
-            </div>
-          )}
-        </Link>
+            <button
+              type="button"
+              className="product-post__media-expand"
+              aria-label={t("post.media.previewTitle")}
+              title={t("post.media.previewTitle")}
+              onClick={() => setLightboxOpen(true)}
+            >
+              <GalleryIcon width="18" height="18" />
+            </button>
+          ) : null}
+        </div>
       )}
 
       <div className="product-post__engagement">
@@ -687,6 +706,21 @@ export function PostCard({
         onConfirm={() => void deletePost()}
         onOpenChange={setConfirmDelete}
       />
+      <Modal
+        title={t("post.media.previewTitle")}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+      >
+        {post.imageUrl ? (
+          <img
+            className="product-post__lightbox-image"
+            src={post.imageUrl}
+            alt={post.imageAlt}
+            width={post.imageWidth}
+            height={post.imageHeight}
+          />
+        ) : null}
+      </Modal>
     </Card>
   );
 }

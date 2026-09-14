@@ -17,6 +17,17 @@ export const deEditingMessages = {
   "composer.description.label": "Beschreibung",
   "composer.description.placeholder":
     "Wo du es gefunden hast, was du bereits versucht hast und welche Quelle du brauchst…",
+  "composer.description.markdownHint":
+    "Markdown wird für Hervorhebungen, Zitate und Links unterstützt.",
+  "composer.description.toolbar": "Formatierung der Beschreibung",
+  "composer.description.bold": "Fett",
+  "composer.description.italic": "Kursiv",
+  "composer.description.quote": "Zitat",
+  "composer.description.code": "Inline-Code",
+  "composer.description.emote": "Emote einfügen",
+  "composer.description.preview": "Vorschau",
+  "composer.description.write": "Schreiben",
+  "composer.description.empty": "Noch keine Vorschau verfügbar.",
   "composer.category.title": "Kategorie wählen",
   "composer.category.description": "Hilf anderen, die Anfrage im passendsten Thema zu finden.",
   "composer.audience.title": "Zielgruppe wählen",

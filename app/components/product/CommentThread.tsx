@@ -38,6 +38,7 @@ import {
   EditIcon,
   FlagIcon,
   GifIcon,
+  GalleryIcon,
   HeartIcon,
   Input,
   LinkIcon,
@@ -61,7 +62,11 @@ function CommentAttachment({
   const imageUrl = attachment.url ?? attachment.preview;
   if (!imageUrl) return null;
   const removeLabel = t(
-    attachment.type === "GIF" ? "comments.composer.removeGif" : "comments.composer.removeSticker",
+    attachment.type === "IMAGE"
+      ? "comments.composer.removeImage"
+      : attachment.type === "GIF"
+        ? "comments.composer.removeGif"
+        : "comments.composer.removeSticker",
   );
   return (
     <div
@@ -916,6 +921,8 @@ export function CommentThread({
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkStatus, setLinkStatus] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const threadCount = countThread(items);
   useEffect(() => setItems(comments), [comments]);
 
@@ -965,6 +972,44 @@ export function CommentThread({
       setLinkOpen(false);
     }
     setMediaKind(nextKind);
+  }
+
+  async function uploadCommentImage(file: File | undefined) {
+    if (!file) return;
+    if (imageInputRef.current) imageInputRef.current.value = "";
+    setImageUploading(true);
+    setStatus(undefined);
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      const response = await fetch("/api/comments/media", {
+        method: "POST",
+        headers: { "x-csrf-token": readCsrfToken() },
+        body: form,
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        assetId?: string;
+        label?: string;
+        url?: string;
+        error?: { message?: string };
+      } | null;
+      if (!response.ok || !payload?.assetId || !payload.url) {
+        throw new Error(payload?.error?.message ?? t("comments.error.imageUpload"));
+      }
+      clearLinkPreview();
+      setLinkOpen(false);
+      setMediaKind(null);
+      setAttachment({
+        type: "IMAGE",
+        id: payload.assetId,
+        label: payload.label || file.name || t("comments.composer.image"),
+        url: payload.url,
+      });
+    } catch (cause) {
+      setStatus(cause instanceof Error ? cause.message : t("comments.error.imageUpload"));
+    } finally {
+      setImageUploading(false);
+    }
   }
 
   async function previewLink() {
@@ -1137,6 +1182,23 @@ export function CommentThread({
                   <SmileIcon width="20" height="20" />
                 </button>
                 <button
+                  className="product-comment-composer__media-action"
+                  type="button"
+                  aria-label={t("comments.composer.image")}
+                  title={t("comments.composer.image")}
+                  disabled={imageUploading}
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  <GalleryIcon width="20" height="20" />
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  hidden
+                  onChange={(event) => void uploadCommentImage(event.target.files?.[0])}
+                />
+                <button
                   className={`product-comment-composer__media-action${linkOpen ? " is-active" : ""}`}
                   type="button"
                   aria-label={t("comments.composer.link")}
@@ -1155,7 +1217,9 @@ export function CommentThread({
                 size="sm"
                 loading={submitting}
                 disabled={
-                  submitting || (!body.trim() && !attachment && !linkPreview && !linkUrl.trim())
+                  imageUploading ||
+                  submitting ||
+                  (!body.trim() && !attachment && !linkPreview && !linkUrl.trim())
                 }
                 onClick={() => void submit()}
               >

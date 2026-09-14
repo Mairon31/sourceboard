@@ -17,6 +17,17 @@ export const frEditingMessages = {
   "composer.description.label": "Description",
   "composer.description.placeholder":
     "Où vous l’avez trouvée, ce que vous avez déjà essayé et le type de source recherché…",
+  "composer.description.markdownHint":
+    "Markdown est pris en charge pour le texte, les citations et les liens.",
+  "composer.description.toolbar": "Mise en forme de la description",
+  "composer.description.bold": "Gras",
+  "composer.description.italic": "Italique",
+  "composer.description.quote": "Citation",
+  "composer.description.code": "Code en ligne",
+  "composer.description.emote": "Insérer un emote",
+  "composer.description.preview": "Aperçu",
+  "composer.description.write": "Écrire",
+  "composer.description.empty": "Rien à prévisualiser pour le moment.",
   "composer.category.title": "Choisir une catégorie",
   "composer.category.description":
     "Aidez les autres à découvrir la demande dans le sujet le plus pertinent.",

@@ -33,6 +33,12 @@ interface DeletedMediaRow {
   r2_key: string;
 }
 
+interface PendingMediaRow {
+  id: string;
+  r2_key: string;
+  created_at: number;
+}
+
 interface ExpiredPostRow {
   id: string;
   deleted_at: number;
@@ -136,6 +142,35 @@ async function cleanMarkedMedia(
   return deleted.reduce((total, result) => total + changes(result), 0);
 }
 
+async function cleanPendingCommentMedia(
+  db: D1Database,
+  media: R2Bucket | undefined,
+  now: number,
+): Promise<void> {
+  if (!media) return;
+  const cutoff = now - ORPHAN_MEDIA_GRACE_MS;
+  const candidates = await db
+    .prepare(
+      `SELECT id, r2_key, created_at
+       FROM media_assets
+       WHERE purpose = 'COMMENT_IMAGE' AND status = 'PENDING' AND created_at <= ?
+       ORDER BY created_at ASC LIMIT ?`,
+    )
+    .bind(cutoff, DELETED_MEDIA_BATCH_SIZE)
+    .all<PendingMediaRow>();
+  for (const candidate of candidates.results) {
+    await media.delete(candidate.r2_key).catch(() => undefined);
+    await db
+      .prepare(
+        `DELETE FROM media_assets
+         WHERE id = ? AND purpose = 'COMMENT_IMAGE' AND status = 'PENDING'
+           AND created_at = ?`,
+      )
+      .bind(candidate.id, candidate.created_at)
+      .run();
+  }
+}
+
 async function purgeExpiredPosts(
   db: D1Database,
   media: R2Bucket | undefined,
@@ -180,7 +215,12 @@ async function referencedMediaKeys(db: D1Database): Promise<Set<string>> {
 }
 
 function isManagedMediaKey(key: string): boolean {
-  return key.startsWith("posts/") || key.startsWith("profile/") || key.startsWith("catalog/");
+  return (
+    key.startsWith("posts/") ||
+    key.startsWith("profile/") ||
+    key.startsWith("comments/") ||
+    key.startsWith("catalog/")
+  );
 }
 
 async function cleanOrphanMedia(
@@ -224,6 +264,7 @@ export async function runMaintenance(
   const auth = await cleanAuthState(dependencies.db, now);
   await restoreExpiredUserStatuses(dependencies.db, now);
   const deletedExpiredPosts = await purgeExpiredPosts(dependencies.db, dependencies.media, now);
+  await cleanPendingCommentMedia(dependencies.db, dependencies.media, now);
   const deletedMarkedMedia = await cleanMarkedMedia(dependencies.db, dependencies.media, now);
   const deletedOrphanMedia = await cleanOrphanMedia(dependencies.db, dependencies.media, now);
   return { ...auth, deletedExpiredPosts, deletedMarkedMedia, deletedOrphanMedia };

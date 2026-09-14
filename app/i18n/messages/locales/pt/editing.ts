@@ -17,6 +17,16 @@ export const ptEditingMessages = {
   "composer.description.label": "Descrição",
   "composer.description.placeholder":
     "Onde você a encontrou, o que já tentou e que tipo de fonte precisa…",
+  "composer.description.markdownHint": "Markdown é compatível com destaque, citações e links.",
+  "composer.description.toolbar": "Formatação da descrição",
+  "composer.description.bold": "Negrito",
+  "composer.description.italic": "Itálico",
+  "composer.description.quote": "Citação",
+  "composer.description.code": "Código em linha",
+  "composer.description.emote": "Inserir emote",
+  "composer.description.preview": "Pré-visualização",
+  "composer.description.write": "Escrever",
+  "composer.description.empty": "Nada para pré-visualizar ainda.",
   "composer.category.title": "Escolha uma categoria",
   "composer.category.description":
     "Ajude as pessoas a encontrar a solicitação no tópico mais relevante.",

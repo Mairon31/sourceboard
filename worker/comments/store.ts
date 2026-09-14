@@ -16,6 +16,20 @@ export interface CommentEmoteAsset {
   url: string;
 }
 
+export interface CommentImageAsset {
+  id: string;
+  ownerUserId: string;
+  r2Key: string;
+  contentType: string;
+  byteSize: number;
+  width: number;
+  height: number;
+  checksumSha256: string;
+  status: "PENDING" | "ACTIVE" | "DELETED";
+  createdAt: number;
+  deletedAt: number | null;
+}
+
 export interface CommentStore {
   listForPost(input: {
     postId: string;
@@ -24,11 +38,27 @@ export interface CommentStore {
     sort: CommentSort;
   }): Promise<{ comments: CommentWithAuthor[]; nextCursor: string | null }>;
   getComment(commentId: string): Promise<CommentWithAuthor | null>;
+  getCommentImageAsset(assetId: string, ownerUserId: string): Promise<CommentImageAsset | null>;
+  createCommentImageAsset(input: {
+    id: string;
+    ownerUserId: string;
+    r2Key: string;
+    contentType: string;
+    byteSize: number;
+    width: number;
+    height: number;
+    checksumSha256: string;
+    createdAt: number;
+  }): Promise<void>;
+  getCommentImageReference(
+    assetId: string,
+  ): Promise<{ asset: CommentImageAsset; postId: string } | null>;
   createComment(input: {
     comment: CommentRecord;
     richtextJson: string;
     attachmentJson: string | null;
     linkPreview?: CommentLinkPreviewSnapshot | null;
+    commentImageAssetId?: string;
   }): Promise<void>;
   updateLinkPreview?(commentId: string, preview: CommentLinkPreviewSnapshot): Promise<void>;
   updateComment(input: {
@@ -87,6 +117,38 @@ interface CommentRow {
   post_status: string;
   post_deleted_at: number | null;
   post_hidden_at: number | null;
+}
+
+interface CommentImageAssetRow {
+  id: string;
+  owner_user_id: string;
+  r2_key: string;
+  content_type: string;
+  byte_size: number;
+  width: number | null;
+  height: number | null;
+  checksum_sha256: string;
+  status: string;
+  created_at: number;
+  deleted_at: number | null;
+  post_id?: string;
+}
+
+function toCommentImageAsset(row: CommentImageAssetRow): CommentImageAsset | null {
+  if (row.width === null || row.height === null) return null;
+  return {
+    id: row.id,
+    ownerUserId: row.owner_user_id,
+    r2Key: row.r2_key,
+    contentType: row.content_type,
+    byteSize: row.byte_size,
+    width: row.width,
+    height: row.height,
+    checksumSha256: row.checksum_sha256,
+    status: row.status === "PENDING" || row.status === "DELETED" ? row.status : "ACTIVE",
+    createdAt: row.created_at,
+    deletedAt: row.deleted_at,
+  };
 }
 
 const COMMENT_COLUMNS = `
@@ -380,7 +442,67 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       return row ? toRecord(row) : null;
     },
 
-    async createComment({ comment, richtextJson, attachmentJson, linkPreview }) {
+    async getCommentImageAsset(assetId, ownerUserId) {
+      const row = await db
+        .prepare(
+          `SELECT id, owner_user_id, r2_key, content_type, byte_size, width, height,
+                  checksum_sha256, status, created_at, deleted_at
+           FROM media_assets
+           WHERE id = ? AND owner_user_id = ? AND purpose = 'COMMENT_IMAGE'
+             AND status IN ('PENDING', 'ACTIVE')`,
+        )
+        .bind(assetId, ownerUserId)
+        .first<CommentImageAssetRow>();
+      return row ? toCommentImageAsset(row) : null;
+    },
+
+    async createCommentImageAsset(input) {
+      await db
+        .prepare(
+          `INSERT INTO media_assets
+             (id, owner_user_id, purpose, r2_key, content_type, byte_size, width, height,
+              checksum_sha256, status, created_at, deleted_at)
+           VALUES (?, ?, 'COMMENT_IMAGE', ?, ?, ?, ?, ?, ?, 'PENDING', ?, NULL)`,
+        )
+        .bind(
+          input.id,
+          input.ownerUserId,
+          input.r2Key,
+          input.contentType,
+          input.byteSize,
+          input.width,
+          input.height,
+          input.checksumSha256,
+          input.createdAt,
+        )
+        .run();
+    },
+
+    async getCommentImageReference(assetId) {
+      const row = await db
+        .prepare(
+          `SELECT m.id, m.owner_user_id, m.r2_key, m.content_type, m.byte_size, m.width, m.height,
+                  m.checksum_sha256, m.status, m.created_at, m.deleted_at, c.post_id
+           FROM media_assets m
+           JOIN comments c ON json_extract(c.attachment_json, '$.id') = m.id
+           WHERE m.id = ? AND m.purpose = 'COMMENT_IMAGE' AND m.status = 'ACTIVE'
+             AND json_extract(c.attachment_json, '$.type') = 'IMAGE'
+             AND c.state = 'VISIBLE' AND c.deleted_at IS NULL
+           LIMIT 1`,
+        )
+        .bind(assetId)
+        .first<CommentImageAssetRow>();
+      const asset = row ? toCommentImageAsset(row) : null;
+      return asset && row?.post_id ? { asset, postId: row.post_id } : null;
+    },
+
+    async createComment({
+      comment,
+      richtextJson,
+      attachmentJson,
+      linkPreview,
+      commentImageAssetId,
+    }) {
       const baseStatements = [
         db
           .prepare(
@@ -409,6 +531,17 @@ export function createD1CommentStore(db: D1Database): CommentStore {
           .bind(comment.createdAt, comment.postId),
       ];
       const statements = [...baseStatements];
+      if (commentImageAssetId) {
+        statements.push(
+          db
+            .prepare(
+              `UPDATE media_assets SET status = 'ACTIVE'
+               WHERE id = ? AND owner_user_id = ? AND purpose = 'COMMENT_IMAGE'
+                 AND status IN ('PENDING', 'ACTIVE')`,
+            )
+            .bind(commentImageAssetId, comment.authorId),
+        );
+      }
       if (linkPreview && linkPreviewSchemaAvailable !== false) {
         statements.push(
           db

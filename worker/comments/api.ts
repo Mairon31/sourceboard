@@ -24,6 +24,9 @@ import {
 } from "../store/entitlements";
 import { createModerationService } from "../moderation/service";
 import { enforceRateLimit } from "../security/rate-limit";
+import { createIdentifier } from "../auth/crypto";
+import { createMediaService } from "../media/r2";
+import { validateUploadedImage } from "../media/image-policy";
 import {
   createLinkPreviewService,
   createWorkersLinkPreviewCache,
@@ -37,10 +40,12 @@ function isCommentRoute(pathname: string): boolean {
     /^\/api\/comments\/[^/]+$/.test(pathname) ||
     /^\/api\/comments\/[^/]+\/link-preview-image$/.test(pathname) ||
     pathname === "/api/comments/link-preview" ||
+    pathname === "/api/comments/media" ||
     pathname === "/api/comments/media/search" ||
     pathname === "/api/comments/emotes" ||
     pathname === "/api/comments/stickers" ||
-    /^\/api\/reactions\/(POST|COMMENT)\/[^/]+$/.test(pathname)
+    /^\/api\/reactions\/(POST|COMMENT)\/[^/]+$/.test(pathname) ||
+    /^\/api\/media\/comment\/[^/]+$/.test(pathname)
   );
 }
 
@@ -260,6 +265,127 @@ function createProductionLinkPreviewService() {
   });
 }
 
+function requireMedia(env: SourceBoardEnvironment): R2Bucket {
+  if (!env.MEDIA) {
+    throw new PostError(
+      503,
+      "COMMENTS_MEDIA_UNAVAILABLE",
+      "Comment images are temporarily unavailable.",
+    );
+  }
+  return env.MEDIA;
+}
+
+function imageUploadError(code: string): PostError {
+  const messages: Record<string, string> = {
+    MEDIA_EMPTY: "Choose an image before uploading.",
+    MEDIA_TOO_LARGE: "Comment images must be smaller than 5 MB.",
+    MEDIA_INVALID_IMAGE: "The uploaded file is not a valid image.",
+    MEDIA_TYPE_MISMATCH: "The image type could not be verified.",
+    MEDIA_DIMENSIONS_INVALID: "Comment image dimensions are too large.",
+  };
+  return new PostError(400, "INVALID_COMMENT_IMAGE", messages[code] ?? "The image is invalid.");
+}
+
+function toHex(bytes: Uint8Array): string {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function uploadCommentImage(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  mutationSecurity(request);
+  const ownerUserId = await requiredViewer(request, env);
+  await enforceRateLimit(
+    env.RATE_LIMIT_UPLOADS,
+    `comment-upload:${ownerUserId}:${getRequestSecurityContext(request).ipPrefixHash}`,
+    {
+      unavailable: () =>
+        new PostError(
+          503,
+          "UPLOAD_RATE_LIMIT_UNAVAILABLE",
+          "Image uploads are temporarily unavailable.",
+        ),
+      limited: () =>
+        new PostError(429, "UPLOAD_RATE_LIMITED", "Too many uploads. Try again later.", {
+          retryAfter: 60,
+        }),
+    },
+  );
+  const form = await request.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    throw new PostError(400, "INVALID_COMMENT_IMAGE", "Choose an image before uploading.");
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const metadata = validateUploadedImage(bytes, file.type, "COMMENT");
+  if (!metadata.ok) throw imageUploadError(metadata.code);
+  const assetId = createIdentifier();
+  const r2Key = `comments/${ownerUserId}/${assetId}`;
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const checksumSha256 = toHex(new Uint8Array(digest));
+  const media = createMediaService(requireMedia(env));
+  await media.put(r2Key, bytes, { httpMetadata: { contentType: metadata.contentType } });
+  try {
+    await createD1CommentStore(database(env)).createCommentImageAsset({
+      id: assetId,
+      ownerUserId,
+      r2Key,
+      contentType: metadata.contentType,
+      byteSize: bytes.byteLength,
+      width: metadata.width,
+      height: metadata.height,
+      checksumSha256,
+      createdAt: Date.now(),
+    });
+  } catch (error) {
+    await media.delete(r2Key).catch(() => undefined);
+    throw error;
+  }
+  return json(
+    {
+      assetId,
+      label: file.name || "Attached image",
+      url: `/api/media/comment/${encodeURIComponent(assetId)}`,
+    },
+    requestId,
+    201,
+  );
+}
+
+async function serveCommentImage(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+  assetId: string,
+): Promise<Response> {
+  const store = createD1CommentStore(database(env));
+  const reference = await store.getCommentImageReference(assetId);
+  if (!reference) throw new PostError(404, "COMMENT_IMAGE_NOT_FOUND", "Comment image not found.");
+  const postStore = createD1PostStore(database(env));
+  const profileStore = createD1ProfileStore(database(env));
+  const viewer = await viewerId(request, env);
+  const post = await postStore.getPost(reference.postId);
+  const policy = { profileStore, store: postStore, now: () => Date.now() };
+  if (!post || !(await canViewPost(viewer, post.post, policy))) {
+    throw new PostError(404, "COMMENT_IMAGE_NOT_FOUND", "Comment image not found.");
+  }
+  const object = await createMediaService(requireMedia(env)).get(reference.asset.r2Key);
+  if (!object) throw new PostError(404, "COMMENT_IMAGE_NOT_FOUND", "Comment image not found.");
+  const publiclyViewable = await canViewPost(null, post.post, policy);
+  return new Response(object.body, {
+    headers: {
+      "cache-control": publiclyViewable ? "public, max-age=3600" : "private, no-store",
+      "content-type": reference.asset.contentType,
+      "content-length": String(reference.asset.byteSize),
+      etag: `"${reference.asset.checksumSha256}"`,
+      [REQUEST_ID_HEADER]: requestId,
+    },
+  });
+}
+
 function service(env: SourceBoardEnvironment) {
   const db = database(env);
   const previewService = createProductionLinkPreviewService();
@@ -333,6 +459,18 @@ export async function handleCommentApiRequest(
   const url = new URL(request.url);
   if (!isCommentRoute(url.pathname)) return null;
   try {
+    const commentImageMatch = url.pathname.match(/^\/api\/media\/comment\/([^/]+)$/);
+    if (commentImageMatch && request.method === "GET") {
+      return await serveCommentImage(
+        request,
+        requestId,
+        env,
+        decodeURIComponent(commentImageMatch[1] ?? ""),
+      );
+    }
+    if (url.pathname === "/api/comments/media" && request.method === "POST") {
+      return await uploadCommentImage(request, requestId, env);
+    }
     if (url.pathname === "/api/comments/media/search" && request.method === "GET") {
       return await searchKlipy(request, requestId, env);
     }

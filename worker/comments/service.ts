@@ -162,7 +162,10 @@ async function toView(
           id: record.comment.attachment.id,
           label: record.comment.attachment.label,
           provider: record.comment.attachment.provider,
-          url: record.comment.attachment.url,
+          url:
+            record.comment.attachment.type === "IMAGE"
+              ? `/api/media/comment/${encodeURIComponent(record.comment.attachment.id)}`
+              : record.comment.attachment.url,
           preview: record.comment.attachment.preview,
         }
       : undefined,
@@ -197,6 +200,17 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
     const comment = await dependencies.store.getComment(commentId);
     if (!comment) throw new PostError(404, "COMMENT_NOT_FOUND", "The comment was not found.");
     return comment;
+  }
+
+  async function validateAttachment(
+    attachment: ReturnType<typeof normalizeCommentBody>["attachment"],
+    authorId: string,
+  ): Promise<void> {
+    if (!attachment || attachment.type !== "IMAGE") return;
+    const asset = await dependencies.store.getCommentImageAsset(attachment.id, authorId);
+    if (!asset) {
+      throw new PostError(400, "COMMENT_IMAGE_NOT_FOUND", "The selected comment image is invalid.");
+    }
   }
 
   return {
@@ -299,11 +313,12 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         input.linkPreviewUrl !== null &&
         input.linkPreviewUrl !== "";
       const body = normalizeCommentBody({ ...input, allowEmpty: hasLinkPreview });
+      await validateAttachment(body.attachment, input.authorId);
       if (hasLinkPreview && body.attachment) {
         throw new PostError(
           400,
           "LINK_PREVIEW_ATTACHMENT_CONFLICT",
-          "A link preview cannot be combined with a GIF or sticker.",
+          "A link preview cannot be combined with attached media.",
         );
       }
       let linkPreview: CommentLinkPreviewSnapshot | null = null;
@@ -340,6 +355,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         richtextJson: JSON.stringify(body.richtext),
         attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,
         linkPreview,
+        commentImageAssetId: body.attachment?.type === "IMAGE" ? body.attachment.id : undefined,
       });
       const createdEmoteAssets = dependencies.store.getEmoteAssets
         ? await dependencies.store.getEmoteAssets(
@@ -377,6 +393,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         );
       }
       const body = normalizeCommentBody(input);
+      await validateAttachment(body.attachment, authorId);
       await dependencies.assertEntitlements?.(authorId, body);
       const updated = {
         ...current.comment,
