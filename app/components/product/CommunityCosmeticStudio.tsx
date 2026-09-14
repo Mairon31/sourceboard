@@ -121,7 +121,7 @@ export function CommunityCosmeticStudio() {
         css: sanitizeCommunityCosmeticCss(customCss, "preview").scopedCss,
         error: null as string | null,
       };
-    } catch (cause) {
+    } catch {
       return { css: "", error: t("community.invalidCss") };
     }
   }, [customCss, t]);

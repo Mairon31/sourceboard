@@ -112,6 +112,14 @@ function bioShortcodes(bio: string): { nodes: SafeRichTextNode[]; shortcodes: st
   return { nodes, shortcodes: [...shortcodes] };
 }
 
+function parseBioOrNull(bio: string): { nodes: SafeRichTextNode[]; shortcodes: string[] } | null {
+  try {
+    return bioShortcodes(bio);
+  } catch {
+    return null;
+  }
+}
+
 export interface ProfileService {
   getPublicProfile(username: string, viewerId: string | null): Promise<PublicProfileResult | null>;
   getMyProfile(userId: string): Promise<{
@@ -367,12 +375,7 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
     const relationship = viewerId
       ? await dependencies.store.getRelationship(viewerId, profile.userId)
       : "NONE";
-    let parsedBio: { nodes: SafeRichTextNode[]; shortcodes: string[] } | null = null;
-    try {
-      parsedBio = bioShortcodes(profile.bio);
-    } catch {
-      parsedBio = null;
-    }
+    const parsedBio = parseBioOrNull(profile.bio);
     const [links, friendCount, reputation, cosmetics, emoteAssets] = await Promise.all([
       dependencies.store.getSocialLinks(profile.userId),
       dependencies.store.countAcceptedFriends(profile.userId),
@@ -416,12 +419,7 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
     validateProfileInput(input);
     validateSocialLinks(links);
     if (dependencies.store.getEmoteAssets) {
-      let parsedBio: { nodes: SafeRichTextNode[]; shortcodes: string[] } | null = null;
-      try {
-        parsedBio = bioShortcodes(input.bio);
-      } catch {
-        parsedBio = null;
-      }
+      const parsedBio = parseBioOrNull(input.bio);
       if (parsedBio?.shortcodes.length) {
         const assets = await dependencies.store.getEmoteAssets(parsedBio.shortcodes, userId);
         if (assets.size !== parsedBio.shortcodes.length) {
