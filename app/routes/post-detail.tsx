@@ -27,6 +27,7 @@ import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
 import { SourceResolution } from "../components/product/SourceResolution";
 import { isAcceptedSourceUndoable } from "../../worker/source/policy";
+import { useI18n } from "../i18n/I18nProvider";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { postId?: string; slug?: string };
@@ -319,6 +320,7 @@ function PostServiceUnavailable() {
 export default function PostDetailRoute() {
   const { post, authenticated, viewerIdentity, canModerateComments, commentSort } =
     useLoaderData<LoaderData>();
+  const { t } = useI18n();
   const location = useLocation();
   const revalidator = useRevalidator();
 
@@ -371,7 +373,7 @@ export default function PostDetailRoute() {
       headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
       body: JSON.stringify({ commentId, reason }),
     });
-    if (!response.ok) throw new Error("The accepted source could not be undone.");
+    if (!response.ok) throw new Error(t("comments.sourceUndo.error"));
     revalidator.revalidate();
   }
 
