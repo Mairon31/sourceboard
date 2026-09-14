@@ -478,7 +478,10 @@ export function createD1CommentStore(db: D1Database): CommentStore {
           comment.updatedAt,
         )
         .run();
-      if (result.meta.changes !== 1) return false;
+      // D1 includes writes performed by AFTER UPDATE triggers in meta.changes.
+      // public_post_search_comments_au can therefore make a single matched
+      // comment update report more than one change.
+      if (result.meta.changes < 1) return false;
       await db
         .prepare(
           `INSERT INTO comment_revisions
@@ -506,7 +509,7 @@ export function createD1CommentStore(db: D1Database): CommentStore {
         )
         .bind(now, now, commentId, authorId)
         .run();
-      if (result.meta.changes !== 1) return false;
+      if (result.meta.changes < 1) return false;
       const comment = await db
         .prepare(`SELECT post_id FROM comments WHERE id = ?`)
         .bind(commentId)

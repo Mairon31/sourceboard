@@ -459,7 +459,7 @@ test("comment moderators hide and restore through the contextual menu with live 
   );
   await page.getByRole("button", { name: "Hide comment", exact: true }).click();
   expect((await hideResponse).ok()).toBe(true);
-  await expect(comment).toContainText("Moderated", { timeout: 15_000 });
+  await expect(comment).toContainText("Comment hidden.", { timeout: 15_000 });
 
   await comment.getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Restore comment" })).toBeVisible();

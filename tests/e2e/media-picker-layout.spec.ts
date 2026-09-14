@@ -454,6 +454,9 @@ test("media picker paginates, replaces attachments and keeps multi-emote inserti
   await expect(page.locator(".product-comment-media-picker")).toBeVisible();
   await expect(composer).toHaveValue(/:interactive_1_0:.*:interactive_1_1:/);
 
+  await emoteSearch.clear();
+  await expect(emoteSearch).toHaveValue("");
+  await expect(emoteSurface.locator("[data-pack-id]")).toHaveCount(3);
   await emoteSurface.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
     element.dispatchEvent(new Event("scroll"));
