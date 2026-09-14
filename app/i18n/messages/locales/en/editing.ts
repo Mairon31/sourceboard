@@ -145,6 +145,8 @@ export const enEditingMessages = {
   "profileEditor.usernameLoading": "Loading username settings…",
   "profileEditor.displayName": "Display name",
   "profileEditor.bio": "Bio",
+  "profileEditor.bioMode": "Bio editing mode",
+  "profileEditor.bioFormatting": "Bio formatting",
   "profileEditor.bioWrite": "Write",
   "profileEditor.bioPreview": "Preview",
   "profileEditor.bioEmpty": "Your bio preview will appear here.",

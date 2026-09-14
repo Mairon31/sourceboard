@@ -149,6 +149,8 @@ export const ruEditingMessages = {
   "profileEditor.usernameLoading": "Загрузка настроек имени пользователя…",
   "profileEditor.displayName": "Отображаемое имя",
   "profileEditor.bio": "О себе",
+  "profileEditor.bioMode": "Режим редактирования профиля",
+  "profileEditor.bioFormatting": "Форматирование биографии",
   "profileEditor.bioWrite": "Написать",
   "profileEditor.bioPreview": "Предпросмотр",
   "profileEditor.bioEmpty": "Здесь появится предпросмотр вашей биографии.",

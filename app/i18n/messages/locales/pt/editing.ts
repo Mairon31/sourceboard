@@ -154,6 +154,8 @@ export const ptEditingMessages = {
   "profileEditor.usernameLoading": "Carregando configurações do nome de usuário…",
   "profileEditor.displayName": "Nome de exibição",
   "profileEditor.bio": "Bio",
+  "profileEditor.bioMode": "Modo de edição da bio",
+  "profileEditor.bioFormatting": "Formatação da bio",
   "profileEditor.bioWrite": "Escrever",
   "profileEditor.bioPreview": "Pré-visualizar",
   "profileEditor.bioEmpty": "A pré-visualização da sua biografia aparecerá aqui.",

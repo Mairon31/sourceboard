@@ -152,6 +152,8 @@ export const esEditingMessages = {
   "profileEditor.usernameLoading": "Cargando configuración del nombre de usuario…",
   "profileEditor.displayName": "Nombre visible",
   "profileEditor.bio": "Biografía",
+  "profileEditor.bioMode": "Modo de edición de la biografía",
+  "profileEditor.bioFormatting": "Formato de la biografía",
   "profileEditor.bioWrite": "Escribir",
   "profileEditor.bioPreview": "Vista previa",
   "profileEditor.bioEmpty": "Aquí aparecerá la vista previa de tu biografía.",

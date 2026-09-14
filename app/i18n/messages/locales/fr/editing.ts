@@ -158,6 +158,8 @@ export const frEditingMessages = {
   "profileEditor.usernameLoading": "Chargement des paramètres du nom d’utilisateur…",
   "profileEditor.displayName": "Nom affiché",
   "profileEditor.bio": "Bio",
+  "profileEditor.bioMode": "Mode d’édition de la bio",
+  "profileEditor.bioFormatting": "Mise en forme de la bio",
   "profileEditor.bioWrite": "Écrire",
   "profileEditor.bioPreview": "Aperçu",
   "profileEditor.bioEmpty": "L’aperçu de votre bio apparaîtra ici.",

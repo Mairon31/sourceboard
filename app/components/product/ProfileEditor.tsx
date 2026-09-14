@@ -741,7 +741,11 @@ export function ProfileEditor({
           <div className="product-profile-editor-inline__bio">
             <div className="product-profile-editor-inline__bio-heading">
               <span className="sb-field__label">{t("profileEditor.bio")}</span>
-              <div className="product-chip-row" role="tablist" aria-label={t("profileEditor.bio")}>
+              <div
+                className="product-chip-row"
+                role="tablist"
+                aria-label={t("profileEditor.bioMode")}
+              >
                 <Button
                   type="button"
                   size="sm"
@@ -769,7 +773,7 @@ export function ProfileEditor({
                 <div
                   className="product-profile-editor-inline__bio-toolbar"
                   role="toolbar"
-                  aria-label={t("profileEditor.bio")}
+                  aria-label={t("profileEditor.bioFormatting")}
                 >
                   <button
                     type="button"

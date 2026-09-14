@@ -155,6 +155,8 @@ export const deEditingMessages = {
   "profileEditor.usernameLoading": "Benutzernameneinstellungen werden geladen…",
   "profileEditor.displayName": "Anzeigename",
   "profileEditor.bio": "Bio",
+  "profileEditor.bioMode": "Bio-Bearbeitungsmodus",
+  "profileEditor.bioFormatting": "Bio-Formatierung",
   "profileEditor.bioWrite": "Schreiben",
   "profileEditor.bioPreview": "Vorschau",
   "profileEditor.bioEmpty": "Hier erscheint die Vorschau deiner Bio.",

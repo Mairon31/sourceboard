@@ -186,7 +186,12 @@ test("public profile media is anonymous only while current and publicly viewable
   const csrfToken = await signInPublicOwnerForMedia(page);
   await page.goto(`/u/${PUBLIC_USERNAME}`);
   const upload = await page.evaluate(async (token) => {
-    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const png = Uint8Array.from(
+      atob(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl9sAAAAASUVORK5CYII=",
+      ),
+      (character) => character.charCodeAt(0),
+    );
     const form = new FormData();
     form.set("purpose", "AVATAR");
     form.set("file", new File([png], "avatar.png", { type: "image/png" }));
