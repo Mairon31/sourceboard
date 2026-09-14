@@ -12,7 +12,7 @@ describe("profile routing contract", () => {
     const privateProfile = read("../../app/routes/my-profile.tsx");
     expect(privateProfile).toContain("ProfileEditor");
     expect(privateProfile).toContain("ProfileAccountActions");
-    expect(privateProfile).toContain("require");
+    expect(privateProfile).toContain("withServerSession");
   });
 
   it("keeps /u/:username public even when the viewer owns that profile", () => {
@@ -20,7 +20,6 @@ describe("profile routing contract", () => {
     expect(publicProfile).toContain("<ProfileHero profile={profile} isOwnProfile={false} />");
     expect(publicProfile).not.toContain("ProfileEditor");
     expect(publicProfile).not.toContain("ProfileAccountActions");
-    expect(publicProfile).not.toContain("isOwnProfile");
   });
 
   it("keeps legacy username profile URLs compatible with the public canonical route", () => {
