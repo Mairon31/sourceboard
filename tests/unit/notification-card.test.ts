@@ -15,6 +15,8 @@ describe("NotificationCard", () => {
     expect(component).toContain('t("notifications.actions")');
     expect(css).toContain("grid-template-columns: auto minmax(0, 1fr) auto");
     expect(css).toContain("@media (max-width: 520px)");
-    expect(css).toContain("grid-column: 2");
+    expect(css).toContain("grid-column: 3");
+    expect(css).toContain("grid-row: 1");
+    expect(css).toContain("justify-self: end");
   });
 });

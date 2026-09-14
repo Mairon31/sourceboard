@@ -32,6 +32,7 @@ import {
   Badge,
   Button,
   CheckIcon,
+  CloseIcon,
   ConfirmDialog,
   Dropdown,
   EditIcon,
@@ -42,20 +43,42 @@ import {
   LinkIcon,
   MessageIcon,
   MoreIcon,
+  Modal,
   SmileIcon,
   StickerIcon,
   Textarea,
   TrashIcon,
 } from "../ui";
 
-function CommentAttachment({ attachment }: { attachment: CommentAttachmentView }) {
+function CommentAttachment({
+  attachment,
+  onRemove,
+}: {
+  attachment: CommentAttachmentView;
+  onRemove?: () => void;
+}) {
+  const { t } = useI18n();
   const imageUrl = attachment.url ?? attachment.preview;
   if (!imageUrl) return null;
+  const removeLabel = t(
+    attachment.type === "GIF" ? "comments.composer.removeGif" : "comments.composer.removeSticker",
+  );
   return (
     <div
       className={`product-comment-attachment product-comment-attachment--${attachment.type.toLowerCase()}`}
     >
       <img src={imageUrl} alt={attachment.label} loading="lazy" />
+      {onRemove ? (
+        <button
+          type="button"
+          className="product-comment-attachment__remove"
+          aria-label={removeLabel}
+          title={removeLabel}
+          onClick={onRemove}
+        >
+          <CloseIcon width="16" height="16" />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -193,17 +216,21 @@ function CommentItem({
   depth = 0,
   onReply,
   canAcceptSource,
+  canModerate,
   onAcceptSource,
   onUpdated,
   onDeleted,
+  onChanged,
 }: {
   comment: CommentView;
   depth?: number;
   onReply: (commentId: string) => void;
   canAcceptSource?: boolean;
+  canModerate?: boolean;
   onAcceptSource?: (commentId: string) => void;
   onUpdated: (comment: CommentView) => void;
   onDeleted: (commentId: string) => void;
+  onChanged?: () => void;
 }) {
   const { t, tp, date } = useI18n();
   const [showReplies, setShowReplies] = useState(depth === 0);
@@ -221,6 +248,11 @@ function CommentItem({
   const [previewingEdit, setPreviewingEdit] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string>();
+  const [moderating, setModerating] = useState<"HIDE" | "RESTORE" | null>(null);
+  const [moderationReason, setModerationReason] = useState("");
+  const [moderationBusy, setModerationBusy] = useState(false);
+  const [moderationError, setModerationError] = useState<string>();
   const [status, setStatus] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -309,6 +341,7 @@ function CommentItem({
       if (!response.ok) throw new Error(t("comments.error.save"));
       const payload = (await response.json()) as { comment: CommentView };
       onUpdated(payload.comment);
+      onChanged?.();
       setEditing(false);
       setPreviewingEdit(false);
     } catch (cause) {
@@ -319,7 +352,9 @@ function CommentItem({
   }
 
   async function deleteComment() {
+    if (deleteBusy) return;
     setDeleteBusy(true);
+    setDeleteError(undefined);
     setStatus(undefined);
     try {
       const response = await fetch(`/api/comments/${encodeURIComponent(comment.id)}`, {
@@ -329,14 +364,50 @@ function CommentItem({
       if (!response.ok) throw new Error(t("comments.error.delete"));
       setDeleting(false);
       onDeleted(comment.id);
+      onChanged?.();
     } catch (cause) {
-      setStatus(cause instanceof Error ? cause.message : t("comments.error.delete"));
+      setDeleteError(cause instanceof Error ? cause.message : t("comments.error.delete"));
     } finally {
       setDeleteBusy(false);
     }
   }
 
-  const hasMenuActions = Boolean(comment.canEdit || comment.canDelete || comment.canReport);
+  async function moderateComment() {
+    if (!moderating || !moderationReason.trim() || moderationBusy) return;
+    setModerationBusy(true);
+    setModerationError(undefined);
+    try {
+      const response = await fetch("/api/admin/moderation/action", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+        body: JSON.stringify({
+          targetType: "COMMENT",
+          targetId: comment.id,
+          action: comment.state === "HIDDEN" ? "RESTORE" : "HIDE",
+          reason: moderationReason.trim(),
+        }),
+      });
+      if (!response.ok) throw new Error(t("comments.moderation.error"));
+      const action = moderating;
+      setModerating(null);
+      setModerationReason("");
+      setStatus(
+        action === "RESTORE" ? t("comments.moderation.restored") : t("comments.moderation.hidden"),
+      );
+      onChanged?.();
+    } catch (cause) {
+      setModerationError(cause instanceof Error ? cause.message : t("comments.moderation.error"));
+    } finally {
+      setModerationBusy(false);
+    }
+  }
+
+  const canModerateState = Boolean(
+    canModerate && (comment.state === "VISIBLE" || comment.state === "HIDDEN"),
+  );
+  const hasMenuActions = Boolean(
+    comment.canEdit || comment.canDelete || comment.canReport || canModerateState,
+  );
 
   return (
     <article
@@ -365,7 +436,9 @@ function CommentItem({
                 nameAs="strong"
               />
             )}
-            {comment.isPostAuthor ? <Badge tone="accent">{t("comments.badges.author")}</Badge> : null}
+            {comment.isPostAuthor ? (
+              <Badge tone="accent">{t("comments.badges.author")}</Badge>
+            ) : null}
           </div>
           <a
             className="product-comment__date"
@@ -413,6 +486,21 @@ function CommentItem({
                         label: t("comments.actions.report"),
                         icon: <FlagIcon width="16" height="16" />,
                         onSelect: () => setReporting(true),
+                      },
+                    ]
+                  : []),
+                ...(canModerateState
+                  ? [
+                      {
+                        label:
+                          comment.state === "HIDDEN"
+                            ? t("comments.actions.restore")
+                            : t("comments.actions.hide"),
+                        onSelect: () => {
+                          setModerationError(undefined);
+                          setModerationReason("");
+                          setModerating(comment.state === "HIDDEN" ? "RESTORE" : "HIDE");
+                        },
                       },
                     ]
                   : []),
@@ -547,9 +635,53 @@ function CommentItem({
           destructive
           open={deleting}
           busy={deleteBusy}
+          error={deleteError}
           onConfirm={() => void deleteComment()}
-          onOpenChange={setDeleting}
+          onOpenChange={(open) => {
+            if (!open) setDeleteError(undefined);
+            setDeleting(open);
+          }}
         />
+        <Modal
+          title={t("comments.moderation.title")}
+          description={t("comments.moderation.description")}
+          open={Boolean(moderating)}
+          onOpenChange={(open) => {
+            if (!open && !moderationBusy) {
+              setModerating(null);
+              setModerationError(undefined);
+            }
+          }}
+        >
+          <Textarea
+            label={t("comments.moderation.reason")}
+            value={moderationReason}
+            maxLength={2000}
+            disabled={moderationBusy}
+            onChange={(event) => setModerationReason(event.target.value)}
+          />
+          <div className="product-chip-row">
+            <Button
+              size="sm"
+              loading={moderationBusy}
+              disabled={!moderationReason.trim()}
+              onClick={() => void moderateComment()}
+            >
+              {moderating === "RESTORE"
+                ? t("comments.actions.restore")
+                : t("comments.actions.hide")}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={moderationBusy}
+              onClick={() => setModerating(null)}
+            >
+              {t("common.cancel")}
+            </Button>
+          </div>
+          {moderationError ? <small role="alert">{moderationError}</small> : null}
+        </Modal>
         {status ? <small role="status">{status}</small> : null}
         {comment.replies.length ? (
           <>
@@ -574,9 +706,11 @@ function CommentItem({
                     depth={Math.min(depth + 1, 2)}
                     onReply={onReply}
                     canAcceptSource={canAcceptSource}
+                    canModerate={canModerate}
                     onAcceptSource={onAcceptSource}
                     onUpdated={onUpdated}
                     onDeleted={onDeleted}
+                    onChanged={onChanged}
                   />
                 ))}
               </div>
@@ -651,7 +785,9 @@ export function CommentThread({
   viewerIdentity,
   commentsClosed = false,
   canAcceptSource,
+  canModerateComments,
   onAcceptSource,
+  onCommentsChanged,
 }: {
   postId: string;
   comments: CommentView[];
@@ -660,11 +796,14 @@ export function CommentThread({
   viewerIdentity?: PublicPostAuthor | null;
   commentsClosed?: boolean;
   canAcceptSource?: boolean;
+  canModerateComments?: boolean;
   onAcceptSource?: (commentId: string) => void;
+  onCommentsChanged?: () => void;
 }) {
   const { t, tp } = useI18n();
   const submitInFlightRef = useRef(false);
   const pendingFocusIdRef = useRef<string | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const [items, setItems] = useState(comments);
@@ -783,7 +922,9 @@ export function CommentThread({
       });
       const payload = (await response.json().catch(() => null)) as { comment?: CommentView } | null;
       if (!response.ok || !payload?.comment)
-        throw new Error(response.status === 401 ? t("comments.error.signIn") : t("comments.error.unavailable"));
+        throw new Error(
+          response.status === 401 ? t("comments.error.signIn") : t("comments.error.unavailable"),
+        );
       const created = payload.comment;
       pendingFocusIdRef.current = created.id;
       setItems((current) => insertRootComment(current, created, sort));
@@ -796,6 +937,7 @@ export function CommentThread({
       setLinkStatus(undefined);
       setReplyTo(null);
       setStatus(t("comments.status.posted"));
+      onCommentsChanged?.();
     } catch (cause) {
       setStatus(cause instanceof Error ? cause.message : t("comments.error.unavailable"));
     } finally {
@@ -854,13 +996,16 @@ export function CommentThread({
           )}
           <div className="product-comment-composer__field">
             <Textarea
+              ref={composerRef}
               id="comment-composer"
               label={replyTo ? t("comments.composer.addReply") : t("comments.composer.addComment")}
               value={body}
               onChange={(event) => setBody(event.target.value)}
               placeholder={t("comments.composer.placeholder")}
             />
-            {attachment ? <CommentAttachment attachment={attachment} /> : null}
+            {attachment ? (
+              <CommentAttachment attachment={attachment} onRemove={() => setAttachment(null)} />
+            ) : null}
             <div className="product-comment-composer__toolbar">
               <div>
                 <button
@@ -907,16 +1052,13 @@ export function CommentThread({
                 >
                   <LinkIcon width="20" height="20" />
                 </button>
-                {attachment ? (
-                  <button type="button" onClick={() => setAttachment(null)}>
-                    {t("comments.composer.removeMedia")}
-                  </button>
-                ) : null}
               </div>
               <Button
                 size="sm"
                 loading={submitting}
-                disabled={submitting || (!body.trim() && !attachment && !linkPreview && !linkUrl.trim())}
+                disabled={
+                  submitting || (!body.trim() && !attachment && !linkPreview && !linkUrl.trim())
+                }
                 onClick={() => void submit()}
               >
                 {replyTo ? t("comments.actions.reply") : t("post.actions.comment")}
@@ -933,10 +1075,26 @@ export function CommentThread({
                 onKindChange={changeMediaKind}
                 onSelect={(item) => {
                   if (item.type === "EMOTE") {
-                    setBody(
-                      (current) =>
-                        `${current}${current && !/\s$/.test(current) ? " " : ""}${formatEmoteMarkdown(item.shortcode)}`,
-                    );
+                    const input = composerRef.current;
+                    const token = formatEmoteMarkdown(item.shortcode);
+                    const selectionStart = input?.selectionStart;
+                    const selectionEnd = input?.selectionEnd;
+                    let nextCursor = 0;
+                    setBody((current) => {
+                      const start = selectionStart ?? current.length;
+                      const end = selectionEnd ?? start;
+                      const before = current.slice(0, start);
+                      const after = current.slice(end);
+                      const prefix = before && !/\s$/.test(before) ? " " : "";
+                      const suffix = after && !/^\s/.test(after) ? " " : "";
+                      const inserted = `${prefix}${token}${suffix}`;
+                      nextCursor = before.length + inserted.length - suffix.length;
+                      return `${before}${inserted}${after}`;
+                    });
+                    window.requestAnimationFrame(() => {
+                      composerRef.current?.focus();
+                      composerRef.current?.setSelectionRange(nextCursor, nextCursor);
+                    });
                   } else {
                     clearLinkPreview();
                     setLinkOpen(false);
@@ -949,7 +1107,7 @@ export function CommentThread({
                       preview: item.preview,
                     });
                   }
-                  changeMediaKind(null);
+                  if (item.type !== "EMOTE") changeMediaKind(null);
                 }}
                 onClose={() => changeMediaKind(null)}
               />
@@ -999,9 +1157,11 @@ export function CommentThread({
             comment={comment}
             onReply={setReplyTo}
             canAcceptSource={canAcceptSource}
+            canModerate={canModerateComments}
             onAcceptSource={onAcceptSource}
             onUpdated={(next) => setItems((current) => replaceComment(current, next))}
             onDeleted={(id) => setItems((current) => removeComment(current, id))}
+            onChanged={() => onCommentsChanged?.()}
           />
         ))}
       </div>

@@ -34,6 +34,19 @@ describe("stale mutation UI contract", () => {
     expect(commentThread).toContain("setLikes(comment.reaction.count)");
   });
 
+  it("keeps destructive confirmations open on failure and revalidates authoritative parents on success", () => {
+    expect(postCard).toContain("archiveBusy");
+    expect(postCard).toContain("archiveError");
+    expect(postCard).toContain("deleteBusy");
+    expect(postCard).toContain("deleteError");
+    expect(postCard).toContain("busy={archiveBusy}");
+    expect(postCard).toContain("error={archiveError");
+    expect(postCard).toContain("busy={deleteBusy}");
+    expect(postCard).toContain("error={deleteError");
+    expect(commentThread).toContain("onChanged?.()");
+    expect(commentThread).toContain("error={deleteError}");
+  });
+
   it("keeps settings mutations optimistic with explicit rollback and loader resynchronization", () => {
     expect(settings).toContain("persistPreferenceChange");
     expect(settings).toContain("setValues(createInitialPreferenceValues(data))");

@@ -903,3 +903,17 @@ Task 5's complete CI #1644 also passed Playwright, establishing the session-cont
 ### Remaining Block B release check
 
 After the migration-first production deployment, smoke-test the real environment before changing this Block B status to `COMPLETED`: pre-`0031` profile visibility migration, new-account public default, signed-out public profile/avatar visibility, unified 404 for private/friends-only/blocked access, General-first Settings layout, username/password under Security, observed session details without generic placeholders, conditional IP/location details, and revocation of another session without invalidating the current session.
+
+## Interaction, moderation and media UX hardening — 2026-09-13
+
+Status: **IMPLEMENTED — CI/browser gate pending**
+
+- Comment create/edit/delete and moderation now reconcile authoritative post-detail data through React Router revalidation; Accepted Source therefore reads the same updated accepted-comment record without a manual reload.
+- Comment moderation exposes the existing server-derived `comment.moderate` capability and uses the canonical moderation endpoint for COMMENT `HIDE`/`RESTORE` with a required reason. Ordinary users receive neither the UI action nor backend authorization.
+- Post archive/delete confirmation flows preserve failure state and busy state instead of dropping errors; the shared Share action now uses a conventional connected-nodes glyph.
+- GIF/sticker attachments can be removed directly from the preview without clearing composer text. KLIPY search now supports cursor pagination, deduplication, stale-request protection, retry/end states, and terminates a repeated cursor instead of looping indefinitely.
+- Emote insertion preserves the picker and search state, inserts at the textarea selection/caret, supports consecutive inserts, and synchronizes pack navigation with the internal emote scroller without scrolling the document.
+- Notification contextual actions remain in the card's top-right grid cell on compact viewports. New user-facing copy is present in all six supported locales.
+- Local verification on the implementation candidate: strict TypeScript passed; focused interaction/media tests passed **32/32**; the complete unit suite passed **600/600 across 147 files**; production dependency audit reported **0 vulnerabilities**; production build and Worker deploy dry-run passed. The dry-run resolves D1, R2, KV, Queue, Durable Object and all four Rate Limit bindings.
+- Local Windows D1 execution is currently blocked before SQL runs by a Wrangler/Miniflare `internal error` even for `SELECT 1`, reproducing on Wrangler 4.129.0 and 4.131.1 and with a fresh persistence directory. Because React Router local requests depend on that D1 binding, Playwright/browser verification and the local migration gate are deferred to the standard Linux CI run for the pushed branch rather than being represented as locally green.
+- CodeRabbit review is also environment-blocked: the official installer rejects this Windows Git Bash runtime as `Unsupported operating system: mingw64_nt-10.0-26200`. No manual review is being attributed to CodeRabbit.

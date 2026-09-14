@@ -117,18 +117,20 @@
 
 @media (max-width: 520px) {
   .product-notification-card {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: var(--space-2) var(--space-3);
   }
 
   .product-notification-card__secondary {
-    grid-column: 2;
-    justify-self: start;
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+    justify-self: end;
   }
 
   .product-notification-card__menu {
-    right: auto;
-    left: 0;
+    right: 0;
+    left: auto;
   }
 
   .product-notification-card__heading {

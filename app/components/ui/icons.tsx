@@ -148,9 +148,10 @@ export function LinkIcon(props: IconProps) {
 export function ShareIcon(props: IconProps) {
   return (
     <IconBase {...props}>
-      <path d="M12 16V4" />
-      <path d="m7.5 8.5 4.5-4.5 4.5 4.5" />
-      <path d="M5 12v7h14v-7" />
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.7 10.7 6.6-4.2M8.7 13.3l6.6 4.2" />
     </IconBase>
   );
 }

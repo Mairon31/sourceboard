@@ -69,21 +69,35 @@ test("notification popover renders grouped human copy and exact unread count", a
   await expect(popover).toHaveCount(0);
 });
 
-test("mobile notification cards keep content width and actions below the main copy", async ({
-  page,
-}) => {
-  await installNotificationFixture(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/notifications");
-  await waitForUiReady(page);
+for (const viewport of [
+  { width: 320, height: 720 },
+  { width: 375, height: 812 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 1280, height: 900 },
+]) {
+  test(`notification actions stay top-right at ${viewport.width}px`, async ({ page }) => {
+    await installNotificationFixture(page);
+    await page.setViewportSize(viewport);
+    await page.goto("/notifications");
+    await waitForUiReady(page);
 
-  const card = page.locator(".product-notification-card").first();
-  await expect(card).toBeVisible();
-  await expect(card.getByText(/E2E Liker One and 1 other liked your post/)).toBeVisible();
-  await expect(card).not.toContainText("**");
-  await expect(card).not.toContainText("emt_");
+    const card = page.locator(".product-notification-card").first();
+    const action = card.getByLabel("Notification actions");
+    await expect(card).toBeVisible();
+    await expect(action).toBeVisible();
+    await expect(card.getByText(/E2E Liker One and 1 other liked your post/)).toBeVisible();
+    await expect(card).not.toContainText("**");
+    await expect(card).not.toContainText("emt_");
 
-  const box = await card.boundingBox();
-  expect(box).not.toBeNull();
-  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(390);
-});
+    const cardBox = await card.boundingBox();
+    const actionBox = await action.boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect(actionBox).not.toBeNull();
+    expect((cardBox?.x ?? 0) + (cardBox?.width ?? 0)).toBeLessThanOrEqual(viewport.width + 1);
+    expect(actionBox?.y ?? Infinity).toBeLessThan((cardBox?.y ?? 0) + 64);
+    expect((actionBox?.x ?? 0) + (actionBox?.width ?? 0)).toBeGreaterThan(
+      (cardBox?.x ?? 0) + (cardBox?.width ?? 0) - 64,
+    );
+  });
+}

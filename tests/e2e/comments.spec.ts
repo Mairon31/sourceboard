@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { hashOpaqueToken } from "../../worker/auth/crypto";
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "../../worker/auth/security";
 import { seedCommentMediaRegressionFixture } from "./comment-media-fixture";
-import { waitForUiReady } from "./test-helpers";
+import { installAdminStoreFixture, waitForUiReady } from "./test-helpers";
 
 function executeLocalSql(sql: string) {
   const wranglerEntrypoint = resolve(
@@ -57,6 +57,7 @@ async function installNavigationUserSession(page: Page, suffix: string) {
       sameSite: "Lax",
     },
   ]);
+  return { csrfToken };
 }
 
 async function installExpiredCommentOwnerFixture(page: Page) {
@@ -144,6 +145,68 @@ function installCommentSortingFixture() {
       ('e2e-sort-reply', 'e2e-comment-sort-post', 'e2e-navigation-user', 'e2e-sort-popular',
        '[{"type":"text","text":"Popular child reply"}]', 'Popular child reply', NULL,
        'VISIBLE', 0, ${reply}, ${reply}, ${editDeadline}, NULL, NULL);
+  `);
+}
+
+async function installAcceptedSourceEditFixture(page: Page) {
+  const now = Date.now();
+  const deadline = now + 24 * 60 * 60 * 1000;
+  await installNavigationUserSession(page, "accepted-edit");
+  executeLocalSql(`
+    DELETE FROM source_resolutions WHERE post_id = 'e2e-accepted-edit-post';
+    DELETE FROM comments WHERE post_id = 'e2e-accepted-edit-post';
+    DELETE FROM posts WHERE id = 'e2e-accepted-edit-post';
+    INSERT INTO posts
+      (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
+       title, slug, description, image_asset_id, visibility, status, comment_count, like_count,
+       accepted_comment_id, verified_source_id, created_at, updated_at, edit_deadline_at,
+       archived_at, deleted_at, hidden_at, locked_at)
+    VALUES
+      ('e2e-accepted-edit-post', 'e2e-navigation-user', 'IDENTIFIED', 0, NULL, NULL,
+       'Accepted source live edit', 'e2e-accepted-edit-post', 'Accepted source edit fixture.',
+       'e2e-navigation-media', 'PUBLIC', 'ANSWERED', 1, 0, 'e2e-accepted-edit-comment', NULL,
+       ${now}, ${now}, ${deadline}, NULL, NULL, NULL, NULL);
+    INSERT INTO comments
+      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+       deleted_at, hidden_at)
+    VALUES
+      ('e2e-accepted-edit-comment', 'e2e-accepted-edit-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Original accepted source"}]', 'Original accepted source',
+       NULL, 'VISIBLE', 0, ${now}, ${now}, ${deadline}, NULL, NULL);
+    INSERT INTO source_resolutions
+      (id, post_id, comment_id, resolution_type, state, canonical_source_url, evidence_note,
+       actor_user_id, created_at, revoked_at, revoked_by_user_id, revoke_reason)
+    VALUES
+      ('e2e-accepted-edit-resolution', 'e2e-accepted-edit-post', 'e2e-accepted-edit-comment',
+       'ACCEPTED', 'ACTIVE', NULL, NULL, 'e2e-navigation-user', ${now}, NULL, NULL, NULL);
+  `);
+}
+
+function installCommentModerationFixture() {
+  const now = Date.now();
+  const deadline = now + 24 * 60 * 60 * 1000;
+  executeLocalSql(`
+    DELETE FROM comments WHERE post_id = 'e2e-comment-moderation-post';
+    DELETE FROM posts WHERE id = 'e2e-comment-moderation-post';
+    INSERT INTO posts
+      (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
+       title, slug, description, image_asset_id, visibility, status, comment_count, like_count,
+       accepted_comment_id, verified_source_id, created_at, updated_at, edit_deadline_at,
+       archived_at, deleted_at, hidden_at, locked_at)
+    VALUES
+      ('e2e-comment-moderation-post', 'e2e-navigation-user', 'IDENTIFIED', 0, NULL, NULL,
+       'Comment moderation fixture', 'e2e-comment-moderation-post', 'Moderation regression fixture.',
+       'e2e-navigation-media', 'PUBLIC', 'OPEN', 1, 0, NULL, NULL, ${now}, ${now}, ${deadline},
+       NULL, NULL, NULL, NULL);
+    INSERT INTO comments
+      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+       deleted_at, hidden_at)
+    VALUES
+      ('e2e-comment-moderation-target', 'e2e-comment-moderation-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Moderation target"}]', 'Moderation target', NULL,
+       'VISIBLE', 0, ${now}, ${now}, ${deadline}, NULL, NULL);
   `);
 }
 
@@ -313,4 +376,85 @@ test("freshly submitted root comment is placed by active sort and receives focus
   ).toContainText("Fresh focused root");
   await expect(fresh).toBeFocused();
   await expect(page).toHaveURL(/\?comments=recent#comment-/);
+});
+
+test("editing the accepted comment refreshes Accepted Source without a manual reload", async ({
+  page,
+}) => {
+  await installAcceptedSourceEditFixture(page);
+  const response = await page.goto("/posts/e2e-accepted-edit-post/e2e-accepted-edit-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const source = page.locator(".product-source-resolution");
+  await expect(source).toContainText("Original accepted source");
+  const comment = page.locator("#comment-e2e-accepted-edit-comment");
+  await comment.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  await comment.getByLabel("Edit comment").fill("Updated **accepted** source");
+  await comment.getByRole("button", { name: "Save", exact: true }).click();
+
+  await expect(comment).toContainText("Updated accepted source");
+  await expect(source).toContainText("Updated accepted source");
+  await expect(source).not.toContainText("Original accepted source");
+});
+
+test("ordinary users neither receive comment moderation actions nor bypass the backend capability", async ({
+  page,
+}) => {
+  installCommentModerationFixture();
+  const { csrfToken } = await installNavigationUserSession(page, "moderation-forbidden");
+  const response = await page.goto(
+    "/posts/e2e-comment-moderation-post/e2e-comment-moderation-post",
+  );
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const comment = page.locator("#comment-e2e-comment-moderation-target");
+  await comment.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Hide comment" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  const status = await page.evaluate(async (token) => {
+    const result = await fetch("/api/admin/moderation/action", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-csrf-token": token },
+      body: JSON.stringify({
+        targetType: "COMMENT",
+        targetId: "e2e-comment-moderation-target",
+        action: "HIDE",
+        reason: "Attempted privilege bypass",
+      }),
+    });
+    return result.status;
+  }, csrfToken);
+  expect(status).toBe(403);
+});
+
+test("comment moderators hide and restore through the contextual menu with live revalidation", async ({
+  page,
+}) => {
+  installCommentModerationFixture();
+  await installAdminStoreFixture(page);
+  const response = await page.goto(
+    "/posts/e2e-comment-moderation-post/e2e-comment-moderation-post",
+  );
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const comment = page.locator("#comment-e2e-comment-moderation-target");
+  await comment.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Hide comment" }).click();
+  await page.getByLabel("Moderation reason").fill("E2E moderation regression");
+  await page.getByRole("button", { name: "Hide comment", exact: true }).click();
+  await expect(comment).toContainText("Moderated");
+
+  await comment.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Restore comment" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Restore comment" }).click();
+  await page.getByLabel("Moderation reason").fill("Restore after E2E check");
+  await page.getByRole("button", { name: "Restore comment", exact: true }).click();
+  await expect(comment.getByText("Moderated", { exact: true })).toHaveCount(0);
+  await comment.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Hide comment" })).toBeVisible();
 });
