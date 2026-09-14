@@ -13,6 +13,8 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
 import { ShareAction } from "./ShareAction";
+import { RichText } from "./RichText";
+import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
 import {
   Badge,
   Button,
@@ -20,6 +22,7 @@ import {
   ConfirmDialog,
   Dropdown,
   EditIcon,
+  GalleryIcon,
   HeartIcon,
   Input,
   MessageIcon,
@@ -34,6 +37,16 @@ function statusTone(status: PostSummary["status"]) {
   if (status === "ANSWERED") return "accent" as const;
   if (status === "LOCKED") return "warning" as const;
   return "neutral" as const;
+}
+
+function postDescriptionNodes(description: string) {
+  try {
+    return renderMarkdownPreview(description);
+  } catch {
+    return [
+      { type: "paragraph" as const, children: [{ type: "text" as const, text: description }] },
+    ];
+  }
 }
 
 function isInteractivePostTarget(target: EventTarget | null): boolean {
@@ -80,12 +93,15 @@ export function PostCard({
   const [archiveError, setArchiveError] = useState<string>();
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string>();
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const [restoreError, setRestoreError] = useState<string>();
   const [reportOpen, setReportOpen] = useState(false);
   const [reportCategory, setReportCategory] = useState("SPAM");
   const [reportDetail, setReportDetail] = useState("");
   const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const mediaRef = useRef<HTMLImageElement>(null);
   const editingRef = useRef(editing);
   const reactionInFlightRef = useRef(false);
@@ -275,6 +291,25 @@ export function PostCard({
     }
   }
 
+  async function restorePost() {
+    if (restoreBusy) return;
+    setRestoreBusy(true);
+    setRestoreError(undefined);
+    try {
+      const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}/restore`, {
+        method: "POST",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      if (!response.ok) throw new Error(t("post.error.restore"));
+      setManageStatus(t("post.statusMessage.restored"));
+      onChanged?.();
+    } catch (error) {
+      setRestoreError(error instanceof Error ? error.message : t("post.error.restore"));
+    } finally {
+      setRestoreBusy(false);
+    }
+  }
+
   async function setCommentsClosed(closed: boolean) {
     setManageStatus(null);
     const previous = commentsClosed;
@@ -326,6 +361,9 @@ export function PostCard({
   }
 
   const menuItems = [
+    ...(manage && permissions?.canRestore
+      ? [{ label: t("post.menu.restore"), onSelect: () => void restorePost() }]
+      : []),
     ...(permissions?.canReport
       ? [{ label: t("post.menu.report"), onSelect: () => setReportOpen(true) }]
       : []),
@@ -493,7 +531,12 @@ export function PostCard({
             >
               {displayTitle}
             </Link>
-            {displayDescription ? <p>{displayDescription}</p> : null}
+            {displayDescription ? (
+              <RichText
+                className="product-post__description"
+                nodes={postDescriptionNodes(displayDescription)}
+              />
+            ) : null}
           </>
         )}
       </div>
@@ -520,35 +563,52 @@ export function PostCard({
           ) : null}
         </div>
       ) : (
-        <Link
-          to={detailHref}
-          className={mediaClass}
-          aria-label={t("post.openAria", { title: displayTitle })}
-          onClick={() => markNavigationStart(detailHref)}
-        >
+        <div className={mediaClass}>
+          <Link
+            to={detailHref}
+            className="product-post__media-link"
+            aria-label={t("post.openAria", { title: displayTitle })}
+            onClick={() => markNavigationStart(detailHref)}
+          >
+            {post.imageUrl && !mediaFailed ? (
+              <img
+                ref={mediaRef}
+                src={post.imageUrl}
+                alt={post.imageAlt}
+                width={post.imageWidth}
+                height={post.imageHeight}
+                loading="lazy"
+                onError={() => setMediaFailed(true)}
+              />
+            ) : mediaFailed ? (
+              <div
+                className="product-post__media-unavailable"
+                role="img"
+                aria-label={post.imageAlt}
+              >
+                <strong>{t("post.media.unavailable")}</strong>
+                <span>{t("post.media.loadError")}</span>
+              </div>
+            ) : (
+              <div className="product-post__media-frame" role="img" aria-label={post.imageAlt}>
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+          </Link>
           {post.imageUrl && !mediaFailed ? (
-            <img
-              ref={mediaRef}
-              src={post.imageUrl}
-              alt={post.imageAlt}
-              width={post.imageWidth}
-              height={post.imageHeight}
-              loading="lazy"
-              onError={() => setMediaFailed(true)}
-            />
-          ) : mediaFailed ? (
-            <div className="product-post__media-unavailable" role="img" aria-label={post.imageAlt}>
-              <strong>{t("post.media.unavailable")}</strong>
-              <span>{t("post.media.loadError")}</span>
-            </div>
-          ) : (
-            <div className="product-post__media-frame" role="img" aria-label={post.imageAlt}>
-              <span />
-              <span />
-              <span />
-            </div>
-          )}
-        </Link>
+            <button
+              type="button"
+              className="product-post__media-expand"
+              aria-label={t("post.media.previewTitle")}
+              title={t("post.media.previewTitle")}
+              onClick={() => setLightboxOpen(true)}
+            >
+              <GalleryIcon width="18" height="18" />
+            </button>
+          ) : null}
+        </div>
       )}
 
       <div className="product-post__engagement">
@@ -605,6 +665,11 @@ export function PostCard({
         {manageStatus ? (
           <small className="product-post__reaction-status" role="status">
             {manageStatus}
+          </small>
+        ) : null}
+        {restoreError ? (
+          <small className="product-post__reaction-status" role="alert">
+            {restoreError}
           </small>
         ) : null}
       </div>
@@ -670,6 +735,21 @@ export function PostCard({
         onConfirm={() => void deletePost()}
         onOpenChange={setConfirmDelete}
       />
+      <Modal
+        title={t("post.media.previewTitle")}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+      >
+        {post.imageUrl ? (
+          <img
+            className="product-post__lightbox-image"
+            src={post.imageUrl}
+            alt={post.imageAlt}
+            width={post.imageWidth}
+            height={post.imageHeight}
+          />
+        ) : null}
+      </Modal>
     </Card>
   );
 }

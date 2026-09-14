@@ -65,7 +65,7 @@ export function StorePreview({
             : undefined
         }
         mode="store"
-        className={`product-store-preview product-store-preview--${item.type === "AVATAR_FRAME" ? "avatar" : item.type === "PROFILE_BANNER" ? "theme" : "profile-effect"}`}
+        className={`product-store-preview product-store-preview--${item.type === "AVATAR_FRAME" ? "avatar" : item.type === "PROFILE_BANNER" ? "theme" : "profile-effect"}${item.type === "PROFILE_EFFECT" && config.preset ? ` product-store-preview--${config.preset}` : ""}`}
       />
     );
   }

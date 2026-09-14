@@ -19,6 +19,16 @@ Status: **IN PROGRESS — Firebase-backed deployment is live; launch gates remai
 - Link previews now expose metadata status, accessible labels, resilient image fallback and reduced-motion-safe hover/focus treatment.
 - Existing PR #43 is merged into green `master`; this follow-up is intentionally isolated for a new pull request and remains pending final CI/browser verification.
 
+### 2026-09-14 — media, Markdown, profile identity and Community Studio follow-up
+
+- Centralized client-side image preparation for avatar, banner, post and comment uploads. It resizes oversized images and converts compatible static uploads to WebP before R2 while retaining server-side MIME, signature, dimensions, byte and checksum validation as the authority.
+- Added soft-delete restoration for posts inside the 24-hour window, with the restore action exposed in the post card and purge eligibility preserved for the scheduled cleanup path.
+- Added safe Markdown rendering and editing for post descriptions and profile bios, including compact toolbars, preview modes, safe links, canonical emote syntax and server-side validation. User-generated titles, descriptions, bios and comments remain data and are never passed through i18n.
+- Profile bio emotes are hydrated only when the viewer is entitled to a published/enabled emote asset; unavailable shortcodes are rejected server-side.
+- Unified Store cosmetic previews now apply the preset renderer classes to profile effects and keep a focused avatar subject visible for frame/effect/theme previews, including reduced-motion fallback styling.
+- Community Studio UI is now backed by a dedicated typed `community` namespace in all six locale catalogs. The route, form labels, lifecycle states and feedback use `useI18n`; creator names, descriptions and review notes remain unmodified user data.
+- Focused verification after this block: 16 i18n/community tests passed and strict TypeScript passed. Full repository gates, fresh D1 migrations and browser/CI verification remain pending for PR #45. Local Windows D1 remains blocked before SQL by the documented Wrangler/Miniflare `internal error`, so this is not represented as a local migration or browser pass.
+
 ## Phase 0 — Baseline, decisions and contracts
 
 Status: **COMPLETED**

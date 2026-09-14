@@ -15,6 +15,8 @@ import { ProfileIdentityCard } from "./ProfileIdentityCard";
 import { ShareAction } from "./ShareAction";
 import { SocialActionButton } from "./SocialActionButton";
 import { SocialIcon } from "./SocialIcon";
+import { RichText } from "./RichText";
+import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
 
 const relationshipLabelKeys: Record<Relationship, MessageKey> = {
   NONE: "profile.relationship.none",
@@ -23,6 +25,14 @@ const relationshipLabelKeys: Record<Relationship, MessageKey> = {
   OUTGOING: "profile.relationship.outgoing",
   BLOCKED: "profile.relationship.blocked",
 };
+
+function profileBioNodes(bio: string) {
+  try {
+    return renderMarkdownPreview(bio);
+  } catch {
+    return [{ type: "paragraph" as const, children: [{ type: "text" as const, text: bio }] }];
+  }
+}
 
 interface ProfileHeroProps {
   profile: PublicProfileDto;
@@ -228,7 +238,12 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
           </div>
         </div>
 
-        {profile.bio ? <p className="product-profile-bio">{profile.bio}</p> : null}
+        {profile.bio ? (
+          <RichText
+            className="product-profile-bio"
+            nodes={profile.bioRichtext ?? profileBioNodes(profile.bio)}
+          />
+        ) : null}
 
         <div
           className="product-profile-summary product-profile-stats--compact"

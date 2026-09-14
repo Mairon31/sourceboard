@@ -8,6 +8,7 @@ import type {
 } from "../../shared/store/cosmetics";
 import type { CreatorProIdentityVisuals } from "../../shared/store/creator-pro-config";
 import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
+import type { SafeRichTextNode } from "../../shared/richtext/markdown";
 
 export type ProfileVisibility = "PUBLIC" | "FRIENDS_ONLY" | "PRIVATE";
 
@@ -97,6 +98,7 @@ export interface PublicProfileDto {
   username: string;
   displayName: string;
   bio: string;
+  bioRichtext?: SafeRichTextNode[];
   avatarUrl?: string;
   bannerUrl?: string;
   cosmetics?: PublicCosmeticsDto;

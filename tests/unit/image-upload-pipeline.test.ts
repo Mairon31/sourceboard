@@ -7,9 +7,12 @@ function read(path: string): string {
 }
 
 const uploadField = read("../../app/components/product/ImageUploadField.tsx");
+const mediaPreparation = read("../../app/data/media-preparation.ts");
 const composer = read("../../app/components/product/PostComposer.tsx");
+const profileEditor = read("../../app/components/product/ProfileEditor.tsx");
 const postRoute = read("../../app/routes/post-new.tsx");
 const imageValidation = read("../../worker/posts/image.ts");
+const mediaPolicy = read("../../worker/media/image-policy.ts");
 const postsApi = read("../../worker/posts/api.ts");
 const postsStore = read("../../worker/posts/store.ts");
 
@@ -28,19 +31,33 @@ describe("new post image upload pipeline", () => {
 
   it("keeps the canonical post upload allowlist and does not silently accept GIF uploads", () => {
     for (const type of ["image/jpeg", "image/png", "image/webp", "image/avif"]) {
-      expect(imageValidation).toContain(`"${type}"`);
+      expect(mediaPolicy).toContain(`"${type}"`);
       expect(uploadField).toContain(type);
     }
-    expect(imageValidation).not.toContain('"image/gif"');
+    expect(mediaPolicy).not.toContain('"image/gif"');
+    expect(imageValidation).toContain('validateUploadedImage(bytes, contentType, "POST")');
     expect(uploadField).toContain('file.type === "image/gif"');
-    expect(uploadField).toContain("return file");
+    expect(mediaPreparation).toContain("return file");
+    expect(uploadField).toContain("25 * 1024 * 1024");
+    expect(uploadField).toContain("MAX_POST_IMAGE_DIMENSION = 6_000");
   });
 
-  it("optimizes JPEG/PNG only when a smaller WebP candidate is available", () => {
-    expect(uploadField).toContain('file.type !== "image/jpeg" && file.type !== "image/png"');
-    expect(uploadField).toContain("canvas.toBlob");
-    expect(uploadField).toContain('"image/webp"');
-    expect(uploadField).toContain("optimized.size >= file.size");
+  it("optimizes compatible static images and bounds oversized dimensions before upload", () => {
+    expect(uploadField).toContain("MAX_POST_IMAGE_DIMENSION");
+    expect(mediaPreparation).toContain(
+      "options.maxDimension / Math.max(bitmap.width, bitmap.height)",
+    );
+    expect(mediaPreparation).toContain("canvas.toBlob");
+    expect(mediaPreparation).toContain('"image/webp"');
+    expect(mediaPreparation).toContain("optimized.size >= file.size");
+  });
+
+  it("reuses the bounded client preparation for profile media and comment images", () => {
+    const comments = read("../../app/components/product/CommentThread.tsx");
+    expect(profileEditor).toContain("prepareImageForUpload");
+    expect(profileEditor).toContain('maxDimension: purpose === "AVATAR" ? 2_048 : 4_096');
+    expect(comments).toContain("prepareImageForUpload");
+    expect(comments).toContain("maxDimension: 3_000");
   });
 
   it("revalidates bytes on the server and persists only image metadata in D1", () => {

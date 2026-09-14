@@ -365,11 +365,17 @@ async function handlePostAction(
   requestId: string,
   env: SourceBoardEnvironment,
   postId: string,
-  action: "archive" | "unarchive" | "nsfw" | "close-comments" | "reopen-comments",
+  action: "archive" | "unarchive" | "nsfw" | "close-comments" | "reopen-comments" | "restore",
 ): Promise<Response> {
   requireMutationSecurity(request);
   const viewerId = await requireViewerId(request, env);
   const service = createService(env);
+  if (action === "restore") {
+    if (request.method !== "POST")
+      throw new PostError(404, "NOT_FOUND", "Post endpoint not found.");
+    await service.restorePost(postId, viewerId);
+    return jsonResponse({ restored: true }, requestId);
+  }
   if (action === "close-comments" || action === "reopen-comments") {
     if (request.method !== "POST") {
       throw new PostError(404, "NOT_FOUND", "Post endpoint not found.");
@@ -609,7 +615,7 @@ export async function handlePostApiRequest(
       return jsonResponse(await createPostFromForm(request, env), requestId, 201);
     }
     const actionMatch = url.pathname.match(
-      /^\/api\/posts\/([^/]+)\/(archive|unarchive|nsfw|close-comments|reopen-comments)$/,
+      /^\/api\/posts\/([^/]+)\/(archive|unarchive|nsfw|close-comments|reopen-comments|restore)$/,
     );
     if (actionMatch) {
       return await handlePostAction(
@@ -617,7 +623,8 @@ export async function handlePostApiRequest(
         requestId,
         env,
         decodePathSegment(actionMatch[1] ?? ""),
-        actionMatch[2] as "archive" | "unarchive" | "nsfw" | "close-comments" | "reopen-comments",
+        actionMatch[2] as
+          "archive" | "unarchive" | "nsfw" | "close-comments" | "reopen-comments" | "restore",
       );
     }
     const postMatch = url.pathname.match(/^\/api\/posts\/([^/]+)$/);

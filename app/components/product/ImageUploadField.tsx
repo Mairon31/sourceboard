@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { prepareImageForUpload } from "../../data/media-preparation";
 import type { MessageKey } from "../../i18n";
 import { useI18n } from "../../i18n/I18nProvider";
 
 const POST_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/avif";
 const POST_IMAGE_TYPES = new Set(POST_IMAGE_ACCEPT.split(","));
-const MAX_POST_IMAGE_BYTES = 10 * 1024 * 1024;
-const MAX_POST_IMAGE_DIMENSION = 10_000;
+const MAX_POST_IMAGE_BYTES = 25 * 1024 * 1024;
+const MAX_POST_IMAGE_DIMENSION = 6_000;
 
 interface ImageUploadFieldProps {
   file: File | null;
@@ -21,52 +22,8 @@ function validatePostImageFile(file: File): MessageKey | null {
   return null;
 }
 
-async function readBitmap(file: File): Promise<ImageBitmap | null> {
-  if (typeof createImageBitmap !== "function") return null;
-  try {
-    return await createImageBitmap(file);
-  } catch {
-    return null;
-  }
-}
-
 export async function preparePostImageForUpload(file: File): Promise<File> {
-  if (file.type === "image/gif") return file;
-
-  const bitmap = await readBitmap(file);
-  if (!bitmap) return file;
-  try {
-    if (
-      bitmap.width < 1 ||
-      bitmap.height < 1 ||
-      bitmap.width > MAX_POST_IMAGE_DIMENSION ||
-      bitmap.height > MAX_POST_IMAGE_DIMENSION
-    ) {
-      throw new Error("IMAGE_DIMENSIONS_INVALID");
-    }
-
-    if (file.type !== "image/jpeg" && file.type !== "image/png") return file;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext("2d", { alpha: true });
-    if (!context) return file;
-    context.drawImage(bitmap, 0, 0);
-
-    const optimized = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, "image/webp", 0.86);
-    });
-    if (!optimized || optimized.size >= file.size) return file;
-
-    const stem = file.name.replace(/\.[^.]+$/, "") || "source-image";
-    return new File([optimized], `${stem}.webp`, {
-      type: "image/webp",
-      lastModified: file.lastModified,
-    });
-  } finally {
-    bitmap.close();
-  }
+  return prepareImageForUpload(file, { maxDimension: MAX_POST_IMAGE_DIMENSION });
 }
 
 export function ImageUploadField({
@@ -178,7 +135,9 @@ export function ImageUploadField({
             <img src={previewUrl} alt={t("imageUpload.previewAlt")} />
             <div className="product-image-upload-field__preview-meta">
               <strong>{file.name}</strong>
-              <span>{new Intl.NumberFormat(locale).format(Math.max(1, Math.round(file.size / 1024)))} KB</span>
+              <span>
+                {new Intl.NumberFormat(locale).format(Math.max(1, Math.round(file.size / 1024)))} KB
+              </span>
             </div>
             <div className="product-image-upload-field__actions">
               <button

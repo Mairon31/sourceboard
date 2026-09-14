@@ -46,8 +46,10 @@ function friendship(overrides: Partial<FriendshipRecord> = {}): FriendshipRecord
 
 function createStore() {
   let currentFriendship: FriendshipRecord | null = null;
+  let profile = targetProfile;
+  let emotesAvailable = true;
   const store = {
-    getProfileByUsernameNormalized: vi.fn(async () => targetProfile),
+    getProfileByUsernameNormalized: vi.fn(async () => profile),
     getProfileByUserId: vi.fn(async (userId: string) =>
       userId === "target" ? targetProfile : targetProfile,
     ),
@@ -70,6 +72,21 @@ function createStore() {
         isVisible: false,
       },
     ]),
+    getEmoteAssets: vi.fn(async (shortcodes: string[]) =>
+      emotesAvailable
+        ? new Map(
+            shortcodes.map((shortcode) => [
+              shortcode.replace(/^:|:$/g, ""),
+              {
+                id: "emote-wave",
+                label: "Wave",
+                shortcode: "wave",
+                url: "/api/media/catalog/emote/emote-wave",
+              },
+            ]),
+          )
+        : new Map(),
+    ),
     getRelationship: vi.fn(async () =>
       currentFriendship?.status === "ACCEPTED"
         ? "FRIEND"
@@ -126,7 +143,16 @@ function createStore() {
     clearMediaAsset: vi.fn(async () => true),
     getSocialUser: vi.fn(async () => null),
   } as unknown as ProfileStore;
-  return { store, getFriendship: () => currentFriendship };
+  return {
+    store,
+    getFriendship: () => currentFriendship,
+    setProfile: (next: ProfileRecord) => {
+      profile = next;
+    },
+    setEmotesAvailable: (next: boolean) => {
+      emotesAvailable = next;
+    },
+  };
 }
 
 describe("profile and social service", () => {
@@ -189,5 +215,58 @@ describe("profile and social service", () => {
       ),
     ).rejects.toBeInstanceOf(ProfileError);
     expect(store.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsafe or layout-breaking Markdown in profile bios", async () => {
+    const { store } = createStore();
+    const service = createProfileService({ store, now: () => 10 });
+    for (const bio of ["<script>alert(1)</script>", "# Oversized heading"]) {
+      await expect(
+        service.updateMyProfile(
+          "viewer",
+          {
+            displayName: "Viewer",
+            bio,
+            profileVisibility: "PUBLIC",
+            avatarAssetId: null,
+            bannerAssetId: null,
+          },
+          [],
+        ),
+      ).rejects.toMatchObject({ code: "INVALID_BIO" });
+    }
+    expect(store.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("hydrates entitled bio emotes and rejects unavailable ones server-side", async () => {
+    const { store, setProfile, setEmotesAvailable } = createStore();
+    setProfile({
+      ...targetProfile,
+      bio: "Hello :wave:",
+    });
+    const service = createProfileService({ store, now: () => 10 });
+    const result = await service.getPublicProfile("TARGET", "viewer");
+    expect(result?.bioRichtext?.[0]).toMatchObject({
+      type: "paragraph",
+      children: [
+        { type: "text", text: "Hello " },
+        { type: "emote", url: expect.any(String) },
+      ],
+    });
+
+    setEmotesAvailable(false);
+    await expect(
+      service.updateMyProfile(
+        "viewer",
+        {
+          displayName: "Viewer",
+          bio: ":private_pack:",
+          profileVisibility: "PUBLIC",
+          avatarAssetId: null,
+          bannerAssetId: null,
+        },
+        [],
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_BIO_EMOTE" });
   });
 });

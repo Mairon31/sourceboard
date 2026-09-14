@@ -1,4 +1,5 @@
 import type { PostCategorySlug } from "../../shared/posts/categories";
+import { parseMarkdown } from "../../shared/richtext/markdown";
 import type { PostDetail, PostSummary, PublicPostAuthor } from "../../shared/ui/contracts";
 import { createIdentifier } from "../auth/crypto";
 import { canViewNsfwPost, canViewUser } from "../privacy/policy";
@@ -20,6 +21,7 @@ const MAX_TITLE_LENGTH = 160;
 const MAX_DESCRIPTION_LENGTH = 10_000;
 const MAX_FEED_LIMIT = 30;
 const EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const SOFT_DELETE_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 export interface PostServiceDependencies {
   store: PostStore;
@@ -63,6 +65,7 @@ export interface PostService {
   archivePost(postId: string, authorId: string, archived: boolean): Promise<void>;
   setCommentsClosed(postId: string, authorId: string, closed: boolean): Promise<PostDetail>;
   deletePost(postId: string, authorId: string): Promise<void>;
+  restorePost(postId: string, authorId: string): Promise<void>;
   getVisibleMedia(
     assetId: string,
     viewerId: string | null,
@@ -87,6 +90,17 @@ function validatePostFields(input: {
   }
   if (description.length > MAX_DESCRIPTION_LENGTH) {
     throw new PostError(400, "INVALID_POST_DESCRIPTION", "The description is too long.");
+  }
+  if (description) {
+    try {
+      parseMarkdown(description);
+    } catch {
+      throw new PostError(
+        400,
+        "INVALID_POST_DESCRIPTION",
+        "The description contains unsupported Markdown.",
+      );
+    }
   }
   if (!isPostVisibility(input.visibility)) {
     throw new PostError(400, "INVALID_POST_VISIBILITY", "The post visibility is invalid.");
@@ -217,6 +231,7 @@ async function toPostSummary(
   post: PostWithAuthor,
   viewerId: string | null,
   dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
+  allowDeletedOwner = false,
 ): Promise<PostSummary> {
   const profileVisible =
     post.post.authorMode === "IDENTIFIED"
@@ -228,7 +243,9 @@ async function toPostSummary(
   const cosmetics = profileVisible
     ? await dependencies.profileStore.getEquippedCosmetics?.(post.post.authorId)
     : undefined;
-  const nsfwVisible = await canViewPost(viewerId, post.post, dependencies);
+  const nsfwVisible = allowDeletedOwner
+    ? true
+    : await canViewPost(viewerId, post.post, dependencies);
   const nsfwPresentation = !post.post.isNsfw
     ? "VISIBLE"
     : !nsfwVisible
@@ -240,7 +257,8 @@ async function toPostSummary(
           )?.blurNsfw
         ? "BLURRED"
         : "VISIBLE";
-  const isMediaVisible = nsfwPresentation !== "HIDDEN" && post.media.status === "ACTIVE";
+  const isMediaVisible =
+    !allowDeletedOwner && nsfwPresentation !== "HIDDEN" && post.media.status === "ACTIVE";
   return {
     id: post.post.id,
     slug: post.post.slug,
@@ -286,8 +304,9 @@ async function toPostDetail(
   post: PostWithAuthor,
   viewerId: string | null,
   dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
+  allowDeletedOwner = false,
 ): Promise<PostDetail> {
-  const summary = await toPostSummary(post, viewerId, dependencies);
+  const summary = await toPostSummary(post, viewerId, dependencies, allowDeletedOwner);
   const isOwner = viewerId === post.post.authorId;
   const canEdit =
     isOwner && post.post.editDeadlineAt >= dependencies.now() && post.post.status !== "LOCKED";
@@ -298,6 +317,7 @@ async function toPostDetail(
       canEdit,
       canArchive: isOwner && !post.post.deletedAt,
       canDelete: isOwner && !post.post.deletedAt,
+      canRestore: allowDeletedOwner,
       canAcceptSource: isOwner && !post.post.deletedAt && post.post.status !== "LOCKED",
       canModerate: false,
       canReport: Boolean(viewerId) && !isOwner && !post.post.deletedAt,
@@ -346,8 +366,16 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
 
     async getPost(postId, viewerId) {
       const post = await dependencies.store.getPost(postId);
-      if (!post || !(await canViewPost(viewerId, post.post, policyDependencies))) return null;
-      return toPostDetail(post, viewerId, policyDependencies);
+      if (!post) return null;
+      const restoreAvailable = Boolean(
+        viewerId === post.post.authorId &&
+        post.post.deletedAt &&
+        now() - post.post.deletedAt < SOFT_DELETE_RETENTION_MS,
+      );
+      if (!restoreAvailable && !(await canViewPost(viewerId, post.post, policyDependencies))) {
+        return null;
+      }
+      return toPostDetail(post, viewerId, policyDependencies, restoreAvailable);
     },
 
     async listFeed({ viewerId, kind, categorySlug, cursor, limit }) {
@@ -558,6 +586,30 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
     async deletePost(postId, authorId) {
       if (!(await dependencies.store.deletePost(postId, authorId, now()))) {
         throw new PostError(403, "POST_DELETE_FORBIDDEN", "The post could not be deleted.");
+      }
+    },
+
+    async restorePost(postId, authorId) {
+      const current = await requirePost(postId);
+      const deletedAt = current.post.deletedAt;
+      const restoredAt = now();
+      if (
+        current.post.authorId !== authorId ||
+        !deletedAt ||
+        restoredAt - deletedAt >= SOFT_DELETE_RETENTION_MS
+      ) {
+        throw new PostError(
+          409,
+          "POST_RESTORE_UNAVAILABLE",
+          "This post can no longer be restored.",
+        );
+      }
+      if (!(await dependencies.store.restorePost(postId, authorId, deletedAt, restoredAt))) {
+        throw new PostError(
+          409,
+          "POST_RESTORE_STATE_CHANGED",
+          "This post changed before it could be restored. Refresh and try again.",
+        );
       }
     },
 

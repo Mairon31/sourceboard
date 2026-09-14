@@ -106,10 +106,11 @@ describe("community plan phase D", () => {
     const studio = read("../../app/components/product/CommunityCosmeticStudio.tsx");
     expect(routes).toContain('route("store/create", "routes/store-create.tsx")');
     expect(route).toContain("CommunityCosmeticStudio");
-    expect(studio).toContain("Custom CSS");
+    expect(studio).toContain('t("community.customCss")');
     expect(studio).toContain("sanitizeCommunityCosmeticCss");
-    expect(studio).toContain("Save draft");
-    expect(studio).toContain("Submit for review");
+    expect(studio).toContain('t("community.saveDraft")');
+    expect(studio).toContain('t("community.submit")');
+    expect(studio).toContain("useI18n");
   });
 
   it("implements community publishing, moderation and creator attribution without exposing unapproved items", () => {

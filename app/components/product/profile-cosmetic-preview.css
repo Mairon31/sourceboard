@@ -2,6 +2,10 @@
   min-height: 190px;
 }
 
+.product-cosmetic-preview--card {
+  min-height: 190px !important;
+}
+
 .product-store-preview.product-cosmetic-preview {
   min-height: 190px;
 }
@@ -27,14 +31,29 @@
   position: absolute;
   inset: 0;
   display: grid;
+  height: 100%;
   min-height: 0;
   place-items: center;
   padding: 0;
-  background: transparent;
+  background: transparent !important;
 }
 
 .product-cosmetic-preview__subject {
   height: 100%;
+  background: linear-gradient(
+    180deg,
+    transparent 52%,
+    color-mix(in srgb, var(--surface-solid) 32%, transparent)
+  );
+}
+
+.product-cosmetic-preview--card .product-profile-effect-layer {
+  z-index: 4;
+  opacity: 0.92;
+}
+
+.product-cosmetic-preview--card .product-profile-card-surface {
+  z-index: 5;
 }
 
 .product-cosmetic-preview__frame-surface {
@@ -60,5 +79,13 @@
 
   .product-store-preview.product-cosmetic-preview .product-avatar-stage[data-size="preview"] {
     --avatar-stage-size: 82px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-cosmetic-preview--card .product-profile-effect-layer__node {
+    animation: none !important;
+    opacity: 0.72 !important;
+    transform: none !important;
   }
 }

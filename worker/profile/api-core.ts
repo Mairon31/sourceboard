@@ -13,6 +13,7 @@ import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { createMediaService } from "../media/r2";
+import { validateUploadedImage } from "../media/image-policy";
 import { ProfileError, isProfileError } from "./errors";
 import {
   createD1ProfileStore,
@@ -25,6 +26,7 @@ import { createD1UsernamePolicyStore, createUsernamePolicyService } from "./user
 import { createReputationReader } from "../reputation/read";
 import { enforceRateLimit } from "../security/rate-limit";
 import { canViewUser } from "../privacy/policy";
+import { observeBackgroundFailure } from "../observability";
 
 const profileUpdateSchema = z.object({
   displayName: z.string(),
@@ -476,37 +478,63 @@ export function isSupportedImageBytes(bytes: Uint8Array, contentType: string): b
   return signatures.some(({ offset, signature }) => hasBytes(bytes, offset, signature));
 }
 
-async function readImageFile(
-  request: Request,
-): Promise<{ purpose: "AVATAR" | "BANNER"; file: File }> {
+export function assertProfileImage(
+  bytes: Uint8Array,
+  contentType: string,
+  purpose: "AVATAR" | "BANNER",
+): { contentType: string; width: number | null; height: number | null } {
+  if (contentType === "image/gif") {
+    if (
+      bytes.byteLength < 1 ||
+      bytes.byteLength > 5 * 1024 * 1024 ||
+      !isSupportedImageBytes(bytes, contentType)
+    ) {
+      throw new ProfileError(
+        400,
+        "INVALID_MEDIA_UPLOAD",
+        "The image bytes do not match the declared type.",
+      );
+    }
+    return { contentType, width: null, height: null };
+  }
+  const result = validateUploadedImage(bytes, contentType, purpose);
+  if (result.ok) return result;
+  if (result.code === "MEDIA_TOO_LARGE") {
+    throw new ProfileError(400, "INVALID_MEDIA_UPLOAD", "The profile image is too large.");
+  }
+  if (result.code === "MEDIA_DIMENSIONS_INVALID") {
+    throw new ProfileError(
+      400,
+      "INVALID_MEDIA_UPLOAD",
+      "The profile image dimensions are too large.",
+    );
+  }
+  throw new ProfileError(
+    400,
+    "INVALID_MEDIA_UPLOAD",
+    "Only valid PNG, JPEG, WebP, AVIF or GIF images are supported.",
+  );
+}
+
+async function readImageFile(request: Request): Promise<{
+  purpose: "AVATAR" | "BANNER";
+  file: File;
+  bytes: ArrayBuffer;
+  metadata: ReturnType<typeof assertProfileImage>;
+}> {
   const form = await request.formData();
   const purpose = form.get("purpose");
   const file = form.get("file");
   if ((purpose !== "AVATAR" && purpose !== "BANNER") || !(file instanceof File)) {
     throw new ProfileError(400, "INVALID_MEDIA_UPLOAD", "Provide a profile image and purpose.");
   }
-  if (file.size < 1 || file.size > 5 * 1024 * 1024) {
-    throw new ProfileError(
-      400,
-      "INVALID_MEDIA_UPLOAD",
-      "Profile images must be smaller than 5 MB.",
-    );
-  }
-  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
-    throw new ProfileError(
-      400,
-      "INVALID_MEDIA_UPLOAD",
-      "Only PNG, JPEG, WebP or GIF images are supported.",
-    );
-  }
-  if (!isSupportedImageBytes(new Uint8Array(await file.arrayBuffer()), file.type)) {
-    throw new ProfileError(
-      400,
-      "INVALID_MEDIA_UPLOAD",
-      "The image bytes do not match the declared type.",
-    );
-  }
-  return { purpose, file };
+  const bytes = await file.arrayBuffer();
+  return {
+    purpose,
+    file,
+    bytes,
+    metadata: assertProfileImage(new Uint8Array(bytes), file.type, purpose),
+  };
 }
 
 type MediaRouteContext = {
@@ -556,25 +584,29 @@ async function uploadProfileMedia(ctx: MediaRouteContext): Promise<Response> {
         }),
     },
   );
-  const { purpose, file } = await readImageFile(ctx.request);
+  const { purpose, bytes, metadata } = await readImageFile(ctx.request);
   const assetId = createIdentifier();
   const r2Key = `profile/${viewerId}/${assetId}`;
-  const bytes = await file.arrayBuffer();
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   const checksumSha256 = toHex(new Uint8Array(digest));
   const media = createMediaService(requireMedia(ctx.env));
-  await media.put(r2Key, bytes, { httpMetadata: { contentType: file.type } });
+  await media.put(r2Key, bytes, { httpMetadata: { contentType: metadata.contentType } });
   try {
-    await ctx.store.createMediaAssetAndAttach({
+    const previous = await ctx.store.createMediaAssetAndAttach({
       id: assetId,
       ownerUserId: viewerId,
       purpose,
       r2Key,
-      contentType: file.type,
-      byteSize: file.size,
+      contentType: metadata.contentType,
+      byteSize: bytes.byteLength,
       checksumSha256,
       createdAt: Date.now(),
     });
+    if (previous) {
+      await media.delete(previous.r2Key).catch(() => {
+        observeBackgroundFailure("profile_media_replacement_cleanup");
+      });
+    }
   } catch (error) {
     await media.delete(r2Key);
     throw error;

@@ -70,7 +70,7 @@ export interface VerifiedSourceView {
 }
 
 export interface CommentAttachmentView {
-  type: "EMOTE" | "GIF" | "STICKER";
+  type: "EMOTE" | "IMAGE" | "GIF" | "STICKER";
   label: string;
   id?: string;
   provider?: string;
@@ -162,6 +162,7 @@ export interface PostPermissionView {
   canEdit: boolean;
   canArchive: boolean;
   canDelete: boolean;
+  canRestore?: boolean;
   canAcceptSource: boolean;
   canModerate: boolean;
   canReport?: boolean;

@@ -127,10 +127,11 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
             },
           }
         : null;
-      if (post && !commentsResult.ok) throw commentsResult.error;
-      const comments = commentsResult.ok
-        ? commentsResult.value
-        : { comments: [], nextCursor: null };
+      if (post && !commentsResult.ok && !post.permissions.canRestore) throw commentsResult.error;
+      const comments =
+        commentsResult.ok && !post?.permissions.canRestore
+          ? commentsResult.value
+          : { comments: [], nextCursor: null };
       return {
         post: viewerPost ? { ...viewerPost, comments: comments.comments } : viewerPost,
         unavailable: false,

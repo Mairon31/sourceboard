@@ -13,6 +13,8 @@ import {
 } from "../../../shared/store/custom-cosmetics";
 import { readCsrfToken } from "../../data/csrf";
 import { Button, Card, Input, Textarea } from "../ui";
+import { useI18n } from "../../i18n/I18nProvider";
+import type { MessageKey } from "../../i18n";
 import { cosmeticVisualStyle } from "./cosmetic-visual";
 import { ProfileCosmeticPreview } from "./ProfileCosmeticPreview";
 import "./community-cosmetics.css";
@@ -34,13 +36,29 @@ type Submission = {
   createdAt: number;
 };
 
-const TYPE_LABELS: Record<CosmeticType, string> = {
-  AVATAR_FRAME: "Avatar Frame",
-  PROFILE_BANNER: "Profile Theme",
-  PROFILE_EFFECT: "Profile Effect",
-  NAME_EFFECT: "Name Effect",
-  NAME_FONT: "Font",
-};
+const COSMETIC_TYPES: readonly CosmeticType[] = [
+  "AVATAR_FRAME",
+  "PROFILE_BANNER",
+  "PROFILE_EFFECT",
+  "NAME_EFFECT",
+  "NAME_FONT",
+];
+
+function typeLabel(type: CosmeticType): MessageKey {
+  if (type === "AVATAR_FRAME") return "community.type.avatarFrame";
+  if (type === "PROFILE_BANNER") return "community.type.profileBanner";
+  if (type === "PROFILE_EFFECT") return "community.type.profileEffect";
+  if (type === "NAME_EFFECT") return "community.type.nameEffect";
+  return "community.type.nameFont";
+}
+
+function stateLabel(state: CommunityState): MessageKey {
+  if (state === "DRAFT") return "community.state.draft";
+  if (state === "PENDING_REVIEW") return "community.state.pendingReview";
+  if (state === "PUBLISHED") return "community.state.published";
+  if (state === "REJECTED") return "community.state.rejected";
+  return "community.state.archived";
+}
 
 function optionsForType(type: CosmeticType): readonly string[] {
   if (type === "AVATAR_FRAME") return AVATAR_FRAME_PRESETS;
@@ -65,6 +83,7 @@ function isProfilePreviewType(type: CosmeticType): type is ProfilePreviewType {
 }
 
 export function CommunityCosmeticStudio() {
+  const { t } = useI18n();
   const [draftId, setDraftId] = useState<string | null>(null);
   const [type, setType] = useState<CosmeticType>("PROFILE_BANNER");
   const [base, setBase] = useState("nebula");
@@ -102,10 +121,10 @@ export function CommunityCosmeticStudio() {
         css: sanitizeCommunityCosmeticCss(customCss, "preview").scopedCss,
         error: null as string | null,
       };
-    } catch (cause) {
-      return { css: "", error: cause instanceof Error ? cause.message : "Custom CSS is invalid." };
+    } catch {
+      return { css: "", error: t("community.invalidCss") };
     }
-  }, [customCss]);
+  }, [customCss, t]);
 
   async function loadSubmissions() {
     try {
@@ -152,7 +171,7 @@ export function CommunityCosmeticStudio() {
     if (storedVisual?.borderColor) setBorderColor(storedVisual.borderColor);
     if (storedVisual?.glowColor) setGlowColor(storedVisual.glowColor);
     setCustomCss(typeof config.communityCssSource === "string" ? config.communityCssSource : "");
-    setStatus(`Editing ${submission.name}.`);
+    setStatus(t("community.editing", { name: submission.name }));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -187,29 +206,25 @@ export function CommunityCosmeticStudio() {
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        setStatus(errorMessage(payload, "This community cosmetic could not be saved."));
+        setStatus(errorMessage(payload, t("community.saveError")));
         return;
       }
       const nextId = payload?.submission?.id ?? draftId;
       setDraftId(submitForReview ? null : (nextId ?? null));
-      setStatus(
-        submitForReview
-          ? "Submitted for review. It will not appear publicly until staff approval."
-          : "Draft saved.",
-      );
+      setStatus(submitForReview ? t("community.submitted") : t("community.draftSaved"));
       if (submitForReview) {
         setName("");
         setDescription("");
       }
       await loadSubmissions();
     } catch {
-      setStatus("This community cosmetic could not be saved. Check your connection and try again.");
+      setStatus(t("community.saveError"));
     } finally {
       setBusy(null);
     }
   }
 
-  const previewName = name.trim() || "Community cosmetic";
+  const previewName = name.trim() || t("community.heading");
   const communityStyles =
     cssPreview.css && !cssPreview.error ? [{ id: "preview", css: cssPreview.css }] : undefined;
 
@@ -217,31 +232,28 @@ export function CommunityCosmeticStudio() {
     <section className="product-community-studio" aria-labelledby="community-cosmetic-heading">
       <div className="product-store-section__header">
         <div>
-          <span className="product-eyebrow">Cosmetic Builder</span>
-          <h2 id="community-cosmetic-heading">Build inside the SourceBoard sandbox</h2>
-          <p>
-            Choose a base preset, tune safe visual properties, then optionally add CSS scoped to the
-            profile cosmetic root.
-          </p>
+          <span className="product-eyebrow">{t("community.builderEyebrow")}</span>
+          <h2 id="community-cosmetic-heading">{t("community.builderHeading")}</h2>
+          <p>{t("community.builderDescription")}</p>
         </div>
       </div>
       <div className="product-community-studio__layout">
         <div className="product-community-studio__form">
           <label className="product-field-native">
-            <span>Cosmetic type</span>
+            <span>{t("community.type")}</span>
             <select
               value={type}
               onChange={(event) => changeType(event.target.value as CosmeticType)}
             >
-              {Object.entries(TYPE_LABELS).map(([value, label]) => (
+              {COSMETIC_TYPES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(typeLabel(value))}
                 </option>
               ))}
             </select>
           </label>
           <label className="product-field-native">
-            <span>{type === "NAME_FONT" ? "Base font" : "Base preset"}</span>
+            <span>{t(type === "NAME_FONT" ? "community.baseFont" : "community.basePreset")}</span>
             <select value={base} onChange={(event) => setBase(event.target.value)}>
               {optionsForType(type).map((option) => (
                 <option key={option} value={option}>
@@ -251,7 +263,7 @@ export function CommunityCosmeticStudio() {
             </select>
           </label>
           <Input
-            label="Cosmetic name"
+            label={t("community.name")}
             value={name}
             minLength={2}
             maxLength={120}
@@ -259,7 +271,7 @@ export function CommunityCosmeticStudio() {
             onChange={(event) => setName(event.target.value)}
           />
           <Textarea
-            label="Description"
+            label={t("community.descriptionLabel")}
             value={description}
             minLength={3}
             maxLength={1000}
@@ -268,7 +280,7 @@ export function CommunityCosmeticStudio() {
             onChange={(event) => setDescription(event.target.value)}
           />
           <Input
-            label="Price in points (0 = free)"
+            label={t("community.price")}
             type="number"
             min={0}
             max={5000}
@@ -277,7 +289,7 @@ export function CommunityCosmeticStudio() {
           />
           <div className="product-community-studio__visual-grid">
             <label>
-              <span>Background</span>
+              <span>{t("community.background")}</span>
               <input
                 type="color"
                 value={backgroundColor}
@@ -285,7 +297,7 @@ export function CommunityCosmeticStudio() {
               />
             </label>
             <label>
-              <span>Border</span>
+              <span>{t("community.border")}</span>
               <input
                 type="color"
                 value={borderColor}
@@ -293,7 +305,7 @@ export function CommunityCosmeticStudio() {
               />
             </label>
             <label>
-              <span>Glow</span>
+              <span>{t("community.glow")}</span>
               <input
                 type="color"
                 value={glowColor}
@@ -302,17 +314,13 @@ export function CommunityCosmeticStudio() {
             </label>
           </div>
           <Textarea
-            label="Custom CSS"
+            label={t("community.customCss")}
             value={customCss}
             maxLength={12 * 1024}
             rows={10}
             onChange={(event) => setCustomCss(event.target.value)}
           />
-          <small>
-            Allowed roots: .cosmetic-root, .profile-card, .profile-header, .profile-avatar-area and
-            .profile-name-area. External URLs, arbitrary selectors, fixed positioning and extreme
-            effects are rejected server-side.
-          </small>
+          <small>{t("community.cssHint")}</small>
           {cssPreview.error ? (
             <p className="product-community-studio__css-error" role="alert">
               {cssPreview.error}
@@ -326,7 +334,7 @@ export function CommunityCosmeticStudio() {
               disabled={!name.trim() || !description.trim() || Boolean(cssPreview.error)}
               onClick={() => void persist(false)}
             >
-              Save draft
+              {t("community.saveDraft")}
             </Button>
             <Button
               type="button"
@@ -334,7 +342,7 @@ export function CommunityCosmeticStudio() {
               disabled={!name.trim() || !description.trim() || Boolean(cssPreview.error)}
               onClick={() => void persist(true)}
             >
-              Submit for review
+              {t("community.submit")}
             </Button>
           </div>
           {status ? <p role="status">{status}</p> : null}
@@ -372,34 +380,35 @@ export function CommunityCosmeticStudio() {
                 </div>
               </div>
             )}
-            <p>
-              {description.trim() ||
-                "Your public profile preview uses the same sandbox slots that will be available after publication."}
-            </p>
+            <p>{description.trim() || t("community.previewFallback")}</p>
             <small>
-              {TYPE_LABELS[type]} · {base.replaceAll("-", " ")}
+              {t(typeLabel(type))} · {base.replaceAll("-", " ")}
             </small>
           </div>
           <Card className="product-community-studio__submissions">
             <div>
-              <strong>Your submissions</strong>
-              <span>{loading ? "Loading…" : `${submissions.length} total`}</span>
+              <strong>{t("community.submissions")}</strong>
+              <span>
+                {loading
+                  ? t("community.loading")
+                  : t("community.submissionsCount", { count: submissions.length })}
+              </span>
             </div>
-            {!loading && submissions.length === 0 ? <p>No community cosmetics yet.</p> : null}
+            {!loading && submissions.length === 0 ? <p>{t("community.empty")}</p> : null}
             {submissions.slice(0, 8).map((submission) => (
               <div className="product-community-studio__submission" key={submission.id}>
                 <div>
                   <strong>{submission.name}</strong>
-                  <span>{TYPE_LABELS[submission.type]}</span>
+                  <span>{t(typeLabel(submission.type))}</span>
                 </div>
                 <span data-state={submission.communityState}>
-                  {submission.communityState.replaceAll("_", " ")}
+                  {t(stateLabel(submission.communityState))}
                 </span>
                 {submission.reviewNote ? <small>{submission.reviewNote}</small> : null}
                 {submission.communityState === "DRAFT" ||
                 submission.communityState === "REJECTED" ? (
                   <button type="button" onClick={() => editSubmission(submission)}>
-                    Edit
+                    {t("community.edit")}
                   </button>
                 ) : null}
               </div>

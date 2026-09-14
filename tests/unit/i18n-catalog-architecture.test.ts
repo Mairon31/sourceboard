@@ -8,6 +8,7 @@ describe("i18n catalog architecture", () => {
     const namespaces = [
       "base",
       "common",
+      "community",
       "editing",
       "product",
       "settings",

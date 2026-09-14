@@ -21,6 +21,15 @@ describe("safe Markdown rich text", () => {
     expect(nodes.map((node) => node.type)).toEqual(["quote", "list", "code-block"]);
   });
 
+  it("supports bounded heading levels for post descriptions", () => {
+    const nodes = parseMarkdown("# Title\n## Section\n### Detail");
+    expect(nodes).toMatchObject([
+      { type: "heading", level: 1, children: [{ text: "Title" }] },
+      { type: "heading", level: 2, children: [{ text: "Section" }] },
+      { type: "heading", level: 3, children: [{ text: "Detail" }] },
+    ]);
+  });
+
   it("uses the same AST for preview and published normalization", () => {
     const input = "**Found** [the source](https://example.com)";
     expect(renderMarkdownPreview(input)).toEqual(parseMarkdown(input));

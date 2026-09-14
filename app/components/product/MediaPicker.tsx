@@ -69,11 +69,13 @@ export function MediaPicker({
   onKindChange,
   onSelect,
   onClose,
+  allowedKinds,
 }: {
   kind: MediaPickerKind;
   onKindChange: (kind: MediaPickerKind) => void;
   onSelect: (item: MediaPickerSelection) => void;
   onClose: () => void;
+  allowedKinds?: readonly MediaPickerKind[];
 }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
@@ -103,6 +105,11 @@ export function MediaPicker({
       : kind === "STICKER"
         ? t("mediaPicker.searchStickers")
         : t("mediaPicker.searchEmotes");
+  const visibleKinds = (
+    allowedKinds?.length
+      ? (["GIF", "STICKER", "EMOTE"] as const).filter((value) => allowedKinds.includes(value))
+      : (["GIF", "STICKER", "EMOTE"] as const)
+  ) as MediaPickerKind[];
 
   useEffect(() => {
     setQuery("");
@@ -409,11 +416,14 @@ export function MediaPicker({
         </button>
       </div>
       <div
-        className="product-comment-media-picker__tabs"
+        className={
+          "product-comment-media-picker__tabs" +
+          (visibleKinds.length === 1 ? " product-comment-media-picker__tabs--single" : "")
+        }
         role="tablist"
         aria-label={t("mediaPicker.typeAria")}
       >
-        {(["GIF", "STICKER", "EMOTE"] as const).map((value) => {
+        {visibleKinds.map((value) => {
           const label =
             value === "GIF"
               ? t("mediaPicker.gifs")

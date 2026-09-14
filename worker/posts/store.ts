@@ -52,6 +52,7 @@ export interface PostStore {
     closed: boolean,
   ): Promise<boolean>;
   deletePost(postId: string, authorId: string, now: number): Promise<boolean>;
+  restorePost(postId: string, authorId: string, deletedAt: number, now: number): Promise<boolean>;
   getMediaAsset(assetId: string): Promise<PostMediaRecord | null>;
   listIndexablePosts(): Promise<Array<{ id: string; slug: string; updatedAt: number }>>;
 }
@@ -633,10 +634,24 @@ export function createD1PostStore(db: D1Database): PostStore {
     async deletePost(postId, authorId, now) {
       const result = await db
         .prepare(
-          `UPDATE posts SET deleted_at = ?, status = 'ARCHIVED', updated_at = ?
+          `UPDATE posts
+           SET deleted_previous_status = status, deleted_at = ?, status = 'ARCHIVED', updated_at = ?
            WHERE id = ? AND author_id = ? AND deleted_at IS NULL`,
         )
         .bind(now, now, postId, authorId)
+        .run();
+      return result.meta.changes === 1;
+    },
+
+    async restorePost(postId, authorId, deletedAt, now) {
+      const result = await db
+        .prepare(
+          `UPDATE posts
+           SET status = COALESCE(deleted_previous_status, 'OPEN'), deleted_previous_status = NULL,
+               deleted_at = NULL, updated_at = ?
+           WHERE id = ? AND author_id = ? AND deleted_at = ? AND deleted_at > ?`,
+        )
+        .bind(now, postId, authorId, deletedAt, now - 24 * 60 * 60 * 1000)
         .run();
       return result.meta.changes === 1;
     },

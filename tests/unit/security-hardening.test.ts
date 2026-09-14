@@ -164,6 +164,7 @@ describe("production security boundaries", () => {
       deletedResetTokens: 1,
       deletedSessions: 1,
       deletedLoginCounters: 1,
+      deletedExpiredPosts: 0,
       deletedMarkedMedia: 0,
       deletedOrphanMedia: 0,
     });

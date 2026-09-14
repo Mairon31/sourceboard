@@ -14,7 +14,7 @@ export type RichTextNode =
   | { type: "link"; url: string; label: string; marks?: RichTextMarks };
 
 export interface CommentAttachment {
-  type: "GIF" | "STICKER";
+  type: "IMAGE" | "GIF" | "STICKER";
   id: string;
   label: string;
   provider?: string;
@@ -120,6 +120,7 @@ function flattenMarkdown(nodes: SafeRichTextNode[]): RichTextNode[] {
   };
   nodes.forEach((node, index) => {
     if (node.type === "paragraph") appendInline(node.children);
+    if (node.type === "heading") appendInline(node.children);
     if (node.type === "code-block")
       flattened.push({ type: "text", text: node.code, marks: { code: true } });
     if (node.type === "list") {
@@ -148,13 +149,23 @@ function normalizeAttachment(value: unknown): CommentAttachment | null {
   }
   const attachment = value as Record<string, unknown>;
   if (
-    (attachment.type !== "GIF" && attachment.type !== "STICKER") ||
+    (attachment.type !== "IMAGE" && attachment.type !== "GIF" && attachment.type !== "STICKER") ||
     typeof attachment.id !== "string" ||
     typeof attachment.label !== "string" ||
     attachment.id.length > 200 ||
     attachment.label.length > 300
   ) {
-    invalid("Only provider GIFs and catalog stickers can be attached to comments.");
+    invalid("Only an image, provider GIF, or catalog sticker can be attached to comments.");
+  }
+  if (attachment.type === "IMAGE") {
+    if (
+      attachment.provider !== undefined ||
+      attachment.url !== undefined ||
+      attachment.preview !== undefined
+    ) {
+      invalid("First-party comment images cannot include a URL.");
+    }
+    return { type: "IMAGE", id: attachment.id, label: attachment.label };
   }
   const provider =
     typeof attachment.provider === "string" ? attachment.provider.toLowerCase() : undefined;
