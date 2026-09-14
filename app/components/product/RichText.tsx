@@ -40,6 +40,10 @@ function renderInline(node: SafeInlineRichTextNode, index: number) {
 function renderBlock(node: SafeRichTextNode, index: number): ReactNode {
   if (node.type === "paragraph")
     return <p key={`paragraph-${index}`}>{node.children.map(renderInline)}</p>;
+  if (node.type === "heading") {
+    const Heading = `h${node.level}` as "h1" | "h2" | "h3";
+    return <Heading key={`heading-${index}`}>{node.children.map(renderInline)}</Heading>;
+  }
   if (node.type === "code-block")
     return (
       <pre key={`code-${index}`}>
