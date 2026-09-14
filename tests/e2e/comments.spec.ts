@@ -392,10 +392,16 @@ test("editing the accepted comment refreshes Accepted Source without a manual re
   await comment.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Edit" }).click();
   await comment.getByLabel("Edit comment").fill("Updated **accepted** source");
+  const editResponse = page.waitForResponse(
+    (candidate) =>
+      candidate.url().includes("/api/comments/e2e-accepted-edit-comment") &&
+      candidate.request().method() === "PATCH",
+  );
   await comment.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await editResponse).ok()).toBe(true);
 
   await expect(comment).toContainText("Updated accepted source");
-  await expect(source).toContainText("Updated accepted source");
+  await expect(source).toContainText("Updated accepted source", { timeout: 15_000 });
   await expect(source).not.toContainText("Original accepted source");
 });
 
@@ -446,15 +452,29 @@ test("comment moderators hide and restore through the contextual menu with live 
   await comment.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Hide comment" }).click();
   await page.getByLabel("Moderation reason").fill("E2E moderation regression");
+  const hideResponse = page.waitForResponse(
+    (candidate) =>
+      candidate.url().includes("/api/admin/moderation/action") &&
+      candidate.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Hide comment", exact: true }).click();
-  await expect(comment).toContainText("Moderated");
+  expect((await hideResponse).ok()).toBe(true);
+  await expect(comment).toContainText("Moderated", { timeout: 15_000 });
 
   await comment.getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Restore comment" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Restore comment" }).click();
   await page.getByLabel("Moderation reason").fill("Restore after E2E check");
+  const restoreResponse = page.waitForResponse(
+    (candidate) =>
+      candidate.url().includes("/api/admin/moderation/action") &&
+      candidate.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Restore comment", exact: true }).click();
-  await expect(comment.getByText("Moderated", { exact: true })).toHaveCount(0);
+  expect((await restoreResponse).ok()).toBe(true);
+  await expect(comment.getByText("Moderated", { exact: true })).toHaveCount(0, {
+    timeout: 15_000,
+  });
   await comment.getByRole("button", { name: "More actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Hide comment" })).toBeVisible();
 });

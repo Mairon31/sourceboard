@@ -50,10 +50,10 @@ test("signed-out home does not render a fixture account", async ({ page }) => {
 
 test("search surface accepts a public discovery query", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("search").getByLabel("Search SourceBoard").fill("source");
+  await page.getByRole("search").getByLabel("Search SourceBoard").fill("zzqvwxkprm834");
   await page.getByRole("search").getByLabel("Search SourceBoard").press("Enter");
 
-  await expect(page).toHaveURL(/\/search\?q=source/);
+  await expect(page).toHaveURL(/\/search\?q=zzqvwxkprm834/);
   await expect(page.getByRole("heading", { name: "Discovery" })).toBeVisible();
   await expect(page.getByText(/No public matches|Search unavailable/)).toBeVisible();
 });

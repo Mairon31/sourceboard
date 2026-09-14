@@ -447,10 +447,10 @@ test("media picker paginates, replaces attachments and keeps multi-emote inserti
 
   const emoteSearch = page.getByLabel("Search emotes");
   await emoteSearch.fill("Interactive emote");
-  await page.getByRole("button", { name: "Add Interactive emote 2-1" }).click();
+  await page.getByRole("button", { name: "Add Interactive emote 2-1", exact: true }).click();
   await expect(page.locator(".product-comment-media-picker")).toBeVisible();
   await expect(emoteSearch).toHaveValue("Interactive emote");
-  await page.getByRole("button", { name: "Add Interactive emote 2-2" }).click();
+  await page.getByRole("button", { name: "Add Interactive emote 2-2", exact: true }).click();
   await expect(page.locator(".product-comment-media-picker")).toBeVisible();
   await expect(composer).toHaveValue(/:interactive_1_0:.*:interactive_1_1:/);
 
