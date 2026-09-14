@@ -111,6 +111,16 @@ describe("comment social actions", () => {
     expect(postCardSource).not.toContain('label="…"');
   });
 
+  it("offers post reporting to a signed-in non-owner and keeps the comment count navigable", () => {
+    expect(postCardSource).toContain("permissions?.canReport");
+    expect(postCardSource).toContain('targetType: "POST"');
+    expect(postCardSource).toContain("to={`${detailHref}#comments`}");
+    expect(postCardSource).toContain("permissions?.canModerate");
+    expect(postDetailSource).toContain(
+      'canModerate: hasCapability(authorization, "post.moderate")',
+    );
+  });
+
   it("keeps the link preview composer endpoint authenticated and rate limited", () => {
     expect(apiSource).toContain('pathname === "/api/comments/link-preview"');
     expect(apiSource).toContain('url.pathname === "/api/comments/link-preview"');

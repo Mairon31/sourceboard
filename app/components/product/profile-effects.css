@@ -3,6 +3,78 @@
   overflow: hidden;
 }
 
+/* A readable preview must not depend on an animation frame being painted. */
+.product-profile-effect-layer[data-effect-mechanism="glow"]::before,
+.product-profile-effect-layer[data-effect-mechanism="grain"]::before,
+.product-profile-effect-layer[data-effect-mechanism="particles"]::before,
+.product-profile-effect-layer[data-effect-mechanism="energy"]::before,
+.product-profile-effect-layer[data-effect-mechanism="smoke"]::before,
+.product-profile-effect-layer[data-effect-mechanism="snow"]::before,
+.product-profile-effect-layer[data-effect-mechanism="rain"]::before,
+.product-profile-effect-layer[data-effect-mechanism="scan"]::before,
+.product-profile-effect-layer[data-effect-mechanism="glitch"]::before,
+.product-profile-effect-layer[data-effect-mechanism="mist"]::before,
+.product-profile-effect-layer[data-effect-mechanism="confetti"]::before,
+.product-profile-effect-layer[data-effect-mechanism="arc"]::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.product-profile-effect-layer[data-effect-mechanism="glow"]::before {
+  background: radial-gradient(circle at 50% 45%, #b9d7ff38, transparent 58%);
+}
+
+.product-profile-effect-layer[data-effect-mechanism="grain"]::before {
+  background-image: repeating-radial-gradient(
+    circle at 25% 30%,
+    #ffffff14 0 1px,
+    transparent 1px 5px
+  );
+}
+
+.product-profile-effect-layer[data-effect-mechanism="particles"]::before,
+.product-profile-effect-layer[data-effect-mechanism="snow"]::before,
+.product-profile-effect-layer[data-effect-mechanism="confetti"]::before {
+  background-image:
+    radial-gradient(circle at 14% 22%, #ffffffb0 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 28%, #a9dfff8c 0 2px, transparent 3px),
+    radial-gradient(circle at 44% 72%, #ffb6da88 0 1px, transparent 2px),
+    radial-gradient(circle at 88% 78%, #fff0aa80 0 1px, transparent 2px);
+}
+
+.product-profile-effect-layer[data-effect-mechanism="energy"]::before,
+.product-profile-effect-layer[data-effect-mechanism="arc"]::before {
+  background:
+    radial-gradient(circle at 50% 50%, #6ddcff22, transparent 50%),
+    linear-gradient(125deg, transparent 42%, #72e5ff4a 49%, transparent 56%);
+}
+
+.product-profile-effect-layer[data-effect-mechanism="smoke"]::before,
+.product-profile-effect-layer[data-effect-mechanism="mist"]::before {
+  background: radial-gradient(ellipse at 50% 82%, #a78ac438, transparent 64%);
+}
+
+.product-profile-effect-layer[data-effect-mechanism="rain"]::before {
+  background: repeating-linear-gradient(
+    105deg,
+    transparent 0 17px,
+    #7ee7ff35 18px 20px,
+    transparent 21px 35px
+  );
+}
+
+.product-profile-effect-layer[data-effect-mechanism="scan"]::before {
+  background-image:
+    linear-gradient(#71e4ff1c 1px, transparent 1px),
+    linear-gradient(90deg, #71e4ff14 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.product-profile-effect-layer[data-effect-mechanism="glitch"]::before {
+  background: linear-gradient(90deg, #ff4e751f, transparent 34% 66%, #58dfff1f);
+}
+
 .product-profile-effect-layer__node {
   position: absolute;
   left: var(--fx-left, 50%);

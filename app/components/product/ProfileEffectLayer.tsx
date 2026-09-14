@@ -1,4 +1,7 @@
-import type { ProfileEffectPreset } from "../../../shared/store/cosmetics";
+import {
+  PROFILE_EFFECT_MECHANISMS,
+  type ProfileEffectPreset,
+} from "../../../shared/store/cosmetics";
 import type { CosmeticVisualConfigV1 } from "../../../shared/store/cosmetic-config";
 import type { CosmeticVisualDefinition } from "../../../shared/store/custom-cosmetics";
 import { cosmeticVisualClass, cosmeticVisualStyle } from "./cosmetic-visual";
@@ -25,6 +28,7 @@ export function ProfileEffectLayer({
 }: ProfileEffectLayerProps) {
   const hasEffect = Boolean((preset && preset !== "none") || visual || creatorPro);
   if (!hasEffect) return null;
+  const mechanism = preset ? PROFILE_EFFECT_MECHANISMS[preset] : undefined;
 
   const effectNodes = creatorPro?.particles
     ? Array.from({ length: creatorProParticleNodeCount(creatorPro, mode) }, (_, index) => index)
@@ -40,6 +44,7 @@ export function ProfileEffectLayer({
         ...(creatorProVisualStyle(creatorPro, "effect") ?? {}),
       }}
       data-profile-effect={preset ?? "custom"}
+      data-effect-mechanism={mechanism}
       data-creator-pro={creatorPro ? "true" : undefined}
       data-creator-particle-path={creatorPro?.particles?.path}
       aria-hidden="true"

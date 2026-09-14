@@ -2,6 +2,10 @@
   min-height: 190px;
 }
 
+.product-store-preview.product-cosmetic-preview {
+  min-height: 190px;
+}
+
 .product-cosmetic-preview__frame-surface,
 .product-cosmetic-preview__subject {
   position: relative;
@@ -47,4 +51,14 @@
   .sb-avatar {
   width: 100%;
   height: 100%;
+}
+
+@media (max-width: 760px) {
+  .product-store-preview.product-cosmetic-preview {
+    min-height: 150px;
+  }
+
+  .product-store-preview.product-cosmetic-preview .product-avatar-stage[data-size="preview"] {
+    --avatar-stage-size: 82px;
+  }
 }

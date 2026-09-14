@@ -81,10 +81,13 @@ test("structural fox ears stay on the avatar shell", async ({ page }) => {
   await expect(shell).toHaveClass(/product-avatar-frame--decorative/);
   await expect(shell.locator(".sb-avatar--frame-fox-ears")).toHaveCount(1);
 
-  const before = await shell.evaluate(
-    (element) => getComputedStyle(element, "::before").backgroundImage,
-  );
-  expect(before).not.toBe("none");
+  const ears = shell.locator('.product-avatar-stage__part[data-layer="top-ornament"]');
+  await expect(ears).toHaveCount(2);
+  for (const ear of await ears.all()) {
+    expect(await ear.evaluate((element) => getComputedStyle(element).backgroundImage)).not.toBe(
+      "none",
+    );
+  }
 });
 
 test("orbit animation decorates the shell without transforming the avatar image", async ({
@@ -97,10 +100,10 @@ test("orbit animation decorates the shell without transforming the avatar image"
   await expect(shell).toHaveCount(1);
   await expect(avatar).toHaveCount(1);
 
-  const animationName = await shell.evaluate(
-    (element) => getComputedStyle(element, "::before").animationName,
-  );
-  expect(animationName).toContain("avatar-frame-orbit");
+  const orbit = shell.locator('.product-avatar-stage__part[data-layer="orbit"]');
+  await expect(orbit).toHaveCount(1);
+  const animationName = await orbit.evaluate((element) => getComputedStyle(element).animationName);
+  expect(animationName).toContain("avatar-stage-orbit");
   expect(await avatar.evaluate((element) => getComputedStyle(element).transform)).toBe("none");
 });
 
@@ -179,8 +182,10 @@ test("reduced motion keeps representative cosmetics static and visible", async (
 
   const orbit = page.locator('.product-avatar-stage[data-avatar-frame="orbit-planets"]');
   await expect(orbit).toBeVisible();
-  const orbitStyle = await orbit.evaluate((element) => {
-    const style = getComputedStyle(element, "::before");
+  const orbitPart = orbit.locator('.product-avatar-stage__part[data-layer="orbit"]');
+  await expect(orbitPart).toHaveCount(1);
+  const orbitStyle = await orbitPart.evaluate((element) => {
+    const style = getComputedStyle(element);
     return { animationName: style.animationName, borderTopWidth: style.borderTopWidth };
   });
   expect(orbitStyle.animationName).toBe("none");

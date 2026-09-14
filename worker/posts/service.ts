@@ -300,6 +300,7 @@ async function toPostDetail(
       canDelete: isOwner && !post.post.deletedAt,
       canAcceptSource: isOwner && !post.post.deletedAt && post.post.status !== "LOCKED",
       canModerate: false,
+      canReport: Boolean(viewerId) && !isOwner && !post.post.deletedAt,
       canVerifySource: false,
       canRevealAnonymous: false,
       canMarkNsfw: isOwner && !post.post.deletedAt,

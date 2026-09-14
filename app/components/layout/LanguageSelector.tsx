@@ -31,20 +31,24 @@ export function LanguageSelector({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <label className={`product-language-selector${compact ? " product-language-selector--compact" : ""}`}>
-      <span>{t("common.language")}</span>
-      <select
-        aria-label={t("common.language")}
-        value={locale}
-        disabled={busy}
-        onChange={(event) => void changeLocale(event.target.value as Locale)}
-      >
-        {SUPPORTED_LOCALES.map((candidate) => (
-          <option key={candidate} value={candidate}>
-            {LOCALE_LABELS[candidate]}
-          </option>
-        ))}
-      </select>
+    <label
+      className={`product-language-selector${compact ? " product-language-selector--compact" : ""}`}
+    >
+      <span className="product-language-selector__label">{t("common.language")}</span>
+      <span className="product-language-selector__control">
+        <select
+          aria-label={t("common.language")}
+          value={locale}
+          disabled={busy}
+          onChange={(event) => void changeLocale(event.target.value as Locale)}
+        >
+          {SUPPORTED_LOCALES.map((candidate) => (
+            <option key={candidate} value={candidate}>
+              {LOCALE_LABELS[candidate]}
+            </option>
+          ))}
+        </select>
+      </span>
     </label>
   );
 }
