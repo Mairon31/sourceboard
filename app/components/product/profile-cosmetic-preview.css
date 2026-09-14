@@ -48,3 +48,9 @@
   width: 100%;
   height: 100%;
 }
+
+@media (max-width: 760px) {
+  .product-store-preview.product-cosmetic-preview .product-avatar-stage[data-size="preview"] {
+    --avatar-stage-size: 82px;
+  }
+}
