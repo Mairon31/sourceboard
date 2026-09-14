@@ -13,7 +13,8 @@ const klipyCss = read("../../app/components/product/profile-klipy.css");
 const storeRoute = read("../../app/routes/store.tsx");
 const storeCard = read("../../app/components/product/StoreItemCard.tsx");
 const storeApi = read("../../worker/store/api.ts");
-const profileRoute = read("../../app/routes/profile.tsx");
+const privateProfileRoute = read("../../app/routes/my-profile.tsx");
+const publicProfileRoute = read("../../app/routes/profile.tsx");
 const accountActions = read("../../app/components/product/ProfileAccountActions.tsx");
 
 describe("mobile comments, store and account regressions", () => {
@@ -39,10 +40,14 @@ describe("mobile comments, store and account regressions", () => {
     expect(storeApi).toContain("service.unequip");
   });
 
-  it("shows Admin Panel in Account Options only when admin.access is granted", () => {
-    expect(profileRoute).toContain("loadAdminAccess");
-    expect(profileRoute).toContain("canAccessAdmin");
-    expect(profileRoute).toContain("<ProfileAccountActions canAccessAdmin={canAccessAdmin} />");
+  it("shows Admin Panel only in private Account Options when admin.access is granted", () => {
+    expect(privateProfileRoute).toContain("loadAdminAccess");
+    expect(privateProfileRoute).toContain("canAccessAdmin");
+    expect(privateProfileRoute).toContain(
+      "<ProfileAccountActions canAccessAdmin={data.canAccessAdmin} />",
+    );
+    expect(publicProfileRoute).not.toContain("ProfileAccountActions");
+    expect(publicProfileRoute).not.toContain("loadAdminAccess");
     expect(accountActions).toContain("canAccessAdmin");
     expect(accountActions).toContain('to="/admin"');
   });
