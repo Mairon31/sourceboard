@@ -5,7 +5,7 @@ import type {
 } from "../../../shared/ui/contracts";
 import { Link } from "react-router";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Badge, Card } from "../ui";
+import { Badge, Card, CheckIcon, ExternalLinkIcon, ShieldCheckIcon } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { RichText } from "./RichText";
 
@@ -101,9 +101,9 @@ export function SourceResolution({
       >
         <div className="product-source-card__heading">
           <div className="product-source-card__icon" aria-hidden="true">
-            {isVerified ? "✓" : "↗"}
+            {isVerified ? <ShieldCheckIcon width="20" height="20" /> : <CheckIcon width="20" height="20" />}
           </div>
-          <div>
+          <div className="product-source-card__summary">
             <Badge tone={isVerified ? "success" : "accent"}>{badge}</Badge>
             <h2>{title}</h2>
             <p>{isVerified ? verified?.evidenceSummary : t("source.accepted.description")}</p>
@@ -111,8 +111,14 @@ export function SourceResolution({
         </div>
         {acceptedComment ? <AcceptedComment comment={acceptedComment} /> : null}
         {canonicalUrl ? (
-          <a href={canonicalUrl} target="_blank" rel="noreferrer">
-            {referenceLabel}
+          <a
+            className="product-source-card__reference focus-ring"
+            href={canonicalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLinkIcon width="16" height="16" />
+            <span>{referenceLabel}</span>
           </a>
         ) : null}
       </Card>
