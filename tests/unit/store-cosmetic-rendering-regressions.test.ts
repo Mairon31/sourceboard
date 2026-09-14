@@ -32,9 +32,19 @@ describe("Store cosmetic rendering regressions", () => {
     expect(store).toContain('item.type === "PROFILE_BANNER" ? "theme" : "profile-effect"');
   });
 
+  it("keeps Store cosmetic previews visible despite ProfileIdentityCard min-height", () => {
+    const css = read("../../app/components/product/profile-cosmetic-preview.css");
+    expect(css).toMatch(
+      /\.product-store-preview\.product-cosmetic-preview\s*\{[^}]*min-height:\s*190px/s,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 760px\)[\s\S]*\.product-store-preview\.product-cosmetic-preview\s*\{[^}]*min-height:\s*150px/s,
+    );
+  });
+
   it("keeps Store avatar sizing owned by AvatarStage at desktop and mobile widths", () => {
     const css = read("../../app/components/product/profile-cosmetic-preview.css");
-    expect(css).toContain('--avatar-stage-size: 104px');
+    expect(css).toContain("--avatar-stage-size: 104px");
     expect(css).toMatch(/@media \(max-width: 760px\)[\s\S]*--avatar-stage-size:\s*82px/);
   });
 
