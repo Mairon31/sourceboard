@@ -23,8 +23,12 @@ const iconSource = readFileSync(
   "utf8",
 );
 const rootSource = readFileSync(new URL("../../app/root.tsx", import.meta.url), "utf8");
-const profileRouteSource = readFileSync(
+const publicProfileRouteSource = readFileSync(
   new URL("../../app/routes/profile.tsx", import.meta.url),
+  "utf8",
+);
+const privateProfileRouteSource = readFileSync(
+  new URL("../../app/routes/my-profile.tsx", import.meta.url),
   "utf8",
 );
 const profileEditorSource = readOptionalSource("../../app/components/product/ProfileEditor.tsx");
@@ -81,16 +85,17 @@ describe("mobile product UX regressions", () => {
     expect(productInteractionsCss).toContain(".product-mobile-nav .product-nav__link svg");
   });
 
-  it("exposes an owner-only profile editor wired to the existing profile and media APIs", () => {
-    expect(profileRouteSource).toContain("ProfileEditor");
-    expect(profileRouteSource).toContain("isOwnProfile");
+  it("exposes the owner profile editor only from /profile and keeps it wired to existing APIs", () => {
+    expect(privateProfileRouteSource).toContain("ProfileEditor");
+    expect(privateProfileRouteSource).toContain("withServerSession");
+    expect(publicProfileRouteSource).not.toContain("ProfileEditor");
     expect(profileEditorSource).toContain("/api/profile/me");
     expect(profileEditorSource).toContain("/api/profile/media");
     expect(profileEditorSource).toContain('method: "PATCH"');
   });
 
   it("loads public profiles and profile activity without requiring an authenticated session", () => {
-    expect(profileRouteSource).toContain("withOptionalServerSession");
-    expect(profileRouteSource).not.toContain("withServerSession(");
+    expect(publicProfileRouteSource).toContain("withOptionalServerSession");
+    expect(publicProfileRouteSource).not.toContain("withServerSession(");
   });
 });
