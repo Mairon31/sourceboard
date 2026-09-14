@@ -9,6 +9,7 @@ import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { hasSourceEligibleCommentContent } from "../../shared/richtext/comment-content";
 import { PostError } from "../posts/errors";
 import type { NotificationEvent } from "../notifications/service";
+import { canManageAcceptedSource } from "./policy";
 
 function json(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -263,8 +264,18 @@ export async function handleSourceRequest(
     const commentPreviewUrl = storedPreviewUrl(target.comment_preview_url);
     const capability = requiredSourceCapability(kind);
     const current = await actor(request, requestId, env, capability);
-    if (!capability && current.id !== target.post_author_id)
-      throw new PostError(403, "POST_AUTHOR_REQUIRED", "Only the post author can accept a source.");
+    if (!capability) {
+      const isPostAuthor = current.id === target.post_author_id;
+      const canVerifySource =
+        !isPostAuthor && hasCapability(await current.store.getAuthorization(current.id), "source.verify");
+      if (!canManageAcceptedSource({ isPostAuthor, canVerifySource })) {
+        throw new PostError(
+          403,
+          "POST_AUTHOR_REQUIRED",
+          "Only the post author or a source verifier can manage an accepted source.",
+        );
+      }
+    }
     if (
       kind === "accept" &&
       !hasSourceEligibleCommentContent(
