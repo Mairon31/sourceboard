@@ -146,7 +146,7 @@ test("Comment opens the comments target", async ({ page }) => {
   await page.goto("/");
   await waitForUiReady(page);
   const card = page.locator(".product-post", { hasText: "E2E navigation post" });
-  const comment = card.getByRole("link", { name: "Comment" });
+  const comment = card.getByRole("link", { name: "Comment", exact: true });
   await expect(comment).toHaveAttribute(
     "href",
     "/posts/e2e-navigation-post/e2e-navigation-post#comments",
