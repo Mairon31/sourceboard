@@ -32,10 +32,13 @@ describe("editing surface internationalization", () => {
     expect(profileEditor).toContain('t("profileEditor.edit")');
     expect(profileEditor).toContain('t("profileEditor.bioPreview")');
     expect(profileEditor).toContain('t("profileEditor.bioBold")');
+    expect(profileEditor).toContain('t("profileEditor.bioLink")');
+    expect(profileEditor).toContain('t("profileEditor.bioEmote")');
     expect(profileEditor).toContain("renderMarkdownPreview");
     expect(profileEditor).toContain('t("profileEditor.social.title")');
     expect(profileAccount).toContain("useI18n");
     expect(profileAccount).toContain('t("profileAccount.title")');
     expect(profileAccount).toContain('t("profileAccount.logout")');
+    expect(mediaPicker).toContain("allowedKinds");
   });
 });

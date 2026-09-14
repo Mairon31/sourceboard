@@ -160,6 +160,10 @@
   background: var(--bg-app-secondary);
 }
 
+.product-comment-media-picker__tabs--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .product-comment-media-picker__tabs button {
   min-width: 0;
   min-height: 38px;

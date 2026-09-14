@@ -20,6 +20,8 @@ import "./creator-pro-visual.css";
 export interface ProfileIdentityCardProps {
   children: ReactNode;
   className?: string;
+  dataCosmeticPreview?: string;
+  dataPreviewPreset?: string;
   profileTheme?: ProfileThemePreset;
   legacyProfileBanner?: ProfileBannerPreset;
   profileEffect?: ProfileEffectPreset;
@@ -33,6 +35,8 @@ export interface ProfileIdentityCardProps {
 export function ProfileIdentityCard({
   children,
   className,
+  dataCosmeticPreview,
+  dataPreviewPreset,
   profileTheme,
   legacyProfileBanner,
   profileEffect,
@@ -49,6 +53,8 @@ export function ProfileIdentityCard({
       className={`product-profile-hero product-profile-identity-card cosmetic-root${className ? ` ${className}` : ""}`}
       data-profile-theme={theme ?? "default"}
       data-cosmetic-context={mode}
+      data-cosmetic-preview={dataCosmeticPreview}
+      data-preview-preset={dataPreviewPreset}
       data-community-cosmetic={communityStyles?.map((style) => style.id).join(" ") || undefined}
     >
       {communityStyles?.map((communityStyle) => (

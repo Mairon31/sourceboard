@@ -11,11 +11,13 @@ import {
 } from "../../../shared/profile/social-links";
 import type { PublicProfileDto } from "../../../worker/profile/types";
 import type { UsernameChangeStatus } from "../../../worker/profile/username-policy";
-import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
+import { formatEmoteMarkdown, renderMarkdownPreview } from "../../../shared/richtext/markdown";
+import type { SafeInlineRichTextNode, SafeRichTextNode } from "../../../shared/richtext/markdown";
 import type { MessageKey } from "../../i18n";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Button, Card, Checkbox, Input, Textarea } from "../ui";
+import { Button, Card, Checkbox, Input, LinkIcon, SmileIcon, Textarea } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
+import { MediaPicker, type MediaPickerSelection } from "./MediaPicker";
 import { ProfileHero } from "./ProfileHero";
 import { ProfileIdentityCard } from "./ProfileIdentityCard";
 import { RichText } from "./RichText";
@@ -203,9 +205,31 @@ function socialPreview(link: SocialLinkDraft): string {
   return normalized ? socialHandleFromUrl(link.platform, normalized) : value;
 }
 
-function bioPreviewNodes(value: string) {
+type BioEmoteAsset = { id: string; label: string; shortcode: string; url: string };
+
+function bioPreviewNodes(value: string, assets: Map<string, BioEmoteAsset>) {
   try {
-    return renderMarkdownPreview(value);
+    const hydrateInline = (nodes: SafeInlineRichTextNode[]) =>
+      nodes.map((node) => {
+        if (node.type !== "emote") return node;
+        const shortcode = node.shortcode.replace(/^:|:$/g, "");
+        const asset = assets.get(shortcode);
+        return asset ? { ...node, ...asset } : node;
+      });
+    const hydrate = (node: SafeRichTextNode): SafeRichTextNode => {
+      if (node.type === "paragraph" || node.type === "heading") {
+        return { ...node, children: hydrateInline(node.children) };
+      }
+      if (node.type === "quote") return { ...node, children: node.children.map(hydrate) };
+      if (node.type === "list") {
+        return {
+          ...node,
+          items: node.items.map((item) => ({ ...item, children: hydrateInline(item.children) })),
+        };
+      }
+      return node;
+    };
+    return renderMarkdownPreview(value).map(hydrate);
   } catch {
     return [{ type: "paragraph" as const, children: [{ type: "text" as const, text: value }] }];
   }
@@ -252,6 +276,8 @@ export function ProfileEditor({
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [preparingMedia, setPreparingMedia] = useState(false);
   const [bioMode, setBioMode] = useState<"write" | "preview">("write");
+  const [bioEmotePickerOpen, setBioEmotePickerOpen] = useState(false);
+  const [bioEmoteAssets, setBioEmoteAssets] = useState<Map<string, BioEmoteAsset>>(() => new Map());
   const bioRef = useRef<HTMLTextAreaElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -321,12 +347,16 @@ export function ProfileEditor({
 
   function beginEditing() {
     setBioMode("write");
+    setBioEmotePickerOpen(false);
+    setBioEmoteAssets(new Map());
     setEditing(true);
     onEditingChange?.(true);
   }
 
   function cancelEditing() {
     setBioMode("write");
+    setBioEmotePickerOpen(false);
+    setBioEmoteAssets(new Map());
     setEditing(false);
     onEditingChange?.(false);
     setSource(null);
@@ -353,6 +383,44 @@ export function ProfileEditor({
       const cursor = selected
         ? start + prefix.length + selected.length + suffix.length
         : start + prefix.length;
+      bioRef.current?.setSelectionRange(cursor, cursor);
+    });
+  }
+
+  function insertBioLink() {
+    if (!draft) return;
+    const input = bioRef.current;
+    const start = input?.selectionStart ?? draft.bio.length;
+    const end = input?.selectionEnd ?? start;
+    const selected = draft.bio.slice(start, end) || t("profileEditor.bioLinkText");
+    const token = `[${selected}](https://)`;
+    const next = `${draft.bio.slice(0, start)}${token}${draft.bio.slice(end)}`;
+    setDraft((current) => (current ? { ...current, bio: next } : current));
+    requestAnimationFrame(() => {
+      bioRef.current?.focus();
+      const urlStart = start + selected.length + 3;
+      bioRef.current?.setSelectionRange(urlStart, urlStart + 8);
+    });
+  }
+
+  function insertBioEmote(selection: MediaPickerSelection) {
+    if (!draft || selection.type !== "EMOTE") return;
+    setBioEmoteAssets((current) => {
+      const next = new Map(current);
+      next.set(selection.shortcode.replace(/^:|:$/g, ""), selection);
+      return next;
+    });
+    const input = bioRef.current;
+    const start = input?.selectionStart ?? draft.bio.length;
+    const end = input?.selectionEnd ?? start;
+    const before = draft.bio.slice(0, start);
+    const after = draft.bio.slice(end);
+    const token = `${before && !/\\s$/.test(before) ? " " : ""}${formatEmoteMarkdown(selection.shortcode)}${after && !/^\\s/.test(after) ? " " : ""}`;
+    const next = `${before}${token}${after}`;
+    setDraft((current) => (current ? { ...current, bio: next } : current));
+    requestAnimationFrame(() => {
+      bioRef.current?.focus();
+      const cursor = start + token.length;
       bioRef.current?.setSelectionRange(cursor, cursor);
     });
   }
@@ -731,6 +799,23 @@ export function ProfileEditor({
                   >
                     &lt;/&gt;
                   </button>
+                  <button
+                    type="button"
+                    onClick={insertBioLink}
+                    aria-label={t("profileEditor.bioLink")}
+                    title={t("profileEditor.bioLink")}
+                  >
+                    <LinkIcon width="16" height="16" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBioEmotePickerOpen((current) => !current)}
+                    aria-label={t("profileEditor.bioEmote")}
+                    title={t("profileEditor.bioEmote")}
+                    aria-expanded={bioEmotePickerOpen}
+                  >
+                    <SmileIcon width="16" height="16" />
+                  </button>
                 </div>
                 <Textarea
                   ref={bioRef}
@@ -744,11 +829,20 @@ export function ProfileEditor({
                     )
                   }
                 />
+                {bioEmotePickerOpen ? (
+                  <MediaPicker
+                    kind="EMOTE"
+                    allowedKinds={["EMOTE"]}
+                    onKindChange={() => undefined}
+                    onSelect={insertBioEmote}
+                    onClose={() => setBioEmotePickerOpen(false)}
+                  />
+                ) : null}
               </>
             ) : (
               <div className="product-profile-editor-inline__bio-preview" role="tabpanel">
                 {draft.bio.trim() ? (
-                  <RichText nodes={bioPreviewNodes(draft.bio)} />
+                  <RichText nodes={bioPreviewNodes(draft.bio, bioEmoteAssets)} />
                 ) : (
                   <span>{t("profileEditor.bioEmpty")}</span>
                 )}

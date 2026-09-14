@@ -239,7 +239,10 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
         </div>
 
         {profile.bio ? (
-          <RichText className="product-profile-bio" nodes={profileBioNodes(profile.bio)} />
+          <RichText
+            className="product-profile-bio"
+            nodes={profile.bioRichtext ?? profileBioNodes(profile.bio)}
+          />
         ) : null}
 
         <div

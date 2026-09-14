@@ -7,7 +7,12 @@ import {
 import { toFriendsListDto } from "./store";
 import type { FriendsListDto, SocialUserRecord } from "./types";
 
-export type { ProfileServiceDependencies, PublicProfileResult } from "./service-core";
+export {
+  hydrateProfileBio,
+  type ProfileEmoteAsset,
+  type ProfileServiceDependencies,
+  type PublicProfileResult,
+} from "./service-core";
 
 export const MAX_FRIEND_SUGGESTIONS = 20;
 const MAX_FRIEND_SEARCH_LENGTH = 64;

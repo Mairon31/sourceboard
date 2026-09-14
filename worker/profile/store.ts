@@ -9,6 +9,8 @@ import {
 } from "../../shared/store/creator-pro-config";
 import type { CosmeticIdentityVisuals } from "../../shared/store/custom-cosmetics";
 import { extractCosmeticVisualDefinition } from "../../shared/store/custom-cosmetics";
+import { normalizeEmoteShortcode } from "../../shared/richtext/markdown";
+import { isStoreLifecycleSchemaError } from "../store/service";
 import type {
   FriendshipRecord,
   FriendshipStatus,
@@ -32,11 +34,22 @@ export interface EquippedCosmetics extends CoreEquippedCosmetics {
   communityStyles?: Array<{ id: string; css: string }>;
 }
 
+export interface ProfileEmoteAsset {
+  id: string;
+  label: string;
+  shortcode: string;
+  url: string;
+}
+
 const MAX_SOCIAL_USERS = 100;
 const MAX_FRIEND_SUGGESTIONS = 20;
 
 export type ProfileStore = Omit<CoreProfileStore, "listSocialUsers" | "getEquippedCosmetics"> & {
   getEquippedCosmetics(userId: string): Promise<EquippedCosmetics>;
+  getEmoteAssets?: (
+    shortcodes: string[],
+    viewerId: string | null,
+  ) => Promise<Map<string, ProfileEmoteAsset>>;
   listSocialUsers(viewerId: string, limit?: number): Promise<SocialUserRecord[]>;
   searchFriendSuggestions(
     viewerId: string,
@@ -161,6 +174,79 @@ function toSuggestion(row: SuggestionRow): SocialUserRecord {
 
 export function createD1ProfileStore(db: D1Database): ProfileStore {
   const core = createCoreProfileStore(db);
+
+  async function getEmoteAssets(
+    shortcodes: string[],
+    viewerId: string | null,
+  ): Promise<Map<string, ProfileEmoteAsset>> {
+    const unique = [
+      ...new Set(
+        shortcodes
+          .map((shortcode) => normalizeEmoteShortcode(shortcode))
+          .filter((shortcode): shortcode is string => Boolean(shortcode)),
+      ),
+    ];
+    if (!unique.length) return new Map();
+    const placeholders = unique.map(() => "?").join(", ");
+    const binds = [viewerId ?? "", ...unique];
+    let rows;
+    try {
+      rows = await db
+        .prepare(
+          `SELECT DISTINCT e.id, e.label, e.shortcode
+           FROM emote_catalog e
+           JOIN emote_packs p ON p.id = e.pack_id
+           JOIN store_items s ON s.type = 'EMOTE_PACK'
+             AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
+             AND json_extract(s.config_json, '$.packId') = e.pack_id
+           LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+           WHERE e.shortcode IN (${placeholders})
+             AND e.lifecycle_state = 'PUBLISHED' AND e.is_enabled = 1
+             AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
+             AND p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
+             AND (p.is_global = 1 OR i.user_id IS NOT NULL)
+           ORDER BY e.sort_order ASC, e.created_at ASC`,
+        )
+        .bind(...binds)
+        .all<{ id: string; label: string; shortcode: string }>();
+    } catch (error) {
+      if (!isStoreLifecycleSchemaError(error)) throw error;
+      rows = await db
+        .prepare(
+          `SELECT DISTINCT e.id, e.label, e.shortcode
+           FROM emote_catalog e
+           JOIN emote_packs p ON p.id = e.pack_id
+           JOIN store_items s ON s.type = 'EMOTE_PACK'
+             AND s.is_active = 1
+             AND json_extract(s.config_json, '$.packId') = e.pack_id
+           LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+           WHERE e.shortcode IN (${placeholders})
+             AND e.status = 'ACTIVE' AND p.status = 'ACTIVE'
+             AND (p.is_global = 1 OR i.user_id IS NOT NULL)
+           ORDER BY e.sort_order ASC, e.created_at ASC`,
+        )
+        .bind(...binds)
+        .all<{ id: string; label: string; shortcode: string }>();
+    }
+    return new Map(
+      rows.results.flatMap((row) => {
+        const shortcode = normalizeEmoteShortcode(row.shortcode);
+        return shortcode
+          ? [
+              [
+                shortcode,
+                {
+                  id: row.id,
+                  label: row.label,
+                  shortcode,
+                  url: `/api/media/catalog/emote/${encodeURIComponent(row.id)}`,
+                },
+              ] as const,
+            ]
+          : [];
+      }),
+    );
+  }
 
   async function getEquippedCosmetics(userId: string): Promise<EquippedCosmetics> {
     const cosmetics: EquippedCosmetics = { ...(await core.getEquippedCosmetics(userId)) };
@@ -310,6 +396,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
   return {
     ...core,
     getEquippedCosmetics,
+    getEmoteAssets,
     listSocialUsers,
     searchFriendSuggestions,
   };

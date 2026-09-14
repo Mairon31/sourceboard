@@ -1,6 +1,11 @@
 import { normalizeUsername } from "../auth/crypto";
 import { canInteractWithUser, canViewUser } from "../privacy/policy";
-import { parseMarkdown } from "../../shared/richtext/markdown";
+import {
+  normalizeEmoteShortcode,
+  parseMarkdown,
+  type SafeInlineRichTextNode,
+  type SafeRichTextNode,
+} from "../../shared/richtext/markdown";
 import { ProfileError } from "./errors";
 import type {
   FriendsListDto,
@@ -35,6 +40,76 @@ export interface ProfileServiceDependencies {
 
 export interface PublicProfileResult extends PublicProfileDto {
   socialLinks: Array<{ platform: string; url: string }>;
+}
+
+export type ProfileEmoteAsset = {
+  id: string;
+  label: string;
+  shortcode: string;
+  url: string;
+};
+
+function hydrateInline(
+  nodes: SafeInlineRichTextNode[],
+  assets: Map<string, ProfileEmoteAsset>,
+): SafeInlineRichTextNode[] {
+  return nodes.map((node) => {
+    if (node.type !== "emote") return node;
+    const shortcode = normalizeEmoteShortcode(node.shortcode);
+    const asset = shortcode ? assets.get(shortcode) : undefined;
+    return asset ? { ...node, id: asset.id, label: asset.label, url: asset.url } : node;
+  });
+}
+
+export function hydrateProfileBio(
+  nodes: SafeRichTextNode[],
+  assets: Map<string, ProfileEmoteAsset>,
+): SafeRichTextNode[] {
+  return nodes.map((node) => {
+    if (node.type === "paragraph" || node.type === "heading") {
+      return { ...node, children: hydrateInline(node.children, assets) };
+    }
+    if (node.type === "quote")
+      return { ...node, children: hydrateProfileBio(node.children, assets) };
+    if (node.type === "list") {
+      return {
+        ...node,
+        items: node.items.map((item) => ({
+          ...item,
+          children: hydrateInline(item.children, assets),
+        })),
+      };
+    }
+    return node;
+  });
+}
+
+function bioShortcodes(bio: string): { nodes: SafeRichTextNode[]; shortcodes: string[] } {
+  const nodes = parseMarkdown(bio);
+  const shortcodes = new Set<string>();
+  const visit = (node: SafeRichTextNode) => {
+    if (node.type === "paragraph" || node.type === "heading") {
+      node.children.forEach((child) => {
+        if (child.type === "emote") {
+          const shortcode = normalizeEmoteShortcode(child.shortcode);
+          if (shortcode) shortcodes.add(shortcode);
+        }
+      });
+    } else if (node.type === "quote") {
+      node.children.forEach(visit);
+    } else if (node.type === "list") {
+      node.items.forEach((item) =>
+        item.children.forEach((child) => {
+          if (child.type === "emote") {
+            const shortcode = normalizeEmoteShortcode(child.shortcode);
+            if (shortcode) shortcodes.add(shortcode);
+          }
+        }),
+      );
+    }
+  };
+  nodes.forEach(visit);
+  return { nodes, shortcodes: [...shortcodes] };
 }
 
 export interface ProfileService {
@@ -149,12 +224,14 @@ function toPublicProfile(
   friendCount: number,
   reputation?: ReputationSummary,
   cosmetics?: Awaited<ReturnType<ProfileStore["getEquippedCosmetics"]>>,
+  bioRichtext?: SafeRichTextNode[],
 ): PublicProfileResult {
   return {
     id: profile.userId,
     username: profile.username,
     displayName: profile.displayName,
     bio: profile.bio,
+    ...(bioRichtext ? { bioRichtext } : {}),
     avatarUrl: profile.avatarAssetId
       ? `/api/media/profile/${encodeURIComponent(profile.avatarAssetId)}`
       : undefined,
@@ -290,14 +367,34 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
     const relationship = viewerId
       ? await dependencies.store.getRelationship(viewerId, profile.userId)
       : "NONE";
-    const [links, friendCount, reputation, cosmetics] = await Promise.all([
+    let parsedBio: { nodes: SafeRichTextNode[]; shortcodes: string[] } | null = null;
+    try {
+      parsedBio = bioShortcodes(profile.bio);
+    } catch {
+      parsedBio = null;
+    }
+    const [links, friendCount, reputation, cosmetics, emoteAssets] = await Promise.all([
       dependencies.store.getSocialLinks(profile.userId),
       dependencies.store.countAcceptedFriends(profile.userId),
       dependencies.reputation?.getSummary(profile.userId),
       dependencies.store.getEquippedCosmetics?.(profile.userId) ?? {},
+      parsedBio?.shortcodes.length && dependencies.store.getEmoteAssets
+        ? dependencies.store.getEmoteAssets(parsedBio.shortcodes, viewerId)
+        : new Map<string, ProfileEmoteAsset>(),
     ]);
+    const bioRichtext = parsedBio
+      ? hydrateProfileBio(parsedBio.nodes, emoteAssets as Map<string, ProfileEmoteAsset>)
+      : undefined;
     return applyRelationshipActions(
-      toPublicProfile(profile, links, relationship, friendCount, reputation, cosmetics),
+      toPublicProfile(
+        profile,
+        links,
+        relationship,
+        friendCount,
+        reputation,
+        cosmetics,
+        bioRichtext,
+      ),
       viewerId,
     );
   }
@@ -318,6 +415,24 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
   ) {
     validateProfileInput(input);
     validateSocialLinks(links);
+    if (dependencies.store.getEmoteAssets) {
+      let parsedBio: { nodes: SafeRichTextNode[]; shortcodes: string[] } | null = null;
+      try {
+        parsedBio = bioShortcodes(input.bio);
+      } catch {
+        parsedBio = null;
+      }
+      if (parsedBio?.shortcodes.length) {
+        const assets = await dependencies.store.getEmoteAssets(parsedBio.shortcodes, userId);
+        if (assets.size !== parsedBio.shortcodes.length) {
+          throw new ProfileError(
+            400,
+            "INVALID_BIO_EMOTE",
+            "Your bio contains an emote that is not available to your account.",
+          );
+        }
+      }
+    }
     await requireProfile(userId);
     for (const assetId of [input.avatarAssetId, input.bannerAssetId]) {
       if (!assetId) continue;

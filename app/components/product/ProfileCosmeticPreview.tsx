@@ -89,11 +89,14 @@ export function ProfileCosmeticPreview({
   const visuals = previewVisuals(type, visual);
   const structured = previewCreatorPro(type, creatorPro);
   const frame = validFrame(type, preset);
+  const presetClass = preset && preset !== "none" ? ` product-cosmetic-preview--${preset}` : "";
 
   if (type === "AVATAR_FRAME") {
     return (
       <div
-        className={`product-cosmetic-preview product-cosmetic-preview--frame cosmetic-root${className ? ` ${className}` : ""}`}
+        className={`product-cosmetic-preview product-cosmetic-preview--frame cosmetic-root${presetClass}${className ? ` ${className}` : ""}`}
+        data-cosmetic-preview="AVATAR_FRAME"
+        data-preview-preset={frame}
       >
         {communityStyles?.map((style) => (
           <style key={style.id}>{style.css}</style>
@@ -115,7 +118,11 @@ export function ProfileCosmeticPreview({
 
   return (
     <ProfileIdentityCard
-      className={`product-cosmetic-preview product-cosmetic-preview--card${className ? ` ${className}` : ""}`}
+      className={`product-cosmetic-preview product-cosmetic-preview--card${presetClass}${
+        type === "PROFILE_EFFECT" ? " product-store-preview--effect" : ""
+      }${className ? ` ${className}` : ""}`}
+      dataCosmeticPreview={type}
+      dataPreviewPreset={preset}
       profileTheme={validTheme(type, preset)}
       profileEffect={validEffect(type, preset)}
       bannerUrl={bannerUrl}
