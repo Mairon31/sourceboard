@@ -925,7 +925,7 @@ After the migration-first production deployment, smoke-test the real environment
 
 ## Interaction, moderation and media UX hardening — 2026-09-13
 
-Status: **IMPLEMENTED — CI/browser gate pending**
+Status: **COMPLETED — merged to `master`; standard CI green**
 
 - Comment create/edit/delete and moderation now reconcile authoritative post-detail data through React Router revalidation; Accepted Source therefore reads the same updated accepted-comment record without a manual reload.
 - Comment moderation exposes the existing server-derived `comment.moderate` capability and uses the canonical moderation endpoint for COMMENT `HIDE`/`RESTORE` with a required reason. Ordinary users receive neither the UI action nor backend authorization.
@@ -936,3 +936,4 @@ Status: **IMPLEMENTED — CI/browser gate pending**
 - Local verification on the implementation candidate: strict TypeScript passed; focused interaction/media tests passed **32/32**; the complete unit suite passed **600/600 across 147 files**; production dependency audit reported **0 vulnerabilities**; production build and Worker deploy dry-run passed. The dry-run resolves D1, R2, KV, Queue, Durable Object and all four Rate Limit bindings.
 - Local Windows D1 execution is currently blocked before SQL runs by a Wrangler/Miniflare `internal error` even for `SELECT 1`, reproducing on Wrangler 4.129.0 and 4.131.1 and with a fresh persistence directory. Because React Router local requests depend on that D1 binding, Playwright/browser verification and the local migration gate are deferred to the standard Linux CI run for the pushed branch rather than being represented as locally green.
 - CodeRabbit review is also environment-blocked: the official installer rejects this Windows Git Bash runtime as `Unsupported operating system: mingw64_nt-10.0-26200`. No manual review is being attributed to CodeRabbit.
+- Final PR #45 candidate `68bad91e36bec05d1099db32fcc2abf0f358507d` passed standard CI #1898 (`34847760978`): production audit reported **0 vulnerabilities**; formatting/lint, strict TypeScript, **153 unit-test files / 625 unit tests**, production build, Worker deploy dry-run, **36 D1 migrations**, and **235/235 Playwright E2E tests** all passed. The PR was merged normally into `master` as `63e54d2712c4ea8adec690e29769052d17a2ab82`.
