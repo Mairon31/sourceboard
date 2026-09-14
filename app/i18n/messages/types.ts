@@ -1,5 +1,6 @@
 import { enBaseMessages } from "./locales/en/base";
 import { enCommonMessages } from "./locales/en/common";
+import { enCommunityMessages } from "./locales/en/community";
 import { enEditingMessages } from "./locales/en/editing";
 import { enProductMessages } from "./locales/en/product";
 import { enSettingsMessages } from "./locales/en/settings";
@@ -10,6 +11,7 @@ type Localized<T> = { [Key in keyof T]: string };
 
 export type BaseMessages = Localized<typeof enBaseMessages>;
 export type CommonMessages = Localized<typeof enCommonMessages>;
+export type CommunityMessages = Localized<typeof enCommunityMessages>;
 export type EditingMessages = Localized<typeof enEditingMessages>;
 export type ProductMessages = Localized<typeof enProductMessages>;
 export type SettingsMessages = Localized<typeof enSettingsMessages>;
@@ -19,6 +21,7 @@ export type StoreMessages = Localized<typeof enStoreMessages>;
 export interface MessageNamespaces {
   base: BaseMessages;
   common: CommonMessages;
+  community: CommunityMessages;
   editing: EditingMessages;
   product: ProductMessages;
   settings: SettingsMessages;
@@ -28,6 +31,7 @@ export interface MessageNamespaces {
 
 export type MessageCatalog = BaseMessages &
   CommonMessages &
+  CommunityMessages &
   EditingMessages &
   ProductMessages &
   SettingsMessages &

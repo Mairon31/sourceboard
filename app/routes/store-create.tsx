@@ -3,46 +3,51 @@ import { CommunityCosmeticStudio } from "../components/product/CommunityCosmetic
 import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { requestedLocale } from "../data/locale.server";
+import { translate } from "../i18n";
+import { useI18n } from "../i18n/I18nProvider";
 
 export const meta: MetaFunction = () => [
-  { title: "Create cosmetic · SourceBoard" },
-  { name: "description", content: "Build a sandboxed community cosmetic for SourceBoard." },
+  { title: translate("en", "community.routeTitle") },
+  {
+    name: "description",
+    content: translate("en", "community.routeDescription"),
+  },
   { name: "robots", content: "noindex, follow" },
 ];
 
 export async function loader({ request, context }: ServerLoaderArgs) {
+  const locale = requestedLocale(request);
   return withOptionalServerSession(
     request,
     context,
-    () => ({ authenticated: false }),
-    async (_runtime, userId) => ({ authenticated: Boolean(userId) }),
+    () => ({ authenticated: false, locale }),
+    async (_runtime, userId) => ({ authenticated: Boolean(userId), locale }),
   );
 }
 
 export default function StoreCreateRoute() {
   const { authenticated } = useLoaderData<typeof loader>();
+  const { t } = useI18n();
   return (
     <ProductShell wide>
       <div className="product-store-page product-store-create-page">
         <header className="product-store-hero">
           <div>
-            <span className="product-eyebrow">Community Studio</span>
-            <h1>Create a community cosmetic</h1>
-            <p>
-              Start from an approved SourceBoard preset, preview safe CSS live, save a draft, then
-              submit it for staff review.
-            </p>
+            <span className="product-eyebrow">{t("community.eyebrow")}</span>
+            <h1>{t("community.heading")}</h1>
+            <p>{t("community.description")}</p>
           </div>
           <a className="product-store-create-link" href="/store">
-            Back to Store
+            {t("community.backStore")}
           </a>
         </header>
         {authenticated ? (
           <CommunityCosmeticStudio />
         ) : (
           <Card className="product-empty-state">
-            <p>Sign in to create and submit community cosmetics.</p>
-            <a href="/login">Sign in</a>
+            <p>{t("community.signInRequired")}</p>
+            <a href="/login">{t("community.signIn")}</a>
           </Card>
         )}
       </div>
