@@ -121,7 +121,7 @@ export default function AdminModerationRoute() {
     if (!selectedAction || busy) return;
     const normalizedReason = reason.trim();
     if (normalizedReason.length < 3) {
-      setActionError("Enter a moderation reason of at least 3 characters.");
+      setActionError(t("admin.moderation.reasonMin"));
       return;
     }
 
@@ -145,15 +145,15 @@ export default function AdminModerationRoute() {
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        setActionError(payload?.error?.message ?? "The moderation action could not be applied.");
+        setActionError(payload?.error?.message ?? t("admin.moderation.actionFailed"));
         return;
       }
-      setFeedback(`${actionLabel(selectedAction.action)} applied to ${selectedAction.targetType}.`);
+      setFeedback(t("admin.moderation.actionApplied", { action: actionLabel(selectedAction.action), target: selectedAction.targetType }));
       setSelectedAction(null);
       setReason("");
       revalidator.revalidate();
     } catch {
-      setActionError("The moderation action could not be applied.");
+      setActionError(t("admin.moderation.actionFailed"));
     } finally {
       setBusy(false);
     }
@@ -169,10 +169,10 @@ export default function AdminModerationRoute() {
 
   function actionMenu(report: QueueReport) {
     const actions = actionsForTarget(String(report.targetType));
-    if (!actions.length) return <span className="product-search-count">No direct actions</span>;
+    if (!actions.length) return <span className="product-search-count">{t("admin.moderation.noDirectActions")}</span>;
     return (
       <AdminActionMenu
-        label="Actions"
+        label={t("admin.moderation.actions")}
         items={actions.map((action) => ({
           label: actionLabel(action),
           onSelect: () => beginAction(report, action),
@@ -184,13 +184,13 @@ export default function AdminModerationRoute() {
   return (
     <AdminShell>
       <AdminPageHeader
-        eyebrow="Trust & safety"
-        title="Moderation queue"
-        description="Review reports with enough context to make a decision without exposing privileged data unnecessarily."
+        eyebrow={t("admin.moderation.eyebrow")}
+        title={t("admin.moderation.title")}
+        description={t("admin.moderation.description")}
       />
 
       <section className="admin-section">
-        <div className="admin-filter-bar" aria-label="Moderation filters">
+        <div className="admin-filter-bar" aria-label={t("admin.moderation.filters")}>
           <label className="sb-field admin-filter-control admin-filter-control--search">
             <span className="sb-field__label">{t("admin.moderation.search")}</span>
             <input
@@ -201,57 +201,57 @@ export default function AdminModerationRoute() {
             />
           </label>
           <label className="sb-field admin-filter-control">
-            <span className="sb-field__label">Status</span>
+            <span className="sb-field__label">{t("admin.moderation.status")}</span>
             <select
               className="sb-input"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
             >
-              <option value="ALL">All open</option>
-              <option value="OPEN">Open</option>
-              <option value="IN_REVIEW">In review</option>
+              <option value="ALL">{t("admin.moderation.allOpen")}</option>
+              <option value="OPEN">{t("admin.moderation.open")}</option>
+              <option value="IN_REVIEW">{t("admin.moderation.inReview")}</option>
             </select>
           </label>
           <label className="sb-field admin-filter-control">
-            <span className="sb-field__label">Target</span>
+            <span className="sb-field__label">{t("admin.moderation.target")}</span>
             <select
               className="sb-input"
               value={targetFilter}
               onChange={(event) => setTargetFilter(event.target.value)}
             >
-              <option value="ALL">All targets</option>
-              <option value="POST">Posts</option>
-              <option value="COMMENT">Comments</option>
-              <option value="USER">Users</option>
-              <option value="SOURCE">Sources</option>
+              <option value="ALL">{t("admin.moderation.allTargets")}</option>
+              <option value="POST">{t("admin.moderation.posts")}</option>
+              <option value="COMMENT">{t("admin.moderation.comments")}</option>
+              <option value="USER">{t("admin.moderation.users")}</option>
+              <option value="SOURCE">{t("admin.moderation.sources")}</option>
             </select>
           </label>
           <label className="sb-field admin-filter-control">
-            <span className="sb-field__label">Category</span>
+            <span className="sb-field__label">{t("admin.moderation.category")}</span>
             <select
               className="sb-input"
               value={categoryFilter}
               onChange={(event) => setCategoryFilter(event.target.value)}
             >
-              <option value="ALL">All categories</option>
-              <option value="SPAM">Spam</option>
-              <option value="HARASSMENT">Harassment</option>
-              <option value="MISLEADING_SOURCE">Misleading source</option>
-              <option value="NSFW">NSFW</option>
-              <option value="PRIVACY">Privacy</option>
-              <option value="COPYRIGHT">Copyright</option>
-              <option value="OTHER">Other</option>
+              <option value="ALL">{t("admin.moderation.allCategories")}</option>
+              <option value="SPAM">{t("admin.moderation.spam")}</option>
+              <option value="HARASSMENT">{t("admin.moderation.harassment")}</option>
+              <option value="MISLEADING_SOURCE">{t("admin.moderation.misleadingSource")}</option>
+              <option value="NSFW">{t("admin.moderation.nsfw")}</option>
+              <option value="PRIVACY">{t("admin.moderation.privacy")}</option>
+              <option value="COPYRIGHT">{t("admin.moderation.copyright")}</option>
+              <option value="OTHER">{t("admin.moderation.other")}</option>
             </select>
           </label>
           <label className="sb-field admin-filter-control">
-            <span className="sb-field__label">Sort</span>
+            <span className="sb-field__label">{t("admin.moderation.sort")}</span>
             <select
               className="sb-input"
               value={sortOrder}
               onChange={(event) => setSortOrder(event.target.value as "NEWEST" | "OLDEST")}
             >
-              <option value="OLDEST">Oldest first</option>
-              <option value="NEWEST">Newest first</option>
+              <option value="OLDEST">{t("admin.moderation.oldest")}</option>
+              <option value="NEWEST">{t("admin.moderation.newest")}</option>
             </select>
           </label>
           <span className="product-search-count">
@@ -348,7 +348,7 @@ export default function AdminModerationRoute() {
             </div>
           </>
         ) : (
-          <p className="product-empty-state">No moderation reports match these filters.</p>
+          <p className="product-empty-state">{t("admin.moderation.noMatch")}</p>
         )}
       </section>
 
@@ -430,31 +430,31 @@ export default function AdminModerationRoute() {
             if (!open && !busy) setSelectedAction(null);
           }}
           title={`${actionLabel(selectedAction.action)} ${selectedAction.targetType.toLowerCase()}`}
-          description={`Target ${selectedAction.targetId}. This action is persisted and audited.`}
+          description={t("admin.moderation.targetDescription", { target: selectedAction.targetId })}
         >
           <div className="product-form-card">
             <Textarea
-              label="Reason"
+              label={t("admin.moderation.reason")}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               error={actionError ?? undefined}
-              placeholder="Explain why this moderation action is necessary."
+              placeholder={t("admin.moderation.reasonPlaceholder")}
               maxLength={2000}
               rows={5}
               autoFocus
             />
             {TEMPORARY_ACTIONS.has(selectedAction.action) ? (
               <label className="sb-field admin-filter-control">
-                <span className="sb-field__label">Duration</span>
+                <span className="sb-field__label">{t("admin.moderation.duration")}</span>
                 <select
                   className="sb-input"
                   value={durationMs}
                   onChange={(event) => setDurationMs(event.target.value)}
                 >
-                  <option value="3600000">1 hour</option>
-                  <option value="86400000">24 hours</option>
-                  <option value="604800000">7 days</option>
-                  <option value="2592000000">30 days</option>
+                  <option value="3600000">{t("admin.moderation.oneHour")}</option>
+                  <option value="86400000">{t("admin.moderation.oneDay")}</option>
+                  <option value="604800000">{t("admin.moderation.sevenDays")}</option>
+                  <option value="2592000000">{t("admin.moderation.thirtyDays")}</option>
                 </select>
               </label>
             ) : null}
