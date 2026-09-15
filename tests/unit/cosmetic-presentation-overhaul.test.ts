@@ -295,11 +295,9 @@ describe("Cosmetic presentation overhaul", () => {
       /\.product-profile-effect-layer__node\s*\{[^}]*opacity:\s*(?:0\.[1-9]\d*|1(?:\.0+)?)\s*!important;/s,
     );
 
-    const reducedFrameMotion = frameCss.slice(
-      frameCss.lastIndexOf("@media (prefers-reduced-motion: reduce)"),
+    expect(stageCss).toContain(
+      ".product-avatar-stage__part {\n    animation: none !important;",
     );
-    expect(reducedFrameMotion).toContain(".product-avatar-frame--decorative::before");
-    expect(reducedFrameMotion).toContain(".product-avatar-frame--decorative::after");
   });
 
   it("preserves legacy cosmetic preset compatibility", () => {

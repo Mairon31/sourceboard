@@ -154,6 +154,30 @@ const STRUCTURAL: Partial<Record<AvatarFramePreset, readonly AvatarFrameGeometry
   "floral-ring": [
     { layer: "outer-ring", anchor: "center", scale: 1.12, offsetX: 0, offsetY: 0, rotation: 0 },
   ],
+  "neko-neon": [
+    { layer: "top-ornament", anchor: "top-left", scale: 0.9, offsetX: -0.16, offsetY: -0.2, rotation: -12 },
+    { layer: "top-ornament", anchor: "top-right", scale: 0.9, offsetX: 0.16, offsetY: -0.2, rotation: 12 },
+  ],
+  "glitch-ring": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 2600 },
+    { layer: "foreground", anchor: "center", scale: 1.04, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 2600 },
+  ],
+  "pixel-glitch": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 3000 },
+    { layer: "foreground", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 2200 },
+  ],
+  "electric-coils": [
+    { layer: "orbit", anchor: "center", scale: 1.12, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 4400 },
+    { layer: "orbit", anchor: "center", scale: 1.2, offsetX: 0, offsetY: 0, rotation: 90, animationDurationMs: 6200 },
+  ],
+  "retro-arcade": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "foreground", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "slime": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "foreground", anchor: "center", scale: 1, offsetX: 0, offsetY: 0.22, rotation: 0 },
+  ],
   "simple-blue": [
     { layer: "inner-ring", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
   ],

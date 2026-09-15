@@ -505,6 +505,175 @@
   border-width: 1px;
 }
 
+
+/* Legacy structural frames are expressed as AvatarStage parts so every surface
+   shares the same geometry, containment and reduced-motion behavior. */
+.product-avatar-stage[data-avatar-frame="neko-neon"]
+  .product-avatar-stage__part[data-layer="top-ornament"] {
+  background: linear-gradient(135deg, #ff55dc, #56e8ff);
+  filter: drop-shadow(0 0 6px #7ee9ffcc);
+  animation: avatar-stage-neon-pulse 2800ms ease-in-out infinite;
+}
+
+.product-avatar-stage[data-avatar-frame="glitch-ring"]
+  .product-avatar-stage__part[data-layer="outer-ring"] {
+  border: 3px dashed #5cecff;
+  box-shadow:
+    4px 0 0 -1px #ff4f9a,
+    -4px 0 0 -1px #725cff;
+  animation: avatar-stage-glitch-ring 2600ms steps(2, end) infinite;
+}
+
+.product-avatar-stage[data-avatar-frame="glitch-ring"]
+  .product-avatar-stage__part[data-layer="foreground"] {
+  inset: -2px -8px;
+  border-top: 2px solid #ff4f9aaa;
+  border-bottom: 2px solid #56e8ffaa;
+  animation: avatar-stage-glitch-slice 2600ms steps(2, end) infinite;
+}
+
+.product-avatar-stage[data-avatar-frame="pixel-glitch"]
+  .product-avatar-stage__part[data-layer="outer-ring"] {
+  border: 3px solid transparent;
+  box-shadow:
+    -7px -7px 0 -4px #ff4f9a,
+    9px -5px 0 -4px #54e9ff,
+    7px 9px 0 -4px #906cff,
+    -8px 7px 0 -4px #fff;
+  animation: avatar-stage-pixel 3000ms steps(4, end) infinite;
+}
+
+.product-avatar-stage[data-avatar-frame="pixel-glitch"]
+  .product-avatar-stage__part[data-layer="foreground"] {
+  inset: 10% auto auto 10%;
+  width: 5px;
+  height: 5px;
+  background: #58eaff;
+  box-shadow:
+    42px -41px 0 #ff55bf,
+    51px -12px 0 #8f72ff,
+    14px -55px 0 #fff8;
+  animation: avatar-stage-pixel 2200ms steps(3, end) infinite reverse;
+}
+
+.product-avatar-stage[data-avatar-frame="electric-coils"]
+  .product-avatar-stage__part[data-layer="orbit"]:first-of-type {
+  border-color: #71e7ff transparent transparent #9870ff;
+  box-shadow: 0 0 9px #60dfff99;
+}
+
+.product-avatar-stage[data-avatar-frame="electric-coils"]
+  .product-avatar-stage__part[data-layer="orbit"]:last-of-type {
+  inset: -10px;
+  border-color: #9077ff99;
+  border-style: dashed;
+}
+
+.product-avatar-stage[data-avatar-frame="retro-arcade"]
+  .product-avatar-stage__part[data-layer="outer-ring"] {
+  inset: -6px;
+  border: 4px solid #52e7ff;
+  border-radius: 7px;
+  box-shadow:
+    4px 4px 0 #ff4fa3,
+    -4px -4px 0 #ffd84a;
+}
+
+.product-avatar-stage[data-avatar-frame="retro-arcade"]
+  .product-avatar-stage__part[data-layer="foreground"] {
+  inset: 16% auto auto -9px;
+  width: 5px;
+  height: 5px;
+  border-radius: 0;
+  background: #fff;
+  box-shadow:
+    0 17px 0 #ff4fa3,
+    76px 6px 0 #52e7ff,
+    76px 27px 0 #ffd84a;
+}
+
+.product-avatar-stage[data-avatar-frame="slime"]
+  .product-avatar-stage__part[data-layer="outer-ring"] {
+  inset: -5px;
+  border: 4px solid #7fe54c;
+  box-shadow: 0 0 7px #64d53777;
+}
+
+.product-avatar-stage[data-avatar-frame="slime"]
+  .product-avatar-stage__part[data-layer="foreground"] {
+  inset: auto 12% -10px;
+  height: 16px;
+  border-radius: 0;
+  background: #72da45;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    88% 42%,
+    77% 20%,
+    66% 100%,
+    54% 28%,
+    42% 72%,
+    28% 18%,
+    16% 60%
+  );
+  filter: drop-shadow(0 2px 3px #347f2777);
+}
+
+@keyframes avatar-stage-neon-pulse {
+  0%,
+  100% {
+    opacity: 0.78;
+    filter: drop-shadow(0 0 4px #7ee9ffaa);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px #ff55dccc);
+  }
+}
+
+@keyframes avatar-stage-glitch-ring {
+  0%,
+  82%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  86% {
+    transform: translate3d(2px, -1px, 0) rotate(2deg);
+  }
+  90% {
+    transform: translate3d(-2px, 1px, 0) rotate(-2deg);
+  }
+}
+
+@keyframes avatar-stage-glitch-slice {
+  0%,
+  84%,
+  100% {
+    opacity: 0.45;
+    transform: translateX(0);
+  }
+  88% {
+    opacity: 0.9;
+    transform: translateX(4px);
+  }
+  92% {
+    opacity: 0.7;
+    transform: translateX(-3px);
+  }
+}
+
+@keyframes avatar-stage-pixel {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(2px, -2px, 0);
+  }
+}
+
 @keyframes avatar-stage-orbit {
   to {
     rotate: 1turn;
