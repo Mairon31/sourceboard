@@ -56,7 +56,9 @@ export default function AdminContentRoute() {
       const payload = (await response.json().catch(() => null)) as {
         pages?: CmsAdminPage[];
       } | null;
-      if (!response.ok) throw new Error("Could not load content pages.");
+      if (!response.ok) {
+        throw new Error(payload?.error?.message ?? "Could not load content pages.");
+      }
       setPages(payload?.pages ?? []);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not load content pages.");
