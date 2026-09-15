@@ -13,5 +13,18 @@ export const esAdminMessages = {
   "admin.moderation.noResource": "Recurso no disponible",
   "admin.moderation.search": "Buscar reportes",
   "admin.moderation.searchPlaceholder": "Usuario, título, cuerpo o ID del reporte",
-  "admin.moderation.reportCount": "{count} reportes"
+  "admin.moderation.reportCount": "{count} reportes",
+  "admin.source.integrity.search": "Buscar integridad de fuentes",
+  "admin.source.integrity.searchPlaceholder": "Publicación, autor, URL o ID de resolución",
+  "admin.source.integrity.statusFilter": "Estado",
+  "admin.source.integrity.allStatuses": "Todos los estados",
+  "admin.source.integrity.resultCount": "{count} resultados",
+  "admin.source.integrity.views": "Vistas de integridad de fuentes",
+  "admin.source.integrity.review": "Requiere revisión",
+  "admin.source.integrity.verified": "Fuentes verificadas",
+  "admin.source.integrity.disputes": "Disputas",
+  "admin.source.integrity.history": "Historial",
+  "admin.source.integrity.noMatch": "Ningún registro de integridad coincide con estos filtros.",
+  "admin.source.integrity.openPost": "Abrir publicación",
+  "admin.source.integrity.openSource": "Abrir fuente"
 } as const;
