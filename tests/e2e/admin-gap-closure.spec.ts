@@ -44,6 +44,14 @@ function seedAdminGapFixtures() {
       ('e2e-report-author', 'E2E Report Author', '', NULL, NULL, 'PUBLIC', ${now}, ${now}),
       ('e2e-reputation-user', 'E2E Reputation User', '', NULL, NULL, 'PUBLIC', ${now}, ${now});
 
+    INSERT OR IGNORE INTO media_assets
+      (id, owner_user_id, purpose, r2_key, content_type, byte_size, checksum_sha256,
+       status, created_at, deleted_at, width, height)
+    VALUES
+      ('e2e-report-post-media', 'e2e-report-author', 'POST_IMAGE',
+       'e2e/admin-report-post.webp', 'image/webp', 1, 'e2e-admin-report-post-checksum',
+       'ACTIVE', ${now}, NULL, 640, 480);
+
     DELETE FROM moderation_reports
     WHERE id IN ('e2e-report-post-report', 'e2e-report-comment-report', 'e2e-integrity-dispute');
     DELETE FROM audit_logs
@@ -66,15 +74,15 @@ function seedAdminGapFixtures() {
     VALUES
       ('e2e-report-post', 'e2e-report-author', 'IDENTIFIED', 0, NULL, NULL,
        'E2E moderation report post', 'e2e-moderation-report-post',
-       'Report context fixture.', NULL, 'PUBLIC', 'OPEN', 1, 0, NULL, NULL,
+       'Report context fixture.', 'e2e-report-post-media', 'PUBLIC', 'OPEN', 1, 0, NULL, NULL,
        ${now}, ${now}, ${editDeadline}, NULL, NULL, NULL, NULL),
       ('e2e-integrity-candidate', 'e2e-report-author', 'IDENTIFIED', 0, NULL, NULL,
        'E2E accepted source candidate', 'e2e-integrity-candidate',
-       'Source integrity candidate fixture.', NULL, 'PUBLIC', 'ANSWERED', 1, 0, NULL, NULL,
+       'Source integrity candidate fixture.', 'e2e-report-post-media', 'PUBLIC', 'ANSWERED', 1, 0, NULL, NULL,
        ${now}, ${now}, ${editDeadline}, NULL, NULL, NULL, NULL),
       ('e2e-integrity-verified', 'e2e-report-author', 'IDENTIFIED', 0, NULL, NULL,
        'E2E verified source', 'e2e-integrity-verified',
-       'Verified source fixture.', NULL, 'PUBLIC', 'ANSWERED', 1, 0, NULL, NULL,
+       'Verified source fixture.', 'e2e-report-post-media', 'PUBLIC', 'ANSWERED', 1, 0, NULL, NULL,
        ${now}, ${now}, ${editDeadline}, NULL, NULL, NULL, NULL);
 
     INSERT INTO comments

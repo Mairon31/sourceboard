@@ -207,26 +207,29 @@ export default function AdminContentPageRoute() {
             label={t("admin.content.slug")}
             disabled={!canManage}
             value={fields.slug}
-            onChange={(event) =>
-              setFields((current) => ({ ...current, slug: event.currentTarget.value }))
-            }
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setFields((current) => ({ ...current, slug: value }));
+            }}
           />
           <Input
             label={t("admin.content.titleField")}
             disabled={!canManage}
             value={fields.title}
-            onChange={(event) =>
-              setFields((current) => ({ ...current, title: event.currentTarget.value }))
-            }
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setFields((current) => ({ ...current, title: value }));
+            }}
           />
           <Input
             label={t("admin.content.descriptionField")}
             className="admin-content-form-grid__wide"
             disabled={!canManage}
             value={fields.description}
-            onChange={(event) =>
-              setFields((current) => ({ ...current, description: event.currentTarget.value }))
-            }
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setFields((current) => ({ ...current, description: value }));
+            }}
           />
           <label className="admin-content-form-grid__wide">
             {t("admin.content.markdownBody")}
@@ -234,9 +237,10 @@ export default function AdminContentPageRoute() {
               disabled={!canManage}
               rows={18}
               value={fields.bodyMarkdown}
-              onChange={(event) =>
-                setFields((current) => ({ ...current, bodyMarkdown: event.currentTarget.value }))
-              }
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setFields((current) => ({ ...current, bodyMarkdown: value }));
+              }}
             />
           </label>
         </div>

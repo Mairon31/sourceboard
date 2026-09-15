@@ -145,12 +145,10 @@ export default function AdminContentRoute() {
               {t("admin.content.namespace")}
               <select
                 value={draft.namespace}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    namespace: event.target.value as CmsNamespace,
-                  }))
-                }
+                onChange={(event) => {
+                  const namespace = event.currentTarget.value as CmsNamespace;
+                  setDraft((current) => ({ ...current, namespace }));
+                }}
               >
                 <option value="DOCS">{t("admin.content.docs")}</option>
                 <option value="LEGAL">{t("admin.content.legal")}</option>
@@ -161,12 +159,10 @@ export default function AdminContentRoute() {
               {t("admin.content.locale")}
               <select
                 value={draft.locale}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    locale: event.target.value as CreateDraft["locale"],
-                  }))
-                }
+                onChange={(event) => {
+                  const locale = event.currentTarget.value as CreateDraft["locale"];
+                  setDraft((current) => ({ ...current, locale }));
+                }}
               >
                 {(["en", "es", "pt", "fr", "ru", "de"] as const).map((locale) => (
                   <option key={locale} value={locale}>
@@ -178,34 +174,38 @@ export default function AdminContentRoute() {
             <Input
               label={t("admin.content.slug")}
               value={draft.slug}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, slug: event.currentTarget.value }))
-              }
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setDraft((current) => ({ ...current, slug: value }));
+              }}
               placeholder={t("admin.content.slugPlaceholder")}
             />
             <Input
               label={t("admin.content.titleField")}
               value={draft.title}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, title: event.currentTarget.value }))
-              }
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setDraft((current) => ({ ...current, title: value }));
+              }}
             />
             <Input
               label={t("admin.content.descriptionField")}
               className="admin-content-form-grid__wide"
               value={draft.description}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, description: event.currentTarget.value }))
-              }
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setDraft((current) => ({ ...current, description: value }));
+              }}
             />
             <label className="admin-content-form-grid__wide">
               {t("admin.content.markdownBody")}
               <textarea
                 rows={8}
                 value={draft.bodyMarkdown}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, bodyMarkdown: event.currentTarget.value }))
-                }
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setDraft((current) => ({ ...current, bodyMarkdown: value }));
+                }}
               />
             </label>
           </div>
