@@ -26,5 +26,16 @@ export const ruAdminMessages = {
   "admin.source.integrity.history": "История",
   "admin.source.integrity.noMatch": "Нет записей о целостности источников по этим фильтрам.",
   "admin.source.integrity.openPost": "Открыть пост",
-  "admin.source.integrity.openSource": "Открыть источник"
+  "admin.source.integrity.openSource": "Открыть источник",
+  "admin.reputation.edit": "Изменить",
+  "admin.reputation.cancel": "Отменить редактирование",
+  "admin.reputation.editing": "Редактирование новой неизменяемой версии",
+  "admin.reputation.iconUpload": "Пользовательская иконка (PNG или GIF)",
+  "admin.reputation.iconHelp": "Необязательно. Максимум 2 МиБ и 1024 пикселя.",
+  "admin.reputation.saveVersion": "Сохранить версию достижения",
+  "admin.reputation.createVersion": "Создать версию достижения",
+  "admin.reputation.topTitle": "Топ-15 по репутации",
+  "admin.reputation.topDescription": "Пользователи по текущему балансу баллов.",
+  "admin.reputation.topEmpty": "Баллы репутации ещё не зарегистрированы.",
+  "admin.reputation.points": "{count} баллов"
 } as const;
