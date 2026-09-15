@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLoaderData, useParams } from "react-router";
 import { hasCapability } from "../../worker/auth/rbac";
-import type { CmsAdminLocaleState, CmsAdminPage, CmsRevision } from "../../worker/cms/types";
+import type { CmsAdminLocaleState, CmsAdminPage, CmsNamespace, CmsRevision } from "../../worker/cms/types";
 import type { MessageKey } from "../i18n";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { useI18n } from "../i18n/I18nProvider";
@@ -16,6 +16,12 @@ type Locale = (typeof LOCALES)[number];
 export async function loader({ request, context }: ServerLoaderArgs) {
   const admin: AuthorizedAdminPageRuntime = await requireAdminPageAccess(request, context);
   return { canManage: hasCapability(admin.authorization, "content.manage") };
+}
+
+function namespaceLabel(namespace: CmsNamespace, t: Translator): string {
+  if (namespace === "DOCS") return t("admin.content.docs");
+  if (namespace === "LEGAL") return t("admin.content.legal");
+  return t("admin.content.generalPage");
 }
 
 function localeTone(state: CmsAdminLocaleState): "success" | "neutral" | "warning" {
@@ -151,10 +157,10 @@ export default function AdminContentPageRoute() {
       await refresh(selectedLocale);
       setStatus(
         action === "publish"
-          ? "Published revision updated."
+          ? t("admin.content.publishedRevisionUpdated")
           : action === "archive"
-            ? "Locale archived."
-            : "Locale unpublished.",
+            ? t("admin.content.localeArchived")
+            : t("admin.content.localeUnpublished"),
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : t("admin.content.couldAction", { action: actionMessage }));
@@ -166,7 +172,7 @@ export default function AdminContentPageRoute() {
   return (
     <AdminShell>
       <AdminPageHeader
-        eyebrow={page?.namespace ?? t("admin.content.eyebrow")}
+        eyebrow={page ? namespaceLabel(page.namespace, t) : t("admin.content.eyebrow")}
         title={localeState?.latestRevision?.title ?? t("admin.content.editor")}
         description={t("admin.content.editorDescription")}
       />

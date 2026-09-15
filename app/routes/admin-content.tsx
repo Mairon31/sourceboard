@@ -221,7 +221,7 @@ export default function AdminContentRoute() {
           <section key={group.namespace}>
             <div className="admin-store-section-heading">
               <div>
-                <span className="product-eyebrow">{group.namespace}</span>
+                <span className="product-eyebrow">{namespaceLabel(group.namespace, t)}</span>
                 <h2>{group.namespace === "PAGE" ? t("admin.content.generalPages") : namespaceLabel(group.namespace, t)}</h2>
               </div>
               <span className="product-search-count">{group.pages.length}</span>
