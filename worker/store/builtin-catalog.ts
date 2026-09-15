@@ -1,4 +1,4 @@
-const BUILTIN_STORE_VERSION = "2026-09-10-cosmetics-v3";
+const BUILTIN_STORE_VERSION = "2026-09-15-cosmetics-v4";
 const BUILTIN_STORE_VERSION_KEY = "store.catalog.version";
 
 const STORE_SEED_SQL = `
@@ -12,11 +12,22 @@ VALUES
 ('store-frame-ocean', 'AVATAR_FRAME', 'Elegancia Oceano', 'A clean cyan oceanic ring with soft bloom.', 52000, '{"preset":"ocean"}', 1, 140, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-frame-nova', 'AVATAR_FRAME', 'Nova Divina', 'A legendary radiant nova frame.', 1000000, '{"preset":"nova"}', 1, 150, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-frame-cyber', 'AVATAR_FRAME', 'Cyber Pulse', 'A sharp neon cyber frame.', 8000, '{"preset":"cyber"}', 1, 160, unixepoch('now') * 1000, unixepoch('now') * 1000),
-('store-frame-gold', 'AVATAR_FRAME', 'Golden Ring', 'A polished imperial gold ring.', 15000, '{"preset":"gold"}', 1, 170, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-gold', 'AVATAR_FRAME', 'Golden Ring', 'A polished imperial gold ring.', 600, '{"preset":"gold"}', 1, 170, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-frame-shadow', 'AVATAR_FRAME', 'Shadow Crown', 'A deep violet shadow halo.', 22000, '{"preset":"shadow"}', 1, 180, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-frame-sakura', 'AVATAR_FRAME', 'Sakura Bloom', 'A soft sakura-pink profile frame.', 12000, '{"preset":"sakura"}', 1, 190, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-frame-inferno', 'AVATAR_FRAME', 'Inferno Rim', 'A hot ember-red frame.', 30000, '{"preset":"inferno"}', 1, 200, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-frame-crystal', 'AVATAR_FRAME', 'Crystal Halo', 'A bright crystalline cyan-white halo.', 45000, '{"preset":"crystal"}', 1, 210, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-simple-blue', 'AVATAR_FRAME', 'Simple Blue', 'A clean blue ring for everyday profiles.', 250, '{"preset":"simple-blue"}', 1, 211, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-cyan', 'AVATAR_FRAME', 'Cyan', 'A crisp cyan ring with a cool edge.', 300, '{"preset":"cyan"}', 1, 212, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-purple', 'AVATAR_FRAME', 'Purple', 'A restrained purple profile ring.', 350, '{"preset":"purple"}', 1, 213, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-pink', 'AVATAR_FRAME', 'Pink', 'A soft pink profile ring.', 350, '{"preset":"pink"}', 1, 214, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-green', 'AVATAR_FRAME', 'Green', 'A fresh green profile ring.', 300, '{"preset":"green"}', 1, 215, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-red', 'AVATAR_FRAME', 'Red', 'A clear red profile ring.', 300, '{"preset":"red"}', 1, 216, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-white', 'AVATAR_FRAME', 'White', 'A clean white profile ring.', 250, '{"preset":"white"}', 1, 217, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-dark', 'AVATAR_FRAME', 'Dark', 'A low-contrast dark profile ring.', 250, '{"preset":"dark"}', 1, 218, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-pastel', 'AVATAR_FRAME', 'Pastel', 'A gentle pastel halo for the profile.', 450, '{"preset":"pastel"}', 1, 219, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-double-blue', 'AVATAR_FRAME', 'Double Blue', 'Two fine blue rings around the avatar.', 550, '{"preset":"double-blue"}', 1, 220, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-frame-thin-neon', 'AVATAR_FRAME', 'Thin Neon', 'A fine cyan neon edge around the avatar.', 650, '{"preset":"thin-neon"}', 1, 221, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-effect-star-dust', 'PROFILE_EFFECT', 'Star Dust', 'Fine star particles around your profile.', 1200, '{"preset":"star-dust"}', 1, 220, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-effect-blue-energy', 'PROFILE_EFFECT', 'Blue Energy', 'A concentrated blue energy glow.', 1800, '{"preset":"blue-energy"}', 1, 230, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-effect-fire-pulse', 'PROFILE_EFFECT', 'Fire Pulse', 'A warm pulsing ember aura.', 2500, '{"preset":"fire-pulse"}', 1, 240, unixepoch('now') * 1000, unixepoch('now') * 1000),
