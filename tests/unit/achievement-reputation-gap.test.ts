@@ -48,5 +48,4 @@ describe("achievement and reputation administration contract", () => {
     expect(profile).toContain("/api/media/achievement-icons/");
     expect(profile).toContain("product-achievement-icon");
   });
-  });
 });
