@@ -30,4 +30,21 @@ describe("reputation admin wiring", () => {
     expect(service).toContain("amount: -Math.abs(Number(original.amount))");
     expect(service).toContain("originalLedgerId: original.id");
   });
+  it("routes every visible reputation-admin label through the central catalog", () => {
+    const route = read("app/routes/admin-reputation.tsx");
+    for (const key of [
+      "admin.reputation.headerTitle",
+      "admin.reputation.rulesTitle",
+      "admin.reputation.achievementsTitle",
+      "admin.reputation.ledgerTitle",
+      "admin.reputation.createRuleVersion",
+      "admin.reputation.createVersion",
+      "admin.reputation.topTitle",
+    ]) {
+      expect(route).toContain(key);
+    }
+    expect(route).not.toContain('title="Reputation"');
+    expect(route).not.toContain(">Open ledger<");
+  });
+
 });

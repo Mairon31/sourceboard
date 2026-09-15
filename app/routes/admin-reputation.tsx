@@ -99,12 +99,12 @@ export default function AdminReputationRoute() {
           reason: data.get("reason"),
         }),
       });
-      const message = await mutationError(response, "The reward rule could not be saved.");
+      const message = await mutationError(response, t("admin.reputation.ruleSaveFailed"));
       if (message) {
         setError(message);
         return;
       }
-      setStatus("A new reward rule version was recorded.");
+      setStatus(t("admin.reputation.ruleSaved"));
       form.reset();
       revalidator.revalidate();
     } finally {
@@ -129,7 +129,7 @@ export default function AdminReputationRoute() {
       });
       const message = await mutationError(
         response,
-        "The achievement version could not be saved.",
+        t("admin.reputation.achievementSaveFailed"),
       );
       if (message) {
         setError(message);
@@ -137,8 +137,8 @@ export default function AdminReputationRoute() {
       }
       setStatus(
         editingAchievement
-          ? "A new achievement version was recorded."
-          : "A new achievement version was recorded.",
+          ? t("admin.reputation.achievementSaved")
+          : t("admin.reputation.achievementSaved"),
       );
       form.reset();
       setEditingAchievement(null);
@@ -165,12 +165,12 @@ export default function AdminReputationRoute() {
           body: JSON.stringify({ amount: Number(data.get("amount")), reason: data.get("reason") }),
         },
       );
-      const message = await mutationError(response, "The point adjustment could not be saved.");
+      const message = await mutationError(response, t("admin.reputation.pointsSaveFailed"));
       if (message) {
         setError(message);
         return;
       }
-      setStatus(`Points adjusted for @${ledger.user.username}.`);
+      setStatus(t("admin.reputation.pointsAdjusted", { username: ledger.user.username }));
       form.reset();
       revalidator.revalidate();
     } finally {
@@ -181,9 +181,9 @@ export default function AdminReputationRoute() {
   return (
     <AdminShell>
       <AdminPageHeader
-        eyebrow="Contribution economy"
-        title="Reputation"
-        description="Version reward policy, manage achievement milestones and inspect the append-only point ledger without mutating history."
+        eyebrow={t("admin.reputation.headerEyebrow")}
+        title={t("admin.reputation.headerTitle")}
+        description={t("admin.reputation.headerDescription")}
       />
 
       {status ? (
@@ -200,24 +200,28 @@ export default function AdminReputationRoute() {
       <section className="admin-section">
         <div className="admin-section__heading">
           <div>
-            <span className="product-eyebrow">Reward policy</span>
-            <h2>Versioned point rules</h2>
+            <span className="product-eyebrow">{t("admin.reputation.rewardPolicy")}</span>
+            <h2>{t("admin.reputation.rulesTitle")}</h2>
           </div>
-          <span className="product-search-count">{rules.length} versions</span>
+          <span className="product-search-count">{t("admin.reputation.versions", { count: rules.length })}</span>
         </div>
         <div className="admin-table admin-desktop-table" role="table">
           <div className="admin-table__row admin-table__row--header" role="row">
-            <span>Reward</span>
-            <span>Version</span>
-            <span>Points</span>
-            <span>Status</span>
-            <span>Created</span>
+            <span>{t("admin.reputation.reward")}</span>
+            <span>{t("admin.reputation.version")}</span>
+            <span>{t("admin.reputation.pointsLabel")}</span>
+            <span>{t("admin.reputation.status")}</span>
+            <span>{t("admin.reputation.created")}</span>
           </div>
           {rules.map((rule) => (
             <div className="admin-table__row" role="row" key={rule.id}>
               <div className="admin-table__copy">
-                <strong>{rule.rewardType.replaceAll("_", " ")}</strong>
-                <span>{rule.provisional ? "Provisional" : "Final reward"}</span>
+                <strong>{rule.rewardType === "ACCEPTED_SOURCE"
+                    ? t("admin.reputation.acceptedSource")
+                    : t("admin.reputation.verifiedSource")}</strong>
+                <span>{rule.provisional
+                    ? t("admin.reputation.provisional")
+                    : t("admin.reputation.finalReward")}</span>
               </div>
               <span>v{rule.version}</span>
               <strong>{rule.amount}</strong>
@@ -231,34 +235,34 @@ export default function AdminReputationRoute() {
             <form className="product-form-card" onSubmit={(event) => void submitRule(event)}>
               <div className="product-form-grid">
                 <label className="sb-field">
-                  <span className="sb-field__label">Reward type</span>
+                  <span className="sb-field__label">{t("admin.reputation.rewardType")}</span>
                   <select className="sb-input" name="rewardType" defaultValue="ACCEPTED_SOURCE">
-                    <option value="ACCEPTED_SOURCE">Accepted source</option>
-                    <option value="VERIFIED_SOURCE">Verified source</option>
+                    <option value="ACCEPTED_SOURCE">{t("admin.reputation.acceptedSource")}</option>
+                    <option value="VERIFIED_SOURCE">{t("admin.reputation.verifiedSource")}</option>
                   </select>
                 </label>
-                <Input name="amount" type="number" min={1} max={100000} label="Points" required />
+                <Input name="amount" type="number" min={1} max={100000} label={t("admin.reputation.pointsLabel")} required />
               </div>
               <label className="sb-field">
                 <span className="sb-field__label">
-                  <input name="provisional" type="checkbox" /> Provisional reward
+                  <input name="provisional" type="checkbox" /> {t("admin.reputation.provisionalReward")}
                 </span>
               </label>
               <label className="sb-field">
                 <span className="sb-field__label">
-                  <input name="enabled" type="checkbox" defaultChecked /> Make this version active
+                  <input name="enabled" type="checkbox" defaultChecked /> {t("admin.reputation.activeVersion")}
                 </span>
               </label>
               <Textarea
                 name="reason"
-                label="Reason"
+                label={t("admin.reputation.reason")}
                 minLength={10}
                 maxLength={500}
                 required
-                placeholder="Explain why the reward policy is changing."
+                placeholder={t("admin.reputation.ruleReasonPlaceholder")}
               />
               <Button type="submit" loading={busy === "rule"}>
-                Create rule version
+                {t("admin.reputation.createRuleVersion")}
               </Button>
             </form>
           </Card>
@@ -268,10 +272,10 @@ export default function AdminReputationRoute() {
       <section className="admin-section">
         <div className="admin-section__heading">
           <div>
-            <span className="product-eyebrow">Milestones</span>
-            <h2>Achievements</h2>
+            <span className="product-eyebrow">{t("admin.reputation.milestones")}</span>
+            <h2>{t("admin.reputation.achievementsTitle")}</h2>
           </div>
-          <span className="product-search-count">{achievements.length} versions</span>
+          <span className="product-search-count">{t("admin.reputation.versions", { count: achievements.length })}</span>
         </div>
         <div className="admin-mobile-card-list">
           {achievements.map((achievement) => (
@@ -288,7 +292,7 @@ export default function AdminReputationRoute() {
                 {achievement.slug} · v{achievement.version}
               </span>
               <p>{achievement.description}</p>
-              <small>{achievement.verifiedSourceThreshold} verified sources</small>
+              <small>{t("admin.reputation.verifiedSources", { count: achievement.verifiedSourceThreshold })}</small>
               {canManageAchievements ? (
                 <div className="admin-integrity-actions">
                   <Button
@@ -319,20 +323,20 @@ export default function AdminReputationRoute() {
               <div className="product-form-grid">
                 <Input
                   name="slug"
-                  label="Slug"
+                  label={t("admin.reputation.slug")}
                   pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
                   defaultValue={editingAchievement?.slug ?? ""}
                   required
                 />
                 <Input
                   name="name"
-                  label="Name"
+                  label={t("admin.reputation.name")}
                   defaultValue={editingAchievement?.name ?? ""}
                   required
                 />
                 <Input
                   name="icon"
-                  label="Icon"
+                  label={t("admin.reputation.icon")}
                   maxLength={256}
                   defaultValue={editingAchievement?.icon ?? ""}
                   required
@@ -342,14 +346,14 @@ export default function AdminReputationRoute() {
                   type="number"
                   min={1}
                   max={100000}
-                  label="Verified source threshold"
+                  label={t("admin.reputation.verifiedSourceThreshold")}
                   defaultValue={editingAchievement?.verifiedSourceThreshold ?? ""}
                   required
                 />
               </div>
               <Textarea
                 name="description"
-                label="Description"
+                label={t("admin.reputation.description")}
                 minLength={5}
                 maxLength={300}
                 defaultValue={editingAchievement?.description ?? ""}
@@ -373,16 +377,16 @@ export default function AdminReputationRoute() {
                     type="checkbox"
                     defaultChecked={editingAchievement?.status === "ACTIVE" || !editingAchievement}
                   />{" "}
-                  Make this version active
+                  {t("admin.reputation.activeVersion")}
                 </span>
               </label>
               <Textarea
                 name="reason"
-                label="Reason"
+                label={t("admin.reputation.reason")}
                 minLength={10}
                 maxLength={500}
                 required
-                placeholder="Explain why this milestone is changing."
+                placeholder={t("admin.reputation.achievementReasonPlaceholder")}
               />
               <div className="admin-integrity-actions">
                 <Button type="submit" loading={busy === "achievement"}>
@@ -452,21 +456,21 @@ export default function AdminReputationRoute() {
       <section className="admin-section">
         <div className="admin-section__heading">
           <div>
-            <span className="product-eyebrow">Ledger</span>
-            <h2>User point history</h2>
+            <span className="product-eyebrow">{t("admin.reputation.ledger")}</span>
+            <h2>{t("admin.reputation.ledgerTitle")}</h2>
           </div>
         </div>
         <form className="admin-filter-bar" method="get">
           <Input
             name="user"
-            label="User ID or username"
+            label={t("admin.reputation.userQuery")}
             defaultValue={userQuery}
-            placeholder="@username"
+            placeholder={t("admin.reputation.userPlaceholder")}
           />
-          <Button type="submit">Open ledger</Button>
+          <Button type="submit">{t("admin.reputation.openLedger")}</Button>
         </form>
         {userQuery && !ledger ? (
-          <Card className="product-empty-state admin-surface">No matching user was found.</Card>
+          <Card className="product-empty-state admin-surface">{t("admin.reputation.userNotFound")}</Card>
         ) : null}
         {ledger ? (
           <>
@@ -475,7 +479,7 @@ export default function AdminReputationRoute() {
                 {ledger.user.displayName} (@{ledger.user.username})
               </strong>
               <p>
-                Current ledger balance: <strong>{ledger.balance}</strong> points
+                {t("admin.reputation.currentBalance", { count: ledger.balance })}
               </p>
               {canAdjustPoints ? (
                 <form
@@ -487,29 +491,29 @@ export default function AdminReputationRoute() {
                     type="number"
                     min={-100000}
                     max={100000}
-                    label="Manual adjustment"
+                    label={t("admin.reputation.manualAdjustment")}
                     required
                   />
-                  <Textarea name="reason" label="Reason" minLength={10} maxLength={500} required />
+                  <Textarea name="reason" label={t("admin.reputation.reason")} minLength={10} maxLength={500} required />
                   <Button type="submit" loading={busy === "adjustment"}>
-                    Record adjustment
+                    {t("admin.reputation.recordAdjustment")}
                   </Button>
                 </form>
               ) : null}
             </Card>
             <div className="admin-table admin-desktop-table" role="table">
               <div className="admin-table__row admin-table__row--header" role="row">
-                <span>Entry</span>
-                <span>Amount</span>
-                <span>Reward</span>
-                <span>Event</span>
-                <span>Created</span>
+                <span>{t("admin.reputation.entry")}</span>
+                <span>{t("admin.reputation.amount")}</span>
+                <span>{t("admin.reputation.reward")}</span>
+                <span>{t("admin.reputation.event")}</span>
+                <span>{t("admin.reputation.created")}</span>
               </div>
               {ledger.entries.map((entry) => (
                 <div className="admin-table__row" role="row" key={entry.id}>
                   <strong>{entry.entryType}</strong>
                   <span>{entry.amount > 0 ? `+${entry.amount}` : entry.amount}</span>
-                  <span>{entry.rewardType ?? "Manual"}</span>
+                  <span>{entry.rewardType ?? t("admin.reputation.manual")}</span>
                   <span>{entry.sourceEvent ?? "—"}</span>
                   <span>{formatDate(entry.createdAt)}</span>
                 </div>
