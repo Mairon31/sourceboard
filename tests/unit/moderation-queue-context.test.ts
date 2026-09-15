@@ -3,7 +3,9 @@ import { createModerationService } from "../../worker/moderation/service";
 
 describe("moderation queue context contract", () => {
   it("loads report context in one bounded query without a per-row fetch loop", async () => {
+    const preparedSql: string[] = [];
     const prepare = vi.fn((sql: string) => {
+      preparedSql.push(sql);
       const statement = {
         bind: vi.fn(() => statement),
         all: vi.fn(async () => ({
@@ -39,7 +41,7 @@ describe("moderation queue context contract", () => {
     const reports = await createModerationService(db).listQueue(10);
 
     expect(prepare).toHaveBeenCalledTimes(1);
-    expect(String(prepare.mock.calls[0]?.[0])).toContain("JOIN users reporter");
+    expect(preparedSql[0]).toContain("JOIN users reporter");
     expect(reports[0]).toMatchObject({
       reporterUsername: "reporter",
       reportedUsername: "author",
