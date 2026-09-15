@@ -439,7 +439,9 @@ export default function AdminVerificationsRoute() {
             ))
           ) : (
             <Card className="product-empty-state admin-surface">
-              No accepted sources are waiting for review.
+              {hasActiveFilters
+                ? t("admin.source.integrity.noMatch")
+                : "No accepted sources are waiting for review."}
             </Card>
           )
         ) : null}
@@ -456,7 +458,11 @@ export default function AdminVerificationsRoute() {
               ))}
             </div>
           ) : (
-            <Card className="product-empty-state admin-surface">No active verified sources.</Card>
+            <Card className="product-empty-state admin-surface">
+              {hasActiveFilters
+                ? t("admin.source.integrity.noMatch")
+                : "No active verified sources."}
+            </Card>
           )
         ) : null}
 
@@ -472,7 +478,11 @@ export default function AdminVerificationsRoute() {
               ))}
             </div>
           ) : (
-            <Card className="product-empty-state admin-surface">No open source disputes.</Card>
+            <Card className="product-empty-state admin-surface">
+              {hasActiveFilters
+                ? t("admin.source.integrity.noMatch")
+                : "No open source disputes."}
+            </Card>
           )
         ) : null}
 
@@ -518,7 +528,11 @@ export default function AdminVerificationsRoute() {
               ))}
             </div>
           ) : (
-            <Card className="product-empty-state admin-surface">No source resolution history.</Card>
+            <Card className="product-empty-state admin-surface">
+              {hasActiveFilters
+                ? t("admin.source.integrity.noMatch")
+                : "No source resolution history."}
+            </Card>
           )
         ) : null}
       </section>
