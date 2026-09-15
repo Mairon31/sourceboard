@@ -676,12 +676,16 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       let results: D1Result<unknown>[];
       const shouldPersistLinkPreview =
         linkPreview !== undefined && linkPreviewSchemaAvailable !== false;
-      try {
-        results = await db.batch(buildStatements(shouldPersistLinkPreview));
-      } catch (error) {
-        if (!shouldPersistLinkPreview || !isMissingCommentLinkPreviewTable(error)) throw error;
-        linkPreviewSchemaAvailable = false;
-        results = await db.batch(buildStatements(false));
+      if (!shouldPersistLinkPreview) {
+        results = [await buildCommentUpdate().run()];
+      } else {
+        try {
+          results = await db.batch(buildStatements(true));
+        } catch (error) {
+          if (!isMissingCommentLinkPreviewTable(error)) throw error;
+          linkPreviewSchemaAvailable = false;
+          results = [await buildCommentUpdate().run()];
+        }
       }
       // D1 includes writes performed by AFTER UPDATE triggers in meta.changes.
       // public_post_search_comments_au can therefore make a single matched
