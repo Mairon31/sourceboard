@@ -26,5 +26,16 @@ export const ptAdminMessages = {
   "admin.source.integrity.history": "Histórico",
   "admin.source.integrity.noMatch": "Nenhum registro de integridade corresponde a estes filtros.",
   "admin.source.integrity.openPost": "Abrir postagem",
-  "admin.source.integrity.openSource": "Abrir fonte"
+  "admin.source.integrity.openSource": "Abrir fonte",
+  "admin.reputation.edit": "Editar",
+  "admin.reputation.cancel": "Cancelar edição",
+  "admin.reputation.editing": "Editando uma nova versão imutável",
+  "admin.reputation.iconUpload": "Ícone personalizado (PNG ou GIF)",
+  "admin.reputation.iconHelp": "Opcional. Máximo de 2 MiB e 1024 pixels.",
+  "admin.reputation.saveVersion": "Salvar versão da conquista",
+  "admin.reputation.createVersion": "Criar versão da conquista",
+  "admin.reputation.topTitle": "Top 15 de reputação",
+  "admin.reputation.topDescription": "Usuários ordenados pelo saldo atual de pontos.",
+  "admin.reputation.topEmpty": "Nenhum ponto de reputação foi registrado ainda.",
+  "admin.reputation.points": "{count} pontos"
 } as const;
