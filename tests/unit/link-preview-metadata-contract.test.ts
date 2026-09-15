@@ -23,7 +23,7 @@ describe("link preview metadata contract", () => {
     await expect(service.preview("https://example.com/story")).resolves.toMatchObject({
       title: "Twitter title",
       description: "Twitter description",
-      metadataStatus: "PARTIAL",
+      metadataStatus: "COMPLETE",
     });
   });
 
