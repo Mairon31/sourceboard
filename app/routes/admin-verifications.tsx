@@ -511,7 +511,7 @@ export default function AdminVerificationsRoute() {
                   </div>
                   <div className="admin-integrity-actions">
                     <Link className="product-text-action" to={postHref(entry.postId, entry.postSlug)}>
-                      {t("admin.source.integrity.openPost")}
+                      Open post
                     </Link>
                     {entry.canonicalSourceUrl ? (
                       <a
@@ -615,7 +615,7 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
             target="_blank"
             rel="noreferrer"
           >
-            {t("admin.source.integrity.openPost")}
+            Open post
           </Link>
         </div>
       </div>
@@ -713,7 +713,7 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
       </small>
       <div className="admin-card-actions admin-integrity-actions">
         <Link className="product-text-action" to={postHref(source.postId, source.postSlug)}>
-          {t("admin.source.integrity.openPost")}
+          Open post
         </Link>
       </div>
       {canRevoke ? (
