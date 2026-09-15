@@ -70,6 +70,17 @@ const NEW_AVATAR_FRAMES = [
   "floral-ring",
   "void-lens",
   "electric-halo",
+  "simple-blue",
+  "cyan",
+  "purple",
+  "pink",
+  "green",
+  "red",
+  "white",
+  "dark",
+  "pastel",
+  "double-blue",
+  "thin-neon",
 ] as const;
 
 const BLOCK_E_AVATAR_FRAMES = [
@@ -189,7 +200,7 @@ describe("Cosmetic presentation overhaul", () => {
   });
 
   it("accepts the complete Block E Avatar Frame catalog", () => {
-    expect(AVATAR_FRAME_PRESETS).toHaveLength(43);
+    expect(AVATAR_FRAME_PRESETS).toHaveLength(54);
     for (const slug of NEW_AVATAR_FRAMES) {
       expect(isAvatarFramePreset(slug)).toBe(true);
       expect(AVATAR_FRAME_DEFINITIONS[slug]).toBeDefined();
