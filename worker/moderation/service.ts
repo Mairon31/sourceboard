@@ -268,39 +268,18 @@ export function createModerationService(db: D1Database, options: { events?: Queu
            sourceResolution.canonical_source_url AS sourceUrl,
            COALESCE((
              SELECT json_group_array(json_object(
-               'id', history.id,
-               'kind', history.kind,
-               'action', history.action,
-               'reason', history.reason,
-               'actorUserId', history.actorUserId,
-               'createdAt', history.createdAt
+               'id', audit.id,
+               'kind', 'AUDIT',
+               'action', audit.action,
+               'reason', audit.reason,
+               'actorUserId', audit.actor_user_id,
+               'actorUsername', auditActor.username,
+               'createdAt', audit.created_at
              ))
-             FROM (
-               SELECT
-                 audit.id,
-                 'AUDIT' AS kind,
-                 audit.action,
-                 audit.reason,
-                 audit.actor_user_id AS actorUserId,
-                 auditActor.username AS actorUsername,
-                 audit.created_at AS createdAt
-               FROM audit_logs audit
-               LEFT JOIN users auditActor ON auditActor.id = audit.actor_user_id
-               WHERE (audit.target_type = mr.target_type AND audit.target_id = mr.target_id)
-                  OR (audit.target_type = 'REPORT' AND audit.target_id = mr.id)
-               UNION ALL
-               SELECT
-                 action.id,
-                 'ACTION' AS kind,
-                 action.action,
-                 action.reason,
-                 action.actor_user_id AS actorUserId,
-                 actionActor.username AS actorUsername,
-                 action.created_at AS createdAt
-               FROM moderation_actions action
-               LEFT JOIN users actionActor ON actionActor.id = action.actor_user_id
-               WHERE action.target_type = mr.target_type AND action.target_id = mr.target_id
-             ) history
+             FROM audit_logs audit
+             LEFT JOIN users auditActor ON auditActor.id = audit.actor_user_id
+             WHERE (audit.target_type = mr.target_type AND audit.target_id = mr.target_id)
+                OR (audit.target_type = 'REPORT' AND audit.target_id = mr.id)
            ), '[]') AS moderationHistoryJson
          FROM moderation_reports mr
          JOIN users reporter ON reporter.id = mr.reporter_user_id
