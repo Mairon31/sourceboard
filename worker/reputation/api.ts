@@ -5,7 +5,6 @@ import { assertCsrfToken, assertSameOrigin } from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createMediaService } from "../media/r2";
-import { validateAchievementIcon } from "../media/image-policy";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { PublicHttpError } from "../http/error";
