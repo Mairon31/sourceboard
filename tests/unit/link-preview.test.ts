@@ -107,7 +107,7 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
-  it("retries a blocked public document once with a browser-compatible user agent", async () => {
+  it("retries a blocked public document and classifies title-only metadata as MINIMAL", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 403 }))
@@ -121,7 +121,7 @@ describe("link preview metadata fetcher", () => {
 
     await expect(service.preview("https://www.imdb.com/title/tt0245429/")).resolves.toMatchObject({
       title: "Recovered",
-      metadataStatus: "PARTIAL",
+      metadataStatus: "MINIMAL",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(resolveHost).toHaveBeenCalledTimes(2);
