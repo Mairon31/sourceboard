@@ -22,7 +22,6 @@ function seedPersistedPreview() {
   seedNavigationPostFixture();
   const now = Date.now();
   const editDeadline = now + 24 * 60 * 60 * 1000;
-  ];
   executeLocalSql(`
     DELETE FROM comment_link_previews
     WHERE comment_id IN ('e2e-link-preview-comment', 'e2e-link-preview-partial', 'e2e-link-preview-minimal', 'e2e-link-preview-url-only');
