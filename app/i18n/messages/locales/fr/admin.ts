@@ -84,5 +84,9 @@ export const frAdminMessages = {
   "admin.content.localeUnpublished": "Langue dépubliée.",
   "admin.content.couldLoadPage": "Impossible de charger la page.",
   "admin.content.couldSaveDraft": "Impossible d’enregistrer le brouillon.",
-  "admin.content.couldAction": "Impossible de {action} cette langue."
+  "admin.content.couldAction": "Impossible de {action} cette langue.",
+  "admin.content.editorDescription": "Chaque enregistrement crée une révision immuable. La publication sélectionne une révision sans exposer les brouillons suivants.",
+  "admin.content.publishAction": "publier",
+  "admin.content.unpublishAction": "dépublier",
+  "admin.content.archiveAction": "archiver",
 } as const;

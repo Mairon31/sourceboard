@@ -84,5 +84,9 @@ export const ruAdminMessages = {
   "admin.content.localeUnpublished": "Публикация языка снята.",
   "admin.content.couldLoadPage": "Не удалось загрузить страницу.",
   "admin.content.couldSaveDraft": "Не удалось сохранить черновик.",
-  "admin.content.couldAction": "Не удалось выполнить действие для этого языка: {action}."
+  "admin.content.couldAction": "Не удалось выполнить действие для этого языка: {action}.",
+  "admin.content.editorDescription": "Каждое сохранение создает неизменяемую версию. Публикация выбирает версию, не раскрывая последующие черновики.",
+  "admin.content.publishAction": "опубликовать",
+  "admin.content.unpublishAction": "снять с публикации",
+  "admin.content.archiveAction": "архивировать",
 } as const;

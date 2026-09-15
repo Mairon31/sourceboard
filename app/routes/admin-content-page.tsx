@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useLoaderData, useParams } from "react-router";
 import { hasCapability } from "../../worker/auth/rbac";
 import type { CmsAdminLocaleState, CmsAdminPage, CmsRevision } from "../../worker/cms/types";
+import type { MessageKey } from "../i18n";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
+import { useI18n } from "../i18n/I18nProvider";
 import { Badge, Button, Card, Input } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
 import { requireAdminPageAccess, type AuthorizedAdminPageRuntime } from "../data/admin-access";
@@ -22,12 +24,15 @@ function localeTone(state: CmsAdminLocaleState): "success" | "neutral" | "warnin
   return "neutral";
 }
 
-function localeLabel(state: CmsAdminLocaleState): string {
-  if (state.status === "PUBLISHED" && state.hasDraftChanges) return "Published · draft changes";
-  if (state.status === "PUBLISHED") return "Published";
-  if (state.status === "ARCHIVED") return "Archived";
-  if (state.status === "UNPUBLISHED") return "Unpublished";
-  return state.latestRevision ? "Draft" : "Empty";
+type Translator = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+function localeLabel(state: CmsAdminLocaleState, t: Translator): string {
+  if (state.status === "PUBLISHED" && state.hasDraftChanges)
+    return t("admin.content.publishedDraftChanges");
+  if (state.status === "PUBLISHED") return t("admin.content.published");
+  if (state.status === "ARCHIVED") return t("admin.content.archived");
+  if (state.status === "UNPUBLISHED") return t("admin.content.unpublished");
+  return state.latestRevision ? t("admin.content.draft") : t("admin.content.empty");
 }
 
 function initialFields(revision: CmsRevision | null) {
@@ -41,6 +46,7 @@ function initialFields(revision: CmsRevision | null) {
 
 export default function AdminContentPageRoute() {
   const { canManage } = useLoaderData<typeof loader>();
+  const { t } = useI18n();
   const params = useParams();
   const pageId = params.pageId ?? "";
   const [page, setPage] = useState<CmsAdminPage | null>(null);
@@ -63,7 +69,7 @@ export default function AdminContentPageRoute() {
       error?: { message?: string };
     } | null;
     if (!response.ok || !payload?.page) {
-      throw new Error(payload?.error?.message ?? "Could not load the page.");
+      throw new Error(payload?.error?.message ?? t("admin.content.couldLoadPage"));
     }
     setPage(payload.page);
     const state =
@@ -73,7 +79,7 @@ export default function AdminContentPageRoute() {
 
   useEffect(() => {
     void refresh("en").catch((error) =>
-      setStatus(error instanceof Error ? error.message : "Could not load the page."),
+      setStatus(error instanceof Error ? error.message : t("admin.content.couldLoadPage")),
     );
   }, [pageId]);
 
@@ -101,12 +107,12 @@ export default function AdminContentPageRoute() {
         error?: { message?: string };
       } | null;
       if (!response.ok || !payload?.revision) {
-        throw new Error(payload?.error?.message ?? "Could not save the draft.");
+        throw new Error(payload?.error?.message ?? t("admin.content.couldSaveDraft"));
       }
       await refresh(selectedLocale);
-      setStatus(`Draft v${payload.revision.version} saved.`);
+      setStatus(t("admin.content.draftSaved", { version: payload.revision.version }));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not save the draft.");
+      setStatus(error instanceof Error ? error.message : t("admin.content.couldSaveDraft"));
     } finally {
       setBusy(null);
     }
@@ -115,10 +121,16 @@ export default function AdminContentPageRoute() {
   async function localeAction(action: "publish" | "unpublish" | "archive") {
     if (!canManage || busy || !localeState) return;
     if (action === "publish" && !localeState.latestRevision) {
-      setStatus("Save a draft before publishing.");
+      setStatus(t("admin.content.saveBeforePublish"));
       return;
     }
     setBusy(action);
+    const actionMessage =
+      action === "publish"
+        ? t("admin.content.publishAction")
+        : action === "unpublish"
+          ? t("admin.content.unpublishAction")
+          : t("admin.content.archiveAction");
     try {
       const response = await fetch(
         `/api/admin/content/pages/${encodeURIComponent(pageId)}/locales/${selectedLocale}/${action}`,
@@ -134,7 +146,7 @@ export default function AdminContentPageRoute() {
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        throw new Error(payload?.error?.message ?? `Could not ${action} this locale.`);
+        throw new Error(payload?.error?.message ?? t("admin.content.couldAction", { action: actionMessage }));
       }
       await refresh(selectedLocale);
       setStatus(
@@ -145,7 +157,7 @@ export default function AdminContentPageRoute() {
             : "Locale unpublished.",
       );
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : `Could not ${action} this locale.`);
+      setStatus(error instanceof Error ? error.message : t("admin.content.couldAction", { action: actionMessage }));
     } finally {
       setBusy(null);
     }
@@ -154,9 +166,9 @@ export default function AdminContentPageRoute() {
   return (
     <AdminShell>
       <AdminPageHeader
-        eyebrow={page?.namespace ?? "Content"}
-        title={localeState?.latestRevision?.title ?? "Content editor"}
-        description="Each save creates an immutable revision. Publishing selects one revision without exposing later drafts."
+        eyebrow={page?.namespace ?? t("admin.content.eyebrow")}
+        title={localeState?.latestRevision?.title ?? t("admin.content.editor")}
+        description={t("admin.content.editorDescription")}
       />
       {status ? (
         <p role="status" className="admin-status-message">
@@ -165,7 +177,7 @@ export default function AdminContentPageRoute() {
       ) : null}
 
       <Card className="admin-content-editor">
-        <div className="admin-content-locale-tabs" role="tablist" aria-label="Content locale">
+        <div className="admin-content-locale-tabs" role="tablist" aria-label={t("admin.content.contentLocale")}>
           {LOCALES.map((locale) => {
             const state = page?.locales.find((candidate) => candidate.locale === locale);
             return (
@@ -178,7 +190,7 @@ export default function AdminContentPageRoute() {
                 onClick={() => chooseLocale(locale)}
               >
                 <strong>{locale.toUpperCase()}</strong>
-                {state ? <Badge tone={localeTone(state)}>{localeLabel(state)}</Badge> : null}
+                {state ? <Badge tone={localeTone(state)}>{localeLabel(state, t)}</Badge> : null}
               </button>
             );
           })}
@@ -186,7 +198,7 @@ export default function AdminContentPageRoute() {
 
         <div className="admin-content-form-grid">
           <Input
-            label="Slug"
+            label={t("admin.content.slug")}
             disabled={!canManage}
             value={fields.slug}
             onChange={(event) =>
@@ -194,7 +206,7 @@ export default function AdminContentPageRoute() {
             }
           />
           <Input
-            label="Title"
+            label={t("admin.content.titleField")}
             disabled={!canManage}
             value={fields.title}
             onChange={(event) =>
@@ -202,7 +214,7 @@ export default function AdminContentPageRoute() {
             }
           />
           <Input
-            label="Description"
+            label={t("admin.content.descriptionField")}
             className="admin-content-form-grid__wide"
             disabled={!canManage}
             value={fields.description}
@@ -211,7 +223,7 @@ export default function AdminContentPageRoute() {
             }
           />
           <label className="admin-content-form-grid__wide">
-            Markdown body
+            {t("admin.content.markdownBody")}
             <textarea
               disabled={!canManage}
               rows={18}
@@ -223,9 +235,9 @@ export default function AdminContentPageRoute() {
           </label>
         </div>
 
-        <div className="admin-content-editor__preview" aria-label="Safe content preview">
-          <span className="product-eyebrow">Preview</span>
-          <h2>{fields.title || "Untitled"}</h2>
+        <div className="admin-content-editor__preview" aria-label={t("admin.content.safePreview")}>
+          <span className="product-eyebrow">{t("admin.content.preview")}</span>
+          <h2>{fields.title || t("admin.content.untitled")}</h2>
           <p>{fields.description}</p>
           <pre>{fields.bodyMarkdown}</pre>
         </div>
@@ -233,7 +245,7 @@ export default function AdminContentPageRoute() {
         {canManage ? (
           <div className="admin-store-card-actions">
             <Button type="button" loading={busy === "save"} onClick={() => void saveDraft()}>
-              Save draft
+              {t("admin.content.saveDraft")}
             </Button>
             <Button
               type="button"
@@ -241,7 +253,7 @@ export default function AdminContentPageRoute() {
               disabled={!localeState?.latestRevision}
               onClick={() => void localeAction("publish")}
             >
-              Publish latest draft
+              {t("admin.content.publishLatestDraft")}
             </Button>
             <Button
               type="button"
@@ -250,7 +262,7 @@ export default function AdminContentPageRoute() {
               disabled={localeState?.status !== "PUBLISHED"}
               onClick={() => void localeAction("unpublish")}
             >
-              Unpublish
+              {t("admin.content.unpublish")}
             </Button>
             <Button
               type="button"
@@ -259,7 +271,7 @@ export default function AdminContentPageRoute() {
               disabled={!localeState?.latestRevision}
               onClick={() => void localeAction("archive")}
             >
-              Archive
+              {t("admin.content.archive")}
             </Button>
           </div>
         ) : null}

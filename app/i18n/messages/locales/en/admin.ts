@@ -84,5 +84,9 @@ export const enAdminMessages = {
   "admin.content.localeUnpublished": "Locale unpublished.",
   "admin.content.couldLoadPage": "Could not load the page.",
   "admin.content.couldSaveDraft": "Could not save the draft.",
-  "admin.content.couldAction": "Could not {action} this locale."
+  "admin.content.couldAction": "Could not {action} this locale.",
+  "admin.content.editorDescription": "Each save creates an immutable revision. Publishing selects one revision without exposing later drafts.",
+  "admin.content.publishAction": "publish",
+  "admin.content.unpublishAction": "unpublish",
+  "admin.content.archiveAction": "archive",
 } as const;

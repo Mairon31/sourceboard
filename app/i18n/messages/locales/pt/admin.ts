@@ -84,5 +84,9 @@ export const ptAdminMessages = {
   "admin.content.localeUnpublished": "Idioma retirado da publicação.",
   "admin.content.couldLoadPage": "Não foi possível carregar a página.",
   "admin.content.couldSaveDraft": "Não foi possível salvar o rascunho.",
-  "admin.content.couldAction": "Não foi possível {action} este idioma."
+  "admin.content.couldAction": "Não foi possível {action} este idioma.",
+  "admin.content.editorDescription": "Cada salvamento cria uma revisão imutável. Publicar seleciona uma revisão sem expor rascunhos posteriores.",
+  "admin.content.publishAction": "publicar",
+  "admin.content.unpublishAction": "retirar da publicação",
+  "admin.content.archiveAction": "arquivar",
 } as const;

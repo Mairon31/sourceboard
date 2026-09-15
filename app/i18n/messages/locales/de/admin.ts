@@ -84,5 +84,9 @@ export const deAdminMessages = {
   "admin.content.localeUnpublished": "Veröffentlichung der Sprache aufgehoben.",
   "admin.content.couldLoadPage": "Seite konnte nicht geladen werden.",
   "admin.content.couldSaveDraft": "Entwurf konnte nicht gespeichert werden.",
-  "admin.content.couldAction": "Aktion für diese Sprache nicht möglich: {action}."
+  "admin.content.couldAction": "Aktion für diese Sprache nicht möglich: {action}.",
+  "admin.content.editorDescription": "Jedes Speichern erstellt eine unveränderliche Version. Die Veröffentlichung wählt eine Version aus, ohne spätere Entwürfe offenzulegen.",
+  "admin.content.publishAction": "veröffentlichen",
+  "admin.content.unpublishAction": "zurückziehen",
+  "admin.content.archiveAction": "archivieren",
 } as const;

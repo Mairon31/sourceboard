@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLoaderData } from "react-router";
 import { hasCapability } from "../../worker/auth/rbac";
 import type { CmsAdminPage, CmsNamespace } from "../../worker/cms/types";
+import type { MessageKey } from "../i18n";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
+import { useI18n } from "../i18n/I18nProvider";
 import { Badge, Button, Card, Input } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
 import { requireAdminPageAccess, type AuthorizedAdminPageRuntime } from "../data/admin-access";
@@ -31,18 +33,27 @@ const EMPTY_DRAFT: CreateDraft = {
   bodyMarkdown: "",
 };
 
-function pageStatus(page: CmsAdminPage): string {
+type Translator = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+function namespaceLabel(namespace: CmsNamespace, t: Translator): string {
+  if (namespace === "DOCS") return t("admin.content.docs");
+  if (namespace === "LEGAL") return t("admin.content.legal");
+  return t("admin.content.generalPage");
+}
+
+function pageStatus(page: CmsAdminPage, t: Translator): string {
   const published = page.locales.filter((locale) => locale.status === "PUBLISHED").length;
   const drafts = page.locales.filter(
     (locale) => locale.latestRevision && locale.status !== "PUBLISHED",
   ).length;
-  if (published) return `${published} published locale${published === 1 ? "" : "s"}`;
-  if (drafts) return `${drafts} draft locale${drafts === 1 ? "" : "s"}`;
-  return "No content";
+  if (published) return t("admin.content.publishedLocales", { count: published });
+  if (drafts) return t("admin.content.draftLocales", { count: drafts });
+  return t("admin.content.noContent");
 }
 
 export default function AdminContentRoute() {
   const { canManage } = useLoaderData<typeof loader>();
+  const { t } = useI18n();
   const [pages, setPages] = useState<CmsAdminPage[]>([]);
   const [draft, setDraft] = useState<CreateDraft>(EMPTY_DRAFT);
   const [loading, setLoading] = useState(true);
@@ -55,13 +66,14 @@ export default function AdminContentRoute() {
       const response = await fetch("/api/admin/content/pages", { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as {
         pages?: CmsAdminPage[];
+        error?: { message?: string };
       } | null;
       if (!response.ok) {
-        throw new Error(payload?.error?.message ?? "Could not load content pages.");
+        throw new Error(payload?.error?.message ?? t("admin.content.couldLoadPages"));
       }
       setPages(payload?.pages ?? []);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not load content pages.");
+      setStatus(error instanceof Error ? error.message : t("admin.content.couldLoadPages"));
     } finally {
       setLoading(false);
     }
@@ -95,13 +107,13 @@ export default function AdminContentRoute() {
         error?: { message?: string };
       } | null;
       if (!response.ok || !payload?.page) {
-        throw new Error(payload?.error?.message ?? "Could not create the page.");
+        throw new Error(payload?.error?.message ?? t("admin.content.couldCreatePage"));
       }
       setDraft(EMPTY_DRAFT);
-      setStatus("Draft created.");
+      setStatus(t("admin.content.draftCreated"));
       await refresh();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not create the page.");
+      setStatus(error instanceof Error ? error.message : t("admin.content.couldCreatePage"));
     } finally {
       setBusy(false);
     }
@@ -110,9 +122,9 @@ export default function AdminContentRoute() {
   return (
     <AdminShell>
       <AdminPageHeader
-        eyebrow="Content"
-        title="Docs, Legal & Pages"
-        description="Versioned multilingual content. Draft revisions stay private until an explicit publish action selects them."
+        eyebrow={t("admin.content.eyebrow")}
+        title={t("admin.content.title")}
+        description={t("admin.content.description")}
       />
       {status ? (
         <p role="status" className="admin-status-message">
@@ -124,13 +136,13 @@ export default function AdminContentRoute() {
         <Card className="admin-content-create">
           <div className="admin-store-section-heading">
             <div>
-              <span className="product-eyebrow">New page</span>
-              <h2>Create a draft</h2>
+              <span className="product-eyebrow">{t("admin.content.newPage")}</span>
+              <h2>{t("admin.content.createDraft")}</h2>
             </div>
           </div>
           <div className="admin-content-form-grid">
             <label>
-              Namespace
+              {t("admin.content.namespace")}
               <select
                 value={draft.namespace}
                 onChange={(event) =>
@@ -140,13 +152,13 @@ export default function AdminContentRoute() {
                   }))
                 }
               >
-                <option value="DOCS">Docs</option>
-                <option value="LEGAL">Legal</option>
-                <option value="PAGE">General page</option>
+                <option value="DOCS">{t("admin.content.docs")}</option>
+                <option value="LEGAL">{t("admin.content.legal")}</option>
+                <option value="PAGE">{t("admin.content.generalPage")}</option>
               </select>
             </label>
             <label>
-              Locale
+              {t("admin.content.locale")}
               <select
                 value={draft.locale}
                 onChange={(event) =>
@@ -164,22 +176,22 @@ export default function AdminContentRoute() {
               </select>
             </label>
             <Input
-              label="Slug"
+              label={t("admin.content.slug")}
               value={draft.slug}
               onChange={(event) =>
                 setDraft((current) => ({ ...current, slug: event.currentTarget.value }))
               }
-              placeholder="getting-started"
+              placeholder={t("admin.content.slugPlaceholder")}
             />
             <Input
-              label="Title"
+              label={t("admin.content.titleField")}
               value={draft.title}
               onChange={(event) =>
                 setDraft((current) => ({ ...current, title: event.currentTarget.value }))
               }
             />
             <Input
-              label="Description"
+              label={t("admin.content.descriptionField")}
               className="admin-content-form-grid__wide"
               value={draft.description}
               onChange={(event) =>
@@ -187,7 +199,7 @@ export default function AdminContentRoute() {
               }
             />
             <label className="admin-content-form-grid__wide">
-              Markdown body
+              {t("admin.content.markdownBody")}
               <textarea
                 rows={8}
                 value={draft.bodyMarkdown}
@@ -204,13 +216,13 @@ export default function AdminContentRoute() {
       ) : null}
 
       <div className="admin-content-groups">
-        {loading ? <p>Loading content…</p> : null}
+        {loading ? <p>{t("admin.content.loading")}</p> : null}
         {grouped.map((group) => (
           <section key={group.namespace}>
             <div className="admin-store-section-heading">
               <div>
                 <span className="product-eyebrow">{group.namespace}</span>
-                <h2>{group.namespace === "PAGE" ? "General pages" : group.namespace}</h2>
+                <h2>{group.namespace === "PAGE" ? t("admin.content.generalPages") : namespaceLabel(group.namespace, t)}</h2>
               </div>
               <span className="product-search-count">{group.pages.length}</span>
             </div>
@@ -220,7 +232,7 @@ export default function AdminContentRoute() {
                   <div className="admin-store-cosmetic-card__body">
                     <div className="admin-store-cosmetic-card__title">
                       <div>
-                        <span className="product-eyebrow">{page.namespace}</span>
+                        <span className="product-eyebrow">{namespaceLabel(page.namespace, t)}</span>
                         <h3>
                           {page.locales.find((locale) => locale.latestRevision)?.latestRevision
                             ?.title ?? page.id}
@@ -233,11 +245,11 @@ export default function AdminContentRoute() {
                             : "neutral"
                         }
                       >
-                        {pageStatus(page)}
+                        {pageStatus(page, t)}
                       </Badge>
                     </div>
                     <div className="admin-store-card-actions">
-                      <Link to={`/admin/content/${encodeURIComponent(page.id)}`}>Open editor</Link>
+                      <Link to={`/admin/content/${encodeURIComponent(page.id)}`}>{t("admin.content.openEditor")}</Link>
                     </div>
                   </div>
                 </Card>

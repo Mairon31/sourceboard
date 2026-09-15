@@ -84,5 +84,9 @@ export const esAdminMessages = {
   "admin.content.localeUnpublished": "Idioma retirado de publicación.",
   "admin.content.couldLoadPage": "No se pudo cargar la página.",
   "admin.content.couldSaveDraft": "No se pudo guardar el borrador.",
-  "admin.content.couldAction": "No se pudo {action} este idioma."
+  "admin.content.couldAction": "No se pudo {action} este idioma.",
+  "admin.content.editorDescription": "Cada guardado crea una revisión inmutable. Publicar selecciona una revisión sin exponer borradores posteriores.",
+  "admin.content.publishAction": "publicar",
+  "admin.content.unpublishAction": "retirar de publicación",
+  "admin.content.archiveAction": "archivar",
 } as const;
