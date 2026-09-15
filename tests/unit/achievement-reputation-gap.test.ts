@@ -40,4 +40,13 @@ describe("achievement and reputation administration contract", () => {
     expect(route).toContain("listTopReputationUsers");
     expect(route).toContain("/u/");
   });
+
+  it("renders achievement media references through the public icon endpoint", () => {
+    const profile = read("app/routes/profile.tsx");
+
+    expect(profile).toContain("media:([A-Za-z0-9_-]{8,128})");
+    expect(profile).toContain("/api/media/achievement-icons/");
+    expect(profile).toContain("product-achievement-icon");
+  });
+  });
 });
