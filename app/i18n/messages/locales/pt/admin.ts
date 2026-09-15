@@ -13,5 +13,18 @@ export const ptAdminMessages = {
   "admin.moderation.noResource": "Recurso indisponível",
   "admin.moderation.search": "Buscar denúncias",
   "admin.moderation.searchPlaceholder": "Usuário, título, corpo ou ID da denúncia",
-  "admin.moderation.reportCount": "{count} denúncias"
+  "admin.moderation.reportCount": "{count} denúncias",
+  "admin.source.integrity.search": "Buscar integridade das fontes",
+  "admin.source.integrity.searchPlaceholder": "Postagem, autor, URL ou ID da resolução",
+  "admin.source.integrity.statusFilter": "Status",
+  "admin.source.integrity.allStatuses": "Todos os status",
+  "admin.source.integrity.resultCount": "{count} resultados",
+  "admin.source.integrity.views": "Visões de integridade das fontes",
+  "admin.source.integrity.review": "Aguardando revisão",
+  "admin.source.integrity.verified": "Fontes verificadas",
+  "admin.source.integrity.disputes": "Disputas",
+  "admin.source.integrity.history": "Histórico",
+  "admin.source.integrity.noMatch": "Nenhum registro de integridade corresponde a estes filtros.",
+  "admin.source.integrity.openPost": "Abrir postagem",
+  "admin.source.integrity.openSource": "Abrir fonte"
 } as const;
