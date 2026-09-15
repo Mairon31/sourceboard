@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useLoaderData, useRevalidator } from "react-router";
 import {
   listAchievements,
+  listTopReputationUsers,
   listRewardRules,
   lookupLedger,
   type ReputationUserLedger,
 } from "../../worker/reputation/admin";
 import { hasCapability } from "../../worker/auth/rbac";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
+import { useI18n } from "../i18n/I18nProvider";
 import { Badge, Button, Card, Input, Textarea } from "../components/ui";
 import { requireAdminPageAccess } from "../data/admin-access";
 import { readCsrfToken } from "../data/csrf";
@@ -22,6 +24,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
   const [rules, achievements, ledger] = await Promise.all([
     listRewardRules(runtime.db),
     listAchievements(runtime.db),
+    listTopReputationUsers(runtime.db, 15),
     userQuery ? lookupLedger(runtime.db, userQuery) : Promise.resolve(null),
   ]);
   return {
@@ -30,6 +33,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
     canAdjustPoints,
     rules,
     achievements,
+    topUsers,
     ledger: ledger as ReputationUserLedger | null,
     userQuery,
   };
@@ -63,13 +67,17 @@ export default function AdminReputationRoute() {
     canAdjustPoints,
     rules,
     achievements,
+    topUsers,
     ledger,
     userQuery,
   } = useLoaderData<LoaderData>();
+  const { t } = useI18n();
   const revalidator = useRevalidator();
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingAchievement, setEditingAchievement] =
+    useState<LoaderData["achievements"][number] | null>(null);
 
   async function submitRule(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -109,30 +117,31 @@ export default function AdminReputationRoute() {
     if (!canManageAchievements || busy) return;
     const form = event.currentTarget;
     const data = new FormData(form);
+    if (editingAchievement) data.set("existingAchievementId", editingAchievement.id);
     setBusy("achievement");
     setStatus(null);
     setError(null);
     try {
       const response = await fetch("/api/admin/reputation/achievements", {
         method: "POST",
-        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({
-          slug: data.get("slug"),
-          name: data.get("name"),
-          description: data.get("description"),
-          icon: data.get("icon"),
-          threshold: Number(data.get("threshold")),
-          enabled: data.get("enabled") === "on",
-          reason: data.get("reason"),
-        }),
+        headers: { "x-csrf-token": readCsrfToken() },
+        body: data,
       });
-      const message = await mutationError(response, "The achievement version could not be saved.");
+      const message = await mutationError(
+        response,
+        "The achievement version could not be saved.",
+      );
       if (message) {
         setError(message);
         return;
       }
-      setStatus("A new achievement version was recorded.");
+      setStatus(
+        editingAchievement
+          ? "A new achievement version was recorded."
+          : "A new achievement version was recorded.",
+      );
       form.reset();
+      setEditingAchievement(null);
       revalidator.revalidate();
     } finally {
       setBusy(null);
@@ -280,22 +289,61 @@ export default function AdminReputationRoute() {
               </span>
               <p>{achievement.description}</p>
               <small>{achievement.verifiedSourceThreshold} verified sources</small>
+              {canManageAchievements ? (
+                <div className="admin-integrity-actions">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditingAchievement(achievement)}
+                  >
+                    {t("admin.reputation.edit")}
+                  </Button>
+                </div>
+              ) : null}
             </Card>
           ))}
         </div>
         {canManageAchievements ? (
           <Card className="admin-surface">
-            <form className="product-form-card" onSubmit={(event) => void submitAchievement(event)}>
+            <form
+              key={editingAchievement?.id ?? "new"}
+              className="product-form-card"
+              onSubmit={(event) => void submitAchievement(event)}
+            >
+              {editingAchievement ? (
+                <div className="product-presentation-notice">
+                  {t("admin.reputation.editing")}
+                </div>
+              ) : null}
               <div className="product-form-grid">
-                <Input name="slug" label="Slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required />
-                <Input name="name" label="Name" required />
-                <Input name="icon" label="Icon" maxLength={16} required />
+                <Input
+                  name="slug"
+                  label="Slug"
+                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  defaultValue={editingAchievement?.slug ?? ""}
+                  required
+                />
+                <Input
+                  name="name"
+                  label="Name"
+                  defaultValue={editingAchievement?.name ?? ""}
+                  required
+                />
+                <Input
+                  name="icon"
+                  label="Icon"
+                  maxLength={256}
+                  defaultValue={editingAchievement?.icon ?? ""}
+                  required
+                />
                 <Input
                   name="threshold"
                   type="number"
                   min={1}
                   max={100000}
                   label="Verified source threshold"
+                  defaultValue={editingAchievement?.verifiedSourceThreshold ?? ""}
                   required
                 />
               </div>
@@ -304,11 +352,28 @@ export default function AdminReputationRoute() {
                 label="Description"
                 minLength={5}
                 maxLength={300}
+                defaultValue={editingAchievement?.description ?? ""}
                 required
               />
               <label className="sb-field">
                 <span className="sb-field__label">
-                  <input name="enabled" type="checkbox" defaultChecked /> Make this version active
+                  <input
+                    name="iconFile"
+                    type="file"
+                    accept="image/png,image/gif"
+                  />
+                  {t("admin.reputation.iconUpload")}
+                </span>
+                <small>{t("admin.reputation.iconHelp")}</small>
+              </label>
+              <label className="sb-field">
+                <span className="sb-field__label">
+                  <input
+                    name="enabled"
+                    type="checkbox"
+                    defaultChecked={editingAchievement?.status === "ACTIVE" || !editingAchievement}
+                  />{" "}
+                  Make this version active
                 </span>
               </label>
               <Textarea
@@ -319,12 +384,69 @@ export default function AdminReputationRoute() {
                 required
                 placeholder="Explain why this milestone is changing."
               />
-              <Button type="submit" loading={busy === "achievement"}>
-                Create achievement version
-              </Button>
+              <div className="admin-integrity-actions">
+                <Button type="submit" loading={busy === "achievement"}>
+                  {editingAchievement
+                    ? t("admin.reputation.saveVersion")
+                    : t("admin.reputation.createVersion")}
+                </Button>
+                {editingAchievement ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={busy === "achievement"}
+                    onClick={() => setEditingAchievement(null)}
+                  >
+                    {t("admin.reputation.cancel")}
+                  </Button>
+                ) : null}
+              </div>
             </form>
           </Card>
         ) : null}
+      </section>
+
+      <section className="admin-section">
+        <div className="admin-section__heading">
+          <div>
+            <span className="product-eyebrow">{t("admin.reputation.topTitle")}</span>
+            <h2>{t("admin.reputation.topTitle")}</h2>
+            <p>{t("admin.reputation.topDescription")}</p>
+          </div>
+          <span className="product-search-count">{topUsers.length}/15</span>
+        </div>
+        {topUsers.length ? (
+          <div className="admin-reputation-top-list">
+            {topUsers.map((user, index) => (
+              <a
+                className="admin-reputation-top-user"
+                href={`/u/${encodeURIComponent(user.username)}`}
+                key={user.userId}
+              >
+                <span className="admin-reputation-top-user__rank">{index + 1}</span>
+                {user.avatarUrl ? (
+                  <img
+                    className="admin-reputation-top-user__avatar"
+                    src={user.avatarUrl}
+                    alt=""
+                    loading="lazy"
+                  />
+                ) : null}
+                <span className="admin-reputation-top-user__copy">
+                  <strong>{user.displayName}</strong>
+                  <small>@{user.username}</small>
+                </span>
+                <span className="admin-reputation-top-user__score">
+                  {t("admin.reputation.points", { count: user.score })}
+                </span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <Card className="product-empty-state admin-surface">
+            {t("admin.reputation.topEmpty")}
+          </Card>
+        )}
       </section>
 
       <section className="admin-section">
