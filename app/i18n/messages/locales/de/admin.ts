@@ -26,5 +26,16 @@ export const deAdminMessages = {
   "admin.source.integrity.history": "Verlauf",
   "admin.source.integrity.noMatch": "Keine Einträge zur Quellenintegrität passen zu diesen Filtern.",
   "admin.source.integrity.openPost": "Beitrag öffnen",
-  "admin.source.integrity.openSource": "Quelle öffnen"
+  "admin.source.integrity.openSource": "Quelle öffnen",
+  "admin.reputation.edit": "Bearbeiten",
+  "admin.reputation.cancel": "Bearbeitung abbrechen",
+  "admin.reputation.editing": "Neue unveränderliche Version wird bearbeitet",
+  "admin.reputation.iconUpload": "Eigenes Symbol (PNG oder GIF)",
+  "admin.reputation.iconHelp": "Optional. Maximal 2 MiB und 1024 Pixel.",
+  "admin.reputation.saveVersion": "Erfolgsversion speichern",
+  "admin.reputation.createVersion": "Erfolgsversion erstellen",
+  "admin.reputation.topTitle": "Top 15 Reputation",
+  "admin.reputation.topDescription": "Nutzer nach ihrem aktuellen Punktekontostand.",
+  "admin.reputation.topEmpty": "Noch keine Reputationspunkte erfasst.",
+  "admin.reputation.points": "{count} Punkte"
 } as const;
