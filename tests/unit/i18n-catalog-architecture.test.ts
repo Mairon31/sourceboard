@@ -6,6 +6,7 @@ import { SUPPORTED_LOCALES } from "../../shared/i18n/locales";
 describe("i18n catalog architecture", () => {
   it("organizes every supported locale by the same product namespaces", () => {
     const namespaces = [
+      "admin",
       "base",
       "common",
       "community",

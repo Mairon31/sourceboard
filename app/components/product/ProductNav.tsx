@@ -65,9 +65,9 @@ export function ProductNav() {
         {user ? (
           <NavLink
             className={navClass}
-            to={`/u/${encodeURIComponent(user.username)}`}
+            to="/profile"
             prefetch="intent"
-            onClick={() => markNavigationStart("/u/:username")}
+            onClick={() => markNavigationStart("/profile")}
           >
             <CosmeticIdentity
               mode="compact"
@@ -108,7 +108,7 @@ export function ProductNav() {
 export function MobileProductNav() {
   const rootData = useRouteLoaderData<RootLoaderData>("root");
   const user = rootData?.session?.user ?? null;
-  const profileHref = user ? `/u/${encodeURIComponent(user.username)}` : "/login";
+  const profileHref = user ? "/profile" : "/login";
   const { locale, t } = useI18n();
   const homeHref = productNavHref(locale, "/");
   const storeHref = productNavHref(locale, "/store");

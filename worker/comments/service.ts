@@ -52,7 +52,13 @@ export interface CommentService {
   update(
     commentId: string,
     authorId: string,
-    input: { richtext?: unknown; plaintext?: unknown; markdown?: unknown; attachment?: unknown },
+    input: {
+      richtext?: unknown;
+      plaintext?: unknown;
+      markdown?: unknown;
+      attachment?: unknown;
+      linkPreviewUrl?: unknown;
+    },
   ): Promise<CommentView>;
   delete(commentId: string, authorId: string): Promise<void>;
   toggleLike(targetType: "POST" | "COMMENT", targetId: string, userId: string): Promise<boolean>;
@@ -392,8 +398,40 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           "The 24-hour edit window has closed.",
         );
       }
-      const body = normalizeCommentBody(input);
+      const linkPreviewSpecified = Object.prototype.hasOwnProperty.call(input, "linkPreviewUrl");
+      const explicitLinkPreviewUrl =
+        typeof input.linkPreviewUrl === "string" ? input.linkPreviewUrl.trim() : input.linkPreviewUrl;
+      let linkPreview: CommentLinkPreviewSnapshot | null | undefined;
+      if (!linkPreviewSpecified) {
+        linkPreview = undefined;
+      } else if (explicitLinkPreviewUrl === null || explicitLinkPreviewUrl === "") {
+        linkPreview = null;
+      } else if (
+        typeof explicitLinkPreviewUrl === "string" &&
+        current.linkPreview?.canonicalUrl === explicitLinkPreviewUrl
+      ) {
+        linkPreview = undefined;
+      } else {
+        if (!dependencies.previewLink) {
+          throw new PostError(
+            503,
+            "LINK_PREVIEW_UNAVAILABLE",
+            "Link previews are temporarily unavailable.",
+          );
+        }
+        linkPreview = await dependencies.previewLink(explicitLinkPreviewUrl);
+      }
+      const hasLinkPreviewAfterUpdate =
+        linkPreview === undefined ? Boolean(current.linkPreview) : Boolean(linkPreview);
+      const body = normalizeCommentBody({ ...input, allowEmpty: hasLinkPreviewAfterUpdate });
       await validateAttachment(body.attachment, authorId);
+      if (hasLinkPreviewAfterUpdate && body.attachment) {
+        throw new PostError(
+          400,
+          "LINK_PREVIEW_ATTACHMENT_CONFLICT",
+          "A link preview cannot be combined with attached media.",
+        );
+      }
       await dependencies.assertEntitlements?.(authorId, body);
       const updated = {
         ...current.comment,
@@ -408,6 +446,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           richtextJson: JSON.stringify(body.richtext),
           attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,
           revisionId: createIdentifier(),
+          linkPreview,
         }))
       ) {
         throw new PostError(
@@ -425,7 +464,11 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           )
         : new Map<string, CommentEmoteAsset>();
       return toView(
-        { ...current, comment: updated },
+        {
+          ...current,
+          comment: updated,
+          linkPreview: linkPreview === undefined ? current.linkPreview : linkPreview,
+        },
         authorId,
         dependencies.profileStore,
         now,

@@ -68,30 +68,36 @@ export function createCmsService(db: D1Database) {
       .first<{ id: string }>();
     if (!page) throw new Error("CMS_PAGE_NOT_FOUND");
     const latest = await db
-      .prepare("SELECT COALESCE(MAX(version), 0) AS version FROM cms_page_revisions WHERE page_id = ? AND locale = ?")
+      .prepare(
+        "SELECT COALESCE(MAX(version), 0) AS version FROM cms_page_revisions WHERE page_id = ? AND locale = ?",
+      )
       .bind(pageId, normalized.locale)
       .first<{ version: number }>();
     const version = Number(latest?.version ?? 0) + 1;
     const id = crypto.randomUUID();
     const now = Date.now();
     await db.batch([
-      db.prepare(
-        "INSERT INTO cms_page_revisions (id,page_id,locale,version,slug,title,description,body_markdown,created_by_user_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-      ).bind(
-        id,
-        pageId,
-        normalized.locale,
-        version,
-        normalized.slug,
-        normalized.title,
-        normalized.description,
-        normalized.bodyMarkdown,
-        actorUserId,
-        now,
-      ),
-      db.prepare(
-        "INSERT INTO cms_page_locale_state (page_id,locale,status,published_revision_id,published_at,published_by_user_id,updated_at) VALUES (?,?,'DRAFT',NULL,NULL,NULL,?) ON CONFLICT(page_id,locale) DO UPDATE SET updated_at = excluded.updated_at",
-      ).bind(pageId, normalized.locale, now),
+      db
+        .prepare(
+          "INSERT INTO cms_page_revisions (id,page_id,locale,version,slug,title,description,body_markdown,created_by_user_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        )
+        .bind(
+          id,
+          pageId,
+          normalized.locale,
+          version,
+          normalized.slug,
+          normalized.title,
+          normalized.description,
+          normalized.bodyMarkdown,
+          actorUserId,
+          now,
+        ),
+      db
+        .prepare(
+          "INSERT INTO cms_page_locale_state (page_id,locale,status,published_revision_id,published_at,published_by_user_id,updated_at) VALUES (?,?,'DRAFT',NULL,NULL,NULL,?) ON CONFLICT(page_id,locale) DO UPDATE SET updated_at = excluded.updated_at",
+        )
+        .bind(pageId, normalized.locale, now),
       db.prepare("UPDATE cms_pages SET updated_at = ? WHERE id = ?").bind(now, pageId),
     ]);
     return {
@@ -113,7 +119,9 @@ export function createCmsService(db: D1Database) {
     const pageId = crypto.randomUUID();
     const now = Date.now();
     await db
-      .prepare("INSERT INTO cms_pages (id,namespace,created_by_user_id,created_at,updated_at) VALUES (?,?,?,?,?)")
+      .prepare(
+        "INSERT INTO cms_pages (id,namespace,created_by_user_id,created_at,updated_at) VALUES (?,?,?,?,?)",
+      )
       .bind(pageId, namespace, actorUserId, now, now)
       .run();
     await createRevision(pageId, actorUserId, input);
@@ -176,27 +184,39 @@ export function createCmsService(db: D1Database) {
     if (!row) throw new Error("CMS_REVISION_NOT_FOUND");
     assertNamespace(row.namespace);
     const collision = await db
-      .prepare("SELECT page_id AS pageId FROM cms_page_routes WHERE namespace = ? AND locale = ? AND slug = ?")
+      .prepare(
+        "SELECT page_id AS pageId FROM cms_page_routes WHERE namespace = ? AND locale = ? AND slug = ?",
+      )
       .bind(row.namespace, locale, row.slug)
       .first<{ pageId: string }>();
     if (collision && collision.pageId !== pageId) throw new Error("CMS_SLUG_CONFLICT");
     const now = Date.now();
     await db.batch([
-      db.prepare("UPDATE cms_page_routes SET is_current = 0 WHERE page_id = ? AND locale = ? AND is_current = 1").bind(pageId, locale),
-      db.prepare(
-        `INSERT INTO cms_page_routes (id,page_id,locale,namespace,slug,is_current,created_at)
+      db
+        .prepare(
+          "UPDATE cms_page_routes SET is_current = 0 WHERE page_id = ? AND locale = ? AND is_current = 1",
+        )
+        .bind(pageId, locale),
+      db
+        .prepare(
+          `INSERT INTO cms_page_routes (id,page_id,locale,namespace,slug,is_current,created_at)
          VALUES (?,?,?,?,?,1,?)
          ON CONFLICT(namespace,locale,slug) DO UPDATE SET is_current = 1`,
-      ).bind(crypto.randomUUID(), pageId, locale, row.namespace, row.slug, now),
-      db.prepare(
-        `INSERT INTO cms_page_locale_state (page_id,locale,status,published_revision_id,published_at,published_by_user_id,updated_at)
+        )
+        .bind(crypto.randomUUID(), pageId, locale, row.namespace, row.slug, now),
+      db
+        .prepare(
+          `INSERT INTO cms_page_locale_state (page_id,locale,status,published_revision_id,published_at,published_by_user_id,updated_at)
          VALUES (?,?,'PUBLISHED',?,?,?,?)
          ON CONFLICT(page_id,locale) DO UPDATE SET status='PUBLISHED', published_revision_id=excluded.published_revision_id,
            published_at=excluded.published_at, published_by_user_id=excluded.published_by_user_id, updated_at=excluded.updated_at`,
-      ).bind(pageId, locale, revisionId, now, actorUserId, now),
-      db.prepare(
-        "INSERT INTO audit_logs (id,actor_user_id,action,target_type,target_id,created_at) VALUES (?,?, 'cms.publish','CMS_PAGE',?,?)",
-      ).bind(crypto.randomUUID(), actorUserId, pageId, now),
+        )
+        .bind(pageId, locale, revisionId, now, actorUserId, now),
+      db
+        .prepare(
+          "INSERT INTO audit_logs (id,actor_user_id,action,target_type,target_id,created_at) VALUES (?,?, 'cms.publish','CMS_PAGE',?,?)",
+        )
+        .bind(crypto.randomUUID(), actorUserId, pageId, now),
     ]);
     return {
       pageId,
@@ -218,13 +238,26 @@ export function createCmsService(db: D1Database) {
   ): Promise<void> {
     const now = Date.now();
     await db.batch([
-      db.prepare(
-        "UPDATE cms_page_locale_state SET status = ?, published_revision_id = NULL, published_at = NULL, published_by_user_id = ?, updated_at = ? WHERE page_id = ? AND locale = ?",
-      ).bind(status, actorUserId, now, pageId, locale),
-      db.prepare("UPDATE cms_page_routes SET is_current = 0 WHERE page_id = ? AND locale = ?").bind(pageId, locale),
-      db.prepare(
-        "INSERT INTO audit_logs (id,actor_user_id,action,target_type,target_id,metadata_json,created_at) VALUES (?,?,?,'CMS_PAGE',?,?,?)",
-      ).bind(crypto.randomUUID(), actorUserId, status === "ARCHIVED" ? "cms.archive" : "cms.unpublish", pageId, JSON.stringify({ locale }), now),
+      db
+        .prepare(
+          "UPDATE cms_page_locale_state SET status = ?, published_revision_id = NULL, published_at = NULL, published_by_user_id = ?, updated_at = ? WHERE page_id = ? AND locale = ?",
+        )
+        .bind(status, actorUserId, now, pageId, locale),
+      db
+        .prepare("UPDATE cms_page_routes SET is_current = 0 WHERE page_id = ? AND locale = ?")
+        .bind(pageId, locale),
+      db
+        .prepare(
+          "INSERT INTO audit_logs (id,actor_user_id,action,target_type,target_id,metadata_json,created_at) VALUES (?,?,?,'CMS_PAGE',?,?,?)",
+        )
+        .bind(
+          crypto.randomUUID(),
+          actorUserId,
+          status === "ARCHIVED" ? "cms.archive" : "cms.unpublish",
+          pageId,
+          JSON.stringify({ locale }),
+          now,
+        ),
     ]);
   }
 
@@ -277,7 +310,9 @@ export function createCmsService(db: D1Database) {
       revision,
       canonicalRoute: routeFor(route.namespace, locale, route.currentSlug ?? revision.slug),
       actualPublishedVariants: await publishedVariants(route.pageId),
-      ...(route.isCurrent ? {} : { redirectTo: routeFor(route.namespace, locale, route.currentSlug ?? revision.slug) }),
+      ...(route.isCurrent
+        ? {}
+        : { redirectTo: routeFor(route.namespace, locale, route.currentSlug ?? revision.slug) }),
     };
   }
 
@@ -302,7 +337,9 @@ export function createCmsService(db: D1Database) {
 
   async function getAdminPage(pageId: string): Promise<CmsAdminPage> {
     const page = await db
-      .prepare("SELECT id, namespace, created_by_user_id AS createdByUserId, created_at AS createdAt, updated_at AS updatedAt FROM cms_pages WHERE id = ?")
+      .prepare(
+        "SELECT id, namespace, created_by_user_id AS createdByUserId, created_at AS createdAt, updated_at AS updatedAt FROM cms_pages WHERE id = ?",
+      )
       .bind(pageId)
       .first<{
         id: string;
@@ -315,15 +352,15 @@ export function createCmsService(db: D1Database) {
     assertNamespace(page.namespace);
     const states = await db
       .prepare(
-        `SELECT l.locale AS locale, COALESCE(s.status,'DRAFT') AS status,
+        `SELECT l.column1 AS locale, COALESCE(s.status,'DRAFT') AS status,
                 s.published_revision_id AS publishedRevisionId, s.published_at AS publishedAt,
                 latest.id AS id, latest.page_id AS pageId, latest.version AS version, latest.slug AS slug,
                 latest.title AS title, latest.description AS description, latest.body_markdown AS bodyMarkdown,
                 latest.created_by_user_id AS createdByUserId, latest.created_at AS createdAt
-         FROM (SELECT 'en' locale UNION ALL SELECT 'es' UNION ALL SELECT 'pt' UNION ALL SELECT 'fr' UNION ALL SELECT 'ru' UNION ALL SELECT 'de') l
-         LEFT JOIN cms_page_locale_state s ON s.page_id = ? AND s.locale = l.locale
+         FROM (VALUES ('en'), ('es'), ('pt'), ('fr'), ('ru'), ('de')) l
+         LEFT JOIN cms_page_locale_state s ON s.page_id = ? AND s.locale = l.column1
          LEFT JOIN cms_page_revisions latest ON latest.id = (
-           SELECT id FROM cms_page_revisions WHERE page_id = ? AND locale = l.locale ORDER BY version DESC LIMIT 1
+           SELECT id FROM cms_page_revisions WHERE page_id = ? AND locale = l.column1 ORDER BY version DESC LIMIT 1
          )`,
       )
       .bind(pageId, pageId)
@@ -347,28 +384,42 @@ export function createCmsService(db: D1Database) {
       namespace: page.namespace,
       locales: states.results.flatMap((state) => {
         if (!isLocale(state.locale)) return [];
-        const latestRevision = state.id && state.pageId && state.version && state.slug && state.title && state.description !== null && state.bodyMarkdown !== null && state.createdAt !== null
-          ? revisionFromRow({
-              id: state.id,
-              pageId: state.pageId,
-              locale: state.locale,
-              version: state.version,
-              slug: state.slug,
-              title: state.title,
-              description: state.description,
-              bodyMarkdown: state.bodyMarkdown,
-              createdByUserId: state.createdByUserId,
-              createdAt: state.createdAt,
-            })
-          : null;
-        return [{
-          locale: state.locale,
-          status: state.status,
-          publishedRevisionId: state.publishedRevisionId,
-          publishedAt: state.publishedAt,
-          latestRevision,
-          hasDraftChanges: Boolean(latestRevision && state.publishedRevisionId && latestRevision.id !== state.publishedRevisionId),
-        }];
+        const latestRevision =
+          state.id &&
+          state.pageId &&
+          state.version &&
+          state.slug &&
+          state.title &&
+          state.description !== null &&
+          state.bodyMarkdown !== null &&
+          state.createdAt !== null
+            ? revisionFromRow({
+                id: state.id,
+                pageId: state.pageId,
+                locale: state.locale,
+                version: state.version,
+                slug: state.slug,
+                title: state.title,
+                description: state.description,
+                bodyMarkdown: state.bodyMarkdown,
+                createdByUserId: state.createdByUserId,
+                createdAt: state.createdAt,
+              })
+            : null;
+        return [
+          {
+            locale: state.locale,
+            status: state.status,
+            publishedRevisionId: state.publishedRevisionId,
+            publishedAt: state.publishedAt,
+            latestRevision,
+            hasDraftChanges: Boolean(
+              latestRevision &&
+              state.publishedRevisionId &&
+              latestRevision.id !== state.publishedRevisionId,
+            ),
+          },
+        ];
       }),
     };
   }
@@ -377,10 +428,13 @@ export function createCmsService(db: D1Database) {
     createPage,
     createRevision,
     publish,
-    unpublish: (pageId: string, locale: Locale, actorUserId: string) => setStatus(pageId, locale, "UNPUBLISHED", actorUserId),
-    archive: (pageId: string, locale: Locale, actorUserId: string) => setStatus(pageId, locale, "ARCHIVED", actorUserId),
+    unpublish: (pageId: string, locale: Locale, actorUserId: string) =>
+      setStatus(pageId, locale, "UNPUBLISHED", actorUserId),
+    archive: (pageId: string, locale: Locale, actorUserId: string) =>
+      setStatus(pageId, locale, "ARCHIVED", actorUserId),
     resolvePublic,
     getAdminPage,
     publishedVariants,
   };
 }
+

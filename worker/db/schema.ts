@@ -797,7 +797,7 @@ export const commentLinkPreviews = sqliteTable(
     index("comment_link_previews_fetched_at_idx").on(table.fetchedAt),
     check(
       "comment_link_previews_metadata_status_check",
-      sql`${table.metadataStatus} IN ('COMPLETE', 'PARTIAL', 'URL_ONLY')`,
+      sql`${table.metadataStatus} IN ('COMPLETE', 'PARTIAL', 'MINIMAL', 'URL_ONLY')`,
     ),
   ],
 );

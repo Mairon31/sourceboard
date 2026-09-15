@@ -28,16 +28,21 @@ describe("admin route zero-flash guard", () => {
   it("routes source integrity and its legacy alias through a guarded loader", () => {
     const routes = read("app/routes.ts");
     const wrapper = read("app/routes/admin-verifications-gated.tsx");
-    expect(routes).toContain('route("admin/source-integrity", "routes/admin-verifications-gated.tsx"');
+    expect(routes).toContain(
+      'route("admin/source-integrity", "routes/admin-verifications-gated.tsx"',
+    );
     expect(routes).toContain('route("admin/verifications", "routes/admin-verifications-gated.tsx"');
-    expect(wrapper).toContain("requireAdminPageAccess(args.request, args.context)");
-    expect(wrapper.indexOf("requireAdminPageAccess")).toBeLessThan(wrapper.indexOf("loadAdminVerifications(args)"));
+    expect(wrapper).toContain("await requireAdminPageAccess(request, context)");
+    expect(wrapper).toContain("export async function loader");
+    expect(wrapper).not.toContain("loadAdminVerifications");
+    expect(wrapper).not.toContain("import { loader");
   });
 
   it("keeps the visual guard semantics server-side", () => {
     const guard = read("app/data/admin-access.ts");
-    expect(guard).toContain('throw redirect(`/login?${search.toString()}`)');
+    expect(guard).toContain("throw redirect(`/login?${search.toString()}`)");
     expect(guard).toContain('hasCapability(authorization, "admin.access")');
     expect(guard).toContain('new Response("", { status: 404 })');
   });
 });
+

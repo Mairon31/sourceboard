@@ -153,6 +153,7 @@ async function installAcceptedSourceEditFixture(page: Page) {
   const deadline = now + 24 * 60 * 60 * 1000;
   await installNavigationUserSession(page, "accepted-edit");
   executeLocalSql(`
+    DELETE FROM comment_link_previews WHERE comment_id = 'e2e-accepted-edit-comment';
     DELETE FROM source_resolutions WHERE post_id = 'e2e-accepted-edit-post';
     DELETE FROM comments WHERE post_id = 'e2e-accepted-edit-post';
     DELETE FROM posts WHERE id = 'e2e-accepted-edit-post';
@@ -174,6 +175,11 @@ async function installAcceptedSourceEditFixture(page: Page) {
       ('e2e-accepted-edit-comment', 'e2e-accepted-edit-post', 'e2e-navigation-user', NULL,
        '[{"type":"text","text":"Original accepted source"}]', 'Original accepted source',
        NULL, 'VISIBLE', 0, ${now}, ${now}, ${deadline}, NULL, NULL);
+    INSERT INTO comment_link_previews
+      (comment_id, canonical_url, site_name, title, description, image_url, fetched_at, metadata_status)
+    VALUES
+      ('e2e-accepted-edit-comment', 'https://example.com/original-source', 'Example Source',
+       'Original accepted preview', 'Preview before the accepted comment edit.', NULL, ${now}, 'PARTIAL');
     INSERT INTO source_resolutions
       (id, post_id, comment_id, resolution_type, state, canonical_source_url, evidence_note,
        actor_user_id, created_at, revoked_at, revoked_by_user_id, revoke_reason)
@@ -378,7 +384,7 @@ test("freshly submitted root comment is placed by active sort and receives focus
   await expect(page).toHaveURL(/\?comments=recent#comment-/);
 });
 
-test("editing the accepted comment refreshes Accepted Source without a manual reload", async ({
+test("editing the accepted comment updates and removes its link preview live", async ({
   page,
 }) => {
   await installAcceptedSourceEditFixture(page);
@@ -387,12 +393,19 @@ test("editing the accepted comment refreshes Accepted Source without a manual re
   await waitForUiReady(page);
 
   const source = page.locator(".product-source-resolution");
-  await expect(source).toContainText("Original accepted source");
   const comment = page.locator("#comment-e2e-accepted-edit-comment");
+  await expect(source.locator(".product-link-preview-card")).toHaveAttribute(
+    "href",
+    "https://example.com/original-source",
+  );
+
   await comment.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Edit" }).click();
+  const linkInput = comment.getByLabel("Link URL");
+  await expect(linkInput).toHaveValue("https://example.com/original-source");
   await comment.getByLabel("Edit comment").fill("Updated **accepted** source");
-  const editResponse = page.waitForResponse(
+  await linkInput.fill("https://example.com/updated-source");
+  let editResponse = page.waitForResponse(
     (candidate) =>
       candidate.url().includes("/api/comments/e2e-accepted-edit-comment") &&
       candidate.request().method() === "PATCH",
@@ -400,9 +413,32 @@ test("editing the accepted comment refreshes Accepted Source without a manual re
   await comment.getByRole("button", { name: "Save", exact: true }).click();
   expect((await editResponse).ok()).toBe(true);
 
+  await expect(comment.locator(".product-link-preview-card")).toHaveAttribute(
+    "href",
+    "https://example.com/updated-source",
+    { timeout: 15_000 },
+  );
+  await expect(source.locator(".product-link-preview-card")).toHaveAttribute(
+    "href",
+    "https://example.com/updated-source",
+    { timeout: 15_000 },
+  );
   await expect(comment).toContainText("Updated accepted source");
-  await expect(source).toContainText("Updated accepted source", { timeout: 15_000 });
-  await expect(source).not.toContainText("Original accepted source");
+
+  await comment.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  await expect(comment.getByLabel("Link URL")).toHaveValue("https://example.com/updated-source");
+  await comment.getByLabel("Link URL").fill("");
+  editResponse = page.waitForResponse(
+    (candidate) =>
+      candidate.url().includes("/api/comments/e2e-accepted-edit-comment") &&
+      candidate.request().method() === "PATCH",
+  );
+  await comment.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await editResponse).ok()).toBe(true);
+
+  await expect(comment.locator(".product-link-preview-card")).toHaveCount(0, { timeout: 15_000 });
+  await expect(source.locator(".product-link-preview-card")).toHaveCount(0, { timeout: 15_000 });
 });
 
 test("ordinary users neither receive comment moderation actions nor bypass the backend capability", async ({

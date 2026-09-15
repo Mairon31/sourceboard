@@ -6,7 +6,8 @@ function read(path: string): string {
   return existsSync(url) ? readFileSync(url, "utf8") : "";
 }
 
-const profileRoute = read("../../app/routes/profile.tsx");
+const publicProfileRoute = read("../../app/routes/profile.tsx");
+const privateProfileRoute = read("../../app/routes/my-profile.tsx");
 const accountActions = read("../../app/components/product/ProfileAccountActions.tsx");
 const commentThread = read("../../app/components/product/CommentThread.tsx");
 const mediaPicker = read("../../app/components/product/MediaPicker.tsx");
@@ -19,11 +20,12 @@ const productCss =
   read("../../app/components/product/profile-klipy.css");
 
 describe("profile account actions and KLIPY media picker", () => {
-  it("shows Settings and current-session logout only on the owner profile", () => {
-    expect(profileRoute).toContain("ProfileAccountActions");
-    expect(profileRoute).toContain(
-      "isOwnProfile ? <ProfileAccountActions canAccessAdmin={canAccessAdmin} /> : null",
+  it("shows Settings and current-session logout only on the private owner profile", () => {
+    expect(privateProfileRoute).toContain("ProfileAccountActions");
+    expect(privateProfileRoute).toContain(
+      "<ProfileAccountActions canAccessAdmin={data.canAccessAdmin} />",
     );
+    expect(publicProfileRoute).not.toContain("ProfileAccountActions");
     expect(accountActions).toContain('to="/settings"');
     expect(accountActions).toContain('fetch("/api/auth/logout"');
     expect(accountActions).toContain("readCsrfToken()");

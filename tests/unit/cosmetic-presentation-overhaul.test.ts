@@ -70,6 +70,17 @@ const NEW_AVATAR_FRAMES = [
   "floral-ring",
   "void-lens",
   "electric-halo",
+  "simple-blue",
+  "cyan",
+  "purple",
+  "pink",
+  "green",
+  "red",
+  "white",
+  "dark",
+  "pastel",
+  "double-blue",
+  "thin-neon",
 ] as const;
 
 const BLOCK_E_AVATAR_FRAMES = [
@@ -189,7 +200,7 @@ describe("Cosmetic presentation overhaul", () => {
   });
 
   it("accepts the complete Block E Avatar Frame catalog", () => {
-    expect(AVATAR_FRAME_PRESETS).toHaveLength(43);
+    expect(AVATAR_FRAME_PRESETS).toHaveLength(54);
     for (const slug of NEW_AVATAR_FRAMES) {
       expect(isAvatarFramePreset(slug)).toBe(true);
       expect(AVATAR_FRAME_DEFINITIONS[slug]).toBeDefined();
@@ -215,6 +226,21 @@ describe("Cosmetic presentation overhaul", () => {
       expect(stageCss).toContain(`[data-avatar-frame="${slug}"]`);
     }
     expect(AVATAR_FRAME_DEFINITIONS["fox-spirit"].parts.length).toBeGreaterThan(0);
+  });
+
+  it("keeps all avatar frame geometry inside AvatarStage", () => {
+    const legacyFrameCss = read("../../app/components/product/avatar-frames.css");
+    const stageCss = read("../../app/components/product/avatar-stage.css");
+    const definitions = read("../../app/components/product/avatar-frame-definitions.ts");
+
+    expect(legacyFrameCss).not.toContain('data-avatar-frame="');
+    expect(legacyFrameCss).not.toContain("position: absolute");
+    expect(legacyFrameCss).not.toContain("@keyframes avatar-frame-");
+    expect(stageCss).toContain('data-avatar-frame="neko-neon"');
+    expect(stageCss).toContain('data-avatar-frame="retro-arcade"');
+    expect(stageCss).toContain('data-avatar-frame="slime"');
+    expect(definitions).toContain('"electric-coils"');
+    expect(definitions).toContain('"pixel-glitch"');
   });
 
   it("routes profile cosmetic preview surfaces through one shared renderer", () => {
@@ -269,11 +295,7 @@ describe("Cosmetic presentation overhaul", () => {
       /\.product-profile-effect-layer__node\s*\{[^}]*opacity:\s*(?:0\.[1-9]\d*|1(?:\.0+)?)\s*!important;/s,
     );
 
-    const reducedFrameMotion = frameCss.slice(
-      frameCss.lastIndexOf("@media (prefers-reduced-motion: reduce)"),
-    );
-    expect(reducedFrameMotion).toContain(".product-avatar-frame--decorative::before");
-    expect(reducedFrameMotion).toContain(".product-avatar-frame--decorative::after");
+    expect(stageCss).toMatch(/\.product-avatar-stage__part\s*\{\s*animation: none !important;/s);
   });
 
   it("preserves legacy cosmetic preset compatibility", () => {
@@ -296,3 +318,4 @@ describe("Cosmetic presentation overhaul", () => {
     }
   });
 });
+

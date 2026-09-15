@@ -42,6 +42,17 @@ export const AVATAR_FRAME_PRESETS = [
   "floral-ring",
   "void-lens",
   "electric-halo",
+  "simple-blue",
+  "cyan",
+  "purple",
+  "pink",
+  "green",
+  "red",
+  "white",
+  "dark",
+  "pastel",
+  "double-blue",
+  "thin-neon",
 ] as const;
 
 export type AvatarFramePreset = (typeof AVATAR_FRAME_PRESETS)[number];

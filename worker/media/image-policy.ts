@@ -41,7 +41,7 @@ function uint24(bytes: Uint8Array, offset: number): number {
   return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16);
 }
 
-function readPng(bytes: Uint8Array): { width: number; height: number } | null {
+export function readPngDimensions(bytes: Uint8Array): { width: number; height: number } | null {
   if (!hasBytes(bytes, 0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return null;
   if (bytes.length < 24 || String.fromCharCode(...bytes.slice(12, 16)) !== "IHDR") return null;
   return { width: uint32(bytes, 16), height: uint32(bytes, 20) };
@@ -114,7 +114,7 @@ function detectImage(
   const candidates: Array<
     [ImageContentType, (value: Uint8Array) => { width: number; height: number } | null]
   > = [
-    ["image/png", readPng],
+    ["image/png", readPngDimensions],
     ["image/jpeg", readJpeg],
     ["image/webp", readWebp],
     ["image/avif", readAvif],

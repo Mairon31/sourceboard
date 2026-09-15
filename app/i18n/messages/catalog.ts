@@ -1,4 +1,5 @@
 import type { Locale } from "../../../shared/i18n/locales";
+import { deAdminMessages } from "./locales/de/admin";
 import { deBaseMessages } from "./locales/de/base";
 import { deCommonMessages } from "./locales/de/common";
 import { deCommunityMessages } from "./locales/de/community";
@@ -7,6 +8,7 @@ import { deProductMessages } from "./locales/de/product";
 import { deSettingsMessages } from "./locales/de/settings";
 import { deSocialMessages } from "./locales/de/social";
 import { deStoreMessages } from "./locales/de/store";
+import { enAdminMessages } from "./locales/en/admin";
 import { enBaseMessages } from "./locales/en/base";
 import { enCommonMessages } from "./locales/en/common";
 import { enCommunityMessages } from "./locales/en/community";
@@ -15,6 +17,7 @@ import { enProductMessages } from "./locales/en/product";
 import { enSettingsMessages } from "./locales/en/settings";
 import { enSocialMessages } from "./locales/en/social";
 import { enStoreMessages } from "./locales/en/store";
+import { esAdminMessages } from "./locales/es/admin";
 import { esBaseMessages } from "./locales/es/base";
 import { esCommonMessages } from "./locales/es/common";
 import { esCommunityMessages } from "./locales/es/community";
@@ -23,6 +26,7 @@ import { esProductMessages } from "./locales/es/product";
 import { esSettingsMessages } from "./locales/es/settings";
 import { esSocialMessages } from "./locales/es/social";
 import { esStoreMessages } from "./locales/es/store";
+import { frAdminMessages } from "./locales/fr/admin";
 import { frBaseMessages } from "./locales/fr/base";
 import { frCommonMessages } from "./locales/fr/common";
 import { frCommunityMessages } from "./locales/fr/community";
@@ -31,6 +35,7 @@ import { frProductMessages } from "./locales/fr/product";
 import { frSettingsMessages } from "./locales/fr/settings";
 import { frSocialMessages } from "./locales/fr/social";
 import { frStoreMessages } from "./locales/fr/store";
+import { ptAdminMessages } from "./locales/pt/admin";
 import { ptBaseMessages } from "./locales/pt/base";
 import { ptCommonMessages } from "./locales/pt/common";
 import { ptCommunityMessages } from "./locales/pt/community";
@@ -39,6 +44,7 @@ import { ptProductMessages } from "./locales/pt/product";
 import { ptSettingsMessages } from "./locales/pt/settings";
 import { ptSocialMessages } from "./locales/pt/social";
 import { ptStoreMessages } from "./locales/pt/store";
+import { ruAdminMessages } from "./locales/ru/admin";
 import { ruBaseMessages } from "./locales/ru/base";
 import { ruCommonMessages } from "./locales/ru/common";
 import { ruCommunityMessages } from "./locales/ru/community";
@@ -53,6 +59,7 @@ export type { MessageKey } from "./types";
 
 export const messageNamespaces = {
   en: {
+    admin: enAdminMessages,
     base: enBaseMessages,
     common: enCommonMessages,
     community: enCommunityMessages,
@@ -63,6 +70,7 @@ export const messageNamespaces = {
     store: enStoreMessages,
   },
   es: {
+    admin: esAdminMessages,
     base: esBaseMessages,
     common: esCommonMessages,
     community: esCommunityMessages,
@@ -73,6 +81,7 @@ export const messageNamespaces = {
     store: esStoreMessages,
   },
   pt: {
+    admin: ptAdminMessages,
     base: ptBaseMessages,
     common: ptCommonMessages,
     community: ptCommunityMessages,
@@ -83,6 +92,7 @@ export const messageNamespaces = {
     store: ptStoreMessages,
   },
   fr: {
+    admin: frAdminMessages,
     base: frBaseMessages,
     common: frCommonMessages,
     community: frCommunityMessages,
@@ -93,6 +103,7 @@ export const messageNamespaces = {
     store: frStoreMessages,
   },
   ru: {
+    admin: ruAdminMessages,
     base: ruBaseMessages,
     common: ruCommonMessages,
     community: ruCommunityMessages,
@@ -103,6 +114,7 @@ export const messageNamespaces = {
     store: ruStoreMessages,
   },
   de: {
+    admin: deAdminMessages,
     base: deBaseMessages,
     common: deCommonMessages,
     community: deCommunityMessages,

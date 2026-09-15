@@ -937,3 +937,13 @@ Status: **COMPLETED — merged to `master`; standard CI green**
 - Local Windows D1 execution is currently blocked before SQL runs by a Wrangler/Miniflare `internal error` even for `SELECT 1`, reproducing on Wrangler 4.129.0 and 4.131.1 and with a fresh persistence directory. Because React Router local requests depend on that D1 binding, Playwright/browser verification and the local migration gate are deferred to the standard Linux CI run for the pushed branch rather than being represented as locally green.
 - CodeRabbit review is also environment-blocked: the official installer rejects this Windows Git Bash runtime as `Unsupported operating system: mingw64_nt-10.0-26200`. No manual review is being attributed to CodeRabbit.
 - Final PR #45 candidate `68bad91e36bec05d1099db32fcc2abf0f358507d` passed standard CI #1898 (`34847760978`): production audit reported **0 vulnerabilities**; formatting/lint, strict TypeScript, **153 unit-test files / 625 unit tests**, production build, Worker deploy dry-run, **36 D1 migrations**, and **235/235 Playwright E2E tests** all passed. The PR was merged normally into `master` as `63e54d2712c4ea8adec690e29769052d17a2ab82`.
+
+## Gap Closure PR #46 — 2026-09-15
+
+Status: **PRE-MERGE VERIFIED — CodeRabbit waived by owner**
+
+- The approved gap-closure scope is implemented on PR **#46**, branch `feature/sourceboard-gap-closure-sep14`.
+- Root causes fixed after the inherited CI failures: D1's compound-select term limit in `getAdminPage`, server-only Source Integrity loader leakage into the browser bundle, stale static route contracts, ambiguous responsive E2E locators, and invalid `posts.image_asset_id` E2E fixtures.
+- Link-preview lifecycle, `MINIMAL` status migration/schema support, Accepted/Verified rendering, private `/profile` vs public `/u/:username`, canonical `AvatarStage` geometry and low-cost frames, enriched moderation reports, Source Integrity filters, versioned achievements/custom icons, Top 15 reputation and six-locale CMS remain covered by the focused tests already present in the PR.
+- Exact branch HEAD `a0672834286c8cf258ffb1d7df77e4bbba0dd1af` passed GitHub Actions run **#2006** (`34966696302`): production dependency audit (0 vulnerabilities), format/lint, strict TypeScript, **166 unit files / 670 unit tests**, production build, Worker dry-run, Chromium installation, **36 D1 migrations**, and **241/241 Playwright E2E tests**.
+- CodeRabbit review is intentionally waived by the repository owner for this PR; no CodeRabbit findings or substitute review are being claimed.

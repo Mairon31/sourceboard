@@ -7,7 +7,7 @@ export interface CommentLinkPreviewSnapshot {
   description: string | null;
   imageUrl: string | null;
   fetchedAt: number;
-  metadataStatus: "COMPLETE" | "PARTIAL" | "URL_ONLY";
+  metadataStatus: "COMPLETE" | "PARTIAL" | "MINIMAL" | "URL_ONLY";
 }
 
 export interface CommentRecord {

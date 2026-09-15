@@ -14,6 +14,7 @@ const routes = read("../../app/routes.ts");
 const adminRoute = read("../../app/routes/admin.tsx");
 const moderationRoute = read("../../app/routes/admin-moderation.tsx");
 const verificationsRoute = read("../../app/routes/admin-verifications.tsx");
+const verificationsLoaderRoute = read("../../app/routes/admin-verifications-gated.tsx");
 const usersRoute = read("../../app/routes/admin-users.tsx");
 const rolesRoute = read("../../app/routes/admin-roles.tsx");
 const auditRoute = read("../../app/routes/admin-audit.tsx");
@@ -62,15 +63,18 @@ describe("admin control center", () => {
   it("separates verification context, decision authority, and revocation authority", () => {
     expect(verificationsRoute).toContain("admin-verification-card__context");
     expect(verificationsRoute).toContain("admin-verification-card__decision");
-    expect(verificationsRoute).toContain("Open post");
-    expect(verificationsRoute).toContain("Verify accepted source");
-    expect(verificationsRoute).toContain('loadCapabilityAccess(request, context, "source.verify")');
-    expect(verificationsRoute).toContain(
+    expect(verificationsRoute).toContain("admin.source.integrity.openPost");
+    expect(verificationsRoute).toContain("admin.source.integrity.verifyAction");
+    expect(verificationsLoaderRoute).toContain(
+      'loadCapabilityAccess(request, context, "source.verify")',
+    );
+    expect(verificationsLoaderRoute).toContain(
       'loadCapabilityAccess(request, context, "source.revoke_verification")',
     );
-    expect(verificationsRoute).toContain("canRevoke: revokeAccess.authorized");
+    expect(verificationsLoaderRoute).toContain("canRevoke: revokeAccess.authorized");
     expect(verificationsRoute).toContain("readCsrfToken()");
     expect(verificationsRoute).toContain("revalidator.revalidate()");
+    expect(verificationsRoute).not.toContain("loadCapabilityAccess");
   });
 
   it("adds a searchable Users route with capability-gated role changes and no email fields", () => {
@@ -103,3 +107,4 @@ describe("admin control center", () => {
     expect(auditRoute).toContain("metadataJson");
   });
 });
+

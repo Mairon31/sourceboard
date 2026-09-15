@@ -107,7 +107,7 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
-  it("retries a blocked public document once with a browser-compatible user agent", async () => {
+  it("retries a blocked public document and classifies title-only metadata as MINIMAL", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 403 }))
@@ -121,7 +121,7 @@ describe("link preview metadata fetcher", () => {
 
     await expect(service.preview("https://www.imdb.com/title/tt0245429/")).resolves.toMatchObject({
       title: "Recovered",
-      metadataStatus: "PARTIAL",
+      metadataStatus: "MINIMAL",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(resolveHost).toHaveBeenCalledTimes(2);
@@ -152,6 +152,33 @@ describe("link preview metadata fetcher", () => {
       imageUrl: "https://example.com/preview.webp",
       fetchedAt: 2000,
       metadataStatus: "COMPLETE",
+    });
+  });
+
+  it("classifies rich, partial, minimal and URL-only metadata consistently", async () => {
+    const preview = async (html: string) => {
+      const service = createLinkPreviewService({
+        fetchImpl: vi.fn(
+          async () => new Response(html, { headers: { "content-type": "text/html" } }),
+        ) as unknown as typeof fetch,
+        resolveHost: publicResolver(),
+      });
+      return service.preview("https://example.com/status");
+    };
+
+    await expect(
+      preview(
+        '<title>Rich title</title><meta name="description" content="Rich description">',
+      ),
+    ).resolves.toMatchObject({ metadataStatus: "COMPLETE" });
+    await expect(
+      preview('<meta property="og:description" content="Useful"><meta property="og:site_name" content="Example">'),
+    ).resolves.toMatchObject({ metadataStatus: "PARTIAL" });
+    await expect(preview("<title>Only title</title>")).resolves.toMatchObject({
+      metadataStatus: "MINIMAL",
+    });
+    await expect(preview("<html><head></head></html>")).resolves.toMatchObject({
+      metadataStatus: "URL_ONLY",
     });
   });
 

@@ -43,7 +43,7 @@ const NEW_AVATAR_FRAMES = [
 
 describe("Cosmetic built-in catalog", () => {
   it("uses the approved cosmetics v3 seed version", () => {
-    expect(catalog).toContain('const BUILTIN_STORE_VERSION = "2026-09-10-cosmetics-v3"');
+    expect(catalog).toContain('const BUILTIN_STORE_VERSION = "2026-09-15-cosmetics-v4"');
     expect(catalog).toContain("INSERT OR IGNORE INTO store_items");
   });
 

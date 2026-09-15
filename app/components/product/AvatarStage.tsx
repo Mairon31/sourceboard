@@ -76,6 +76,7 @@ export function AvatarStage({
               <span
                 key={part.id}
                 className="product-avatar-stage__part"
+                data-part={part.id}
                 data-layer={layer}
                 data-anchor={geometry.anchor}
                 style={variables}

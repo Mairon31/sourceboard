@@ -98,6 +98,35 @@ export function isCmsAdminRoute(pathname: string): boolean {
   return pathname === "/api/admin/content" || pathname.startsWith("/api/admin/content/");
 }
 
+export function isMissingCmsSchemaError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /(?:no such table|no such column).*cms_/i.test(message);
+}
+
+export function cmsErrorDetails(error: unknown): {
+  status: number;
+  code: string;
+  message: string;
+} {
+  if (isMissingCmsSchemaError(error)) {
+    return {
+      status: 503,
+      code: "CMS_SCHEMA_UNAVAILABLE",
+      message: "Content storage is not ready. Apply the CMS migrations and retry.",
+    };
+  }
+
+  const status =
+    typeof error === "object" && error && "status" in error && typeof error.status === "number"
+      ? error.status
+      : 500;
+  return {
+    status,
+    code: status >= 500 ? "CMS_REQUEST_FAILED" : "CMS_VALIDATION_FAILED",
+    message: error instanceof Error ? error.message : "Content request failed.",
+  };
+}
+
 export async function handleCmsRequest(
   request: Request,
   requestId: string,
@@ -199,11 +228,7 @@ export async function handleCmsRequest(
 
     return failure(requestId, 404, "CMS_ROUTE_NOT_FOUND", "Content endpoint not found.");
   } catch (error) {
-    const status =
-      typeof error === "object" && error && "status" in error && typeof error.status === "number"
-        ? error.status
-        : 400;
-    const message = error instanceof Error ? error.message : "Content request failed.";
-    return failure(requestId, status, "CMS_REQUEST_FAILED", message);
+    const details = cmsErrorDetails(error);
+    return failure(requestId, details.status, details.code, details.message);
   }
 }

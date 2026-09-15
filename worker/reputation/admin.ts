@@ -57,6 +57,14 @@ export interface AchievementAdminView {
   createdAt: number;
 }
 
+export interface ReputationRankingView {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  score: number;
+}
+
 export interface LedgerEntryView {
   id: string;
   amount: number;
@@ -136,6 +144,20 @@ function normalizeText(value: unknown, label: string, min: number, max: number):
   return normalized;
 }
 
+function normalizeAchievementIcon(value: unknown): string {
+  const icon = normalizeText(value, "Icon", 1, 256);
+  if (icon.startsWith("media:")) {
+    if (!/^media:[A-Za-z0-9_-]+$/.test(icon)) {
+      throw new ReputationAdminError(400, "INVALID_ACHIEVEMENT_ICON", "The icon media reference is invalid.");
+    }
+    return icon;
+  }
+  if (icon.length > 16) {
+    throw new ReputationAdminError(400, "INVALID_ACHIEVEMENT_ICON", "The icon token is too long.");
+  }
+  return icon;
+}
+
 function toRule(row: RewardRuleRow): RewardRuleAdminView {
   return {
     id: row.id,
@@ -160,6 +182,15 @@ function toAchievement(row: AchievementRow): AchievementAdminView {
     status: row.status,
     createdAt: Number(row.created_at),
   };
+}
+
+interface ReputationRankingRow {
+  user_id: string;
+  username: string;
+  username_normalized: string;
+  display_name: string | null;
+  avatar_asset_id: string | null;
+  score: number;
 }
 
 export async function listRewardRules(db: D1Database): Promise<RewardRuleAdminView[]> {
@@ -187,6 +218,40 @@ export async function listAchievements(db: D1Database): Promise<AchievementAdmin
     )
     .all<AchievementRow>();
   return result.results.map(toAchievement);
+}
+
+export async function listTopReputationUsers(
+  db: D1Database,
+  limit = 15,
+): Promise<ReputationRankingView[]> {
+  const boundedLimit = Number.isFinite(limit)
+    ? Math.max(1, Math.min(Math.trunc(limit), 15))
+    : 15;
+  const result = await db
+    .prepare(
+      `SELECT u.id AS user_id, u.username, u.username_normalized,
+              COALESCE(p.display_name, u.username) AS display_name,
+              p.avatar_asset_id,
+              COALESCE(SUM(pl.amount), 0) AS score
+       FROM users u
+       LEFT JOIN point_ledger pl ON pl.user_id = u.id
+       LEFT JOIN user_profiles p ON p.user_id = u.id
+       WHERE u.status = 'ACTIVE'
+       GROUP BY u.id, u.username, u.username_normalized, p.display_name, p.avatar_asset_id
+       ORDER BY score DESC, u.username_normalized ASC, u.id ASC
+       LIMIT ?`,
+    )
+    .bind(boundedLimit)
+    .all<ReputationRankingRow>();
+  return result.results.map((row) => ({
+    userId: row.user_id,
+    username: row.username,
+    displayName: row.display_name ?? row.username,
+    avatarUrl: row.avatar_asset_id
+      ? `/api/media/profile/${encodeURIComponent(row.avatar_asset_id)}`
+      : null,
+    score: Number(row.score),
+  }));
 }
 
 export async function lookupLedger(
@@ -335,7 +400,7 @@ export async function createAchievementVersion(
   }
   const name = normalizeText(input.name, "Name", 2, 80);
   const description = normalizeText(input.description, "Description", 5, 300);
-  const icon = normalizeText(input.icon, "Icon", 1, 16);
+  const icon = normalizeAchievementIcon(input.icon);
   const threshold = normalizePositiveInteger(
     input.threshold,
     "INVALID_ACHIEVEMENT_THRESHOLD",
@@ -391,4 +456,49 @@ export async function createAchievementVersion(
     status: input.enabled ? "ACTIVE" : "DISABLED",
     createdAt: now,
   };
+}
+
+
+export async function updateAchievementVersion(
+  db: D1Database,
+  input: {
+    existingAchievementId: unknown;
+    name: unknown;
+    description: unknown;
+    icon: unknown;
+    threshold: unknown;
+    enabled: unknown;
+  },
+  now = Date.now(),
+): Promise<AchievementAdminView> {
+  const existingAchievementId = normalizeText(
+    input.existingAchievementId,
+    "Achievement ID",
+    1,
+    256,
+  );
+  const existing = await db
+    .prepare(
+      `SELECT id, slug, version, name, description, icon, verified_source_threshold, status, created_at
+       FROM achievement_catalog
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(existingAchievementId)
+    .first<AchievementRow>();
+  if (!existing) {
+    throw new ReputationAdminError(404, "ACHIEVEMENT_NOT_FOUND", "The achievement was not found.");
+  }
+  return createAchievementVersion(
+    db,
+    {
+      slug: existing.slug,
+      name: input.name,
+      description: input.description,
+      icon: input.icon,
+      threshold: input.threshold,
+      enabled: input.enabled,
+    },
+    now,
+  );
 }
