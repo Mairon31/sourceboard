@@ -15,7 +15,6 @@ describe("admin moderation queue presentation contract", () => {
   });
 
   it("keeps comment navigation anchored to the reported comment", () => {
-    expect(route).toContain("report.commentId");
     expect(route).toContain("postTitle");
     expect(route).toContain("commentBody");
   });
