@@ -13,5 +13,18 @@ export const ruAdminMessages = {
   "admin.moderation.noResource": "Ресурс недоступен",
   "admin.moderation.search": "Поиск жалоб",
   "admin.moderation.searchPlaceholder": "Имя, заголовок, текст или ID жалобы",
-  "admin.moderation.reportCount": "{count} жалоб"
+  "admin.moderation.reportCount": "{count} жалоб",
+  "admin.source.integrity.search": "Поиск по целостности источников",
+  "admin.source.integrity.searchPlaceholder": "Пост, автор, URL или ID решения",
+  "admin.source.integrity.statusFilter": "Статус",
+  "admin.source.integrity.allStatuses": "Все статусы",
+  "admin.source.integrity.resultCount": "Результатов: {count}",
+  "admin.source.integrity.views": "Разделы целостности источников",
+  "admin.source.integrity.review": "На проверке",
+  "admin.source.integrity.verified": "Проверенные источники",
+  "admin.source.integrity.disputes": "Споры",
+  "admin.source.integrity.history": "История",
+  "admin.source.integrity.noMatch": "Нет записей о целостности источников по этим фильтрам.",
+  "admin.source.integrity.openPost": "Открыть пост",
+  "admin.source.integrity.openSource": "Открыть источник"
 } as const;
