@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { useLoaderData, useRevalidator } from "react-router";
+import { Link, useLoaderData, useRevalidator } from "react-router";
 import type { ModerationAction } from "../../worker/moderation/service";
 import { createModerationService } from "../../worker/moderation/service";
 import { AdminActionMenu } from "../components/admin/AdminActionMenu";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
+import { useI18n } from "../i18n/I18nProvider";
 import { Button, Modal, OverlayActionRow, Textarea } from "../components/ui";
 import { requireAdminPageAccess } from "../data/admin-access";
 import { readCsrfToken } from "../data/csrf";
@@ -63,18 +64,17 @@ function actionLabel(action: ModerationAction): string {
     .join(" ");
 }
 
-function reportDate(report: QueueReport): string {
-  return new Date(Number(report.createdAt)).toLocaleString("en-US", { timeZone: "UTC" });
-}
-
 export default function AdminModerationRoute() {
   const { queue } = useLoaderData<LoaderData>();
+  const { t, date } = useI18n();
   const revalidator = useRevalidator();
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [targetFilter, setTargetFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [sortOrder, setSortOrder] = useState<"NEWEST" | "OLDEST">("OLDEST");
   const [selectedAction, setSelectedAction] = useState<SelectedAction | null>(null);
+  const [selectedReport, setSelectedReport] = useState<QueueReport | null>(null);
   const [reason, setReason] = useState("");
   const [durationMs, setDurationMs] = useState("86400000");
   const [busy, setBusy] = useState(false);
@@ -82,7 +82,22 @@ export default function AdminModerationRoute() {
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const visibleQueue = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
     return [...queue]
+      .filter((report) => {
+        if (!normalizedSearch) return true;
+        return [
+          report.id,
+          report.targetId,
+          report.reporterUsername,
+          report.reportedUsername,
+          report.postTitle,
+          report.commentBody,
+          report.detail,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+      })
       .filter((report) => statusFilter === "ALL" || String(report.status) === statusFilter)
       .filter((report) => targetFilter === "ALL" || String(report.targetType) === targetFilter)
       .filter((report) => categoryFilter === "ALL" || String(report.category) === categoryFilter)
@@ -90,7 +105,7 @@ export default function AdminModerationRoute() {
         const delta = Number(a.createdAt) - Number(b.createdAt);
         return sortOrder === "OLDEST" ? delta : -delta;
       });
-  }, [categoryFilter, queue, sortOrder, statusFilter, targetFilter]);
+  }, [categoryFilter, queue, search, sortOrder, statusFilter, targetFilter]);
 
   function beginAction(report: QueueReport, action: ModerationAction) {
     const targetType = String(report.targetType);
@@ -144,6 +159,14 @@ export default function AdminModerationRoute() {
     }
   }
 
+  function formatReportDate(report: QueueReport): string {
+    return date(Number(report.createdAt), {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    });
+  }
+
   function actionMenu(report: QueueReport) {
     const actions = actionsForTarget(String(report.targetType));
     if (!actions.length) return <span className="product-search-count">No direct actions</span>;
@@ -168,6 +191,15 @@ export default function AdminModerationRoute() {
 
       <section className="admin-section">
         <div className="admin-filter-bar" aria-label="Moderation filters">
+          <label className="sb-field admin-filter-control admin-filter-control--search">
+            <span className="sb-field__label">{t("admin.moderation.search")}</span>
+            <input
+              className="sb-input"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("admin.moderation.searchPlaceholder")}
+            />
+          </label>
           <label className="sb-field admin-filter-control">
             <span className="sb-field__label">Status</span>
             <select
@@ -222,7 +254,9 @@ export default function AdminModerationRoute() {
               <option value="NEWEST">Newest first</option>
             </select>
           </label>
-          <span className="product-search-count">{visibleQueue.length} reports</span>
+          <span className="product-search-count">
+            {t("admin.moderation.reportCount", { count: visibleQueue.length })}
+          </span>
         </div>
 
         {feedback ? (
@@ -235,23 +269,43 @@ export default function AdminModerationRoute() {
           <>
             <div className="admin-table admin-desktop-table" role="table">
               <div className="admin-table__row admin-table__row--header" role="row">
-                <span>Target</span>
-                <span>Category</span>
-                <span>Status</span>
-                <span>Reported</span>
-                <span>Actions</span>
+                <span>{t("admin.moderation.context")}</span>
+                <span>{t("admin.moderation.reporter")}</span>
+                <span>{t("admin.moderation.reason")}</span>
+                <span>{t("admin.moderation.resource")}</span>
+                <span>{t("admin.moderation.details")}</span>
               </div>
               {visibleQueue.map((report) => (
                 <div className="admin-table__row" role="row" key={String(report.id)}>
                   <div className="admin-table__copy">
-                    <strong>{String(report.targetType)}</strong>
-                    <span>{String(report.targetId)}</span>
+                    <strong>{report.postTitle ?? String(report.targetType)}</strong>
+                    <span>{report.commentBody ?? String(report.targetId)}</span>
+                    <span>{report.reportedUsername ?? "—"}</span>
+                  </div>
+                  <div className="admin-table__copy">
+                    <span>{report.reporterUsername ?? report.reporterUserId}</span>
+                    <span>{String(report.targetType)} · {String(report.category)}</span>
+                  </div>
+                  <div className="admin-table__copy">
+                    <span className="admin-status-badge">{String(report.status)}</span>
                     {report.detail ? <span>{String(report.detail)}</span> : null}
                   </div>
-                  <span>{String(report.category)}</span>
-                  <span className="admin-status-badge">{String(report.status)}</span>
-                  <span>{reportDate(report)}</span>
-                  <div className="admin-action-cell">{actionMenu(report)}</div>
+                  <span>{formatReportDate(report)}</span>
+                  <div className="admin-action-cell">
+                    {report.resourceUrl ? (
+                      <Link className="admin-report-link" to={report.resourceUrl}>
+                        {t("common.view")}
+                      </Link>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedReport(report)}
+                    >
+                      {t("admin.moderation.details")}
+                    </Button>
+                    {actionMenu(report)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -261,17 +315,34 @@ export default function AdminModerationRoute() {
                 <article className="admin-mobile-review-card admin-surface" key={String(report.id)}>
                   <div className="admin-mobile-review-card__row">
                     <div className="admin-table__copy">
-                      <strong>{String(report.targetType)}</strong>
-                      <span>{String(report.targetId)}</span>
+                      <strong>{report.postTitle ?? String(report.targetType)}</strong>
+                      <span>{report.reportedUsername ?? report.targetId}</span>
                     </div>
                     <span className="admin-status-badge">{String(report.status)}</span>
                   </div>
+                  <div className="admin-table__copy">
+                    <span>{t("admin.moderation.reporter")}: {report.reporterUsername ?? report.reporterUserId}</span>
+                    <span>{report.commentBody ?? report.detail ?? "—"}</span>
+                  </div>
                   <div className="product-chip-row">
                     <span className="admin-status-badge">{String(report.category)}</span>
-                    <span className="product-search-count">{reportDate(report)}</span>
+                    <span className="product-search-count">{formatReportDate(report)}</span>
                   </div>
-                  {report.detail ? <p>{String(report.detail)}</p> : null}
-                  <div className="admin-action-cell">{actionMenu(report)}</div>
+                  <div className="admin-action-cell">
+                    {report.resourceUrl ? (
+                      <Link className="admin-report-link" to={report.resourceUrl}>
+                        {t("common.view")}
+                      </Link>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedReport(report)}
+                    >
+                      {t("admin.moderation.details")}
+                    </Button>
+                    {actionMenu(report)}
+                  </div>
                 </article>
               ))}
             </div>
@@ -280,6 +351,77 @@ export default function AdminModerationRoute() {
           <p className="product-empty-state">No moderation reports match these filters.</p>
         )}
       </section>
+
+      {selectedReport ? (
+        <Modal
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedReport(null);
+          }}
+          title={t("admin.moderation.detailsTitle")}
+          description={t("admin.moderation.detailsDescription")}
+        >
+          <div className="admin-report-details">
+            <dl>
+              <div>
+                <dt>{t("admin.moderation.reporter")}</dt>
+                <dd>{selectedReport.reporterUsername ?? selectedReport.reporterUserId}</dd>
+              </div>
+              <div>
+                <dt>{t("admin.moderation.reported")}</dt>
+                <dd>{selectedReport.reportedUsername ?? selectedReport.reportedUserId ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>{t("admin.moderation.context")}</dt>
+                <dd>{selectedReport.postTitle ?? selectedReport.targetId}</dd>
+              </div>
+              <div>
+                <dt>{t("admin.moderation.reason")}</dt>
+                <dd>{selectedReport.detail ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>{t("admin.moderation.resource")}</dt>
+                <dd>
+                  {selectedReport.resourceUrl ? (
+                    <Link to={selectedReport.resourceUrl}>{t("admin.moderation.openResource")}</Link>
+                  ) : (
+                    t("admin.moderation.noResource")
+                  )}
+                </dd>
+              </div>
+            </dl>
+            {selectedReport.commentBody ? (
+              <p className="admin-report-details__body">{selectedReport.commentBody}</p>
+            ) : null}
+            <section>
+              <h3>{t("admin.moderation.history")}</h3>
+              {selectedReport.moderationHistory.length ? (
+                <ol>
+                  {selectedReport.moderationHistory.map((entry) => (
+                    <li key={entry.id}>
+                      <strong>{entry.action}</strong>
+                      <span>
+                        {entry.actorUsername ?? entry.actorUserId ?? "—"} · {formatReportDate({
+                          ...selectedReport,
+                          createdAt: entry.createdAt,
+                        })}
+                      </span>
+                      {entry.reason ? <span>{entry.reason}</span> : null}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>{t("admin.moderation.noHistory")}</p>
+              )}
+            </section>
+            <OverlayActionRow>
+              <Button variant="ghost" onClick={() => setSelectedReport(null)}>
+                {t("common.close")}
+              </Button>
+            </OverlayActionRow>
+          </div>
+        </Modal>
+      ) : null}
 
       {selectedAction ? (
         <Modal
