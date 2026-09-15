@@ -651,7 +651,6 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
 }
 
 function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; canRevoke: boolean }) {
-  const { t } = useI18n();
   const revalidator = useRevalidator();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
