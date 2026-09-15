@@ -95,6 +95,79 @@ export function assertReason(reason: string): string {
   return value;
 }
 
+export interface ModerationHistoryEntry {
+  id: string;
+  kind: "AUDIT" | "ACTION";
+  action: string;
+  reason: string | null;
+  actorUserId: string | null;
+  createdAt: number;
+}
+
+export interface ModerationQueueReport {
+  id: string;
+  reporterUserId: string;
+  reporterUsername: string | null;
+  reportedUserId: string | null;
+  reportedUsername: string | null;
+  targetType: ReportTarget;
+  targetId: string;
+  category: ReportCategory;
+  detail: string | null;
+  status: ReportStatus;
+  assigneeUserId: string | null;
+  createdAt: number;
+  updatedAt: number;
+  postId: string | null;
+  postSlug: string | null;
+  postTitle: string | null;
+  commentId: string | null;
+  commentBody: string | null;
+  sourceUrl: string | null;
+  resourceUrl: string | null;
+  moderationHistory: ModerationHistoryEntry[];
+}
+
+interface ModerationQueueRow extends Omit<ModerationQueueReport, "resourceUrl" | "moderationHistory"> {
+  moderationHistoryJson: string | null;
+}
+
+function parseModerationHistory(value: unknown): ModerationHistoryEntry[] {
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      const row = entry as Record<string, unknown>;
+      const action = typeof row.action === "string" ? row.action : null;
+      if (!action) return [];
+      const kind = row.kind === "ACTION" ? "ACTION" : "AUDIT";
+      return [
+        {
+          id: String(row.id ?? ""),
+          kind,
+          action,
+          reason: typeof row.reason === "string" ? row.reason : null,
+          actorUserId: typeof row.actorUserId === "string" ? row.actorUserId : null,
+          createdAt: Number(row.createdAt ?? 0),
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function moderationResourceUrl(row: ModerationQueueRow): string | null {
+  if (row.targetType === "USER") {
+    return row.reportedUsername ? `/u/${encodeURIComponent(row.reportedUsername)}` : null;
+  }
+  if (!row.postId) return null;
+  const postPath = `/posts/${encodeURIComponent(row.postId)}${row.postSlug ? `/${encodeURIComponent(row.postSlug)}` : ""}`;
+  return row.commentId ? `${postPath}#comment-${encodeURIComponent(row.commentId)}` : postPath;
+}
+
 export function createModerationService(db: D1Database, options: { events?: Queue } = {}) {
   async function hasActiveSanction(
     userId: string,
@@ -168,17 +241,94 @@ export function createModerationService(db: D1Database, options: { events?: Queu
     return { id, status: "OPEN" as const };
   }
 
-  async function listQueue(limit = 50) {
+  async function listQueue(limit = 50): Promise<ModerationQueueReport[]> {
     const result = await db
       .prepare(
-        `SELECT id, reporter_user_id AS reporterUserId, target_type AS targetType, target_id AS targetId,
-                category, detail, status, assignee_user_id AS assigneeUserId, created_at AS createdAt, updated_at AS updatedAt
-         FROM moderation_reports WHERE status IN ('OPEN', 'IN_REVIEW')
-         ORDER BY created_at ASC LIMIT ?`,
+        `SELECT
+           mr.id,
+           mr.reporter_user_id AS reporterUserId,
+           reporter.username AS reporterUsername,
+           COALESCE(directPost.author_id, targetComment.author_id, sourceComment.author_id, sourcePost.author_id, targetUser.id) AS reportedUserId,
+           reported.username AS reportedUsername,
+           mr.target_type AS targetType,
+           mr.target_id AS targetId,
+           mr.category,
+           mr.detail,
+           mr.status,
+           mr.assignee_user_id AS assigneeUserId,
+           mr.created_at AS createdAt,
+           mr.updated_at AS updatedAt,
+           COALESCE(directPost.id, targetComment.post_id, sourcePost.id, sourceResolution.post_id) AS postId,
+           COALESCE(directPost.slug, commentPost.slug, sourcePost.slug) AS postSlug,
+           COALESCE(directPost.title, commentPost.title, sourcePost.title) AS postTitle,
+           COALESCE(targetComment.id, sourceComment.id) AS commentId,
+           COALESCE(targetComment.body_plaintext, sourceComment.body_plaintext) AS commentBody,
+           sourceResolution.canonical_source_url AS sourceUrl,
+           COALESCE((
+             SELECT json_group_array(json_object(
+               'id', history.id,
+               'kind', history.kind,
+               'action', history.action,
+               'reason', history.reason,
+               'actorUserId', history.actorUserId,
+               'createdAt', history.createdAt
+             ))
+             FROM (
+               SELECT
+                 audit.id,
+                 'AUDIT' AS kind,
+                 audit.action,
+                 audit.reason,
+                 audit.actor_user_id AS actorUserId,
+                 audit.created_at AS createdAt
+               FROM audit_logs audit
+               WHERE (audit.target_type = mr.target_type AND audit.target_id = mr.target_id)
+                  OR (audit.target_type = 'REPORT' AND audit.target_id = mr.id)
+               UNION ALL
+               SELECT
+                 action.id,
+                 'ACTION' AS kind,
+                 action.action,
+                 action.reason,
+                 action.actor_user_id AS actorUserId,
+                 action.created_at AS createdAt
+               FROM moderation_actions action
+               WHERE action.target_type = mr.target_type AND action.target_id = mr.target_id
+             ) history
+           ), '[]') AS moderationHistoryJson
+         FROM moderation_reports mr
+         JOIN users reporter ON reporter.id = mr.reporter_user_id
+         LEFT JOIN posts directPost
+           ON mr.target_type = 'POST' AND directPost.id = mr.target_id
+         LEFT JOIN comments targetComment
+           ON mr.target_type = 'COMMENT' AND targetComment.id = mr.target_id
+         LEFT JOIN posts commentPost ON commentPost.id = targetComment.post_id
+         LEFT JOIN source_resolutions sourceResolution
+           ON mr.target_type = 'SOURCE' AND sourceResolution.id = mr.target_id
+         LEFT JOIN comments sourceComment ON sourceComment.id = sourceResolution.comment_id
+         LEFT JOIN posts sourcePost ON sourcePost.id = sourceResolution.post_id
+         LEFT JOIN users targetUser
+           ON mr.target_type = 'USER' AND targetUser.id = mr.target_id
+         LEFT JOIN users reported
+           ON reported.id = COALESCE(
+             directPost.author_id,
+             targetComment.author_id,
+             sourceComment.author_id,
+             sourcePost.author_id,
+             targetUser.id
+           )
+         WHERE mr.status IN ('OPEN', 'IN_REVIEW')
+         ORDER BY mr.created_at ASC
+         LIMIT ?`,
       )
       .bind(Math.min(Math.max(1, Math.floor(limit)), 100))
-      .all();
-    return result.results;
+      .all<ModerationQueueRow>();
+
+    return result.results.map((row) => ({
+      ...row,
+      resourceUrl: moderationResourceUrl(row),
+      moderationHistory: parseModerationHistory(row.moderationHistoryJson),
+    }));
   }
 
   async function reviewReport(input: {
