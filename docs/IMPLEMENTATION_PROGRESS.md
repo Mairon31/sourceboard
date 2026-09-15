@@ -940,10 +940,10 @@ Status: **COMPLETED — merged to `master`; standard CI green**
 
 ## Gap Closure PR #46 — 2026-09-15
 
-Status: **PRE-MERGE VERIFIED — CodeRabbit authentication remains externally blocked**
+Status: **PRE-MERGE VERIFIED — CodeRabbit waived by owner**
 
 - The approved gap-closure scope is implemented on PR **#46**, branch `feature/sourceboard-gap-closure-sep14`.
 - Root causes fixed after the inherited CI failures: D1's compound-select term limit in `getAdminPage`, server-only Source Integrity loader leakage into the browser bundle, stale static route contracts, ambiguous responsive E2E locators, and invalid `posts.image_asset_id` E2E fixtures.
 - Link-preview lifecycle, `MINIMAL` status migration/schema support, Accepted/Verified rendering, private `/profile` vs public `/u/:username`, canonical `AvatarStage` geometry and low-cost frames, enriched moderation reports, Source Integrity filters, versioned achievements/custom icons, Top 15 reputation and six-locale CMS remain covered by the focused tests already present in the PR.
 - Exact branch HEAD `a0672834286c8cf258ffb1d7df77e4bbba0dd1af` passed GitHub Actions run **#2006** (`34966696302`): production dependency audit (0 vulnerabilities), format/lint, strict TypeScript, **166 unit files / 670 unit tests**, production build, Worker dry-run, Chromium installation, **36 D1 migrations**, and **241/241 Playwright E2E tests**.
-- CodeRabbit CLI `0.7.6` was installed and its official agent login was started, but the connected browser has a saved policy blocking `github.com`; no CodeRabbit review or manual substitute is being claimed. Merge remains pending authenticated CodeRabbit review and its follow-up verification.
+- CodeRabbit review is intentionally waived by the repository owner for this PR; no CodeRabbit findings or substitute review are being claimed.
