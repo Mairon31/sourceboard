@@ -13,5 +13,18 @@ export const deAdminMessages = {
   "admin.moderation.noResource": "Ressource nicht verfügbar",
   "admin.moderation.search": "Meldungen suchen",
   "admin.moderation.searchPlaceholder": "Nutzer, Titel, Text oder Meldungs-ID",
-  "admin.moderation.reportCount": "{count} Meldungen"
+  "admin.moderation.reportCount": "{count} Meldungen",
+  "admin.source.integrity.search": "Quellenintegrität durchsuchen",
+  "admin.source.integrity.searchPlaceholder": "Beitrag, Autor, URL oder Auflösungs-ID",
+  "admin.source.integrity.statusFilter": "Status",
+  "admin.source.integrity.allStatuses": "Alle Status",
+  "admin.source.integrity.resultCount": "{count} Ergebnisse",
+  "admin.source.integrity.views": "Ansichten zur Quellenintegrität",
+  "admin.source.integrity.review": "Zu prüfen",
+  "admin.source.integrity.verified": "Verifizierte Quellen",
+  "admin.source.integrity.disputes": "Streitfälle",
+  "admin.source.integrity.history": "Verlauf",
+  "admin.source.integrity.noMatch": "Keine Einträge zur Quellenintegrität passen zu diesen Filtern.",
+  "admin.source.integrity.openPost": "Beitrag öffnen",
+  "admin.source.integrity.openSource": "Quelle öffnen"
 } as const;
