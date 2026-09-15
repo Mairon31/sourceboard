@@ -128,6 +128,19 @@ function ProfileServiceUnavailable() {
   );
 }
 
+function AchievementIcon({ icon }: { icon: string }) {
+  const mediaMatch = /^media:([A-Za-z0-9_-]{8,128})$/.exec(icon);
+  if (!mediaMatch) return <span aria-hidden="true">{icon}</span>;
+  return (
+    <img
+      className="product-achievement-icon"
+      src={`/api/media/achievement-icons/${encodeURIComponent(mediaMatch[1])}`}
+      alt=""
+      loading="lazy"
+    />
+  );
+}
+
 function ContributionHistory({ profile }: { profile: PublicProfile }) {
   const { t } = useI18n();
   return (
@@ -169,7 +182,7 @@ function ContributionHistory({ profile }: { profile: PublicProfile }) {
         >
           {profile.achievements.map((achievement) => (
             <Badge key={achievement.id} tone="neutral">
-              {achievement.icon} {achievement.name}
+              <AchievementIcon icon={achievement.icon} /> {achievement.name}
             </Badge>
           ))}
         </div>
