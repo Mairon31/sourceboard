@@ -22,17 +22,12 @@ function seedPersistedPreview() {
   seedNavigationPostFixture();
   const now = Date.now();
   const editDeadline = now + 24 * 60 * 60 * 1000;
-  const commentIds = [
-    "e2e-link-preview-comment",
-    "e2e-link-preview-partial",
-    "e2e-link-preview-minimal",
-    "e2e-link-preview-url-only",
   ];
   executeLocalSql(`
     DELETE FROM comment_link_previews
-    WHERE comment_id IN (${commentIds.map((id) => \`'${id}'\`).join(",")});
+    WHERE comment_id IN ('e2e-link-preview-comment', 'e2e-link-preview-partial', 'e2e-link-preview-minimal', 'e2e-link-preview-url-only');
     DELETE FROM comments
-    WHERE id IN (${commentIds.map((id) => \`'${id}'\`).join(",")});
+    WHERE id IN ('e2e-link-preview-comment', 'e2e-link-preview-partial', 'e2e-link-preview-minimal', 'e2e-link-preview-url-only');
 
     INSERT INTO comments
       (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
