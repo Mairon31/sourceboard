@@ -37,7 +37,7 @@ export const frAdminMessages = {
   "admin.reputation.topTitle": "Top 15 de réputation",
   "admin.reputation.topDescription": "Utilisateurs classés selon leur solde actuel de points.",
   "admin.reputation.topEmpty": "Aucun point de réputation n’a encore été enregistré.",
-  "admin.reputation.points": "{count} points"
+  "admin.reputation.points": "{count} points",
   "admin.content.eyebrow": "Contenu",
   "admin.content.title": "Docs, juridique et pages",
   "admin.content.description": "Contenu multilingue versionné. Les brouillons restent privés jusqu’à une publication explicite.",

@@ -37,7 +37,7 @@ export const deAdminMessages = {
   "admin.reputation.topTitle": "Top 15 Reputation",
   "admin.reputation.topDescription": "Nutzer nach ihrem aktuellen Punktekontostand.",
   "admin.reputation.topEmpty": "Noch keine Reputationspunkte erfasst.",
-  "admin.reputation.points": "{count} Punkte"
+  "admin.reputation.points": "{count} Punkte",
   "admin.content.eyebrow": "Inhalt",
   "admin.content.title": "Doku, Rechtliches & Seiten",
   "admin.content.description": "Versionierter mehrsprachiger Inhalt. Entwürfe bleiben privat, bis eine ausdrückliche Veröffentlichung erfolgt.",

@@ -37,7 +37,7 @@ export const ptAdminMessages = {
   "admin.reputation.topTitle": "Top 15 de reputação",
   "admin.reputation.topDescription": "Usuários ordenados pelo saldo atual de pontos.",
   "admin.reputation.topEmpty": "Nenhum ponto de reputação foi registrado ainda.",
-  "admin.reputation.points": "{count} pontos"
+  "admin.reputation.points": "{count} pontos",
   "admin.content.eyebrow": "Conteúdo",
   "admin.content.title": "Docs, Legal e Páginas",
   "admin.content.description": "Conteúdo multilíngue versionado. Rascunhos permanecem privados até uma publicação explícita.",

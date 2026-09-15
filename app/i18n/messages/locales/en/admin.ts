@@ -37,7 +37,7 @@ export const enAdminMessages = {
   "admin.reputation.topTitle": "Top 15 reputation",
   "admin.reputation.topDescription": "Users ranked by their current point balance.",
   "admin.reputation.topEmpty": "No reputation points have been recorded yet.",
-  "admin.reputation.points": "{count} points"
+  "admin.reputation.points": "{count} points",
   "admin.content.eyebrow": "Content",
   "admin.content.title": "Docs, Legal & Pages",
   "admin.content.description": "Versioned multilingual content. Draft revisions stay private until an explicit publish action selects them.",

@@ -37,7 +37,7 @@ export const ruAdminMessages = {
   "admin.reputation.topTitle": "Топ-15 по репутации",
   "admin.reputation.topDescription": "Пользователи по текущему балансу баллов.",
   "admin.reputation.topEmpty": "Баллы репутации ещё не зарегистрированы.",
-  "admin.reputation.points": "{count} баллов"
+  "admin.reputation.points": "{count} баллов",
   "admin.content.eyebrow": "Контент",
   "admin.content.title": "Документы, правила и страницы",
   "admin.content.description": "Версионируемый многоязычный контент. Черновики остаются приватными до явной публикации.",

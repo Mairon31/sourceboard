@@ -37,7 +37,7 @@ export const esAdminMessages = {
   "admin.reputation.topTitle": "Top 15 de reputación",
   "admin.reputation.topDescription": "Usuarios ordenados por su saldo actual de puntos.",
   "admin.reputation.topEmpty": "Aún no se han registrado puntos de reputación.",
-  "admin.reputation.points": "{count} puntos"
+  "admin.reputation.points": "{count} puntos",
   "admin.content.eyebrow": "Contenido",
   "admin.content.title": "Docs, legales y páginas",
   "admin.content.description": "Contenido multilingüe versionado. Los borradores permanecen privados hasta publicarlos explícitamente.",
