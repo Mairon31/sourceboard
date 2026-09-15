@@ -13,5 +13,18 @@ export const frAdminMessages = {
   "admin.moderation.noResource": "Ressource indisponible",
   "admin.moderation.search": "Rechercher des signalements",
   "admin.moderation.searchPlaceholder": "Utilisateur, titre, texte ou ID du signalement",
-  "admin.moderation.reportCount": "{count} signalements"
+  "admin.moderation.reportCount": "{count} signalements",
+  "admin.source.integrity.search": "Rechercher dans l’intégrité des sources",
+  "admin.source.integrity.searchPlaceholder": "Publication, auteur, URL ou ID de résolution",
+  "admin.source.integrity.statusFilter": "Statut",
+  "admin.source.integrity.allStatuses": "Tous les statuts",
+  "admin.source.integrity.resultCount": "{count} résultats",
+  "admin.source.integrity.views": "Vues de l’intégrité des sources",
+  "admin.source.integrity.review": "À examiner",
+  "admin.source.integrity.verified": "Sources vérifiées",
+  "admin.source.integrity.disputes": "Litiges",
+  "admin.source.integrity.history": "Historique",
+  "admin.source.integrity.noMatch": "Aucun enregistrement d’intégrité ne correspond à ces filtres.",
+  "admin.source.integrity.openPost": "Ouvrir la publication",
+  "admin.source.integrity.openSource": "Ouvrir la source"
 } as const;
