@@ -101,6 +101,7 @@ export interface ModerationHistoryEntry {
   action: string;
   reason: string | null;
   actorUserId: string | null;
+  actorUsername: string | null;
   createdAt: number;
 }
 
@@ -150,6 +151,7 @@ function parseModerationHistory(value: unknown): ModerationHistoryEntry[] {
           action,
           reason: typeof row.reason === "string" ? row.reason : null,
           actorUserId: typeof row.actorUserId === "string" ? row.actorUserId : null,
+          actorUsername: typeof row.actorUsername === "string" ? row.actorUsername : null,
           createdAt: Number(row.createdAt ?? 0),
         },
       ];
@@ -280,8 +282,10 @@ export function createModerationService(db: D1Database, options: { events?: Queu
                  audit.action,
                  audit.reason,
                  audit.actor_user_id AS actorUserId,
+                 auditActor.username AS actorUsername,
                  audit.created_at AS createdAt
                FROM audit_logs audit
+               LEFT JOIN users auditActor ON auditActor.id = audit.actor_user_id
                WHERE (audit.target_type = mr.target_type AND audit.target_id = mr.target_id)
                   OR (audit.target_type = 'REPORT' AND audit.target_id = mr.id)
                UNION ALL
@@ -291,8 +295,10 @@ export function createModerationService(db: D1Database, options: { events?: Queu
                  action.action,
                  action.reason,
                  action.actor_user_id AS actorUserId,
+                 actionActor.username AS actorUsername,
                  action.created_at AS createdAt
                FROM moderation_actions action
+               LEFT JOIN users actionActor ON actionActor.id = action.actor_user_id
                WHERE action.target_type = mr.target_type AND action.target_id = mr.target_id
              ) history
            ), '[]') AS moderationHistoryJson
