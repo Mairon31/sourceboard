@@ -26,5 +26,16 @@ export const enAdminMessages = {
   "admin.source.integrity.history": "History",
   "admin.source.integrity.noMatch": "No source integrity records match these filters.",
   "admin.source.integrity.openPost": "Open post",
-  "admin.source.integrity.openSource": "Open source"
+  "admin.source.integrity.openSource": "Open source",
+  "admin.reputation.edit": "Edit",
+  "admin.reputation.cancel": "Cancel edit",
+  "admin.reputation.editing": "Editing a new immutable version",
+  "admin.reputation.iconUpload": "Custom icon (PNG or GIF)",
+  "admin.reputation.iconHelp": "Optional. Maximum 2 MiB and 1024 pixels.",
+  "admin.reputation.saveVersion": "Save achievement version",
+  "admin.reputation.createVersion": "Create achievement version",
+  "admin.reputation.topTitle": "Top 15 reputation",
+  "admin.reputation.topDescription": "Users ranked by their current point balance.",
+  "admin.reputation.topEmpty": "No reputation points have been recorded yet.",
+  "admin.reputation.points": "{count} points"
 } as const;
