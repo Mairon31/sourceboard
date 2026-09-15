@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useLoaderData, useRevalidator } from "react-router";
 import type { ModerationAction } from "../../worker/moderation/service";
+import type { MessageKey } from "../i18n";
 import { createModerationService } from "../../worker/moderation/service";
 import { AdminActionMenu } from "../components/admin/AdminActionMenu";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
@@ -56,12 +57,36 @@ function actionsForTarget(targetType: string): readonly ModerationAction[] {
   return [];
 }
 
-function actionLabel(action: ModerationAction): string {
-  return action
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+const ACTION_LABEL_KEYS: Record<ModerationAction, MessageKey> = {
+  WARN: "admin.moderation.actionWarn",
+  HIDE: "admin.moderation.actionHide",
+  RESTORE: "admin.moderation.actionRestore",
+  LOCK: "admin.moderation.actionLock",
+  UNLOCK: "admin.moderation.actionUnlock",
+  POSTING_RESTRICTION: "admin.moderation.actionPostingRestriction",
+  COMMENT_RESTRICTION: "admin.moderation.actionCommentRestriction",
+  SUSPEND: "admin.moderation.actionSuspend",
+  BAN: "admin.moderation.actionBan",
+  REVOKE_SOURCE_VERIFICATION: "admin.moderation.actionRevokeSourceVerification",
+  MARK_NSFW: "admin.moderation.actionMarkNsfw",
+  UNMARK_NSFW: "admin.moderation.actionUnmarkNsfw",
+};
+
+function actionLabel(action: ModerationAction, translate: (key: MessageKey) => string): string {
+  return translate(ACTION_LABEL_KEYS[action]);
+}
+
+function targetLabel(
+  targetType: ActionTarget,
+  translate: (key: MessageKey) => string,
+): string {
+  const key =
+    targetType === "POST"
+      ? "admin.moderation.targetPost"
+      : targetType === "COMMENT"
+        ? "admin.moderation.targetComment"
+        : "admin.moderation.targetUser";
+  return translate(key);
 }
 
 export default function AdminModerationRoute() {
@@ -148,7 +173,10 @@ export default function AdminModerationRoute() {
         setActionError(payload?.error?.message ?? t("admin.moderation.actionFailed"));
         return;
       }
-      setFeedback(t("admin.moderation.actionApplied", { action: actionLabel(selectedAction.action), target: selectedAction.targetType }));
+      setFeedback(t("admin.moderation.actionApplied", {
+        action: actionLabel(selectedAction.action, t),
+        target: targetLabel(selectedAction.targetType, t),
+      }));
       setSelectedAction(null);
       setReason("");
       revalidator.revalidate();
@@ -174,7 +202,7 @@ export default function AdminModerationRoute() {
       <AdminActionMenu
         label={t("admin.moderation.actions")}
         items={actions.map((action) => ({
-          label: actionLabel(action),
+          label: actionLabel(action, t),
           onSelect: () => beginAction(report, action),
         }))}
       />
@@ -429,7 +457,10 @@ export default function AdminModerationRoute() {
           onOpenChange={(open) => {
             if (!open && !busy) setSelectedAction(null);
           }}
-          title={`${actionLabel(selectedAction.action)} ${selectedAction.targetType.toLowerCase()}`}
+          title={t("admin.moderation.actionTitle", {
+              action: actionLabel(selectedAction.action, t),
+              target: targetLabel(selectedAction.targetType, t),
+            })}
           description={t("admin.moderation.targetDescription", { target: selectedAction.targetId })}
         >
           <div className="product-form-card">
