@@ -41,7 +41,7 @@ describe("low-cost avatar frame catalog", () => {
   it("seeds each cheap frame with a stable id, low price and matching preset", () => {
     for (const [preset, price] of CHEAP_FRAMES) {
       expect(catalog).toContain(`'store-frame-${preset}'`);
-      expect(catalog).toContain(`'${price}', '{"preset":"${preset}"}'`);
+      expect(catalog).toContain(`, ${price}, '{"preset":"${preset}"}'`);
     }
   });
 
