@@ -295,9 +295,7 @@ describe("Cosmetic presentation overhaul", () => {
       /\.product-profile-effect-layer__node\s*\{[^}]*opacity:\s*(?:0\.[1-9]\d*|1(?:\.0+)?)\s*!important;/s,
     );
 
-    expect(stageCss).toContain(
-      ".product-avatar-stage__part {\n    animation: none !important;",
-    );
+    expect(stageCss).toMatch(/\.product-avatar-stage__part\s*\{\s*animation: none !important;/s);
   });
 
   it("preserves legacy cosmetic preset compatibility", () => {
@@ -320,3 +318,4 @@ describe("Cosmetic presentation overhaul", () => {
     }
   });
 });
+
