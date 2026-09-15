@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migrationUrl = new URL("../../migrations/0036_comment_link_preview_minimal.sql", import.meta.url);
+const migrationUrl = new URL("../../migrations/0036_link_preview_minimal_status.sql", import.meta.url);
 const typesSource = readFileSync(new URL("../../worker/comments/types.ts", import.meta.url), "utf8");
 
 describe("MINIMAL link preview persistence", () => {
