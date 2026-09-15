@@ -283,7 +283,7 @@ export default function AdminVerificationsRoute() {
 
   const integrityEntries = useMemo<IntegrityEntry[]>(
     () => [
-      ...visibleCandidates.map((candidate) => ({
+      ...candidates.map((candidate) => ({
         id: candidate.commentId,
         status: "ACCEPTED",
         state: "ACTIVE",
@@ -298,7 +298,7 @@ export default function AdminVerificationsRoute() {
           .join(" ")
           .toLowerCase(),
       })),
-      ...visibleVerified.map((source) => ({
+      ...verified.map((source) => ({
         id: source.resolutionId,
         status: "VERIFIED",
         state: "ACTIVE",
@@ -313,7 +313,7 @@ export default function AdminVerificationsRoute() {
           .join(" ")
           .toLowerCase(),
       })),
-      ...visibleDisputes.map((dispute) => ({
+      ...disputes.map((dispute) => ({
         id: dispute.reportId,
         status: dispute.status,
         state: dispute.status,
@@ -329,7 +329,7 @@ export default function AdminVerificationsRoute() {
           .join(" ")
           .toLowerCase(),
       })),
-      ...visibleHistory.map((entry) => ({
+      ...history.map((entry) => ({
         id: entry.id,
         status: entry.state,
         state: entry.state,
@@ -434,7 +434,7 @@ export default function AdminVerificationsRoute() {
       <section className="admin-section admin-integrity-results">
         {view === "review" ? (
           visibleCandidates.length ? (
-            candidates.map((candidate) => (
+            visibleCandidates.map((candidate) => (
               <VerificationCandidate key={candidate.commentId} candidate={candidate} />
             ))
           ) : (
@@ -449,7 +449,7 @@ export default function AdminVerificationsRoute() {
         {view === "verified" ? (
           visibleVerified.length ? (
             <div className="admin-integrity-list">
-              {verified.map((source) => (
+              {visibleVerified.map((source) => (
                 <VerifiedSourceCard
                   key={source.resolutionId}
                   source={source}
@@ -469,7 +469,7 @@ export default function AdminVerificationsRoute() {
         {view === "disputes" ? (
           visibleDisputes.length ? (
             <div className="admin-integrity-list">
-              {disputes.map((dispute) => (
+              {visibleDisputes.map((dispute) => (
                 <SourceDisputeCard
                   key={dispute.reportId}
                   dispute={dispute}
@@ -489,7 +489,7 @@ export default function AdminVerificationsRoute() {
         {view === "history" ? (
           visibleHistory.length ? (
             <div className="admin-integrity-history">
-              {history.map((entry) => (
+              {visibleHistory.map((entry) => (
                 <div className="admin-integrity-history__row" key={entry.id}>
                   <div className="product-chip-row">
                     <Badge>{entry.resolutionType}</Badge>
