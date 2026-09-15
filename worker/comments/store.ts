@@ -66,6 +66,7 @@ export interface CommentStore {
     richtextJson: string;
     attachmentJson: string | null;
     revisionId: string;
+    linkPreview?: CommentLinkPreviewSnapshot | null;
   }): Promise<boolean>;
   deleteComment(commentId: string, authorId: string, now: number): Promise<boolean>;
   toggleLike(input: {
@@ -236,7 +237,8 @@ function toRecord(row: CommentRow): CommentWithAuthor {
         fetchedAt: row.link_preview_fetched_at ?? row.created_at,
         metadataStatus:
           row.link_preview_metadata_status === "COMPLETE" ||
-          row.link_preview_metadata_status === "PARTIAL"
+          row.link_preview_metadata_status === "PARTIAL" ||
+          row.link_preview_metadata_status === "MINIMAL"
             ? row.link_preview_metadata_status
             : "URL_ONLY",
       }
@@ -599,27 +601,92 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       }
     },
 
-    async updateComment({ comment, richtextJson, attachmentJson, revisionId }) {
-      const result = await db
-        .prepare(
-          `UPDATE comments SET body_richtext_json = ?, body_plaintext = ?, attachment_json = ?,
-             updated_at = ?
-           WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND edit_deadline_at >= ?`,
-        )
-        .bind(
-          richtextJson,
-          comment.plaintext,
-          attachmentJson,
-          comment.updatedAt,
-          comment.id,
-          comment.authorId,
-          comment.updatedAt,
-        )
-        .run();
+    async updateComment({ comment, richtextJson, attachmentJson, revisionId, linkPreview }) {
+      const buildCommentUpdate = () =>
+        db
+          .prepare(
+            `UPDATE comments SET body_richtext_json = ?, body_plaintext = ?, attachment_json = ?,
+               updated_at = ?
+             WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND edit_deadline_at >= ?`,
+          )
+          .bind(
+            richtextJson,
+            comment.plaintext,
+            attachmentJson,
+            comment.updatedAt,
+            comment.id,
+            comment.authorId,
+            comment.updatedAt,
+          );
+      const buildStatements = (withLinkPreview: boolean) => {
+        const statements = [buildCommentUpdate()];
+        if (!withLinkPreview || linkPreview === undefined) return statements;
+        if (linkPreview === null) {
+          statements.push(
+            db
+              .prepare(
+                `DELETE FROM comment_link_previews
+                 WHERE comment_id = ?
+                   AND EXISTS (
+                     SELECT 1 FROM comments
+                     WHERE id = ? AND author_id = ? AND updated_at = ?
+                   )`,
+              )
+              .bind(comment.id, comment.id, comment.authorId, comment.updatedAt),
+          );
+          return statements;
+        }
+        statements.push(
+          db
+            .prepare(
+              `INSERT INTO comment_link_previews
+                (comment_id, canonical_url, site_name, title, description, image_url, fetched_at,
+                 metadata_status)
+               SELECT ?, ?, ?, ?, ?, ?, ?, ?
+               WHERE EXISTS (
+                 SELECT 1 FROM comments
+                 WHERE id = ? AND author_id = ? AND updated_at = ?
+               )
+               ON CONFLICT(comment_id) DO UPDATE SET
+                 canonical_url = excluded.canonical_url,
+                 site_name = excluded.site_name,
+                 title = excluded.title,
+                 description = excluded.description,
+                 image_url = excluded.image_url,
+                 fetched_at = excluded.fetched_at,
+                 metadata_status = excluded.metadata_status`,
+            )
+            .bind(
+              comment.id,
+              linkPreview.canonicalUrl,
+              linkPreview.siteName,
+              linkPreview.title,
+              linkPreview.description,
+              linkPreview.imageUrl,
+              linkPreview.fetchedAt,
+              linkPreview.metadataStatus,
+              comment.id,
+              comment.authorId,
+              comment.updatedAt,
+            ),
+        );
+        return statements;
+      };
+
+      let results: D1Result<unknown>[];
+      const shouldPersistLinkPreview =
+        linkPreview !== undefined && linkPreviewSchemaAvailable !== false;
+      try {
+        results = await db.batch(buildStatements(shouldPersistLinkPreview));
+      } catch (error) {
+        if (!shouldPersistLinkPreview || !isMissingCommentLinkPreviewTable(error)) throw error;
+        linkPreviewSchemaAvailable = false;
+        results = await db.batch(buildStatements(false));
+      }
       // D1 includes writes performed by AFTER UPDATE triggers in meta.changes.
       // public_post_search_comments_au can therefore make a single matched
       // comment update report more than one change.
-      if (result.meta.changes < 1) return false;
+      if ((results[0]?.meta.changes ?? 0) < 1) return false;
       await db
         .prepare(
           `INSERT INTO comment_revisions

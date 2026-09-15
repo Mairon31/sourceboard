@@ -293,31 +293,46 @@ function metadataValues(html: string): {
   description: string | null;
   siteName: string | null;
   image: string | null;
+  canonical: string | null;
 } {
   let ogTitle: string | null = null;
+  let twitterTitle: string | null = null;
   let description: string | null = null;
   let ogDescription: string | null = null;
+  let twitterDescription: string | null = null;
   let siteName: string | null = null;
   let ogImage: string | null = null;
   let twitterImage: string | null = null;
+  let canonical: string | null = null;
   for (const match of html.matchAll(/<meta\b[^>]*>/gi)) {
     const attributes = parseAttributes(match[0]);
     const key = (attributes.property ?? attributes.name ?? "").toLowerCase();
     const content = attributes.content ?? null;
     if (!content) continue;
     if (key === "og:title" && !ogTitle) ogTitle = content;
+    else if (key === "twitter:title" && !twitterTitle) twitterTitle = content;
     else if (key === "og:description" && !ogDescription) ogDescription = content;
+    else if (key === "twitter:description" && !twitterDescription) twitterDescription = content;
     else if (key === "description" && !description) description = content;
     else if (key === "og:site_name" && !siteName) siteName = content;
     else if (key === "og:image" && !ogImage) ogImage = content;
     else if (key === "twitter:image" && !twitterImage) twitterImage = content;
   }
+  for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
+    const attributes = parseAttributes(match[0]);
+    const rel = (attributes.rel ?? "").toLowerCase().split(/\s+/);
+    if (rel.includes("canonical") && attributes.href) {
+      canonical = attributes.href;
+      break;
+    }
+  }
   const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
   return {
-    title: cleanMetadata(ogTitle ?? titleMatch?.[1] ?? null, 160),
-    description: cleanMetadata(ogDescription ?? description, 320),
+    title: cleanMetadata(ogTitle ?? twitterTitle ?? titleMatch?.[1] ?? null, 160),
+    description: cleanMetadata(ogDescription ?? twitterDescription ?? description, 320),
     siteName: cleanMetadata(siteName, 80),
     image: cleanMetadata(ogImage ?? twitterImage, MAX_URL_LENGTH),
+    canonical: cleanMetadata(canonical, MAX_URL_LENGTH),
   };
 }
 
@@ -455,6 +470,18 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
 
           const html = await readBoundedText(response, MAX_HTML_BYTES);
           const metadata = metadataValues(html);
+          let canonicalUrl = current.toString();
+          if (metadata.canonical) {
+            try {
+              const candidate = normalizeLinkPreviewUrl(
+                new URL(metadata.canonical, current).toString(),
+              );
+              await assertPublicTarget(candidate, dependencies.resolveHost);
+              canonicalUrl = candidate.toString();
+            } catch {
+              // Canonical metadata is advisory. Unsafe or invalid targets are ignored.
+            }
+          }
           let imageUrl: string | null = null;
           if (metadata.image) {
             try {
@@ -472,13 +499,14 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             imageUrl,
           ].filter(Boolean).length;
           const snapshot: LinkPreviewSnapshot = {
-            canonicalUrl: current.toString(),
+            canonicalUrl,
             siteName: metadata.siteName,
             title: metadata.title,
             description: metadata.description,
             imageUrl,
             fetchedAt,
-            metadataStatus: present === 0 ? "URL_ONLY" : present >= 3 ? "COMPLETE" : "PARTIAL",
+            metadataStatus:
+              present === 0 ? "URL_ONLY" : present === 1 ? "MINIMAL" : present >= 3 ? "COMPLETE" : "PARTIAL",
           };
           try {
             await dependencies.cache?.put(cacheKey, snapshot, CACHE_TTL_SECONDS);

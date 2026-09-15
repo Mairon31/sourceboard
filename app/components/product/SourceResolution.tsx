@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import { useI18n } from "../../i18n/I18nProvider";
 import { Badge, Card, CheckIcon, ExternalLinkIcon, ShieldCheckIcon } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
+import { LinkPreviewCard } from "./LinkPreviewCard";
 import { RichText } from "./RichText";
 
 function AcceptedComment({ comment }: { comment: CommentView }) {
@@ -68,6 +69,7 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
             loading="lazy"
           />
         ) : null}
+        {comment.linkPreview ? <LinkPreviewCard preview={comment.linkPreview} compact /> : null}
       </div>
     </article>
   );

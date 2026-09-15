@@ -11,13 +11,19 @@ function previewLabel(preview: CommentLinkPreviewView, fallback: string): string
   }
 }
 
-export function LinkPreviewCard({ preview }: { preview: CommentLinkPreviewView }) {
+export function LinkPreviewCard({
+  preview,
+  compact = false,
+}: {
+  preview: CommentLinkPreviewView;
+  compact?: boolean;
+}) {
   const { t } = useI18n();
   const [imageFailed, setImageFailed] = useState(false);
   const hasImage = Boolean(preview.imageUrl && !imageFailed);
   return (
     <a
-      className="product-link-preview-card"
+      className={`product-link-preview-card${compact ? " product-link-preview-card--compact" : ""}`}
       href={preview.canonicalUrl}
       target="_blank"
       rel="noopener noreferrer"
