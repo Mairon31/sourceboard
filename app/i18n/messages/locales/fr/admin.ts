@@ -26,5 +26,16 @@ export const frAdminMessages = {
   "admin.source.integrity.history": "Historique",
   "admin.source.integrity.noMatch": "Aucun enregistrement d’intégrité ne correspond à ces filtres.",
   "admin.source.integrity.openPost": "Ouvrir la publication",
-  "admin.source.integrity.openSource": "Ouvrir la source"
+  "admin.source.integrity.openSource": "Ouvrir la source",
+  "admin.reputation.edit": "Modifier",
+  "admin.reputation.cancel": "Annuler la modification",
+  "admin.reputation.editing": "Modification d’une nouvelle version immuable",
+  "admin.reputation.iconUpload": "Icône personnalisée (PNG ou GIF)",
+  "admin.reputation.iconHelp": "Facultatif. 2 Mio et 1024 pixels maximum.",
+  "admin.reputation.saveVersion": "Enregistrer la version du succès",
+  "admin.reputation.createVersion": "Créer une version du succès",
+  "admin.reputation.topTitle": "Top 15 de réputation",
+  "admin.reputation.topDescription": "Utilisateurs classés selon leur solde actuel de points.",
+  "admin.reputation.topEmpty": "Aucun point de réputation n’a encore été enregistré.",
+  "admin.reputation.points": "{count} points"
 } as const;
