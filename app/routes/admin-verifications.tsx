@@ -79,8 +79,8 @@ function postHref(postId: string, postSlug: string | null): string {
     : `/posts/${encodeURIComponent(postId)}`;
 }
 
-function formatDate(value: number | null): string {
-  if (value === null) return "Unknown";
+function formatDate(value: number | null, unknownLabel: string): string {
+  if (value === null) return unknownLabel;
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
@@ -383,12 +383,12 @@ export default function AdminVerificationsRoute() {
     return (
       <AdminShell>
         <AdminPageHeader
-          eyebrow="Restricted"
-          title="Source integrity"
-          description="The source.verify capability is required."
+          eyebrow={t("admin.source.integrity.restrictedEyebrow")}
+          title={t("admin.source.integrity.restrictedTitle")}
+          description={t("admin.source.integrity.restrictedDescription")}
         />
         <Card className="product-empty-state">
-          Sign in with an authorized source verifier account to continue.
+          {t("admin.source.integrity.signInRequired")}
         </Card>
       </AdminShell>
     );
@@ -397,9 +397,9 @@ export default function AdminVerificationsRoute() {
   return (
     <AdminShell>
       <AdminPageHeader
-        eyebrow="Source integrity"
-        title="Accepted source integrity"
-        description="Review accepted sources, preserve canonical evidence, investigate disputes and keep revocations auditable from one workflow."
+        eyebrow={t("admin.source.integrity.eyebrow")}
+        title={t("admin.source.integrity.title")}
+        description={t("admin.source.integrity.description")}
       />
       <IntegrityTabs view={view} />
       <section className="admin-integrity-toolbar" aria-label={t("admin.source.integrity.search")}>
@@ -441,7 +441,7 @@ export default function AdminVerificationsRoute() {
             <Card className="product-empty-state admin-surface">
               {hasActiveFilters
                 ? t("admin.source.integrity.noMatch")
-                : "No accepted sources are waiting for review."}
+                : t("admin.source.integrity.noReview")}
             </Card>
           )
         ) : null}
@@ -461,7 +461,7 @@ export default function AdminVerificationsRoute() {
             <Card className="product-empty-state admin-surface">
               {hasActiveFilters
                 ? t("admin.source.integrity.noMatch")
-                : "No active verified sources."}
+                : t("admin.source.integrity.noVerified")}
             </Card>
           )
         ) : null}
@@ -481,7 +481,7 @@ export default function AdminVerificationsRoute() {
             <Card className="product-empty-state admin-surface">
               {hasActiveFilters
                 ? t("admin.source.integrity.noMatch")
-                : "No open source disputes."}
+                : t("admin.source.integrity.noDisputes")}
             </Card>
           )
         ) : null}
@@ -498,20 +498,32 @@ export default function AdminVerificationsRoute() {
                   <div>
                     <strong>{entry.postTitle}</strong>
                     <span>
-                      {entry.actorLabel ? `@${entry.actorLabel}` : "System"} ·{" "}
-                      {formatDate(entry.createdAt)}
+                      {entry.actorLabel
+                        ? `@${entry.actorLabel}`
+                        : t("admin.source.integrity.system")}{" "}
+                      · {formatDate(entry.createdAt, t("admin.source.integrity.unknown"))}
                     </span>
                     {entry.revokedAt ? (
                       <small>
-                        Revoked {formatDate(entry.revokedAt)}
-                        {entry.revokedByLabel ? ` by @${entry.revokedByLabel}` : ""}
-                        {entry.revokeReason ? ` · ${entry.revokeReason}` : ""}
+                        {t("admin.source.integrity.revokedAt", {
+                          date: formatDate(entry.revokedAt, t("admin.source.integrity.unknown")),
+                        })}
+                        {entry.revokedByLabel
+                          ? ` ${t("admin.source.integrity.revokedBy", {
+                              username: entry.revokedByLabel,
+                            })}`
+                          : ""}
+                        {entry.revokeReason
+                          ? ` ${t("admin.source.integrity.reasonDetail", {
+                              reason: entry.revokeReason,
+                            })}`
+                          : ""}
                       </small>
                     ) : null}
                   </div>
                   <div className="admin-integrity-actions">
                     <Link className="product-text-action" to={postHref(entry.postId, entry.postSlug)}>
-                      Open post
+                      {t("admin.source.integrity.openPost")}
                     </Link>
                     {entry.canonicalSourceUrl ? (
                       <a
@@ -531,7 +543,7 @@ export default function AdminVerificationsRoute() {
             <Card className="product-empty-state admin-surface">
               {hasActiveFilters
                 ? t("admin.source.integrity.noMatch")
-                : "No source resolution history."}
+                : t("admin.source.integrity.noHistory")}
             </Card>
           )
         ) : null}
@@ -573,14 +585,14 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        setStatus(payload?.error?.message ?? "Source verification could not be saved.");
+        setStatus(payload?.error?.message ?? t("admin.source.integrity.verifyFailed"));
         return;
       }
       formElement.reset();
-      setStatus("Source verified and moved to the verified ledger.");
+      setStatus(t("admin.source.integrity.verifySucceeded"));
       revalidator.revalidate();
     } catch {
-      setStatus("Source verification could not be saved.");
+      setStatus(t("admin.source.integrity.verifyFailed"));
     } finally {
       setBusy(false);
     }
@@ -590,13 +602,17 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
     <Card className="admin-verification-card admin-surface">
       <div className="admin-verification-card__context">
         <div className="product-chip-row">
-          <Badge>Accepted source</Badge>
+          <Badge>{t("admin.source.integrity.acceptedSource")}</Badge>
           <span className="admin-status-badge">@{candidate.authorLabel}</span>
         </div>
         <div className="admin-verification-card__copy">
           <h2>{candidate.postTitle}</h2>
           <p>{candidate.commentBody}</p>
-          <small>Accepted {formatDate(candidate.acceptedAt)}</small>
+          <small>
+             {t("admin.source.integrity.acceptedAt", {
+               date: formatDate(candidate.acceptedAt, t("admin.source.integrity.unknown")),
+             })}
+           </small>
         </div>
         <div className="admin-integrity-actions">
           {candidate.canonicalSourceUrl ? (
@@ -615,34 +631,34 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
             target="_blank"
             rel="noreferrer"
           >
-            Open post
+            {t("admin.source.integrity.openPost")}
           </Link>
         </div>
       </div>
 
       <form className="admin-verification-card__decision" onSubmit={(event) => void verify(event)}>
         <div>
-          <span className="product-eyebrow">Integrity decision</span>
-          <h3>Verify this accepted source</h3>
-          <p>Preserve the canonical source URL and evidence supporting the verification.</p>
+          <span className="product-eyebrow">{t("admin.source.integrity.decision")}</span>
+          <h3>{t("admin.source.integrity.verifyTitle")}</h3>
+          <p>{t("admin.source.integrity.verifyDescription")}</p>
         </div>
         <Input
           name="url"
-          label="Canonical source URL"
+          label={t("admin.source.integrity.canonicalUrl")}
           type="url"
           defaultValue={candidate.canonicalSourceUrl ?? ""}
           required
         />
         <Textarea
           name="evidence"
-          label="Evidence note"
+          label={t("admin.source.integrity.evidenceNote")}
           required
           minLength={10}
           maxLength={500}
           rows={4}
         />
         <Button type="submit" loading={busy}>
-          Verify accepted source
+          {t("admin.source.integrity.verifyAction")}
         </Button>
         {status ? <small role="status">{status}</small> : null}
       </form>
@@ -651,6 +667,7 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
 }
 
 function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; canRevoke: boolean }) {
+  const { t } = useI18n();
   const revalidator = useRevalidator();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -675,10 +692,10 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        setStatus(payload?.error?.message ?? "The verification could not be revoked.");
+        setStatus(payload?.error?.message ?? t("admin.source.integrity.revokeFailed"));
         return;
       }
-      setStatus("Verification revoked. The Accepted Source remains part of the post history.");
+      setStatus(t("admin.source.integrity.revokeSucceeded"));
       setReason("");
       revalidator.revalidate();
     } finally {
@@ -691,12 +708,14 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
       <div className="admin-integrity-card__header">
         <div>
           <div className="product-chip-row">
-            <Badge>Verified</Badge>
+            <Badge>{t("admin.source.integrity.verifiedLabel")}</Badge>
             <span className="admin-status-badge">@{source.authorLabel}</span>
           </div>
           <h2>{source.postTitle}</h2>
         </div>
-        <span className="product-search-count">{formatDate(source.verifiedAt)}</span>
+        <span className="product-search-count">
+          {formatDate(source.verifiedAt, t("admin.source.integrity.unknown"))}
+        </span>
       </div>
       <a
         href={source.canonicalSourceUrl}
@@ -708,17 +727,19 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
       </a>
       {source.evidenceNote ? <p>{source.evidenceNote}</p> : null}
       <small>
-        {source.verifierLabel ? `Verified by @${source.verifierLabel}` : "Verifier unavailable"}
+        {source.verifierLabel
+          ? t("admin.source.integrity.verifiedBy", { username: source.verifierLabel })
+          : t("admin.source.integrity.verifierUnavailable")}
       </small>
       <div className="admin-card-actions admin-integrity-actions">
         <Link className="product-text-action" to={postHref(source.postId, source.postSlug)}>
-          Open post
+          {t("admin.source.integrity.openPost")}
         </Link>
       </div>
       {canRevoke ? (
         <div className="admin-integrity-revoke">
           <Textarea
-            label="Revocation reason"
+            label={t("admin.source.integrity.revocationReason")}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             rows={2}
@@ -730,7 +751,7 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
             loading={busy}
             onClick={() => void revoke()}
           >
-            Revoke verification
+            {t("admin.source.integrity.revokeAction")}
           </Button>
           {status ? <small role="status">{status}</small> : null}
         </div>
