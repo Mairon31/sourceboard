@@ -1,3 +1,4 @@
+import { enAdminMessages } from "./locales/en/admin";
 import { enBaseMessages } from "./locales/en/base";
 import { enCommonMessages } from "./locales/en/common";
 import { enCommunityMessages } from "./locales/en/community";
@@ -9,6 +10,7 @@ import { enStoreMessages } from "./locales/en/store";
 
 type Localized<T> = { [Key in keyof T]: string };
 
+export type AdminMessages = Localized<typeof enAdminMessages>;
 export type BaseMessages = Localized<typeof enBaseMessages>;
 export type CommonMessages = Localized<typeof enCommonMessages>;
 export type CommunityMessages = Localized<typeof enCommunityMessages>;
@@ -19,6 +21,7 @@ export type SocialMessages = Localized<typeof enSocialMessages>;
 export type StoreMessages = Localized<typeof enStoreMessages>;
 
 export interface MessageNamespaces {
+  admin: AdminMessages;
   base: BaseMessages;
   common: CommonMessages;
   community: CommunityMessages;
@@ -29,7 +32,8 @@ export interface MessageNamespaces {
   store: StoreMessages;
 }
 
-export type MessageCatalog = BaseMessages &
+export type MessageCatalog = AdminMessages &
+  BaseMessages &
   CommonMessages &
   CommunityMessages &
   EditingMessages &
