@@ -21,7 +21,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
   const canManageRules = hasCapability(authorization, "points.manage");
   const canManageAchievements = hasCapability(authorization, "achievement.manage");
   const canAdjustPoints = hasCapability(authorization, "points.adjust");
-  const [rules, achievements, ledger] = await Promise.all([
+  const [rules, achievements, topUsers, ledger] = await Promise.all([
     listRewardRules(runtime.db),
     listAchievements(runtime.db),
     listTopReputationUsers(runtime.db, 15),
