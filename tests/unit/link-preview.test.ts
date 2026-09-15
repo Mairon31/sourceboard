@@ -155,6 +155,33 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
+  it("classifies rich, partial, minimal and URL-only metadata consistently", async () => {
+    const preview = async (html: string) => {
+      const service = createLinkPreviewService({
+        fetchImpl: vi.fn(
+          async () => new Response(html, { headers: { "content-type": "text/html" } }),
+        ) as unknown as typeof fetch,
+        resolveHost: publicResolver(),
+      });
+      return service.preview("https://example.com/status");
+    };
+
+    await expect(
+      preview(
+        '<title>Rich title</title><meta name="description" content="Rich description">',
+      ),
+    ).resolves.toMatchObject({ metadataStatus: "COMPLETE" });
+    await expect(
+      preview('<meta property="og:description" content="Useful"><meta property="og:site_name" content="Example">'),
+    ).resolves.toMatchObject({ metadataStatus: "PARTIAL" });
+    await expect(preview("<title>Only title</title>")).resolves.toMatchObject({
+      metadataStatus: "MINIMAL",
+    });
+    await expect(preview("<html><head></head></html>")).resolves.toMatchObject({
+      metadataStatus: "URL_ONLY",
+    });
+  });
+
   it("uses cached snapshots without fetching the target again", async () => {
     const snapshot = {
       canonicalUrl: "https://example.com/cached",
