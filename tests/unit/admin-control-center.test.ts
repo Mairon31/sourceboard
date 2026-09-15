@@ -62,8 +62,8 @@ describe("admin control center", () => {
   it("separates verification context, decision authority, and revocation authority", () => {
     expect(verificationsRoute).toContain("admin-verification-card__context");
     expect(verificationsRoute).toContain("admin-verification-card__decision");
-    expect(verificationsRoute).toContain("Open post");
-    expect(verificationsRoute).toContain("Verify accepted source");
+    expect(verificationsRoute).toContain("admin.source.integrity.openPost");
+    expect(verificationsRoute).toContain("admin.source.integrity.verifyAction");
     expect(verificationsRoute).toContain('loadCapabilityAccess(request, context, "source.verify")');
     expect(verificationsRoute).toContain(
       'loadCapabilityAccess(request, context, "source.revoke_verification")',

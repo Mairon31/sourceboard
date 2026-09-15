@@ -506,7 +506,15 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             imageUrl,
             fetchedAt,
             metadataStatus:
-              present === 0 ? "URL_ONLY" : present === 1 ? "MINIMAL" : present >= 3 ? "COMPLETE" : "PARTIAL",
+              present === 0
+                ? "URL_ONLY"
+                : present === 1
+                  ? "MINIMAL"
+                  : metadata.title && (metadata.description || metadata.siteName || imageUrl)
+                    ? "COMPLETE"
+                    : present >= 3
+                      ? "COMPLETE"
+                      : "PARTIAL",
           };
           try {
             await dependencies.cache?.put(cacheKey, snapshot, CACHE_TTL_SECONDS);
