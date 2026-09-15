@@ -4,6 +4,11 @@ import type { CommentLinkPreviewSnapshot, CommentWithAuthor } from "../../worker
 
 const NOW = 10_000;
 
+type TestUpdateInput = {
+  comment: CommentWithAuthor["comment"];
+  linkPreview?: CommentLinkPreviewSnapshot | null;
+};
+
 function preview(url: string, title = "Old source"): CommentLinkPreviewSnapshot {
   return {
     canonicalUrl: url,
@@ -57,7 +62,7 @@ function harness(initial: CommentLinkPreviewSnapshot | null) {
   const previewLink = vi.fn(async (value: unknown) =>
     preview(String(value), String(value).includes("new") ? "New source" : "Fetched source"),
   );
-  const updateComment = vi.fn(async (input: any) => {
+  const updateComment = vi.fn(async (input: TestUpdateInput) => {
     persisted = {
       ...persisted,
       comment: input.comment,
@@ -84,7 +89,7 @@ describe("comment link-preview edit lifecycle", () => {
     const result = await service.update("comment-1", "author-1", { markdown: "Updated text" });
 
     expect(previewLink).not.toHaveBeenCalled();
-    expect((updateComment.mock.calls[0]?.[0] as any).linkPreview).toBeUndefined();
+    expect(updateComment.mock.calls[0]?.[0].linkPreview).toBeUndefined();
     expect(result.linkPreview?.canonicalUrl).toBe(oldPreview.canonicalUrl);
   });
 
@@ -112,7 +117,7 @@ describe("comment link-preview edit lifecycle", () => {
     );
 
     expect(previewLink).toHaveBeenCalledWith("https://example.com/new");
-    expect((updateComment.mock.calls[0]?.[0] as any).linkPreview).toMatchObject({
+    expect(updateComment.mock.calls[0]?.[0].linkPreview).toMatchObject({
       canonicalUrl: "https://example.com/new",
       title: "New source",
     });
@@ -129,7 +134,7 @@ describe("comment link-preview edit lifecycle", () => {
     );
 
     expect(previewLink).not.toHaveBeenCalled();
-    expect((updateComment.mock.calls[0]?.[0] as any).linkPreview).toBeNull();
+    expect(updateComment.mock.calls[0]?.[0].linkPreview).toBeNull();
     expect(result.linkPreview).toBeUndefined();
   });
 
@@ -143,7 +148,7 @@ describe("comment link-preview edit lifecycle", () => {
     );
 
     expect(previewLink).toHaveBeenCalledOnce();
-    expect((updateComment.mock.calls[0]?.[0] as any).linkPreview).toMatchObject({
+    expect(updateComment.mock.calls[0]?.[0].linkPreview).toMatchObject({
       canonicalUrl: "https://example.com/new",
     });
     expect(result.linkPreview?.canonicalUrl).toBe("https://example.com/new");
