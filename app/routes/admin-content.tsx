@@ -210,7 +210,7 @@ export default function AdminContentRoute() {
             </label>
           </div>
           <Button type="button" loading={busy} onClick={() => void createPage()}>
-            Create draft
+            {t("admin.content.createDraft")}
           </Button>
         </Card>
       ) : null}
