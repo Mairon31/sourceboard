@@ -491,10 +491,10 @@ export default function AdminModerationRoute() {
             ) : null}
             <OverlayActionRow>
               <Button variant="ghost" disabled={busy} onClick={() => setSelectedAction(null)}>
-                Cancel
+                {t("admin.moderation.cancel")}
               </Button>
               <Button loading={busy} onClick={() => void submitAction()}>
-                Apply action
+                {t("admin.moderation.applyAction")}
               </Button>
             </OverlayActionRow>
           </div>
