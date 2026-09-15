@@ -4,9 +4,8 @@ import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { useI18n } from "../i18n/I18nProvider";
 import { SourceDisputeCard } from "../components/admin/SourceDisputeCard";
 import { Badge, Button, Card, Input, Textarea } from "../components/ui";
-import { loadCapabilityAccess } from "../data/capability-access";
 import { readCsrfToken } from "../data/csrf";
-import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import type { loader as adminVerificationsLoader } from "./admin-verifications-gated";
 
 type IntegrityView = "review" | "verified" | "disputes" | "history";
 
@@ -34,43 +33,12 @@ interface VerifiedSource {
   verifiedAt: number;
 }
 
-interface SourceDispute {
-  reportId: string;
-  targetId: string;
-  category: string;
-  detail: string | null;
-  status: string;
-  postId: string | null;
-  postSlug: string | null;
-  postTitle: string | null;
-  createdAt: number;
-}
-
-interface ResolutionHistory {
-  id: string;
-  postId: string;
-  postSlug: string | null;
-  postTitle: string;
-  resolutionType: string;
-  state: string;
-  canonicalSourceUrl: string | null;
-  actorLabel: string | null;
-  revokedByLabel: string | null;
-  revokeReason: string | null;
-  createdAt: number;
-  revokedAt: number | null;
-}
-
 interface IntegrityEntry {
   id: string;
   status: string;
   state: string;
   resolutionType: string;
   searchText: string;
-}
-
-function integrityView(value: string | null): IntegrityView {
-  return value === "verified" || value === "disputes" || value === "history" ? value : "review";
 }
 
 function postHref(postId: string, postSlug: string | null): string {
@@ -89,161 +57,6 @@ function formatDate(value: number | null, unknownLabel: string): string {
     minute: "2-digit",
     timeZone: "UTC",
   }).format(new Date(value));
-}
-
-export async function loader({ request, context }: ServerLoaderArgs) {
-  const view = integrityView(new URL(request.url).searchParams.get("view"));
-  return withOptionalServerSession(
-    request,
-    context,
-    () => ({
-      access: { authorized: false, unavailable: false },
-      canRevoke: false,
-      canReviewDisputes: false,
-      view,
-      candidates: [] as Candidate[],
-      verified: [] as VerifiedSource[],
-      disputes: [] as SourceDispute[],
-      history: [] as ResolutionHistory[],
-    }),
-    async (runtime, userId) => {
-      const [access, revokeAccess, reportReviewAccess] = await Promise.all([
-        loadCapabilityAccess(request, context, "source.verify"),
-        loadCapabilityAccess(request, context, "source.revoke_verification"),
-        loadCapabilityAccess(request, context, "report.review"),
-      ]);
-      if (!userId || !access.authorized) {
-        return {
-          access,
-          canRevoke: false,
-          canReviewDisputes: false,
-          view,
-          candidates: [] as Candidate[],
-          verified: [] as VerifiedSource[],
-          disputes: [] as SourceDispute[],
-          history: [] as ResolutionHistory[],
-        };
-      }
-
-      if (view === "review") {
-        const result = await runtime.db
-          .prepare(
-            `SELECT p.id AS postId, p.slug AS postSlug, p.title AS postTitle,
-                    c.id AS commentId, c.body_plaintext AS commentBody,
-                    u.username AS authorLabel, accepted.created_at AS acceptedAt,
-                    lp.canonical_url AS canonicalSourceUrl
-             FROM posts p
-             JOIN comments c ON c.id = p.accepted_comment_id AND c.post_id = p.id
-             JOIN users u ON u.id = c.author_id
-             LEFT JOIN comment_link_previews lp ON lp.comment_id = c.id
-             LEFT JOIN source_resolutions accepted
-               ON accepted.post_id = p.id AND accepted.comment_id = c.id
-              AND accepted.resolution_type = 'ACCEPTED' AND accepted.state = 'ACTIVE'
-             WHERE p.accepted_comment_id IS NOT NULL
-               AND p.verified_source_id IS NULL
-               AND p.deleted_at IS NULL AND p.hidden_at IS NULL
-               AND c.state = 'VISIBLE' AND c.deleted_at IS NULL
-             ORDER BY COALESCE(accepted.created_at, p.updated_at) ASC
-             LIMIT 100`,
-          )
-          .all<Candidate>();
-        return {
-          access,
-          canRevoke: revokeAccess.authorized,
-          canReviewDisputes: reportReviewAccess.authorized,
-          view,
-          candidates: result.results,
-          verified: [] as VerifiedSource[],
-          disputes: [] as SourceDispute[],
-          history: [] as ResolutionHistory[],
-        };
-      }
-
-      if (view === "verified") {
-        const result = await runtime.db
-          .prepare(
-            `SELECT sr.id AS resolutionId, p.id AS postId, p.slug AS postSlug,
-                    p.title AS postTitle, sr.comment_id AS commentId,
-                    source_author.username AS authorLabel,
-                    sr.canonical_source_url AS canonicalSourceUrl,
-                    sr.evidence_note AS evidenceNote,
-                    verifier.username AS verifierLabel, sr.created_at AS verifiedAt
-             FROM source_resolutions sr
-             JOIN posts p ON p.id = sr.post_id
-             JOIN comments c ON c.id = sr.comment_id
-             JOIN users source_author ON source_author.id = c.author_id
-             LEFT JOIN users verifier ON verifier.id = sr.actor_user_id
-             WHERE sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE'
-             ORDER BY sr.created_at DESC
-             LIMIT 100`,
-          )
-          .all<VerifiedSource>();
-        return {
-          access,
-          canRevoke: revokeAccess.authorized,
-          canReviewDisputes: reportReviewAccess.authorized,
-          view,
-          candidates: [] as Candidate[],
-          verified: result.results,
-          disputes: [] as SourceDispute[],
-          history: [] as ResolutionHistory[],
-        };
-      }
-
-      if (view === "disputes") {
-        const result = await runtime.db
-          .prepare(
-            `SELECT mr.id AS reportId, mr.target_id AS targetId, mr.category,
-                    mr.detail, mr.status, p.id AS postId, p.slug AS postSlug,
-                    p.title AS postTitle, mr.created_at AS createdAt
-             FROM moderation_reports mr
-             LEFT JOIN source_resolutions sr ON sr.id = mr.target_id
-             LEFT JOIN posts p ON p.id = COALESCE(sr.post_id, mr.target_id)
-             WHERE mr.target_type = 'SOURCE' AND mr.status IN ('OPEN', 'IN_REVIEW')
-             ORDER BY CASE mr.status WHEN 'IN_REVIEW' THEN 0 ELSE 1 END, mr.created_at ASC
-             LIMIT 100`,
-          )
-          .all<SourceDispute>();
-        return {
-          access,
-          canRevoke: revokeAccess.authorized,
-          canReviewDisputes: reportReviewAccess.authorized,
-          view,
-          candidates: [] as Candidate[],
-          verified: [] as VerifiedSource[],
-          disputes: result.results,
-          history: [] as ResolutionHistory[],
-        };
-      }
-
-      const result = await runtime.db
-        .prepare(
-          `SELECT sr.id, p.id AS postId, p.slug AS postSlug, p.title AS postTitle,
-                  sr.resolution_type AS resolutionType, sr.state,
-                  sr.canonical_source_url AS canonicalSourceUrl,
-                  actor.username AS actorLabel, revoker.username AS revokedByLabel,
-                  sr.revoke_reason AS revokeReason, sr.created_at AS createdAt,
-                  sr.revoked_at AS revokedAt
-           FROM source_resolutions sr
-           JOIN posts p ON p.id = sr.post_id
-           LEFT JOIN users actor ON actor.id = sr.actor_user_id
-           LEFT JOIN users revoker ON revoker.id = sr.revoked_by_user_id
-           ORDER BY COALESCE(sr.revoked_at, sr.created_at) DESC
-           LIMIT 100`,
-        )
-        .all<ResolutionHistory>();
-      return {
-        access,
-        canRevoke: revokeAccess.authorized,
-        canReviewDisputes: reportReviewAccess.authorized,
-        view,
-        candidates: [] as Candidate[],
-        verified: [] as VerifiedSource[],
-        disputes: [] as SourceDispute[],
-        history: result.results,
-      };
-    },
-  );
 }
 
 function IntegrityTabs({ view }: { view: IntegrityView }) {
@@ -276,7 +89,7 @@ function IntegrityTabs({ view }: { view: IntegrityView }) {
 
 export default function AdminVerificationsRoute() {
   const { access, canRevoke, canReviewDisputes, view, candidates, verified, disputes, history } =
-    useLoaderData<typeof loader>();
+    useLoaderData<typeof adminVerificationsLoader>();
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -387,9 +200,7 @@ export default function AdminVerificationsRoute() {
           title={t("admin.source.integrity.restrictedTitle")}
           description={t("admin.source.integrity.restrictedDescription")}
         />
-        <Card className="product-empty-state">
-          {t("admin.source.integrity.signInRequired")}
-        </Card>
+        <Card className="product-empty-state">{t("admin.source.integrity.signInRequired")}</Card>
       </AdminShell>
     );
   }
@@ -522,7 +333,10 @@ export default function AdminVerificationsRoute() {
                     ) : null}
                   </div>
                   <div className="admin-integrity-actions">
-                    <Link className="product-text-action" to={postHref(entry.postId, entry.postSlug)}>
+                    <Link
+                      className="product-text-action"
+                      to={postHref(entry.postId, entry.postSlug)}
+                    >
                       {t("admin.source.integrity.openPost")}
                     </Link>
                     {entry.canonicalSourceUrl ? (
@@ -609,10 +423,10 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
           <h2>{candidate.postTitle}</h2>
           <p>{candidate.commentBody}</p>
           <small>
-             {t("admin.source.integrity.acceptedAt", {
-               date: formatDate(candidate.acceptedAt, t("admin.source.integrity.unknown")),
-             })}
-           </small>
+            {t("admin.source.integrity.acceptedAt", {
+              date: formatDate(candidate.acceptedAt, t("admin.source.integrity.unknown")),
+            })}
+          </small>
         </div>
         <div className="admin-integrity-actions">
           {candidate.canonicalSourceUrl ? (
@@ -759,3 +573,4 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
     </Card>
   );
 }
+

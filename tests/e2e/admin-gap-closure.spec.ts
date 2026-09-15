@@ -161,7 +161,7 @@ test("moderation reports expose View and contextual Details on desktop and mobil
   await expect(page.getByRole("heading", { name: "Moderation queue" })).toBeVisible();
   const postRow = page
     .locator(".admin-desktop-table .admin-table__row")
-    .filter({ hasText: "E2E moderation report post" });
+    .filter({ hasText: "e2e-report-post" });
   await expect(postRow).toBeVisible();
   await expect(postRow.getByRole("link", { name: "View" })).toHaveAttribute(
     "href",
@@ -181,7 +181,7 @@ test("moderation reports expose View and contextual Details on desktop and mobil
   await expect(page.getByRole("dialog")).toContainText("e2e-report-reporter");
   await expect(page.getByRole("dialog")).toContainText("e2e-report-author");
   await expect(page.getByRole("dialog")).toContainText("Initial context review.");
-  await page.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(".admin-mobile-card-list .admin-mobile-review-card")).toHaveCount(3);
@@ -201,19 +201,20 @@ test("Source Integrity exposes accepted, verified and dispute context with filte
   await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Accepted source integrity" })).toBeVisible();
-  await expect(page.getByLabel("Search source integrity")).toBeVisible();
+  const integritySearch = page.getByRole("textbox", { name: "Search source integrity" });
+  await expect(integritySearch).toBeVisible();
   await expect(page.getByRole("link", { name: "Open post" }).first()).toHaveAttribute(
     "href",
     "/posts/e2e-integrity-candidate/e2e-integrity-candidate",
   );
 
-  await page.getByLabel("Search source integrity").fill("does-not-exist");
+  await integritySearch.fill("does-not-exist");
   await expect(page.getByText("No source integrity records match these filters.")).toBeVisible();
 
   await page.goto("/admin/source-integrity?view=verified");
   await waitForUiReady(page);
   await expect(page.getByText("E2E verified source")).toBeVisible();
-  await expect(page.getByText("@e2e-report-author")).toBeVisible();
+  await expect(page.getByText("@e2e-report-author", { exact: true })).toBeVisible();
 
   await page.goto("/admin/source-integrity?view=disputes");
   await waitForUiReady(page);
@@ -227,13 +228,14 @@ test("Reputation supports achievement versioning, custom icon upload and Top 15 
   await page.goto("/admin/reputation");
   await waitForUiReady(page);
 
-  await expect(page.getByRole("heading", { name: "Reputation" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reputation", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Top 15 reputation" })).toBeVisible();
   await expect(page.getByRole("link", { name: "E2E Reputation User" })).toHaveAttribute(
     "href",
     "/u/e2e-reputation-user",
   );
 
+  await page.setViewportSize({ width: 390, height: 844 });
   const existingAchievement = page
     .locator(".admin-mobile-review-card")
     .filter({ hasText: "First verified source" })
@@ -241,7 +243,7 @@ test("Reputation supports achievement versioning, custom icon upload and Top 15 
   await expect(existingAchievement).toBeVisible();
   await existingAchievement.getByRole("button", { name: "Edit" }).click();
 
-  const achievementForm = page.locator('form.product-form-card').filter({
+  const achievementForm = page.locator("form.product-form-card").filter({
     has: page.locator('input[name="iconFile"]'),
   });
   await achievementForm.getByLabel("Name").fill("First verified source revised");
@@ -265,3 +267,4 @@ test("Reputation supports achievement versioning, custom icon upload and Top 15 
   expect(response.status()).toBe(201);
   await expect(page.getByText("A new achievement version was recorded.")).toBeVisible();
 });
+
