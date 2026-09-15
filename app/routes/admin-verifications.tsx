@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLoaderData, useRevalidator } from "react-router";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
+import { useI18n } from "../i18n/I18nProvider";
 import { SourceDisputeCard } from "../components/admin/SourceDisputeCard";
 import { Badge, Button, Card, Input, Textarea } from "../components/ui";
 import { loadCapabilityAccess } from "../data/capability-access";
@@ -58,6 +59,14 @@ interface ResolutionHistory {
   revokeReason: string | null;
   createdAt: number;
   revokedAt: number | null;
+}
+
+interface IntegrityEntry {
+  id: string;
+  status: string;
+  state: string;
+  resolutionType: string;
+  searchText: string;
 }
 
 function integrityView(value: string | null): IntegrityView {
@@ -238,14 +247,15 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 }
 
 function IntegrityTabs({ view }: { view: IntegrityView }) {
+  const { t } = useI18n();
   const tabs: Array<{ value: IntegrityView; label: string }> = [
-    { value: "review", label: "Needs review" },
-    { value: "verified", label: "Verified sources" },
-    { value: "disputes", label: "Disputes" },
-    { value: "history", label: "History" },
+    { value: "review", label: t("admin.source.integrity.review") },
+    { value: "verified", label: t("admin.source.integrity.verified") },
+    { value: "disputes", label: t("admin.source.integrity.disputes") },
+    { value: "history", label: t("admin.source.integrity.history") },
   ];
   return (
-    <nav className="admin-integrity-tabs" aria-label="Source integrity views">
+    <nav className="admin-integrity-tabs" aria-label={t("admin.source.integrity.views")}>
       {tabs.map((tab) => (
         <Link
           key={tab.value}
@@ -267,6 +277,108 @@ function IntegrityTabs({ view }: { view: IntegrityView }) {
 export default function AdminVerificationsRoute() {
   const { access, canRevoke, canReviewDisputes, view, candidates, verified, disputes, history } =
     useLoaderData<typeof loader>();
+  const { t } = useI18n();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const integrityEntries = useMemo<IntegrityEntry[]>(
+    () => [
+      ...visibleCandidates.map((candidate) => ({
+        id: candidate.commentId,
+        status: "ACCEPTED",
+        state: "ACTIVE",
+        resolutionType: "ACCEPTED",
+        searchText: [
+          candidate.postTitle,
+          candidate.commentBody,
+          candidate.authorLabel,
+          candidate.canonicalSourceUrl,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      })),
+      ...visibleVerified.map((source) => ({
+        id: source.resolutionId,
+        status: "VERIFIED",
+        state: "ACTIVE",
+        resolutionType: "VERIFIED",
+        searchText: [
+          source.postTitle,
+          source.authorLabel,
+          source.canonicalSourceUrl,
+          source.evidenceNote,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      })),
+      ...visibleDisputes.map((dispute) => ({
+        id: dispute.reportId,
+        status: dispute.status,
+        state: dispute.status,
+        resolutionType: "",
+        searchText: [
+          dispute.reportId,
+          dispute.targetId,
+          dispute.category,
+          dispute.detail,
+          dispute.postTitle,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      })),
+      ...visibleHistory.map((entry) => ({
+        id: entry.id,
+        status: entry.state,
+        state: entry.state,
+        resolutionType: entry.resolutionType,
+        searchText: [
+          entry.id,
+          entry.postId,
+          entry.postTitle,
+          entry.canonicalSourceUrl,
+          entry.actorLabel,
+          entry.revokedByLabel,
+          entry.revokeReason,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase(),
+      })),
+    ],
+    [candidates, disputes, history, verified],
+  );
+  const statusOptions = useMemo(
+    () => [...new Set(integrityEntries.map((entry) => entry.status))].filter(Boolean),
+    [integrityEntries],
+  );
+  const activeStatusFilter = statusOptions.includes(statusFilter) ? statusFilter : "ALL";
+  const visibleEntries = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return integrityEntries.filter((entry) => {
+      const matchesStatus = activeStatusFilter === "ALL" || entry.status === activeStatusFilter;
+      const matchesSearch =
+        !normalizedSearch ||
+        [entry.searchText, entry.state, entry.resolutionType]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearch);
+      return matchesStatus && matchesSearch;
+    });
+  }, [activeStatusFilter, integrityEntries, search]);
+  const visibleIds = useMemo(
+    () => new Set(visibleEntries.map((entry) => entry.id)),
+    [visibleEntries],
+  );
+  const visibleCandidates = candidates.filter((candidate) => visibleIds.has(candidate.commentId));
+  const visibleVerified = verified.filter((source) => visibleIds.has(source.resolutionId));
+  const visibleDisputes = disputes.filter((dispute) => visibleIds.has(dispute.reportId));
+  const visibleHistory = history.filter((entry) => visibleIds.has(entry.id));
+  const hasActiveFilters = Boolean(search.trim()) || activeStatusFilter !== "ALL";
+
   if (!access.authorized) {
     return (
       <AdminShell>
@@ -290,9 +402,38 @@ export default function AdminVerificationsRoute() {
         description="Review accepted sources, preserve canonical evidence, investigate disputes and keep revocations auditable from one workflow."
       />
       <IntegrityTabs view={view} />
-      <section className="admin-section">
+      <section className="admin-integrity-toolbar" aria-label={t("admin.source.integrity.search")}>
+        <label className="sb-field admin-integrity-toolbar__search">
+          <span className="sb-field__label">{t("admin.source.integrity.search")}</span>
+          <input
+            className="sb-input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t("admin.source.integrity.searchPlaceholder")}
+          />
+        </label>
+        <label className="sb-field admin-integrity-toolbar__status">
+          <span className="sb-field__label">{t("admin.source.integrity.statusFilter")}</span>
+          <select
+            className="sb-input"
+            value={activeStatusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="ALL">{t("admin.source.integrity.allStatuses")}</option>
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="product-search-count">
+          {t("admin.source.integrity.resultCount", { count: visibleEntries.length })}
+        </span>
+      </section>
+      <section className="admin-section admin-integrity-results">
         {view === "review" ? (
-          candidates.length ? (
+          visibleCandidates.length ? (
             candidates.map((candidate) => (
               <VerificationCandidate key={candidate.commentId} candidate={candidate} />
             ))
@@ -304,7 +445,7 @@ export default function AdminVerificationsRoute() {
         ) : null}
 
         {view === "verified" ? (
-          verified.length ? (
+          visibleVerified.length ? (
             <div className="admin-integrity-list">
               {verified.map((source) => (
                 <VerifiedSourceCard
@@ -320,7 +461,7 @@ export default function AdminVerificationsRoute() {
         ) : null}
 
         {view === "disputes" ? (
-          disputes.length ? (
+          visibleDisputes.length ? (
             <div className="admin-integrity-list">
               {disputes.map((dispute) => (
                 <SourceDisputeCard
@@ -336,7 +477,7 @@ export default function AdminVerificationsRoute() {
         ) : null}
 
         {view === "history" ? (
-          history.length ? (
+          visibleHistory.length ? (
             <div className="admin-integrity-history">
               {history.map((entry) => (
                 <div className="admin-integrity-history__row" key={entry.id}>
@@ -358,9 +499,21 @@ export default function AdminVerificationsRoute() {
                       </small>
                     ) : null}
                   </div>
-                  <Link className="product-text-action" to={postHref(entry.postId, entry.postSlug)}>
-                    Open
-                  </Link>
+                  <div className="admin-integrity-actions">
+                    <Link className="product-text-action" to={postHref(entry.postId, entry.postSlug)}>
+                      {t("admin.source.integrity.openPost")}
+                    </Link>
+                    {entry.canonicalSourceUrl ? (
+                      <a
+                        className="product-text-action"
+                        href={entry.canonicalSourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {t("admin.source.integrity.openSource")}
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -374,6 +527,7 @@ export default function AdminVerificationsRoute() {
 }
 
 function VerificationCandidate({ candidate }: { candidate: Candidate }) {
+  const { t } = useI18n();
   const revalidator = useRevalidator();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -430,14 +584,26 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
           <p>{candidate.commentBody}</p>
           <small>Accepted {formatDate(candidate.acceptedAt)}</small>
         </div>
-        <Link
-          className="product-text-action"
-          to={postHref(candidate.postId, candidate.postSlug)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open post
-        </Link>
+        <div className="admin-integrity-actions">
+          {candidate.canonicalSourceUrl ? (
+            <a
+              className="product-text-action"
+              href={candidate.canonicalSourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("admin.source.integrity.openSource")}
+            </a>
+          ) : null}
+          <Link
+            className="product-text-action"
+            to={postHref(candidate.postId, candidate.postSlug)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("admin.source.integrity.openPost")}
+          </Link>
+        </div>
       </div>
 
       <form className="admin-verification-card__decision" onSubmit={(event) => void verify(event)}>
@@ -471,6 +637,7 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
 }
 
 function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; canRevoke: boolean }) {
+  const { t } = useI18n();
   const revalidator = useRevalidator();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -530,9 +697,9 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
       <small>
         {source.verifierLabel ? `Verified by @${source.verifierLabel}` : "Verifier unavailable"}
       </small>
-      <div className="admin-card-actions">
+      <div className="admin-card-actions admin-integrity-actions">
         <Link className="product-text-action" to={postHref(source.postId, source.postSlug)}>
-          Open post
+          {t("admin.source.integrity.openPost")}
         </Link>
       </div>
       {canRevoke ? (
