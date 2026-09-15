@@ -1,5 +1,7 @@
 .product-avatar-stage {
   --avatar-stage-size: 40px;
+  --avatar-frame-color: currentColor;
+  --avatar-frame-glow: transparent;
   position: relative;
   isolation: isolate;
   display: inline-grid;
@@ -55,7 +57,7 @@
 
 .product-avatar-stage__part[data-layer="inner-ring"] {
   z-index: 2;
-  border: 2px solid color-mix(in srgb, currentColor 55%, transparent);
+  border: 2px solid color-mix(in srgb, var(--avatar-frame-color) 55%, transparent);
   border-radius: 50%;
 }
 
@@ -63,7 +65,7 @@
 .product-avatar-stage__part[data-layer="orbit"] {
   z-index: 1;
   inset: -6px;
-  border: 2px solid color-mix(in srgb, #8f7cff 55%, transparent);
+  border: 2px solid color-mix(in srgb, var(--avatar-frame-color) 55%, transparent);
   border-radius: 50%;
 }
 
@@ -423,6 +425,84 @@
   .product-avatar-stage__part[data-layer="orbit"]:last-child {
   border-style: dotted;
   border-color: #9a72ff transparent #60efff transparent;
+}
+
+.product-avatar-stage[data-avatar-frame="simple-blue"],
+.product-avatar-stage[data-avatar-frame="double-blue"] {
+  --avatar-frame-color: #5b8cff;
+  --avatar-frame-glow: #5b8cff66;
+}
+
+.product-avatar-stage[data-avatar-frame="cyan"] {
+  --avatar-frame-color: #44dff5;
+  --avatar-frame-glow: #44dff566;
+}
+
+.product-avatar-stage[data-avatar-frame="purple"] {
+  --avatar-frame-color: #9b78ff;
+  --avatar-frame-glow: #9b78ff66;
+}
+
+.product-avatar-stage[data-avatar-frame="pink"] {
+  --avatar-frame-color: #ff78ba;
+  --avatar-frame-glow: #ff78ba66;
+}
+
+.product-avatar-stage[data-avatar-frame="green"] {
+  --avatar-frame-color: #50d986;
+  --avatar-frame-glow: #50d98666;
+}
+
+.product-avatar-stage[data-avatar-frame="red"] {
+  --avatar-frame-color: #f06b6b;
+  --avatar-frame-glow: #f06b6b66;
+}
+
+.product-avatar-stage[data-avatar-frame="gold"] {
+  --avatar-frame-color: #f4c84d;
+  --avatar-frame-glow: #f4c84d66;
+}
+
+.product-avatar-stage[data-avatar-frame="white"] {
+  --avatar-frame-color: #f4f7ff;
+  --avatar-frame-glow: #f4f7ff66;
+}
+
+.product-avatar-stage[data-avatar-frame="dark"] {
+  --avatar-frame-color: #4e5268;
+  --avatar-frame-glow: #4e526866;
+}
+
+.product-avatar-stage[data-avatar-frame="pastel"] {
+  --avatar-frame-color: #f0a9d3;
+  --avatar-frame-glow: #a9d8ff66;
+}
+
+.product-avatar-stage[data-avatar-frame="thin-neon"] {
+  --avatar-frame-color: #67f1ff;
+  --avatar-frame-glow: #67f1ff99;
+}
+
+.product-avatar-stage[data-avatar-frame="simple-blue"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="cyan"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="purple"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="pink"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="green"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="red"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="white"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="dark"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="pastel"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="double-blue"] .product-avatar-stage__part,
+.product-avatar-stage[data-avatar-frame="thin-neon"] .product-avatar-stage__part {
+  box-shadow: 0 0 7px var(--avatar-frame-glow);
+}
+
+.product-avatar-stage[data-avatar-frame="double-blue"] .product-avatar-stage__part[data-layer="outer-ring"] {
+  border-style: double;
+}
+
+.product-avatar-stage[data-avatar-frame="thin-neon"] .product-avatar-stage__part[data-layer="outer-ring"] {
+  border-width: 1px;
 }
 
 @keyframes avatar-stage-orbit {
