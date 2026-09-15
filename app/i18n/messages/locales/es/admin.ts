@@ -26,5 +26,16 @@ export const esAdminMessages = {
   "admin.source.integrity.history": "Historial",
   "admin.source.integrity.noMatch": "Ningún registro de integridad coincide con estos filtros.",
   "admin.source.integrity.openPost": "Abrir publicación",
-  "admin.source.integrity.openSource": "Abrir fuente"
+  "admin.source.integrity.openSource": "Abrir fuente",
+  "admin.reputation.edit": "Editar",
+  "admin.reputation.cancel": "Cancelar edición",
+  "admin.reputation.editing": "Editando una nueva versión inmutable",
+  "admin.reputation.iconUpload": "Icono personalizado (PNG o GIF)",
+  "admin.reputation.iconHelp": "Opcional. Máximo 2 MiB y 1024 píxeles.",
+  "admin.reputation.saveVersion": "Guardar versión del logro",
+  "admin.reputation.createVersion": "Crear versión del logro",
+  "admin.reputation.topTitle": "Top 15 de reputación",
+  "admin.reputation.topDescription": "Usuarios ordenados por su saldo actual de puntos.",
+  "admin.reputation.topEmpty": "Aún no se han registrado puntos de reputación.",
+  "admin.reputation.points": "{count} puntos"
 } as const;
