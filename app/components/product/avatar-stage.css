@@ -557,13 +557,13 @@
 }
 
 .product-avatar-stage[data-avatar-frame="electric-coils"]
-  .product-avatar-stage__part[data-layer="orbit"]:first-of-type {
+  .product-avatar-stage__part[data-part="electric-coils-orbit-0"] {
   border-color: #71e7ff transparent transparent #9870ff;
   box-shadow: 0 0 9px #60dfff99;
 }
 
 .product-avatar-stage[data-avatar-frame="electric-coils"]
-  .product-avatar-stage__part[data-layer="orbit"]:last-of-type {
+  .product-avatar-stage__part[data-part="electric-coils-orbit-1"] {
   inset: -10px;
   border-color: #9077ff99;
   border-style: dashed;
