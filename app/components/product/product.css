@@ -2208,3 +2208,12 @@
   justify-content: center;
   margin-inline-start: 0.45rem;
 }
+
+.product-achievement-icon {
+  width: 1.1em;
+  height: 1.1em;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  object-fit: contain;
+  vertical-align: -0.15em;
+}
