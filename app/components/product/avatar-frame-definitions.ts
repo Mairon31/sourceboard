@@ -154,6 +154,40 @@ const STRUCTURAL: Partial<Record<AvatarFramePreset, readonly AvatarFrameGeometry
   "floral-ring": [
     { layer: "outer-ring", anchor: "center", scale: 1.12, offsetX: 0, offsetY: 0, rotation: 0 },
   ],
+  "simple-blue": [
+    { layer: "inner-ring", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  cyan: [
+    { layer: "inner-ring", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  purple: [
+    { layer: "inner-ring", anchor: "center", scale: 1.04, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  pink: [
+    { layer: "inner-ring", anchor: "center", scale: 1.04, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  green: [
+    { layer: "inner-ring", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  red: [
+    { layer: "inner-ring", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  white: [
+    { layer: "inner-ring", anchor: "center", scale: 0.99, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  dark: [
+    { layer: "outer-ring", anchor: "center", scale: 1.04, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  pastel: [
+    { layer: "outer-ring", anchor: "center", scale: 1.06, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "double-blue": [
+    { layer: "inner-ring", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "thin-neon": [
+    { layer: "outer-ring", anchor: "center", scale: 1.05, offsetX: 0, offsetY: 0, rotation: 0, animationDurationMs: 6200 },
+  ],
 };
 
 function defaultDefinition(preset: AvatarFramePreset): AvatarFrameDefinition {
