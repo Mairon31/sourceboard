@@ -228,6 +228,21 @@ describe("Cosmetic presentation overhaul", () => {
     expect(AVATAR_FRAME_DEFINITIONS["fox-spirit"].parts.length).toBeGreaterThan(0);
   });
 
+  it("keeps all avatar frame geometry inside AvatarStage", () => {
+    const legacyFrameCss = read("../../app/components/product/avatar-frames.css");
+    const stageCss = read("../../app/components/product/avatar-stage.css");
+    const definitions = read("../../app/components/product/avatar-frame-definitions.ts");
+
+    expect(legacyFrameCss).not.toContain('data-avatar-frame="');
+    expect(legacyFrameCss).not.toContain("position: absolute");
+    expect(legacyFrameCss).not.toContain("@keyframes avatar-frame-");
+    expect(stageCss).toContain('data-avatar-frame="neko-neon"');
+    expect(stageCss).toContain('data-avatar-frame="retro-arcade"');
+    expect(stageCss).toContain('data-avatar-frame="slime"');
+    expect(definitions).toContain('"electric-coils"');
+    expect(definitions).toContain('"pixel-glitch"');
+  });
+
   it("routes profile cosmetic preview surfaces through one shared renderer", () => {
     for (const path of [
       "../../app/components/product/StoreItemCard.tsx",
