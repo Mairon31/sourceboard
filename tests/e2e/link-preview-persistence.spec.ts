@@ -120,7 +120,7 @@ test("all persisted preview states render in the shared card without mobile over
       await expect(card).toHaveAttribute("data-metadata-status", status);
       const box = await card.boundingBox();
       expect(box).not.toBeNull();
-      expect((box?.right ?? Infinity) <= width).toBe(true);
+      expect(((box?.x ?? 0) + (box?.width ?? Infinity)) <= width).toBe(true);
     }
 
     await expect(
