@@ -17,7 +17,7 @@ describe("achievement and reputation administration contract", () => {
   });
 
   it("validates PNG/GIF icon bytes and persists a media reference through the existing pipeline", () => {
-    const policy = read("worker/media/image-policy.ts");
+    const policy = read("worker/media/achievement-icon-policy.ts");
     const api = read("worker/reputation/api.ts");
 
     expect(policy).toContain("export function validateAchievementIcon");
