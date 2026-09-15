@@ -257,6 +257,10 @@ function CommentItem({
   });
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(() => editableCommentMarkdown(comment));
+  const [editLinkUrl, setEditLinkUrl] = useState(() => comment.linkPreview?.canonicalUrl ?? "");
+  const [editLinkOriginalUrl, setEditLinkOriginalUrl] = useState(
+    () => comment.linkPreview?.canonicalUrl ?? "",
+  );
   const [previewingEdit, setPreviewingEdit] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -306,7 +310,12 @@ function CommentItem({
   }, [comment.reaction.count, comment.reaction.viewerReacted]);
 
   useEffect(() => {
-    if (!editing) setEditBody(editableCommentMarkdown(comment));
+    if (!editing) {
+      const canonicalUrl = comment.linkPreview?.canonicalUrl ?? "";
+      setEditBody(editableCommentMarkdown(comment));
+      setEditLinkUrl(canonicalUrl);
+      setEditLinkOriginalUrl(canonicalUrl);
+    }
   }, [comment, editing]);
 
   async function toggleLike() {
@@ -349,10 +358,17 @@ function CommentItem({
     setBusy(true);
     setStatus(undefined);
     try {
+      const trimmedEditLinkUrl = editLinkUrl.trim();
+      const patch = {
+        markdown: editBody,
+        ...(trimmedEditLinkUrl === editLinkOriginalUrl
+          ? {}
+          : { linkPreviewUrl: editLinkUrl.trim() || null }),
+      };
       const response = await fetch(`/api/comments/${encodeURIComponent(comment.id)}`, {
         method: "PATCH",
         headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({ markdown: editBody }),
+        body: JSON.stringify(patch),
       });
       if (!response.ok) throw new Error(t("comments.error.save"));
       const payload = (await response.json()) as { comment: CommentView };
@@ -511,7 +527,10 @@ function CommentItem({
                         label: t("comments.actions.edit"),
                         icon: <EditIcon width="16" height="16" />,
                         onSelect: () => {
+                          const canonicalUrl = comment.linkPreview?.canonicalUrl ?? "";
                           setEditBody(editableCommentMarkdown(comment));
+                          setEditLinkUrl(canonicalUrl);
+                          setEditLinkOriginalUrl(canonicalUrl);
                           setPreviewingEdit(false);
                           setEditing(true);
                         },
@@ -560,6 +579,13 @@ function CommentItem({
         <div className={bubbleClassName}>
           {editing ? (
             <>
+              <Input
+                type="url"
+                inputMode="url"
+                label={t("comments.composer.linkUrl")}
+                value={editLinkUrl}
+                onChange={(event) => setEditLinkUrl(event.target.value)}
+              />
               <div
                 className="product-comment-editor-tabs"
                 role="tablist"
@@ -607,7 +633,10 @@ function CommentItem({
                   size="sm"
                   variant="ghost"
                   onClick={() => {
+                    const canonicalUrl = comment.linkPreview?.canonicalUrl ?? "";
                     setEditBody(editableCommentMarkdown(comment));
+                    setEditLinkUrl(canonicalUrl);
+                    setEditLinkOriginalUrl(canonicalUrl);
                     setPreviewingEdit(false);
                     setEditing(false);
                   }}
