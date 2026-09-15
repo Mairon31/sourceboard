@@ -151,6 +151,15 @@ test("moderation reports expose View and contextual Details on desktop and mobil
   await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Moderation queue" })).toBeVisible();
+  const postRow = page
+    .locator(".admin-desktop-table .admin-table__row")
+    .filter({ hasText: "E2E moderation report post" });
+  await expect(postRow).toBeVisible();
+  await expect(postRow.getByRole("link", { name: "View" })).toHaveAttribute(
+    "href",
+    "/posts/e2e-report-post/e2e-moderation-report-post",
+  );
+
   const commentRow = page
     .locator(".admin-desktop-table .admin-table__row")
     .filter({ hasText: "Reported comment context" });
