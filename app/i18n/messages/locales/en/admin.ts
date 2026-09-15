@@ -13,5 +13,18 @@ export const enAdminMessages = {
   "admin.moderation.noResource": "Resource unavailable",
   "admin.moderation.search": "Search reports",
   "admin.moderation.searchPlaceholder": "Username, title, body or report ID",
-  "admin.moderation.reportCount": "{count} reports"
+  "admin.moderation.reportCount": "{count} reports",
+  "admin.source.integrity.search": "Search source integrity",
+  "admin.source.integrity.searchPlaceholder": "Post, author, URL or resolution ID",
+  "admin.source.integrity.statusFilter": "Status",
+  "admin.source.integrity.allStatuses": "All statuses",
+  "admin.source.integrity.resultCount": "{count} results",
+  "admin.source.integrity.views": "Source integrity views",
+  "admin.source.integrity.review": "Needs review",
+  "admin.source.integrity.verified": "Verified sources",
+  "admin.source.integrity.disputes": "Disputes",
+  "admin.source.integrity.history": "History",
+  "admin.source.integrity.noMatch": "No source integrity records match these filters.",
+  "admin.source.integrity.openPost": "Open post",
+  "admin.source.integrity.openSource": "Open source"
 } as const;
