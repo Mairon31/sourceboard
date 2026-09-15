@@ -96,11 +96,11 @@ async function installProfileEditorFixture(page: Page) {
   ]);
 }
 
-test("inline Edit profile changes username through the existing username policy endpoint", async ({
+test("private Edit profile changes username through the existing username policy endpoint", async ({
   page,
 }) => {
   await installProfileEditorFixture(page);
-  await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  await page.goto("/profile");
   await waitForUiReady(page);
 
   const profileGet = page.waitForResponse(
@@ -126,11 +126,11 @@ test("inline Edit profile changes username through the existing username policy 
 
   const request = await usernamePatch;
   expect(request.postDataJSON()).toEqual({ username: NEXT_USERNAME });
-  await expect(page).toHaveURL(new RegExp(`/u/${NEXT_USERNAME}$`));
+  await expect(page).toHaveURL(/\/profile$/);
   await expect(page.getByText(`@${NEXT_USERNAME}`, { exact: true }).first()).toBeVisible();
 });
 
-test("Edit profile stays usable when username settings are unavailable", async ({ page }) => {
+test("private Edit profile stays usable when username settings are unavailable", async ({ page }) => {
   await installProfileEditorFixture(page);
   await page.route("**/api/profile/me/username", async (route) => {
     if (route.request().method() !== "GET") {
@@ -149,7 +149,7 @@ test("Edit profile stays usable when username settings are unavailable", async (
     });
   });
 
-  await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  await page.goto("/profile");
   await waitForUiReady(page);
 
   const profileGet = page.waitForResponse(
@@ -177,6 +177,19 @@ test("Edit profile stays usable when username settings are unavailable", async (
   );
   await page.getByRole("button", { name: "Save", exact: true }).click();
   expect((await profilePatch).status()).toBe(200);
+  await expect(page).toHaveURL(/\/profile$/);
+});
+
+test("public profile never exposes private editing controls", async ({ page }) => {
+  await installProfileEditorFixture(page);
+
+  await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  await waitForUiReady(page);
+  await expect(page.getByRole("button", { name: "Edit profile" })).toHaveCount(0);
+
+  await page.goto("/profile");
+  await waitForUiReady(page);
+  await expect(page.getByRole("button", { name: "Edit profile" })).toBeVisible();
 });
 
 test("profile avatar never collides with identity text on a narrow viewport", async ({ page }) => {
