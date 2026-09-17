@@ -41,6 +41,13 @@ export const deAdminMessages = {
   "admin.creatorPro.particlePath": "Partikelpfad",
   "admin.creatorPro.validSchema": "Gültiges Schema v1",
   "admin.creatorPro.invalidConfig": "Ungültige Konfiguration",
+  "admin.creatorPro.framePreset": "Frame-Preset",
+  "admin.creatorPro.customCss": "Sicheres Frame-CSS",
+  "admin.creatorPro.cssHint":
+    "Optional. Verwende nur die erlaubten AvatarStage-Selektoren und Eigenschaften. Der Server prüft erneut.",
+  "admin.creatorPro.cssValid": "CSS besteht die Sicherheitsprüfungen",
+  "admin.creatorPro.cssInvalid": "Das CSS ist für diesen Frame nicht gültig",
+  "admin.creatorPro.invalidFramePreset": "Wähle ein gültiges Avatar-Frame-Preset.",
   "admin.creatorPro.normalizedJson": "Normalisiertes JSON",
   "admin.creatorPro.easing.linear": "Linear",
   "admin.creatorPro.easing.ease": "Sanft",

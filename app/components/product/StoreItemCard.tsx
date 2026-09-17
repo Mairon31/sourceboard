@@ -50,6 +50,16 @@ export function StorePreview({
 }) {
   const { t } = useI18n();
   const { config, media } = item.preview;
+  const communityStyles = Array.from(
+    new Map(
+      [
+        ...(config.communityStyles ?? []),
+        ...(item.community?.css
+          ? [{ id: item.community.cosmeticId, css: item.community.css }]
+          : []),
+      ].map((style) => [style.id, style] as const),
+    ).values(),
+  );
   if (isProfilePreviewType(item.type)) {
     return (
       <ProfileCosmeticPreview
@@ -59,11 +69,7 @@ export function StorePreview({
         avatarUrl={avatarUrl}
         visual={config.visual}
         creatorPro={config.creatorPro}
-        communityStyles={
-          item.community?.css
-            ? [{ id: item.community.cosmeticId, css: item.community.css }]
-            : undefined
-        }
+        communityStyles={communityStyles.length ? communityStyles : undefined}
         mode="store"
         className={`product-store-preview product-store-preview--${item.type === "AVATAR_FRAME" ? "avatar" : item.type === "PROFILE_BANNER" ? "theme" : "profile-effect"}${item.type === "PROFILE_EFFECT" && config.preset ? ` product-store-preview--${config.preset}` : ""}`}
       />

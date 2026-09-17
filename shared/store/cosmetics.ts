@@ -53,6 +53,22 @@ export const AVATAR_FRAME_PRESETS = [
   "pastel",
   "double-blue",
   "thin-neon",
+  "orange",
+  "yellow",
+  "lime",
+  "binary",
+  "emerald-dotted",
+  "double",
+  "neon-light",
+  "extreme-ice",
+  "neon-green",
+  "lux-star",
+  "double-grid",
+  "lime-curve",
+  "ruby-double",
+  "crimson-cursed",
+  "fire-tips",
+  "vx",
 ] as const;
 
 export type AvatarFramePreset = (typeof AVATAR_FRAME_PRESETS)[number];

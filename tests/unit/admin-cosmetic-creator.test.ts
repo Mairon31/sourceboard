@@ -13,7 +13,7 @@ describe("Admin Creator Pro cosmetic editor", () => {
     expect(storeEditor).toContain("parseCreatorProStoreConfig");
   });
 
-  it("offers the required bounded structured controls instead of a Creator Pro CSS editor", () => {
+  it("offers bounded structured controls plus the frame preset and safe CSS editor", () => {
     const editor = read("../../app/components/admin/store/CosmeticConfigEditor.tsx");
     expect(editor).toContain("useI18n");
     for (const key of [
@@ -43,7 +43,16 @@ describe("Admin Creator Pro cosmetic editor", () => {
     expect(editor).not.toContain('label="Primary color"');
     expect(editor).not.toContain(">Clone preset<");
     expect(editor).not.toContain(">Normalized JSON<");
-    expect(editor).not.toContain("CSS textarea");
+    for (const key of [
+      "admin.creatorPro.framePreset",
+      "admin.creatorPro.customCss",
+      "admin.creatorPro.cssHint",
+      "admin.creatorPro.cssValid",
+      "admin.creatorPro.cssInvalid",
+    ]) {
+      expect(editor).toContain(`t("${key}")`);
+    }
+    expect(editor).toContain("sanitizeCommunityCosmeticCss");
   });
 
   it("keeps the Preset Laboratory as the preset selector and materializes edits through draft lifecycle", () => {

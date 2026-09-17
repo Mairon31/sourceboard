@@ -258,6 +258,7 @@ export interface StoreItemView {
       family?: NameFontFamily;
       visual?: CosmeticVisualDefinition;
       creatorPro?: CosmeticVisualConfigV1;
+      communityStyles?: Array<{ id: string; css: string }>;
     };
     media: Array<{ id: string; label: string; url: string }>;
   };

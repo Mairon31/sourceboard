@@ -41,6 +41,13 @@ export const ruAdminMessages = {
   "admin.creatorPro.particlePath": "Траектория частиц",
   "admin.creatorPro.validSchema": "Допустимая схема v1",
   "admin.creatorPro.invalidConfig": "Недопустимая конфигурация",
+  "admin.creatorPro.framePreset": "Пресет рамки",
+  "admin.creatorPro.customCss": "Безопасный CSS рамки",
+  "admin.creatorPro.cssHint":
+    "Необязательно. Используйте только разрешённые селекторы и свойства AvatarStage. Сервер проверит CSS повторно.",
+  "admin.creatorPro.cssValid": "CSS прошёл проверки безопасности",
+  "admin.creatorPro.cssInvalid": "CSS недопустим для этой рамки",
+  "admin.creatorPro.invalidFramePreset": "Выберите допустимый пресет рамки.",
   "admin.creatorPro.normalizedJson": "Нормализованный JSON",
   "admin.creatorPro.easing.linear": "Линейное",
   "admin.creatorPro.easing.ease": "Плавное",

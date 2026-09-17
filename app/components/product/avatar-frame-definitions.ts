@@ -743,6 +743,68 @@ const STRUCTURAL: Partial<Record<AvatarFramePreset, readonly AvatarFrameGeometry
       animationDurationMs: 6200,
     },
   ],
+  orange: [
+    { layer: "inner-ring", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  yellow: [
+    { layer: "inner-ring", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  lime: [
+    { layer: "inner-ring", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  binary: [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "emerald-dotted": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  double: [
+    { layer: "inner-ring", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "neon-light": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "orbit", anchor: "center", scale: 1.16, offsetX: 0, offsetY: 0, rotation: 20 },
+  ],
+  "extreme-ice": [
+    { layer: "inner-ring", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "outer-ring", anchor: "center", scale: 1.1, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "neon-green": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "orbit", anchor: "center", scale: 1.16, offsetX: 0, offsetY: 0, rotation: 45 },
+  ],
+  "lux-star": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "top-ornament", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "double-grid": [
+    { layer: "inner-ring", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "outer-ring", anchor: "center", scale: 1.1, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "foreground", anchor: "center", scale: 1.02, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "lime-curve": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "orbit", anchor: "center", scale: 1.16, offsetX: 0, offsetY: 0, rotation: -28 },
+  ],
+  "ruby-double": [
+    { layer: "inner-ring", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "outer-ring", anchor: "center", scale: 1.1, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "crimson-cursed": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "top-ornament", anchor: "center", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  "fire-tips": [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "top-ornament", anchor: "top-left", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "top-ornament", anchor: "top-right", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
+  vx: [
+    { layer: "outer-ring", anchor: "center", scale: 1.08, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "side-ornament", anchor: "left", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+    { layer: "side-ornament", anchor: "right", scale: 1, offsetX: 0, offsetY: 0, rotation: 0 },
+  ],
 };
 
 function defaultDefinition(preset: AvatarFramePreset): AvatarFrameDefinition {

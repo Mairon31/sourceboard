@@ -17,6 +17,24 @@
 .admin-cosmetic-config-editor__controls {
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 }
+.admin-cosmetic-config-editor__frame-controls {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+.admin-cosmetic-config-editor__frame-controls .sb-textarea {
+  min-height: 170px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.admin-cosmetic-config-editor__css-status {
+  margin: 0;
+  color: var(--accent-success, #3ccf91);
+  font-size: var(--text-xs);
+}
 .admin-cosmetic-config-editor label {
   display: grid;
   gap: var(--space-2);

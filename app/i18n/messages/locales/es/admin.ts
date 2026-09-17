@@ -41,6 +41,13 @@ export const esAdminMessages = {
   "admin.creatorPro.particlePath": "Trayectoria de partículas",
   "admin.creatorPro.validSchema": "Esquema v1 válido",
   "admin.creatorPro.invalidConfig": "Configuración no válida",
+  "admin.creatorPro.framePreset": "Preset del frame",
+  "admin.creatorPro.customCss": "CSS seguro del frame",
+  "admin.creatorPro.cssHint":
+    "Opcional. Usa solo los selectores y propiedades permitidos de AvatarStage. El servidor lo valida de nuevo.",
+  "admin.creatorPro.cssValid": "El CSS supera las comprobaciones de seguridad",
+  "admin.creatorPro.cssInvalid": "El CSS no es válido para este frame",
+  "admin.creatorPro.invalidFramePreset": "Elige un preset de frame válido.",
   "admin.creatorPro.normalizedJson": "JSON normalizado",
   "admin.creatorPro.easing.linear": "Lineal",
   "admin.creatorPro.easing.ease": "Suave",

@@ -150,6 +150,12 @@ function parseConfig(value: unknown): StoreItemView["preview"]["config"] {
     } catch {
       creatorPro = undefined;
     }
+    const communityStyles =
+      typeof parsed.communityCosmeticId === "string" &&
+      typeof parsed.communityCss === "string" &&
+      parsed.communityCss.length > 0
+        ? [{ id: parsed.communityCosmeticId, css: parsed.communityCss }]
+        : undefined;
     return {
       preset:
         typeof parsed.preset === "string"
@@ -161,6 +167,7 @@ function parseConfig(value: unknown): StoreItemView["preview"]["config"] {
           : undefined,
       visual: extractCosmeticVisualDefinition(parsed),
       creatorPro,
+      communityStyles,
     };
   } catch {
     return {};

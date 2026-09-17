@@ -3,7 +3,12 @@ import {
   parseCosmeticVisualConfig,
   type CosmeticVisualConfigV1,
 } from "../../../../shared/store/cosmetic-config";
-import { Button, Input } from "../../ui";
+import { AVATAR_FRAME_PRESETS, type AvatarFramePreset } from "../../../../shared/store/cosmetics";
+import {
+  COMMUNITY_CSS_MAX_BYTES,
+  sanitizeCommunityCosmeticCss,
+} from "../../../../shared/store/community-css";
+import { Button, Input, Textarea } from "../../ui";
 import { useI18n } from "../../../i18n/I18nProvider";
 import "./cosmetic-config-editor.css";
 
@@ -47,12 +52,26 @@ function withPaletteColor(
   return { ...draft, palette, gradient: { ...sourceGradient, stops } };
 }
 
+function framePresetLabel(preset: AvatarFramePreset): string {
+  return preset.replaceAll("-", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 export function CosmeticConfigEditor({
   initial = DEFAULT_CONFIG,
   onChange,
+  framePreset,
+  onFramePresetChange,
+  customCss,
+  cosmeticId,
+  onCustomCssChange,
 }: {
   initial?: CosmeticVisualConfigV1;
   onChange?: (config: CosmeticVisualConfigV1) => void;
+  framePreset?: AvatarFramePreset;
+  onFramePresetChange?: (preset: AvatarFramePreset) => void;
+  customCss?: string;
+  cosmeticId?: string;
+  onCustomCssChange?: (css: string) => void;
 }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState<CosmeticVisualConfigV1>(() =>
@@ -60,6 +79,17 @@ export function CosmeticConfigEditor({
   );
   const [validation, setValidation] = useState(() => t("admin.creatorPro.validSchema"));
   const raw = useMemo(() => JSON.stringify(draft, null, 2), [draft]);
+  const frameCssValidation = useMemo(() => {
+    if (customCss === undefined || !cosmeticId) return null;
+    try {
+      return {
+        valid: true,
+        scopedCss: sanitizeCommunityCosmeticCss(customCss, cosmeticId).scopedCss,
+      };
+    } catch {
+      return { valid: false, scopedCss: "" };
+    }
+  }, [cosmeticId, customCss]);
 
   function update(next: CosmeticVisualConfigV1) {
     try {
@@ -281,6 +311,44 @@ export function CosmeticConfigEditor({
           </select>
         </label>
       </div>
+
+      {framePreset && onFramePresetChange && customCss !== undefined && cosmeticId ? (
+        <section className="admin-cosmetic-config-editor__frame-controls">
+          <label className="sb-field">
+            <span className="sb-field__label">{t("admin.creatorPro.framePreset")}</span>
+            <select
+              className="sb-input focus-ring"
+              value={framePreset}
+              onChange={(event) =>
+                onFramePresetChange(event.currentTarget.value as AvatarFramePreset)
+              }
+            >
+              {AVATAR_FRAME_PRESETS.map((preset) => (
+                <option key={preset} value={preset}>
+                  {framePresetLabel(preset)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Textarea
+            label={t("admin.creatorPro.customCss")}
+            value={customCss}
+            onChange={(event) => onCustomCssChange?.(event.currentTarget.value)}
+            hint={t("admin.creatorPro.cssHint")}
+            error={
+              frameCssValidation?.valid === false ? t("admin.creatorPro.cssInvalid") : undefined
+            }
+            maxLength={COMMUNITY_CSS_MAX_BYTES}
+            rows={9}
+            spellCheck={false}
+          />
+          {customCss.trim() && frameCssValidation?.valid ? (
+            <p className="admin-cosmetic-config-editor__css-status" role="status">
+              {t("admin.creatorPro.cssValid")}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <p role="status">{validation}</p>
       <details>

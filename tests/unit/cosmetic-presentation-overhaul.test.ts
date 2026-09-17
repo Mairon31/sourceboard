@@ -200,7 +200,7 @@ describe("Cosmetic presentation overhaul", () => {
   });
 
   it("accepts the complete Block E Avatar Frame catalog", () => {
-    expect(AVATAR_FRAME_PRESETS).toHaveLength(54);
+    expect(AVATAR_FRAME_PRESETS).toHaveLength(70);
     for (const slug of NEW_AVATAR_FRAMES) {
       expect(isAvatarFramePreset(slug)).toBe(true);
       expect(AVATAR_FRAME_DEFINITIONS[slug]).toBeDefined();

@@ -104,12 +104,17 @@ function CosmeticPreview({ item }: { item: AdminStoreItem }) {
   const config = parseConfig(item.configJson);
   const visual = extractCosmeticVisualDefinition(config);
   const cosmetic = cosmeticPreviewInput(item, config);
+  const communityStyles =
+    typeof config.communityCosmeticId === "string" && typeof config.communityCss === "string"
+      ? [{ id: config.communityCosmeticId, css: config.communityCss }]
+      : undefined;
   if (cosmetic) {
     return (
       <SharedCosmeticPreview
         cosmetic={cosmetic}
         name={item.name}
         visual={visual}
+        communityStyles={communityStyles}
         compact
         className="admin-store-cosmetic-preview"
       />

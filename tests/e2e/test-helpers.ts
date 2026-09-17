@@ -204,6 +204,10 @@ export async function installAdminStoreFixture(page: Page) {
     VALUES
       ('e2e-admin-emote', 'e2e_wave', 'E2E Wave', 'catalog/emote/e2e-admin-emote', 'ACTIVE',
        ${now}, 'e2e-admin-draft-pack', 10, 'DRAFT', 1, 'CLEAR', ${now});
+
+    UPDATE store_items
+    SET config_json = '{"preset":"stellar"}', updated_at = ${now}
+    WHERE id = 'store-frame-stellar';
   `;
   executeLocalSql(sql);
 

@@ -38,7 +38,7 @@ describe("low-cost avatar frame catalog", () => {
         ),
       ).toBe(true);
     }
-    expect(AVATAR_FRAME_PRESETS).toHaveLength(54);
+    expect(AVATAR_FRAME_PRESETS).toHaveLength(70);
   });
 
   it("seeds each cheap frame with a stable id, low price and matching preset", () => {

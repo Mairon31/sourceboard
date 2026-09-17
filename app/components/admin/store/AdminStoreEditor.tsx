@@ -1,12 +1,16 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { CosmeticVisualConfigV1 } from "../../../../shared/store/cosmetic-config";
+import { extractCosmeticVisualDefinition } from "../../../../shared/store/custom-cosmetics";
 import {
+  AVATAR_FRAME_PRESETS,
   isAvatarFramePreset,
   isNameEffectPreset,
   isNameFontFamily,
   isProfileEffectPreset,
   isProfileThemePreset,
+  type AvatarFramePreset,
 } from "../../../../shared/store/cosmetics";
+import { sanitizeCommunityCosmeticCss } from "../../../../shared/store/community-css";
 import {
   mergeCreatorProStoreConfig,
   parseCreatorProStoreConfig,
@@ -95,10 +99,29 @@ export function AdminStoreEditor({
   const storedConfig = parseConfigObject(item.configJson);
   const creatorProEnabled = isCreatorProCosmetic(item.type);
   const initialCreatorConfig = readCreatorProConfig(storedConfig);
+  const initialFramePreset: AvatarFramePreset =
+    item.type === "AVATAR_FRAME" && isAvatarFramePreset(storedConfig?.preset)
+      ? storedConfig.preset
+      : AVATAR_FRAME_PRESETS[0];
   const [creatorConfig, setCreatorConfig] = useState<CosmeticVisualConfigV1 | null>(
     initialCreatorConfig,
   );
-  const preview = storedConfig ? cosmeticPreviewInput(item.type, storedConfig) : null;
+  const [framePreset, setFramePreset] = useState<AvatarFramePreset>(initialFramePreset);
+  const [communityCssSource, setCommunityCssSource] = useState(
+    typeof storedConfig?.communityCssSource === "string" ? storedConfig.communityCssSource : "",
+  );
+  const frameCssValidation = useMemo(() => {
+    if (item.type !== "AVATAR_FRAME") return null;
+    try {
+      return sanitizeCommunityCosmeticCss(communityCssSource, item.id);
+    } catch {
+      return null;
+    }
+  }, [communityCssSource, item.id, item.type]);
+  const previewConfig = storedConfig
+    ? { ...storedConfig, ...(item.type === "AVATAR_FRAME" ? { preset: framePreset } : {}) }
+    : null;
+  const preview = previewConfig ? cosmeticPreviewInput(item.type, previewConfig) : null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,9 +136,41 @@ export function AdminStoreEditor({
         setBusy(false);
         return;
       }
-      config = creatorConfig
+      const nextConfig = creatorConfig
         ? mergeCreatorProStoreConfig(storedConfig, creatorConfig)
         : storedConfig;
+      if (item.type === "AVATAR_FRAME") {
+        if (!isAvatarFramePreset(framePreset)) {
+          setError(t("admin.creatorPro.invalidFramePreset"));
+          setBusy(false);
+          return;
+        }
+        let sanitizedCss;
+        try {
+          sanitizedCss = sanitizeCommunityCosmeticCss(communityCssSource, item.id);
+        } catch {
+          setError(t("admin.creatorPro.cssInvalid"));
+          setBusy(false);
+          return;
+        }
+        const nextFrameConfig: Record<string, unknown> = {
+          ...nextConfig,
+          preset: framePreset,
+        };
+        delete nextFrameConfig.communityCosmeticId;
+        delete nextFrameConfig.communityCssSource;
+        delete nextFrameConfig.communityCss;
+        if (sanitizedCss.sourceCss) {
+          Object.assign(nextFrameConfig, {
+            communityCosmeticId: item.id,
+            communityCssSource: sanitizedCss.sourceCss,
+            communityCss: sanitizedCss.scopedCss,
+          });
+        }
+        config = nextFrameConfig;
+      } else {
+        config = nextConfig;
+      }
     } else {
       try {
         config = JSON.parse(String(form.get("config") ?? "{}"));
@@ -210,6 +265,14 @@ export function AdminStoreEditor({
                 <CosmeticPreview
                   cosmetic={preview}
                   creatorPro={creatorConfig ?? initialCreatorConfig ?? undefined}
+                  visual={
+                    previewConfig ? extractCosmeticVisualDefinition(previewConfig) : undefined
+                  }
+                  communityStyles={
+                    item.type === "AVATAR_FRAME" && frameCssValidation?.scopedCss
+                      ? [{ id: item.id, css: frameCssValidation.scopedCss }]
+                      : undefined
+                  }
                   compact
                   name={item.name}
                 />
@@ -221,6 +284,11 @@ export function AdminStoreEditor({
               key={item.id}
               initial={initialCreatorConfig ?? undefined}
               onChange={setCreatorConfig}
+              framePreset={item.type === "AVATAR_FRAME" ? framePreset : undefined}
+              onFramePresetChange={item.type === "AVATAR_FRAME" ? setFramePreset : undefined}
+              customCss={item.type === "AVATAR_FRAME" ? communityCssSource : undefined}
+              cosmeticId={item.type === "AVATAR_FRAME" ? item.id : undefined}
+              onCustomCssChange={item.type === "AVATAR_FRAME" ? setCommunityCssSource : undefined}
             />
             <details className="admin-store-editor__config-inspector">
               <summary>{t("admin.store.editor.identityMetadata")}</summary>

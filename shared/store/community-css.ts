@@ -18,6 +18,8 @@ export const COMMUNITY_CSS_ALLOWED_SELECTORS = [
   ".cosmetic-root .profile-avatar-area",
   ".cosmetic-root .profile-avatar-area::before",
   ".cosmetic-root .profile-avatar-area::after",
+  ".cosmetic-root .profile-avatar-area .product-avatar-stage__part",
+  ".cosmetic-root .product-avatar-stage__part",
   ".cosmetic-root .profile-name-area",
   ".cosmetic-root .profile-name-area::before",
   ".cosmetic-root .profile-name-area::after",
@@ -437,7 +439,12 @@ export function sanitizeCommunityCosmeticCss(
     if (!selectors.length || selectors.some((selector) => !ALLOWED_SELECTORS.has(selector)))
       invalid("Custom CSS selectors must stay inside .cosmetic-root and approved profile slots.");
     const scoped = selectors
-      .map((selector) => selector.replace(/^\.cosmetic-root/, root))
+      .map((selector) => {
+        const scopedSelector = selector.replace(/^\.cosmetic-root/, root);
+        return selector.endsWith(".product-avatar-stage__part")
+          ? `${scopedSelector}:not(#sbcc-${cosmeticId})`
+          : scopedSelector;
+      })
       .join(", ");
     output.push(`${scoped} { ${sanitizeDeclarations(rule.body, keyframeNames)} }`);
   }
