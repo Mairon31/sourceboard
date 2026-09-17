@@ -1,4 +1,6 @@
 export const esAdminMessages = {
+  "admin.shell.openNavigation": "Abrir navegación administrativa",
+  "admin.shell.closeNavigation": "Cerrar navegación administrativa",
   "admin.store.updateFailed":
     "No se pudo actualizar este artículo de la tienda. Comprueba tu conexión e inténtalo de nuevo.",
   "admin.store.editor.invalidStoredConfig":

@@ -1,4 +1,6 @@
 export const deAdminMessages = {
+  "admin.shell.openNavigation": "Administrationsnavigation öffnen",
+  "admin.shell.closeNavigation": "Administrationsnavigation schließen",
   "admin.store.updateFailed":
     "Dieses Store-Element konnte nicht aktualisiert werden. Prüfe deine Verbindung und versuche es erneut.",
   "admin.store.editor.invalidStoredConfig":

@@ -11,6 +11,7 @@ import type { MessageKey } from "../i18n";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { useI18n } from "../i18n/I18nProvider";
 import { Badge, Button, Card, Input } from "../components/ui";
+import { CmsMarkdown } from "../components/product/CmsMarkdown";
 import { readCsrfToken } from "../data/csrf";
 import { requireAdminPageAccess, type AuthorizedAdminPageRuntime } from "../data/admin-access";
 import type { ServerLoaderArgs } from "../data/server-request";
@@ -263,8 +264,10 @@ export default function AdminContentPageRoute() {
         <div className="admin-content-editor__preview" aria-label={t("admin.content.safePreview")}>
           <span className="product-eyebrow">{t("admin.content.preview")}</span>
           <h2>{fields.title || t("admin.content.untitled")}</h2>
-          <p>{fields.description}</p>
-          <pre>{fields.bodyMarkdown}</pre>
+          {fields.description ? <p>{fields.description}</p> : null}
+          <div className="admin-content-editor__preview-body">
+            <CmsMarkdown markdown={fields.bodyMarkdown} />
+          </div>
         </div>
 
         {canManage ? (

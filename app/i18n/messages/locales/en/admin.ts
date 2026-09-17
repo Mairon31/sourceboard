@@ -1,4 +1,6 @@
 export const enAdminMessages = {
+  "admin.shell.openNavigation": "Open administration navigation",
+  "admin.shell.closeNavigation": "Close administration navigation",
   "admin.store.updateFailed":
     "Could not update this Store item. Check your connection and try again.",
   "admin.store.editor.invalidStoredConfig":

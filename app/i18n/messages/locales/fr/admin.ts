@@ -1,4 +1,6 @@
 export const frAdminMessages = {
+  "admin.shell.openNavigation": "Ouvrir la navigation d’administration",
+  "admin.shell.closeNavigation": "Fermer la navigation d’administration",
   "admin.store.updateFailed":
     "Impossible de mettre à jour cet article de la boutique. Vérifiez votre connexion et réessayez.",
   "admin.store.editor.invalidStoredConfig":

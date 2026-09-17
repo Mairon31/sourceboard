@@ -1,8 +1,18 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router";
+import { NavLink, useLocation } from "react-router";
 import { ThemeControl } from "../layout/ThemeControl";
-import { CheckIcon, FriendsIcon, HomeIcon, InfoIcon, SearchIcon, StoreIcon, UserIcon } from "../ui";
+import {
+  CheckIcon,
+  CloseIcon,
+  FriendsIcon,
+  HomeIcon,
+  InfoIcon,
+  SearchIcon,
+  StoreIcon,
+  UserIcon,
+} from "../ui";
+import { useI18n } from "../../i18n/I18nProvider";
 
 const adminLinks = [
   { href: "/admin", label: "Overview", end: true, icon: HomeIcon },
@@ -27,7 +37,16 @@ const adminLinks = [
 ] as const;
 
 export function AdminShell({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const { t } = useI18n();
   const [uiReady, setUiReady] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+
+  const activeItem =
+    adminLinks.find((item) => {
+      if (item.end) return location.pathname === item.href;
+      return location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
+    }) ?? adminLinks[0];
 
   useEffect(() => {
     setUiReady(true);
@@ -35,18 +54,43 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="admin-shell" data-ui-ready={uiReady ? "true" : "false"}>
-      <aside className="admin-sidebar">
-        <a href="/" className="admin-brand">
-          <span aria-hidden="true">
-            <img src="/sourceboard-logo.svg" alt="" width="34" height="34" decoding="async" />
-          </span>
-          <div>
-            <strong>SourceBoard</strong>
-            <small>Control center</small>
-          </div>
-        </a>
+      <aside className="admin-sidebar" data-mobile-open={mobileNavigationOpen ? "true" : "false"}>
+        <div className="admin-sidebar__top">
+          <a href="/" className="admin-brand">
+            <span aria-hidden="true">
+              <img src="/sourceboard-logo.svg" alt="" width="34" height="34" decoding="async" />
+            </span>
+            <div>
+              <strong>SourceBoard</strong>
+              <small>Control center</small>
+            </div>
+          </a>
+          <span className="admin-mobile-current">{activeItem.label}</span>
+          <button
+            type="button"
+            className="admin-mobile-toggle"
+            aria-label={
+              mobileNavigationOpen
+                ? t("admin.shell.closeNavigation")
+                : t("admin.shell.openNavigation")
+            }
+            aria-expanded={mobileNavigationOpen}
+            aria-controls="admin-navigation"
+            onClick={() => setMobileNavigationOpen((open) => !open)}
+          >
+            {mobileNavigationOpen ? (
+              <CloseIcon width="20" height="20" />
+            ) : (
+              <span className="admin-mobile-toggle__bars" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            )}
+          </button>
+        </div>
         <div className="admin-sidebar__label">Administration</div>
-        <nav aria-label="Administration navigation">
+        <nav id="admin-navigation" aria-label="Administration navigation">
           {adminLinks.map((item) => {
             const Icon = item.icon;
             return (
@@ -57,6 +101,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 className={({ isActive }) =>
                   `admin-nav-link${isActive ? " admin-nav-link--active" : ""}`
                 }
+                onClick={() => setMobileNavigationOpen(false)}
               >
                 <Icon width="18" height="18" />
                 <span>{item.label}</span>

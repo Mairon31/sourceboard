@@ -1,4 +1,6 @@
 export const ptAdminMessages = {
+  "admin.shell.openNavigation": "Abrir navegação administrativa",
+  "admin.shell.closeNavigation": "Fechar navegação administrativa",
   "admin.store.updateFailed":
     "Não foi possível atualizar este item da loja. Verifique sua conexão e tente novamente.",
   "admin.store.editor.invalidStoredConfig":

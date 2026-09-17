@@ -1,4 +1,6 @@
 export const ruAdminMessages = {
+  "admin.shell.openNavigation": "Открыть навигацию администрирования",
+  "admin.shell.closeNavigation": "Закрыть навигацию администрирования",
   "admin.store.updateFailed":
     "Не удалось обновить этот товар магазина. Проверьте подключение и повторите попытку.",
   "admin.store.editor.invalidStoredConfig":
