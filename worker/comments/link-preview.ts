@@ -13,6 +13,14 @@ export interface LinkPreviewDependencies {
   now?: () => number;
 }
 
+function invokeFetch(
+  fetchImpl: typeof fetch,
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  return fetchImpl.call(globalThis, input, init);
+}
+
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 512 * 1024;
 const MAX_PROVIDER_JSON_BYTES = 64 * 1024;
@@ -185,7 +193,7 @@ async function queryDns(
   url.searchParams.set("name", hostname);
   url.searchParams.set("type", type);
   try {
-    const response = await fetchImpl(url.toString(), {
+    const response = await invokeFetch(fetchImpl, url.toString(), {
       headers: { accept: "application/dns-json" },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -428,7 +436,7 @@ async function recoverImdbMetadata(
   const endpoint = new URL(`https://${IMDB_SUGGESTION_HOST}/suggestion/x/${titleId}.json`);
   try {
     await assertPublicTarget(endpoint, dependencies.resolveHost);
-    const response = await dependencies.fetchImpl(endpoint.toString(), {
+    const response = await invokeFetch(dependencies.fetchImpl, endpoint.toString(), {
       redirect: "manual",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       headers: {
@@ -554,7 +562,7 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             throw error;
           }
           const requestDocument = (userAgent: string) =>
-            dependencies.fetchImpl(current.toString(), {
+            invokeFetch(dependencies.fetchImpl, current.toString(), {
               redirect: "manual",
               signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
               headers: {
@@ -783,7 +791,7 @@ export async function fetchPreviewImage(
     await assertPublicTarget(current, dependencies.resolveHost);
     let response: Response;
     try {
-      response = await dependencies.fetchImpl(current.toString(), {
+      response = await invokeFetch(dependencies.fetchImpl, current.toString(), {
         redirect: "manual",
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         headers: {

@@ -6,6 +6,7 @@ import {
   fetchPreviewImage,
   isPublicIpAddress,
   normalizeLinkPreviewUrl,
+  resolveLinkPreviewHost,
 } from "../../worker/comments/link-preview";
 
 function publicResolver() {
@@ -105,6 +106,40 @@ describe("link preview metadata fetcher", () => {
       fetchedAt: 1234,
       metadataStatus: "URL_ONLY",
     });
+  });
+
+  it("invokes the injected fetch with the global receiver used by Workers", async () => {
+    const fetchImpl = vi.fn(async function (this: unknown) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return new Response("<title>Bound fetch</title>", {
+        headers: { "content-type": "text/html" },
+      });
+    }) as unknown as typeof fetch;
+    const service = createLinkPreviewService({ fetchImpl, resolveHost: publicResolver() });
+
+    await expect(service.preview("https://example.com/bound-fetch")).resolves.toMatchObject({
+      title: "Bound fetch",
+      metadataStatus: "MINIMAL",
+    });
+  });
+
+  it("keeps the global receiver while resolving preview DNS", async () => {
+    const fetchImpl = vi.fn(async function (this: unknown, input: RequestInfo | URL) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      const url = new URL(String(input));
+      return new Response(
+        JSON.stringify({
+          Answer:
+            url.searchParams.get("type") === "A"
+              ? [{ type: 1, data: "93.184.216.34" }]
+              : [],
+        }),
+      );
+    }) as unknown as typeof fetch;
+
+    await expect(resolveLinkPreviewHost("example.com", fetchImpl)).resolves.toEqual([
+      "93.184.216.34",
+    ]);
   });
 
   it("retries a blocked public document and classifies title-only metadata as MINIMAL", async () => {
@@ -394,9 +429,10 @@ describe("link preview metadata fetcher", () => {
 describe("persisted link preview image fetcher", () => {
   it("returns a bounded supported image", async () => {
     const body = new Uint8Array([1, 2, 3, 4]);
-    const fetchImpl = vi.fn(
-      async () => new Response(body, { headers: { "content-type": "image/png" } }),
-    ) as unknown as typeof fetch;
+    const fetchImpl = vi.fn(async function (this: unknown) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return new Response(body, { headers: { "content-type": "image/png" } });
+    }) as unknown as typeof fetch;
     const image = await fetchPreviewImage("https://example.com/preview.png", {
       fetchImpl,
       resolveHost: publicResolver(),
