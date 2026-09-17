@@ -245,7 +245,17 @@ async function assertPublicTarget(
     }
     return;
   }
-  const addresses = await resolveHost(url.hostname);
+  let addresses: string[];
+  try {
+    addresses = await resolveHost(url.hostname);
+  } catch (error) {
+    observeImdbRecovery("target-error", {
+      hostname: url.hostname,
+      kind: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message.slice(0, 120) : null,
+    });
+    throw error;
+  }
   if (!addresses.length) throw new Error("Hostname did not resolve");
   if (addresses.some((address) => !isPublicIpAddress(address))) {
     throw linkError(400, "LINK_PREVIEW_PRIVATE_TARGET", "Private network links are not supported.");
