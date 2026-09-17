@@ -534,7 +534,22 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
           if (imdbTitle !== null) {
             observeImdbRecovery("document-target", { hostname: current.hostname });
           }
-          await assertPublicTarget(current, dependencies.resolveHost);
+          try {
+            await assertPublicTarget(current, dependencies.resolveHost);
+          } catch (error) {
+            if (imdbTitle !== null) {
+              observeImdbRecovery("target-validation-error", {
+                kind:
+                  error instanceof PostError
+                    ? error.code
+                    : error instanceof Error
+                      ? error.name
+                      : typeof error,
+                message: error instanceof Error ? error.message.slice(0, 120) : null,
+              });
+            }
+            throw error;
+          }
           const requestDocument = (userAgent: string) =>
             dependencies.fetchImpl(current.toString(), {
               redirect: "manual",
