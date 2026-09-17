@@ -475,13 +475,21 @@ function isRedirect(status: number): boolean {
 
 export function createLinkPreviewService(dependencies: LinkPreviewDependencies) {
   const now = dependencies.now ?? (() => Date.now());
+  const cacheSnapshot = async (cacheKey: string, snapshot: LinkPreviewSnapshot) => {
+    if (snapshot.metadataStatus === "URL_ONLY") return;
+    try {
+      await dependencies.cache?.put(cacheKey, snapshot, CACHE_TTL_SECONDS);
+    } catch {
+      // Cache writes are advisory.
+    }
+  };
   return {
     async preview(value: unknown): Promise<LinkPreviewSnapshot> {
       const initial = normalizeLinkPreviewUrl(value);
       const cacheKey = initial.toString();
       try {
         const cached = await dependencies.cache?.get(cacheKey);
-        if (cached) return cached;
+        if (cached && cached.metadataStatus !== "URL_ONLY") return cached;
       } catch {
         // Cache failure must not make preview generation unavailable.
       }
@@ -541,11 +549,7 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             (contentType !== "text/html" && contentType !== "application/xhtml+xml")
           ) {
             const snapshot = urlOnly(current, fetchedAt);
-            try {
-              await dependencies.cache?.put(cacheKey, snapshot, CACHE_TTL_SECONDS);
-            } catch {
-              // Cache writes are advisory.
-            }
+            await cacheSnapshot(cacheKey, snapshot);
             return snapshot;
           }
 
@@ -565,11 +569,7 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
                 fetchedAt,
                 metadataStatus: present >= 2 ? "COMPLETE" : "MINIMAL",
               };
-              try {
-                await dependencies.cache?.put(cacheKey, snapshot, CACHE_TTL_SECONDS);
-              } catch {
-                // Cache writes are advisory.
-              }
+              await cacheSnapshot(cacheKey, snapshot);
               return snapshot;
             }
           }
@@ -620,21 +620,13 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
                       ? "COMPLETE"
                       : "PARTIAL",
           };
-          try {
-            await dependencies.cache?.put(cacheKey, snapshot, CACHE_TTL_SECONDS);
-          } catch {
-            // Cache writes are advisory.
-          }
+          await cacheSnapshot(cacheKey, snapshot);
           return snapshot;
         }
       } catch (error) {
         if (shouldPropagate(error)) throw error;
         const snapshot = urlOnly(current, now());
-        try {
-          await dependencies.cache?.put(cacheKey, snapshot, CACHE_TTL_SECONDS);
-        } catch {
-          // Cache writes are advisory.
-        }
+        await cacheSnapshot(cacheKey, snapshot);
         return snapshot;
       }
     },

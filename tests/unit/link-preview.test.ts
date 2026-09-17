@@ -262,6 +262,64 @@ describe("link preview metadata fetcher", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(cache.put).not.toHaveBeenCalled();
   });
+
+  it("bypasses cached URL-only snapshots so stale previews can retry", async () => {
+    const cachedUrlOnly = {
+      canonicalUrl: "https://example.com/stale",
+      siteName: null,
+      title: null,
+      description: null,
+      imageUrl: null,
+      fetchedAt: 10,
+      metadataStatus: "URL_ONLY" as const,
+    };
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response("<title>Recovered title</title>", {
+          headers: { "content-type": "text/html" },
+        }),
+    ) as unknown as typeof fetch;
+    const cache = {
+      get: vi.fn(async () => cachedUrlOnly),
+      put: vi.fn(async () => undefined),
+    };
+    const service = createLinkPreviewService({
+      fetchImpl,
+      resolveHost: publicResolver(),
+      cache,
+      now: () => 100,
+    });
+
+    await expect(service.preview(cachedUrlOnly.canonicalUrl)).resolves.toMatchObject({
+      title: "Recovered title",
+      metadataStatus: "MINIMAL",
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cache URL-only snapshots", async () => {
+    const cache = {
+      get: vi.fn(async () => null),
+      put: vi.fn(async () => undefined),
+    };
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response("<html><head></head></html>", {
+          headers: { "content-type": "text/html" },
+        }),
+    ) as unknown as typeof fetch;
+    const service = createLinkPreviewService({
+      fetchImpl,
+      resolveHost: publicResolver(),
+      cache,
+      now: () => 100,
+    });
+
+    await expect(service.preview("https://example.com/no-metadata")).resolves.toMatchObject({
+      metadataStatus: "URL_ONLY",
+    });
+    expect(cache.put).not.toHaveBeenCalled();
+  });
 });
 
 describe("persisted link preview image fetcher", () => {
