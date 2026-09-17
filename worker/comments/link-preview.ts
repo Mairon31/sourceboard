@@ -192,23 +192,13 @@ async function queryDns(
   const url = new URL("https://cloudflare-dns.com/dns-query");
   url.searchParams.set("name", hostname);
   url.searchParams.set("type", type);
-  try {
-    const response = await invokeFetch(fetchImpl, url.toString(), {
-      headers: { accept: "application/dns-json" },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!response.ok) throw new Error("DNS lookup failed");
-    const payload = (await response.json()) as DnsJsonResponse;
-    return Array.isArray(payload.Answer) ? payload.Answer : [];
-  } catch (error) {
-    observeImdbRecovery("dns-error", {
-      hostname,
-      type,
-      kind: error instanceof Error ? error.name : typeof error,
-      message: error instanceof Error ? error.message.slice(0, 120) : null,
-    });
-    throw error;
-  }
+  const response = await invokeFetch(fetchImpl, url.toString(), {
+    headers: { accept: "application/dns-json" },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error("DNS lookup failed");
+  const payload = (await response.json()) as DnsJsonResponse;
+  return Array.isArray(payload.Answer) ? payload.Answer : [];
 }
 
 export async function resolveLinkPreviewHost(
@@ -254,16 +244,7 @@ async function assertPublicTarget(
     return;
   }
   let addresses: string[];
-  try {
-    addresses = await resolveHost(url.hostname);
-  } catch (error) {
-    observeImdbRecovery("target-error", {
-      hostname: url.hostname,
-      kind: error instanceof Error ? error.name : typeof error,
-      message: error instanceof Error ? error.message.slice(0, 120) : null,
-    });
-    throw error;
-  }
+  addresses = await resolveHost(url.hostname);
   if (!addresses.length) throw new Error("Hostname did not resolve");
   if (addresses.some((address) => !isPublicIpAddress(address))) {
     throw linkError(400, "LINK_PREVIEW_PRIVATE_TARGET", "Private network links are not supported.");
@@ -422,10 +403,6 @@ interface ImdbSuggestionEntry {
   i?: { imageUrl?: unknown };
 }
 
-function observeImdbRecovery(stage: string, details: Record<string, unknown> = {}): void {
-  console.info(JSON.stringify({ event: "link_preview_imdb_recovery", stage, ...details }));
-}
-
 async function recoverImdbMetadata(
   url: URL,
   dependencies: Pick<LinkPreviewDependencies, "fetchImpl" | "resolveHost">,
@@ -449,11 +426,6 @@ async function recoverImdbMetadata(
       ?.split(";", 1)[0]
       ?.trim()
       .toLowerCase();
-    observeImdbRecovery("response", {
-      status: response.status,
-      ok: response.ok,
-      contentType: contentType ?? null,
-    });
     if (!response.ok || isRedirect(response.status) || contentType !== "application/json") {
       return null;
     }
@@ -464,11 +436,6 @@ async function recoverImdbMetadata(
     const entry = Array.isArray(payload.d)
       ? payload.d.find((candidate) => candidate?.id === titleId)
       : undefined;
-    observeImdbRecovery("payload", {
-      bytes: body.length,
-      entries: Array.isArray(payload.d) ? payload.d.length : 0,
-      matched: Boolean(entry),
-    });
     const title = typeof entry?.l === "string" ? cleanMetadata(entry.l, 160) : null;
     if (!title) return null;
 
@@ -483,11 +450,7 @@ async function recoverImdbMetadata(
       }
     }
     return { siteName: "IMDb", title, description: null, imageUrl };
-  } catch (error) {
-    observeImdbRecovery("error", {
-      kind: error instanceof Error ? error.name : typeof error,
-      message: error instanceof Error ? error.message.slice(0, 160) : null,
-    });
+  } catch {
     return null;
   }
 }
@@ -542,25 +505,7 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
       try {
         for (let redirects = 0; ; redirects += 1) {
           const imdbTitle = imdbTitleId(current);
-          if (imdbTitle !== null) {
-            observeImdbRecovery("document-target", { hostname: current.hostname });
-          }
-          try {
-            await assertPublicTarget(current, dependencies.resolveHost);
-          } catch (error) {
-            if (imdbTitle !== null) {
-              observeImdbRecovery("target-validation-error", {
-                kind:
-                  error instanceof PostError
-                    ? error.code
-                    : error instanceof Error
-                      ? error.name
-                      : typeof error,
-                message: error instanceof Error ? error.message.slice(0, 120) : null,
-              });
-            }
-            throw error;
-          }
+          await assertPublicTarget(current, dependencies.resolveHost);
           const requestDocument = (userAgent: string) =>
             invokeFetch(dependencies.fetchImpl, current.toString(), {
               redirect: "manual",
@@ -570,33 +515,10 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
                 "user-agent": userAgent,
               },
             });
-          let response: Response;
-          try {
-            response = await requestDocument(PREVIEW_USER_AGENT);
-          } catch (error) {
-            if (imdbTitle !== null) {
-              observeImdbRecovery("document-request-error", {
-                kind: error instanceof Error ? error.name : typeof error,
-                message: error instanceof Error ? error.message.slice(0, 160) : null,
-              });
-            }
-            throw error;
-          }
-          if (imdbTitle !== null) {
-            observeImdbRecovery("document-response", {
-              status: response.status,
-              contentType: response.headers.get("content-type") ?? null,
-            });
-          }
+          let response = await requestDocument(PREVIEW_USER_AGENT);
           if (response.status === 403) {
             await assertPublicTarget(current, dependencies.resolveHost);
             response = await requestDocument(BROWSER_COMPATIBLE_USER_AGENT);
-            if (imdbTitle !== null) {
-              observeImdbRecovery("document-retry-response", {
-                status: response.status,
-                contentType: response.headers.get("content-type") ?? null,
-              });
-            }
           }
           if (isRedirect(response.status)) {
             if (redirects >= MAX_REDIRECTS) {
@@ -647,15 +569,6 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             hasImdbChallengeStatus ||
             (imdbTitle !== null && !hasDocumentMetadata)
           ) {
-            observeImdbRecovery("attempt", {
-              status: response.status,
-              contentType: contentType ?? null,
-              bodyBytes: html.length,
-              isImdbTitle: imdbTitle !== null,
-              challengeMarker: isBotChallengeResponse(html),
-              hasImdbChallengeStatus,
-              hasDocumentMetadata,
-            });
             const recovered = await recoverImdbMetadata(current, dependencies);
             if (recovered) {
               const present = [
@@ -733,16 +646,6 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
           return snapshot;
         }
       } catch (error) {
-        if (imdbTitleId(current) !== null) {
-          observeImdbRecovery("preview-error", {
-            kind:
-              error instanceof PostError
-                ? error.code
-                : error instanceof Error
-                  ? error.name
-                  : typeof error,
-          });
-        }
         if (shouldPropagate(error)) throw error;
         const snapshot = urlOnly(current, now());
         await cacheSnapshot(cacheKey, snapshot);
