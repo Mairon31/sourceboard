@@ -378,11 +378,8 @@ async function readBoundedText(response: Response, maximumBytes: number): Promis
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 }
 
-function isBotChallengeResponse(status: number, body: string): boolean {
-  return (
-    (status === 202 || status === 403) &&
-    /awswaf|gokuProps|challenge-container|AwsWafIntegration|token\.awswaf/i.test(body)
-  );
+function isBotChallengeResponse(body: string): boolean {
+  return /awswaf|gokuProps|challenge-container|AwsWafIntegration|token\.awswaf/i.test(body);
 }
 
 function imdbTitleId(url: URL): string | null {
@@ -554,7 +551,7 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
           }
 
           const html = await readBoundedText(response, MAX_HTML_BYTES);
-          if (isBotChallengeResponse(response.status, html)) {
+          if (isBotChallengeResponse(html)) {
             const recovered = await recoverImdbMetadata(current, dependencies);
             if (recovered) {
               const present = [
