@@ -475,8 +475,11 @@ async function recoverImdbMetadata(
       }
     }
     return { siteName: "IMDb", title, description: null, imageUrl };
-  } catch {
-    observeImdbRecovery("error");
+  } catch (error) {
+    observeImdbRecovery("error", {
+      kind: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message.slice(0, 160) : null,
+    });
     return null;
   }
 }
@@ -559,7 +562,18 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
                 "user-agent": userAgent,
               },
             });
-          let response = await requestDocument(PREVIEW_USER_AGENT);
+          let response: Response;
+          try {
+            response = await requestDocument(PREVIEW_USER_AGENT);
+          } catch (error) {
+            if (imdbTitle !== null) {
+              observeImdbRecovery("document-request-error", {
+                kind: error instanceof Error ? error.name : typeof error,
+                message: error instanceof Error ? error.message.slice(0, 160) : null,
+              });
+            }
+            throw error;
+          }
           if (imdbTitle !== null) {
             observeImdbRecovery("document-response", {
               status: response.status,
