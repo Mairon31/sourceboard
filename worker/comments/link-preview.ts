@@ -394,6 +394,10 @@ interface ImdbSuggestionEntry {
   i?: { imageUrl?: unknown };
 }
 
+function observeImdbRecovery(stage: string, details: Record<string, unknown> = {}): void {
+  console.info(JSON.stringify({ event: "link_preview_imdb_recovery", stage, ...details }));
+}
+
 async function recoverImdbMetadata(
   url: URL,
   dependencies: Pick<LinkPreviewDependencies, "fetchImpl" | "resolveHost">,
@@ -417,15 +421,26 @@ async function recoverImdbMetadata(
       ?.split(";", 1)[0]
       ?.trim()
       .toLowerCase();
+    observeImdbRecovery("response", {
+      status: response.status,
+      ok: response.ok,
+      contentType: contentType ?? null,
+    });
     if (!response.ok || isRedirect(response.status) || contentType !== "application/json") {
       return null;
     }
-    const payload = JSON.parse(await readBoundedText(response, MAX_PROVIDER_JSON_BYTES)) as {
+    const body = await readBoundedText(response, MAX_PROVIDER_JSON_BYTES);
+    const payload = JSON.parse(body) as {
       d?: ImdbSuggestionEntry[];
     };
     const entry = Array.isArray(payload.d)
       ? payload.d.find((candidate) => candidate?.id === titleId)
       : undefined;
+    observeImdbRecovery("payload", {
+      bytes: body.length,
+      entries: Array.isArray(payload.d) ? payload.d.length : 0,
+      matched: Boolean(entry),
+    });
     const title = typeof entry?.l === "string" ? cleanMetadata(entry.l, 160) : null;
     if (!title) return null;
 
@@ -441,6 +456,7 @@ async function recoverImdbMetadata(
     }
     return { siteName: "IMDb", title, description: null, imageUrl };
   } catch {
+    observeImdbRecovery("error");
     return null;
   }
 }
@@ -559,6 +575,15 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             hasImdbChallengeStatus ||
             (imdbTitle !== null && !hasDocumentMetadata)
           ) {
+            observeImdbRecovery("attempt", {
+              status: response.status,
+              contentType: contentType ?? null,
+              bodyBytes: html.length,
+              isImdbTitle: imdbTitle !== null,
+              challengeMarker: isBotChallengeResponse(html),
+              hasImdbChallengeStatus,
+              hasDocumentMetadata,
+            });
             const recovered = await recoverImdbMetadata(current, dependencies);
             if (recovered) {
               const present = [
