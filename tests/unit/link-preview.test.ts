@@ -129,10 +129,7 @@ describe("link preview metadata fetcher", () => {
       const url = new URL(String(input));
       return new Response(
         JSON.stringify({
-          Answer:
-            url.searchParams.get("type") === "A"
-              ? [{ type: 1, data: "93.184.216.34" }]
-              : [],
+          Answer: url.searchParams.get("type") === "A" ? [{ type: 1, data: "93.184.216.34" }] : [],
         }),
       );
     }) as unknown as typeof fetch;

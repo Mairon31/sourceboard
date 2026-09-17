@@ -243,8 +243,7 @@ async function assertPublicTarget(
     }
     return;
   }
-  let addresses: string[];
-  addresses = await resolveHost(url.hostname);
+  const addresses = await resolveHost(url.hostname);
   if (!addresses.length) throw new Error("Hostname did not resolve");
   if (addresses.some((address) => !isPublicIpAddress(address))) {
     throw linkError(400, "LINK_PREVIEW_PRIVATE_TARGET", "Private network links are not supported.");
