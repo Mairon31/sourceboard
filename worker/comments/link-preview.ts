@@ -541,17 +541,16 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             ?.split(";", 1)[0]
             ?.trim()
             .toLowerCase();
-          if (
-            !response.ok ||
-            (contentType !== "text/html" && contentType !== "application/xhtml+xml")
-          ) {
-            const snapshot = urlOnly(current, fetchedAt);
-            await cacheSnapshot(cacheKey, snapshot);
-            return snapshot;
-          }
-
-          const html = await readBoundedText(response, MAX_HTML_BYTES);
-          if (isBotChallengeResponse(html)) {
+          const imdbTitle = imdbTitleId(current);
+          const hasImdbChallengeStatus =
+            imdbTitle !== null && (response.status === 202 || response.status === 403);
+          const readsHtmlBody =
+            contentType === "text/html" ||
+            contentType === "application/xhtml+xml" ||
+            imdbTitle !== null ||
+            hasImdbChallengeStatus;
+          const html = readsHtmlBody ? await readBoundedText(response, MAX_HTML_BYTES) : "";
+          if (isBotChallengeResponse(html) || hasImdbChallengeStatus) {
             const recovered = await recoverImdbMetadata(current, dependencies);
             if (recovered) {
               const present = [
@@ -570,6 +569,15 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
               return snapshot;
             }
           }
+          if (
+            !response.ok ||
+            (contentType !== "text/html" && contentType !== "application/xhtml+xml")
+          ) {
+            const snapshot = urlOnly(current, fetchedAt);
+            await cacheSnapshot(cacheKey, snapshot);
+            return snapshot;
+          }
+
           const metadata = metadataValues(html);
           let canonicalUrl = current.toString();
           if (metadata.canonical) {

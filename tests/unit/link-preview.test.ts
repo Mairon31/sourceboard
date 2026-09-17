@@ -192,6 +192,26 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
+  it("uses the IMDb suggestion endpoint when a challenge has no readable body", async () => {
+    const titleUrl = "https://www.imdb.com/title/tt0245429/";
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === titleUrl) return new Response(null, { status: 202 });
+      if (url === "https://v2.sg.media-imdb.com/suggestion/x/tt0245429.json") {
+        return new Response(JSON.stringify({ d: [{ id: "tt0245429", l: "Spirited Away" }] }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    }) as unknown as typeof fetch;
+    const service = createLinkPreviewService({ fetchImpl, resolveHost: publicResolver() });
+
+    await expect(service.preview(titleUrl)).resolves.toMatchObject({
+      title: "Spirited Away",
+      metadataStatus: "COMPLETE",
+    });
+  });
+
   it("extracts bounded readable metadata and resolves a relative image", async () => {
     const html = `<!doctype html><html><head>
       <meta property="og:title" content="Example &amp; title">
