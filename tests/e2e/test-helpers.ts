@@ -67,6 +67,11 @@ export function seedNavigationPostFixture() {
        'E2E navigation post', 'e2e-navigation-post', 'Deterministic navigation fixture.',
        'e2e-navigation-media', 'PUBLIC', 'OPEN', 0, 0, NULL, NULL,
        ${now}, ${now}, ${now + 7 * 24 * 60 * 60 * 1000}, NULL, NULL, NULL, NULL);
+
+    UPDATE posts
+    SET status = 'OPEN', archived_at = NULL, deleted_at = NULL,
+        deleted_previous_status = NULL, hidden_at = NULL, updated_at = ${now}
+    WHERE id = 'e2e-navigation-post';
   `;
   executeLocalSql(sql);
 }

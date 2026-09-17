@@ -4,6 +4,7 @@ export const ptSocialMessages = {
   "post.actions.like": "Curtir publicação",
   "post.actions.unlike": "Remover curtida",
   "post.actions.comment": "Comentar",
+  "post.actions.commentDisabled": "Comentários desativados em publicações arquivadas",
   "post.actions.more": "Mais",
   "post.actions.moreAria": "Mais ações da publicação",
   "post.badges.anonymous": "Anônimo",
@@ -122,6 +123,9 @@ export const ptSocialMessages = {
   "comments.auth.description":
     "Crie uma conta ou entre para comentar, responder e reagir às solicitações de fontes.",
   "comments.closed.title": "Os comentários estão fechados",
+  "comments.archived.title": "Publicação arquivada",
+  "comments.archived.description":
+    "Esta publicação é somente leitura. Os comentários existentes continuam visíveis, mas novos comentários e respostas estão desativados.",
   "comments.closed.description":
     "O autor aceitou uma fonte e encerrou esta discussão. Os comentários existentes continuam visíveis.",
   "comments.composer.addReply": "Adicionar uma resposta",

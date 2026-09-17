@@ -4,6 +4,7 @@ export const ruSocialMessages = {
   "post.actions.like": "Отметить публикацию",
   "post.actions.unlike": "Убрать отметку",
   "post.actions.comment": "Комментировать",
+  "post.actions.commentDisabled": "Комментарии к архивной публикации отключены",
   "post.actions.more": "Ещё",
   "post.actions.moreAria": "Другие действия с публикацией",
   "post.badges.anonymous": "Аноним",
@@ -123,6 +124,9 @@ export const ruSocialMessages = {
   "comments.auth.description":
     "Создайте аккаунт или войдите, чтобы комментировать, отвечать и реагировать на запросы источников.",
   "comments.closed.title": "Комментарии закрыты",
+  "comments.archived.title": "Архивная публикация",
+  "comments.archived.description":
+    "Эта публикация доступна только для чтения. Существующие комментарии видимы, но новые комментарии и ответы отключены.",
   "comments.closed.description":
     "Автор принял источник и закрыл обсуждение. Существующие комментарии остаются видимыми.",
   "comments.composer.addReply": "Добавить ответ",

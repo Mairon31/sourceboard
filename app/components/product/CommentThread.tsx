@@ -252,6 +252,7 @@ function CommentItem({
   comment,
   depth = 0,
   onReply,
+  readOnly = false,
   canAcceptSource,
   acceptedSourceCommentId,
   canUndoAcceptedSource,
@@ -265,6 +266,7 @@ function CommentItem({
   comment: CommentView;
   depth?: number;
   onReply: (commentId: string) => void;
+  readOnly?: boolean;
   canAcceptSource?: boolean;
   acceptedSourceCommentId?: string;
   canUndoAcceptedSource?: boolean;
@@ -700,14 +702,16 @@ function CommentItem({
             <HeartIcon width="15" height="15" fill={liked ? "currentColor" : "none"} />
             <span className="product-comment__action-count">{likes}</span>
           </button>
-          <button
-            className="product-comment__action"
-            type="button"
-            onClick={() => onReply(comment.id)}
-          >
-            <MessageIcon width="15" height="15" />
-            <span>{t("comments.actions.reply")}</span>
-          </button>
+          {!readOnly ? (
+            <button
+              className="product-comment__action"
+              type="button"
+              onClick={() => onReply(comment.id)}
+            >
+              <MessageIcon width="15" height="15" />
+              <span>{t("comments.actions.reply")}</span>
+            </button>
+          ) : null}
           {acceptedSourceCommentId === comment.id && canUndoAcceptedSource ? (
             <div
               className={`product-comment__source-undo${undoingAcceptedSource ? " is-open" : ""}`}
@@ -865,6 +869,7 @@ function CommentItem({
                     comment={reply}
                     depth={Math.min(depth + 1, 2)}
                     onReply={onReply}
+                    readOnly={readOnly}
                     canAcceptSource={canAcceptSource}
                     acceptedSourceCommentId={acceptedSourceCommentId}
                     canUndoAcceptedSource={canUndoAcceptedSource}
@@ -945,6 +950,7 @@ export function CommentThread({
   authenticated = true,
   viewerIdentity,
   commentsClosed = false,
+  postArchived = false,
   canAcceptSource,
   acceptedSourceCommentId,
   canUndoAcceptedSource,
@@ -960,6 +966,7 @@ export function CommentThread({
   authenticated?: boolean;
   viewerIdentity?: PublicPostAuthor | null;
   commentsClosed?: boolean;
+  postArchived?: boolean;
   canAcceptSource?: boolean;
   acceptedSourceCommentId?: string;
   canUndoAcceptedSource?: boolean;
@@ -1130,6 +1137,10 @@ export function CommentThread({
   }
 
   async function submit() {
+    if (postArchived) {
+      setStatus(t("comments.archived.description"));
+      return;
+    }
     const linkCandidate = linkPreview?.canonicalUrl ?? linkUrl.trim();
     if (submitInFlightRef.current || (!body.trim() && !attachment && !linkCandidate)) return;
     submitInFlightRef.current = true;
@@ -1193,7 +1204,12 @@ export function CommentThread({
           </select>
         </div>
       </header>
-      {!authenticated ? (
+      {postArchived ? (
+        <div className="product-comment-locked glass-panel" role="status">
+          <strong>{t("comments.archived.title")}</strong>
+          <span>{t("comments.archived.description")}</span>
+        </div>
+      ) : !authenticated ? (
         <AuthRequiredCard
           title={t("comments.auth.title")}
           description={t("comments.auth.description")}
@@ -1401,6 +1417,7 @@ export function CommentThread({
             key={comment.id}
             comment={comment}
             onReply={setReplyTo}
+            readOnly={postArchived}
             canAcceptSource={canAcceptSource}
             acceptedSourceCommentId={acceptedSourceCommentId}
             canUndoAcceptedSource={canUndoAcceptedSource}

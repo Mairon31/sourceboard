@@ -293,7 +293,7 @@ export default function AdminReputationRoute() {
             {t("admin.reputation.versions", { count: achievements.length })}
           </span>
         </div>
-        <div className="admin-mobile-card-list">
+        <div className="admin-achievement-catalog">
           {achievements.map((achievement) => (
             <Card className="admin-mobile-review-card admin-surface" key={achievement.id}>
               <div className="admin-mobile-review-card__row">
@@ -384,6 +384,14 @@ export default function AdminReputationRoute() {
                 </span>
                 <small>{t("admin.reputation.iconHelp")}</small>
               </label>
+              {editingAchievement ? (
+                <label className="sb-field admin-achievement-update-users">
+                  <span className="sb-field__label">
+                    <input name="updateUsers" type="checkbox" /> {t("admin.reputation.updateUsers")}
+                  </span>
+                  <small>{t("admin.reputation.updateUsersHelp")}</small>
+                </label>
+              ) : null}
               <label className="sb-field">
                 <span className="sb-field__label">
                   <input

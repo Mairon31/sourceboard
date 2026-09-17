@@ -256,6 +256,9 @@ export const ruAdminMessages = {
   "admin.reputation.rewardType": "Тип награды",
   "admin.reputation.provisionalReward": "Предварительная награда",
   "admin.reputation.activeVersion": "Сделать эту версию активной",
+  "admin.reputation.updateUsers": "Перевести назначенных пользователей на эту версию",
+  "admin.reputation.updateUsersHelp":
+    "Перевести все существующие назначения на новую версию, сохранив даты получения.",
   "admin.reputation.reason": "Причина",
   "admin.reputation.ruleReasonPlaceholder": "Объясните, почему меняются правила наград.",
   "admin.reputation.createRuleVersion": "Создать версию правила",

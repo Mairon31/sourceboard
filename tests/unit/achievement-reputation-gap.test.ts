@@ -10,16 +10,18 @@ import type { SourceBoardEnvironment } from "../../worker/environment";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("achievement and reputation administration contract", () => {
-  it("edits achievements by creating a new version without rewriting assignments", () => {
+  it("keeps assignments immutable by default and supports explicit version assignment updates", () => {
     const admin = read("worker/reputation/admin.ts");
     const api = read("worker/reputation/api.ts");
 
     expect(admin).toContain("export async function updateAchievementVersion");
     expect(admin).toContain("existingAchievementId");
     expect(admin).toContain("INSERT INTO achievement_catalog");
-    expect(admin).not.toContain("UPDATE user_achievements");
+    expect(admin).toContain("updateUsers");
+    expect(admin).toContain("UPDATE user_achievements");
     expect(admin).not.toContain("DELETE FROM user_achievements");
     expect(api).toContain("updateAchievementVersion");
+    expect(api).toContain("updateUsers");
   });
 
   it("validates PNG/GIF icon bytes and persists a media reference through the existing pipeline", () => {

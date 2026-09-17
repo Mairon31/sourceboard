@@ -4,6 +4,7 @@ export const esSocialMessages = {
   "post.actions.like": "Me gusta",
   "post.actions.unlike": "Quitar Me gusta",
   "post.actions.comment": "Comentar",
+  "post.actions.commentDisabled": "Comentarios deshabilitados en publicaciones archivadas",
   "post.actions.more": "Más",
   "post.actions.moreAria": "Más acciones de la publicación",
   "post.badges.anonymous": "Anónimo",
@@ -122,6 +123,9 @@ export const esSocialMessages = {
   "comments.auth.description":
     "Crea una cuenta o inicia sesión para comentar, responder y reaccionar a las solicitudes de fuentes.",
   "comments.closed.title": "Los comentarios están cerrados",
+  "comments.archived.title": "Publicación archivada",
+  "comments.archived.description":
+    "Esta publicación es de solo lectura. Los comentarios existentes siguen visibles, pero no se permiten comentarios ni respuestas nuevas.",
   "comments.closed.description":
     "El autor aceptó una fuente y cerró esta conversación. Los comentarios existentes siguen visibles.",
   "comments.composer.addReply": "Añadir una respuesta",

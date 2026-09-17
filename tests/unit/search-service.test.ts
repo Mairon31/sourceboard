@@ -135,6 +135,7 @@ describe("Phase 12 search service", () => {
     expect(postQuery?.bindings[0]).toBe('"source"*');
     expect(postQuery?.bindings.slice(1, 4)).toEqual(["viewer-1", "viewer-1", "viewer-1"]);
     expect(postQuery?.sql).toContain("p.visibility = 'PUBLIC'");
+    expect(postQuery?.sql).not.toContain("p.status <> 'ARCHIVED'");
     expect(postQuery?.sql).toContain("p.is_nsfw = 0");
     expect(postQuery?.sql).toContain("p.created_at < ?");
     expect(postQuery?.sql).toContain("p.updated_at");

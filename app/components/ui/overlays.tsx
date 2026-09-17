@@ -2,7 +2,8 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
 import { Menu } from "@base-ui/react/menu";
 import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from "react";
+import { useEffect, useRef } from "react";
+import type { ReactNode, RefObject } from "react";
 import { joinClassNames } from "../../../shared/design/component-variants";
 import { useI18n } from "../../i18n/I18nProvider";
 import { Button, IconButton } from "./controls";
@@ -40,36 +41,13 @@ function getModalTabbables(container: HTMLElement): HTMLElement[] {
   ].filter((element) => {
     const style = window.getComputedStyle(element);
     return (
+      !element.hasAttribute("data-base-ui-focus-guard") &&
+      !element.hasAttribute("data-base-ui-inert") &&
       style.visibility !== "hidden" &&
       style.display !== "none" &&
       element.getClientRects().length > 0
     );
   });
-}
-
-function handleModalTabKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
-  if (event.key !== "Tab") return;
-
-  const currentTarget = event.currentTarget;
-  const activeElement = document.activeElement;
-  if (!(activeElement instanceof HTMLElement) || !currentTarget.contains(activeElement)) return;
-
-  const tabbables = getModalTabbables(currentTarget);
-  if (tabbables.length === 0) {
-    event.preventDefault();
-    currentTarget.focus();
-    return;
-  }
-
-  const currentIndex = tabbables.indexOf(activeElement);
-  if (currentIndex < 0) return;
-
-  const nextIndex = event.shiftKey
-    ? (currentIndex - 1 + tabbables.length) % tabbables.length
-    : (currentIndex + 1) % tabbables.length;
-  event.preventDefault();
-  event.stopPropagation();
-  tabbables[nextIndex]?.focus({ preventScroll: true });
 }
 
 export function Modal({
@@ -83,6 +61,32 @@ export function Modal({
   finalFocus,
 }: ModalProps) {
   const { t } = useI18n();
+  const popupRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handleFocusIn = (event: FocusEvent) => {
+      const popup = popupRef.current;
+      const target = event.target;
+      if (!popup || !(target instanceof HTMLElement) || popup.contains(target)) return;
+      const openPopups = document.querySelectorAll<HTMLElement>(".sb-modal[data-open]");
+      if (openPopups.length > 0 && openPopups[openPopups.length - 1] !== popup) return;
+      if (target.closest(".sb-modal")) return;
+
+      const tabbables = getModalTabbables(popup);
+      if (tabbables.length === 0) {
+        popup.focus();
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      tabbables[0]?.focus({ preventScroll: true });
+    };
+
+    document.addEventListener("focusin", handleFocusIn, true);
+    return () => document.removeEventListener("focusin", handleFocusIn, true);
+  }, [open]);
 
   return (
     <Dialog.Root
@@ -98,27 +102,29 @@ export function Modal({
         <Dialog.Backdrop className="sb-overlay-backdrop" />
         <Dialog.Viewport className="sb-overlay-viewport">
           <Dialog.Popup
+            ref={popupRef}
             className={joinClassNames("sb-modal glass-panel glass-panel--strong", className)}
             finalFocus={finalFocus}
-            onKeyDownCapture={handleModalTabKeyDown}
           >
-            <header className="sb-overlay-header">
-              <div>
-                <Dialog.Title className="sb-overlay-title">{title}</Dialog.Title>
-                {description ? (
-                  <Dialog.Description className="sb-overlay-description">
-                    {description}
-                  </Dialog.Description>
-                ) : null}
-              </div>
-              <Dialog.Close
-                className="sb-button sb-button--ghost sb-button--sm sb-icon-button motion-interactive"
-                aria-label={t("common.close")}
-              >
-                <CloseIcon />
-              </Dialog.Close>
-            </header>
-            <div className="sb-overlay-content">{children}</div>
+            <div className="sb-modal__focus-scope">
+              <header className="sb-overlay-header">
+                <div>
+                  <Dialog.Title className="sb-overlay-title">{title}</Dialog.Title>
+                  {description ? (
+                    <Dialog.Description className="sb-overlay-description">
+                      {description}
+                    </Dialog.Description>
+                  ) : null}
+                </div>
+                <Dialog.Close
+                  className="sb-button sb-button--ghost sb-button--sm sb-icon-button motion-interactive"
+                  aria-label={t("common.close")}
+                >
+                  <CloseIcon />
+                </Dialog.Close>
+              </header>
+              <div className="sb-overlay-content">{children}</div>
+            </div>
           </Dialog.Popup>
         </Dialog.Viewport>
       </Dialog.Portal>

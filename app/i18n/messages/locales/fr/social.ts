@@ -4,6 +4,7 @@ export const frSocialMessages = {
   "post.actions.like": "Aimer la publication",
   "post.actions.unlike": "Retirer J’aime",
   "post.actions.comment": "Commenter",
+  "post.actions.commentDisabled": "Commentaires désactivés pour ce post archivé",
   "post.actions.more": "Plus",
   "post.actions.moreAria": "Plus d’actions sur la publication",
   "post.badges.anonymous": "Anonyme",
@@ -122,6 +123,9 @@ export const frSocialMessages = {
   "comments.auth.description":
     "Créez un compte ou connectez-vous pour commenter, répondre et réagir aux demandes de sources.",
   "comments.closed.title": "Les commentaires sont fermés",
+  "comments.archived.title": "Publication archivée",
+  "comments.archived.description":
+    "Cette publication est en lecture seule. Les commentaires existants restent visibles, mais les nouveaux commentaires et réponses sont désactivés.",
   "comments.closed.description":
     "L’auteur a accepté une source et fermé cette discussion. Les commentaires existants restent visibles.",
   "comments.composer.addReply": "Ajouter une réponse",

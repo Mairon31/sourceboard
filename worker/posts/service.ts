@@ -157,7 +157,6 @@ export async function canViewPost(
   dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
 ): Promise<boolean> {
   if (post.deletedAt || post.hiddenAt) return false;
-  if (post.status === "ARCHIVED" && viewerId !== post.authorId) return false;
 
   if (viewerId && viewerId !== post.authorId) {
     const [blockedByViewer, blockingViewer] = await Promise.all([

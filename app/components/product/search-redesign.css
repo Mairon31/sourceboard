@@ -407,10 +407,22 @@ a.product-search-grid-card__media-button {
 }
 
 .product-search-gallery__metrics span,
-.product-search-grid-card__metrics span {
+.product-search-grid-card__metrics span,
+.product-search-grid-card__comment-disabled {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.product-search-grid-card__comment-disabled {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: inherit;
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .product-search-detailed-grid {

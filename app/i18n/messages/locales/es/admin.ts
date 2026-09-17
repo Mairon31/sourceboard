@@ -257,6 +257,9 @@ export const esAdminMessages = {
   "admin.reputation.rewardType": "Tipo de recompensa",
   "admin.reputation.provisionalReward": "Recompensa provisional",
   "admin.reputation.activeVersion": "Activar esta versión",
+  "admin.reputation.updateUsers": "Actualizar usuarios asignados a esta versión",
+  "admin.reputation.updateUsersHelp":
+    "Mueve todas las asignaciones existentes a la nueva versión y conserva sus fechas de obtención.",
   "admin.reputation.reason": "Motivo",
   "admin.reputation.ruleReasonPlaceholder": "Explica por qué cambia la política de recompensas.",
   "admin.reputation.createRuleVersion": "Crear versión de regla",

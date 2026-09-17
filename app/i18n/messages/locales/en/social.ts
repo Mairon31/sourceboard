@@ -2,6 +2,7 @@ export const enSocialMessages = {
   "post.actions.like": "Like post",
   "post.actions.unlike": "Unlike post",
   "post.actions.comment": "Comment",
+  "post.actions.commentDisabled": "Comments disabled for archived post",
   "post.actions.more": "More",
   "post.actions.moreAria": "More post actions",
   "post.badges.anonymous": "Anonymous",
@@ -119,6 +120,9 @@ export const enSocialMessages = {
   "comments.auth.description":
     "Create an account or sign in to comment, reply and react to source requests.",
   "comments.closed.title": "Comments are closed",
+  "comments.archived.title": "Archived post",
+  "comments.archived.description":
+    "This post is read-only. Existing comments remain visible, but new comments and replies are disabled.",
   "comments.closed.description":
     "The author accepted a source and closed this discussion. Existing comments remain visible.",
   "comments.composer.addReply": "Add a reply",

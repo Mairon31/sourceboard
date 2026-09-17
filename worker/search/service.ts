@@ -254,7 +254,6 @@ function postSearchQuery(
     "p.visibility = 'PUBLIC'",
     "p.deleted_at IS NULL",
     "p.hidden_at IS NULL",
-    "p.status <> 'ARCHIVED'",
     "m.status = 'ACTIVE'",
     "m.purpose = 'POST_IMAGE'",
     "u.status NOT IN ('DELETED', 'BANNED')",

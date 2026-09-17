@@ -640,6 +640,24 @@
   gap: var(--space-3);
 }
 
+.admin-achievement-catalog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.admin-achievement-catalog .admin-mobile-review-card {
+  min-width: 0;
+}
+
+.admin-achievement-update-users {
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border-subtle));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
 .admin-mobile-review-card {
   display: grid;
   min-width: 0;
@@ -931,6 +949,10 @@
 
   .admin-mobile-card-list {
     display: grid;
+  }
+
+  .admin-achievement-catalog {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .admin-table {

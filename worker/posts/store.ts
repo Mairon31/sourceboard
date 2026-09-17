@@ -705,7 +705,7 @@ export function createD1PostStore(db: D1Database): PostStore {
       const result = await db
         .prepare(
           `SELECT id, slug, updated_at FROM posts
-           WHERE visibility = 'PUBLIC' AND status <> 'ARCHIVED'
+           WHERE visibility = 'PUBLIC'
              AND deleted_at IS NULL AND hidden_at IS NULL AND is_nsfw = 0
            ORDER BY updated_at DESC, id DESC LIMIT 5000`,
         )

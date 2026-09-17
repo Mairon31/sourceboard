@@ -48,6 +48,24 @@ describe("Store cosmetic rendering regressions", () => {
     expect(css).toMatch(/@media \(max-width: 760px\)[\s\S]*--avatar-stage-size:\s*82px/);
   });
 
+  it("makes the canonical AvatarStage own the avatar box on every surface", () => {
+    const stage = read("../../app/components/product/avatar-stage.css");
+    const store = read("../../app/components/product/store.css");
+    const preview = read("../../app/components/product/profile-cosmetic-preview.css");
+
+    expect(stage).toMatch(
+      /\.product-avatar-stage__avatar\s+\.sb-avatar\s*\{[\s\S]*width:\s*100%;[\s\S]*height:\s*100%;/,
+    );
+    expect(stage).toMatch(
+      /\.product-avatar-stage__part\[data-layer="inner-ring"\]\s*\{[\s\S]*z-index:\s*4;[\s\S]*inset:\s*0;/,
+    );
+    expect(stage).toMatch(
+      /\.product-avatar-stage__part\[data-layer="outer-ring"\],[\s\S]*\.product-avatar-stage__part\[data-layer="orbit"\]\s*\{[\s\S]*inset:\s*0;/,
+    );
+    expect(store).not.toMatch(/\.product-store-preview\s+\.sb-avatar\s*\{/);
+    expect(preview).not.toMatch(/\.product-avatar-stage\[data-size="preview"\]\s+\.sb-avatar\s*\{/);
+  });
+
   it("gives every legacy frame an explicit non-fallback geometry definition", () => {
     const signatures = LEGACY_FRAMES.map((preset) => {
       const definition = AVATAR_FRAME_DEFINITIONS[preset];

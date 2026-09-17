@@ -256,6 +256,9 @@ export const enAdminMessages = {
   "admin.reputation.rewardType": "Reward type",
   "admin.reputation.provisionalReward": "Provisional reward",
   "admin.reputation.activeVersion": "Make this version active",
+  "admin.reputation.updateUsers": "Update assigned users to this version",
+  "admin.reputation.updateUsersHelp":
+    "Move every existing assignment to the new version while preserving earned dates.",
   "admin.reputation.reason": "Reason",
   "admin.reputation.ruleReasonPlaceholder": "Explain why the reward policy is changing.",
   "admin.reputation.createRuleVersion": "Create rule version",

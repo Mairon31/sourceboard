@@ -505,11 +505,7 @@ export function postMediaCacheControl(
   post: Pick<PostRecord, "visibility" | "isNsfw" | "status" | "deletedAt" | "hiddenAt">,
 ): string {
   const publicMedia =
-    post.visibility === "PUBLIC" &&
-    !post.isNsfw &&
-    !post.deletedAt &&
-    !post.hiddenAt &&
-    post.status !== "ARCHIVED";
+    post.visibility === "PUBLIC" && !post.isNsfw && !post.deletedAt && !post.hiddenAt;
   return publicMedia ? "public, max-age=3600" : "private, no-store";
 }
 

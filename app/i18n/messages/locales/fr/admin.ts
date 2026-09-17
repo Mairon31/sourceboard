@@ -259,6 +259,9 @@ export const frAdminMessages = {
   "admin.reputation.rewardType": "Type de récompense",
   "admin.reputation.provisionalReward": "Récompense provisoire",
   "admin.reputation.activeVersion": "Activer cette version",
+  "admin.reputation.updateUsers": "Mettre à jour les utilisateurs vers cette version",
+  "admin.reputation.updateUsersHelp":
+    "Déplace toutes les attributions existantes vers la nouvelle version en conservant leurs dates d’obtention.",
   "admin.reputation.reason": "Motif",
   "admin.reputation.ruleReasonPlaceholder":
     "Expliquez pourquoi la politique de récompenses change.",

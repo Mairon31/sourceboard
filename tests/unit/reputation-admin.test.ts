@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { createAchievementVersion, createRewardRuleVersion } from "../../worker/reputation/admin";
+import {
+  createAchievementVersion,
+  createRewardRuleVersion,
+  updateAchievementVersion,
+} from "../../worker/reputation/admin";
 
 function createAdminDb(latestVersion = 2) {
   const queries: string[] = [];
@@ -77,6 +81,74 @@ describe("reputation administration", () => {
     });
     expect(queries.some((query) => query.includes("UPDATE achievement_catalog"))).toBe(true);
     expect(queries.some((query) => query.includes("INSERT INTO achievement_catalog"))).toBe(true);
+  });
+
+  it("can atomically move existing assignments to the new achievement version when requested", async () => {
+    const queries: string[] = [];
+    const db = {
+      prepare: vi.fn((query: string) => {
+        queries.push(query);
+        const statement = {
+          query,
+          bind: vi.fn((...values: unknown[]) => {
+            void values;
+            return statement;
+          }),
+          first: vi.fn(async <T>() => {
+            if (query.includes("WHERE id = ?")) {
+              return {
+                id: "achievement-trusted-researcher-v4-old",
+                slug: "trusted-researcher",
+                version: 4,
+                name: "Old researcher",
+                description: "Old achievement description.",
+                icon: "◆",
+                verified_source_threshold: 25,
+                status: "ACTIVE",
+                created_at: 1,
+              } as T;
+            }
+            return { version: 4 } as T;
+          }),
+        };
+        return statement as unknown as D1PreparedStatement;
+      }),
+      batch: vi.fn(async (items: Array<{ query?: string }>) =>
+        items.map((item) => ({
+          success: true as const,
+          results: [],
+          meta: { changes: item.query?.includes("UPDATE user_achievements") ? 3 : 1 },
+        })),
+      ),
+    } as unknown as D1Database;
+
+    const achievement = await updateAchievementVersion(
+      db,
+      {
+        existingAchievementId: "achievement-trusted-researcher-v4-old",
+        name: "Updated researcher",
+        description: "Updated achievement description.",
+        icon: "◆",
+        threshold: 30,
+        enabled: true,
+        updateUsers: true,
+      },
+      789,
+    );
+
+    expect(achievement).toMatchObject({ version: 5, name: "Updated researcher" });
+    expect(achievement.updatedUsers).toBe(3);
+    expect(vi.mocked(db.batch)).toHaveBeenCalledTimes(1);
+    expect(
+      queries.some((query) => query.includes("slug = (SELECT slug FROM achievement_catalog")),
+    ).toBe(true);
+    const versionWriteQueries = queries.filter(
+      (query) =>
+        query.includes("INSERT INTO achievement_catalog") ||
+        query.includes("UPDATE user_achievements"),
+    );
+    expect(versionWriteQueries[0]).toContain("INSERT INTO achievement_catalog");
+    expect(versionWriteQueries[1]).toContain("UPDATE user_achievements");
   });
 
   it("rejects invalid reward configuration before writing a version", async () => {

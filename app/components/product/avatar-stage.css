@@ -15,16 +15,16 @@
 }
 
 .product-avatar-stage[data-size="sm"] {
-  --avatar-stage-size: 34px;
+  --avatar-stage-size: 28px;
 }
 .product-avatar-stage[data-size="md"] {
-  --avatar-stage-size: 44px;
+  --avatar-stage-size: 40px;
 }
 .product-avatar-stage[data-size="lg"] {
-  --avatar-stage-size: 58px;
+  --avatar-stage-size: 56px;
 }
 .product-avatar-stage[data-size="xl"] {
-  --avatar-stage-size: 82px;
+  --avatar-stage-size: 88px;
 }
 .product-avatar-stage[data-size="preview"] {
   --avatar-stage-size: 64px;
@@ -37,6 +37,14 @@
   width: 100%;
   height: 100%;
   place-items: center;
+}
+
+/* AvatarStage owns the geometry. Avatar size classes must not leave a gap
+   between an avatar and its cosmetic frame. */
+.product-avatar-stage__avatar .sb-avatar {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 .product-avatar-stage__part {
@@ -57,7 +65,8 @@
 }
 
 .product-avatar-stage__part[data-layer="inner-ring"] {
-  z-index: 2;
+  z-index: 4;
+  inset: 0;
   border: var(--avatar-frame-width) solid
     color-mix(in srgb, var(--avatar-frame-color) 55%, transparent);
   border-radius: 50%;
@@ -66,7 +75,7 @@
 .product-avatar-stage__part[data-layer="outer-ring"],
 .product-avatar-stage__part[data-layer="orbit"] {
   z-index: 1;
-  inset: -6px;
+  inset: 0;
   border: var(--avatar-frame-width) solid
     color-mix(in srgb, var(--avatar-frame-color) 55%, transparent);
   border-radius: 50%;

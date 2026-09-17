@@ -261,6 +261,9 @@ export const deAdminMessages = {
   "admin.reputation.rewardType": "Belohnungstyp",
   "admin.reputation.provisionalReward": "Vorläufige Belohnung",
   "admin.reputation.activeVersion": "Diese Version aktivieren",
+  "admin.reputation.updateUsers": "Zugewiesene Nutzer auf diese Version aktualisieren",
+  "admin.reputation.updateUsersHelp":
+    "Verschiebt alle bestehenden Zuweisungen auf die neue Version und behält die Erwerbsdaten bei.",
   "admin.reputation.reason": "Grund",
   "admin.reputation.ruleReasonPlaceholder": "Erkläre, warum sich die Belohnungsrichtlinie ändert.",
   "admin.reputation.createRuleVersion": "Regelversion erstellen",

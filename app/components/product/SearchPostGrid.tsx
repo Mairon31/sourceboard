@@ -84,10 +84,23 @@ export function SearchPostGrid({
                   <HeartIcon width="16" height="16" aria-hidden="true" />
                   {tp("metrics.likes", post.reaction.count)}
                 </span>
-                <span>
-                  <MessageIcon width="16" height="16" aria-hidden="true" />
-                  {tp("comments.summary", post.commentCount)}
-                </span>
+                {post.status === "ARCHIVED" ? (
+                  <button
+                    type="button"
+                    className="product-search-grid-card__comment-disabled"
+                    aria-label={t("post.actions.commentDisabled")}
+                    title={t("post.actions.commentDisabled")}
+                    disabled
+                  >
+                    <MessageIcon width="16" height="16" aria-hidden="true" />
+                    {tp("comments.summary", post.commentCount)}
+                  </button>
+                ) : (
+                  <span>
+                    <MessageIcon width="16" height="16" aria-hidden="true" />
+                    {tp("comments.summary", post.commentCount)}
+                  </span>
+                )}
               </div>
             </div>
           </article>

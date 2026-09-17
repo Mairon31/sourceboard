@@ -257,6 +257,9 @@ export const ptAdminMessages = {
   "admin.reputation.rewardType": "Tipo de recompensa",
   "admin.reputation.provisionalReward": "Recompensa provisória",
   "admin.reputation.activeVersion": "Ativar esta versão",
+  "admin.reputation.updateUsers": "Atualizar usuários atribuídos para esta versão",
+  "admin.reputation.updateUsersHelp":
+    "Move todas as atribuições existentes para a nova versão, preservando as datas de obtenção.",
   "admin.reputation.reason": "Motivo",
   "admin.reputation.ruleReasonPlaceholder":
     "Explique por que a política de recompensas está mudando.",

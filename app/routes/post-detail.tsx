@@ -401,6 +401,7 @@ export default function PostDetailRoute() {
         authenticated={authenticated}
         viewerIdentity={viewerIdentity}
         commentsClosed={currentPost.commentsClosed}
+        postArchived={currentPost.status === "ARCHIVED"}
         canAcceptSource={currentPost.permissions.canAcceptSource}
         acceptedSourceCommentId={currentPost.acceptedSource?.commentId}
         canUndoAcceptedSource={canUndoAcceptedSource}

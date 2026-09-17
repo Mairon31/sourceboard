@@ -144,6 +144,12 @@ function seedAdminGapFixtures() {
       ('e2e-reputation-ledger', 'e2e-reputation-user', 125, 'AWARD', 'VERIFIED_SOURCE',
        'e2e.fixture', 'e2e-reputation-event', 'e2e-reputation-idempotency',
        '{"fixture":true}', NULL, ${now});
+
+    INSERT OR IGNORE INTO user_achievements
+      (id, user_id, achievement_id, earned_at)
+    VALUES
+      ('e2e-reputation-achievement-assignment', 'e2e-reputation-user',
+       'achievement-first-verified-source-v1', ${now});
   `);
 }
 
@@ -235,6 +241,10 @@ test("Reputation supports achievement versioning, custom icon upload and Top 15 
     "href",
     "/u/e2e-reputation-user",
   );
+  await expect(page.locator(".admin-achievement-catalog")).toBeVisible();
+  await expect(
+    page.locator(".admin-achievement-catalog .admin-mobile-review-card").first(),
+  ).toContainText("First verified source");
 
   await page.setViewportSize({ width: 390, height: 844 });
   const existingAchievement = page
@@ -247,6 +257,7 @@ test("Reputation supports achievement versioning, custom icon upload and Top 15 
   const achievementForm = page.locator("form.product-form-card").filter({
     has: page.locator('input[name="iconFile"]'),
   });
+  await expect(achievementForm.locator('input[name="updateUsers"]')).toBeVisible();
   await achievementForm.getByLabel("Name").fill("First verified source revised");
   await achievementForm.getByLabel("Description").fill("Updated achievement description.");
   await achievementForm.locator('input[name="iconFile"]').setInputFiles({
@@ -257,6 +268,7 @@ test("Reputation supports achievement versioning, custom icon upload and Top 15 
       "base64",
     ),
   });
+  await achievementForm.locator('input[name="updateUsers"]').check();
   await achievementForm.getByLabel("Reason").fill("E2E versioned icon update.");
   const responsePromise = page.waitForResponse(
     (response) =>
@@ -267,4 +279,8 @@ test("Reputation supports achievement versioning, custom icon upload and Top 15 
   const response = await responsePromise;
   expect(response.status()).toBe(201);
   await expect(page.getByText("A new achievement version was recorded.")).toBeVisible();
+
+  await page.goto("/u/e2e-reputation-user");
+  await waitForUiReady(page);
+  await expect(page.getByText("First verified source revised", { exact: true })).toBeVisible();
 });

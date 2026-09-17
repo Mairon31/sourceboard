@@ -76,6 +76,40 @@ function seedSoftDeletePost() {
   `);
 }
 
+function archiveNavigationPost() {
+  executeLocalSql(`
+    UPDATE posts
+    SET status = 'ARCHIVED', archived_at = ${Date.now()}, updated_at = ${Date.now()}
+    WHERE id = 'e2e-navigation-post';
+  `);
+}
+
+test("archived public posts remain readable while comment actions are disabled", async ({
+  page,
+}) => {
+  seedNavigationPostFixture();
+  archiveNavigationPost();
+  await installAuthorSession(page);
+
+  await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
+  await waitForUiReady(page);
+  const post = page.locator(".product-post").filter({ hasText: "E2E navigation post" });
+  await expect(post).toBeVisible();
+  await expect(page.getByText("Archived post", { exact: true })).toBeVisible();
+  await expect(
+    post.getByRole("button", { name: "Comments disabled for archived post" }),
+  ).toBeDisabled();
+  await expect(page.locator("#comment-composer")).toHaveCount(0);
+
+  await page.goto("/search?q=navigation&kind=posts&view=list");
+  await waitForUiReady(page);
+  const result = page.locator('[data-search-post-id="e2e-navigation-post"]');
+  await expect(result).toBeVisible();
+  await expect(
+    result.getByRole("button", { name: "Comments disabled for archived post" }),
+  ).toBeDisabled();
+});
+
 test("author can recover a soft-deleted post from the private Recently Deleted surface", async ({
   page,
 }) => {

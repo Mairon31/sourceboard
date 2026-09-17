@@ -90,6 +90,38 @@ test("structural fox ears stay on the avatar shell", async ({ page }) => {
   }
 });
 
+test("AvatarStage keeps the avatar and frame anchor on the same normalized box", async ({
+  page,
+}) => {
+  for (const path of ["/u/e2e-cosmetics", "/u/e2e-cosmetics-orbit"]) {
+    await page.goto(path);
+    const stages = page.locator(".product-avatar-stage");
+    await expect(stages.first()).toBeVisible();
+    for (const stage of await stages.all()) {
+      const geometry = await stage.evaluate((element) => {
+        const avatar = element.querySelector<HTMLElement>(".product-avatar-stage__avatar");
+        const innerAvatar = element.querySelector<HTMLElement>(
+          ".product-avatar-stage__avatar .sb-avatar",
+        );
+        const stageBox = element.getBoundingClientRect();
+        const avatarBox = avatar?.getBoundingClientRect();
+        const innerAvatarBox = innerAvatar?.getBoundingClientRect();
+        return {
+          stage: { width: stageBox.width, height: stageBox.height },
+          avatar: { width: avatarBox?.width ?? 0, height: avatarBox?.height ?? 0 },
+          innerAvatar: { width: innerAvatarBox?.width ?? 0, height: innerAvatarBox?.height ?? 0 },
+        };
+      });
+      expect(Math.abs(geometry.stage.width - geometry.avatar.width)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(geometry.stage.height - geometry.avatar.height)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(geometry.avatar.width - geometry.innerAvatar.width)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(geometry.avatar.height - geometry.innerAvatar.height)).toBeLessThanOrEqual(
+        0.5,
+      );
+    }
+  }
+});
+
 test("orbit animation decorates the shell without transforming the avatar image", async ({
   page,
 }) => {

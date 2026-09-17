@@ -173,6 +173,17 @@ describe("Phase 4 post policy", () => {
     ).resolves.toBe(false);
   });
 
+  it("keeps public archived posts readable without allowing them to become interactive", async () => {
+    const { profileStore, store } = dependencies();
+    await expect(
+      canViewPost("viewer-1", post({ status: "ARCHIVED" }).post, {
+        profileStore,
+        store,
+        now: () => 2,
+      }),
+    ).resolves.toBe(true);
+  });
+
   it("applies hide_nsfw before serializing a feed result", async () => {
     const { profileStore, store, listFeed } = dependencies();
     listFeed.mockResolvedValue({

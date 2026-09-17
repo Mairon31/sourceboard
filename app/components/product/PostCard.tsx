@@ -117,6 +117,7 @@ export function PostCard({
   });
   editingRef.current = editing;
   const detailHref = postDetailHref(post);
+  const archived = post.status === "ARCHIVED";
   const statusLabel = {
     OPEN: t("post.status.open"),
     ANSWERED: t("post.status.answered"),
@@ -700,14 +701,27 @@ export function PostCard({
             <HeartIcon fill={liked ? "currentColor" : "none"} />
             <span>{likes}</span>
           </button>
-          <Link
-            className="product-post__action"
-            to={`${detailHref}#comments`}
-            onClick={() => markNavigationStart(detailHref)}
-          >
-            <MessageIcon />
-            <span>{t("post.actions.comment")}</span>
-          </Link>
+          {archived ? (
+            <button
+              type="button"
+              className="product-post__action product-post__action--disabled"
+              aria-label={t("post.actions.commentDisabled")}
+              title={t("post.actions.commentDisabled")}
+              disabled
+            >
+              <MessageIcon />
+              <span>{t("post.actions.comment")}</span>
+            </button>
+          ) : (
+            <Link
+              className="product-post__action"
+              to={`${detailHref}#comments`}
+              onClick={() => markNavigationStart(detailHref)}
+            >
+              <MessageIcon />
+              <span>{t("post.actions.comment")}</span>
+            </Link>
+          )}
           <ShareAction
             url={shareUrl}
             title={displayTitle}

@@ -46,8 +46,11 @@ describe("post media cache policy", () => {
     { isNsfw: true },
     { deletedAt: 10 },
     { hiddenAt: 10 },
-    { status: "ARCHIVED" as const },
   ])("does not cache restricted post media publicly (%o)", (overrides) => {
     expect(postMediaCacheControl(post(overrides))).toBe("private, no-store");
+  });
+
+  it("keeps public archived post media readable and cacheable", () => {
+    expect(postMediaCacheControl(post({ status: "ARCHIVED" }))).toBe("public, max-age=3600");
   });
 });

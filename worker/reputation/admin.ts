@@ -55,6 +55,7 @@ export interface AchievementAdminView {
   verifiedSourceThreshold: number;
   status: "ACTIVE" | "DISABLED";
   createdAt: number;
+  updatedUsers?: number;
 }
 
 export interface ReputationRankingView {
@@ -421,6 +422,9 @@ export async function createAchievementVersion(
     icon: unknown;
     threshold: unknown;
     enabled: unknown;
+    /** Internal update path: migrate assignments in the same D1 batch. */
+    previousAchievementId?: string;
+    updateUsers?: boolean;
   },
   now = Date.now(),
 ): Promise<AchievementAdminView> {
@@ -479,7 +483,29 @@ export async function createAchievementVersion(
         now,
       ),
   );
-  await db.batch(statements);
+  if (input.updateUsers) {
+    if (!input.previousAchievementId) {
+      throw new ReputationAdminError(
+        400,
+        "INVALID_ACHIEVEMENT_UPDATE",
+        "An existing achievement is required when updating user assignments.",
+      );
+    }
+    statements.push(
+      db
+        .prepare(
+          `UPDATE user_achievements
+           SET achievement_id = ?
+           WHERE achievement_id IN (
+             SELECT id FROM achievement_catalog
+             WHERE slug = (SELECT slug FROM achievement_catalog WHERE id = ?)
+           )`,
+        )
+        .bind(id, input.previousAchievementId),
+    );
+  }
+  const results = await db.batch(statements);
+  const assignmentResult = input.updateUsers ? results[results.length - 1] : undefined;
   return {
     id,
     slug,
@@ -490,6 +516,7 @@ export async function createAchievementVersion(
     verifiedSourceThreshold: threshold,
     status: input.enabled ? "ACTIVE" : "DISABLED",
     createdAt: now,
+    ...(input.updateUsers ? { updatedUsers: Number(assignmentResult?.meta?.changes ?? 0) } : {}),
   };
 }
 
@@ -502,6 +529,7 @@ export async function updateAchievementVersion(
     icon: unknown;
     threshold: unknown;
     enabled: unknown;
+    updateUsers?: unknown;
   },
   now = Date.now(),
 ): Promise<AchievementAdminView> {
@@ -523,6 +551,13 @@ export async function updateAchievementVersion(
   if (!existing) {
     throw new ReputationAdminError(404, "ACHIEVEMENT_NOT_FOUND", "The achievement was not found.");
   }
+  if (input.updateUsers !== undefined && typeof input.updateUsers !== "boolean") {
+    throw new ReputationAdminError(
+      400,
+      "INVALID_ACHIEVEMENT_UPDATE",
+      "Update users must be a boolean value.",
+    );
+  }
   return createAchievementVersion(
     db,
     {
@@ -532,6 +567,8 @@ export async function updateAchievementVersion(
       icon: input.icon,
       threshold: input.threshold,
       enabled: input.enabled,
+      previousAchievementId: existing.id,
+      updateUsers: input.updateUsers === true,
     },
     now,
   );

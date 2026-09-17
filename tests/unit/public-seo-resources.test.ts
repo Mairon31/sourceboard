@@ -83,7 +83,7 @@ describe("public SEO resources", () => {
     expect(store).toContain("p.visibility = 'PUBLIC'");
     expect(store).toContain("p.deleted_at IS NULL");
     expect(store).toContain("p.hidden_at IS NULL");
-    expect(store).toContain("p.archived_at IS NULL");
+    expect(store).not.toContain("p.archived_at IS NULL");
     expect(store).toContain("p.is_nsfw = 0");
   });
 

@@ -58,3 +58,8 @@ Migration `0027` adds one server-derived link-preview snapshot per comment. The 
 Migration `0028` adds the required canonical post category slug with an `other` default and a category/creation index for category feeds. Labels, descriptions and aliases remain application-owned in the shared typed catalog rather than D1 rows.
 
 Migration `0029` is a forward-only corrective backfill that explicitly assigns `other` to the pre-category post dataset. Keeping the backfill in its own migration ensures environments that have already recorded `0028` in the D1 migration ledger still receive the legacy-post correction before the category-aware Worker is deployed.
+
+Migration `0037` is a forward-only public-search correction. It rebuilds the
+post FTS projection and replaces the post/comment synchronization triggers so
+public archived posts remain discoverable while deleted, hidden and private
+posts remain excluded. The original `0013` migration is not modified.

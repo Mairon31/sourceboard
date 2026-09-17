@@ -191,12 +191,6 @@
   content: "";
 }
 
-.product-store-preview .sb-avatar {
-  width: 104px;
-  height: 104px;
-  font-size: 1.45rem;
-}
-
 .product-store-preview__profile {
   position: relative;
   z-index: 2;
@@ -520,10 +514,6 @@
   .product-store-preview {
     min-height: 145px;
     border-radius: 14px;
-  }
-  .product-store-preview .sb-avatar {
-    width: 82px;
-    height: 82px;
   }
   .product-store-item > p {
     display: none;

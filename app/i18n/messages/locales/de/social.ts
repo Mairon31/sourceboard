@@ -4,6 +4,7 @@ export const deSocialMessages = {
   "post.actions.like": "Beitrag liken",
   "post.actions.unlike": "Like entfernen",
   "post.actions.comment": "Kommentieren",
+  "post.actions.commentDisabled": "Kommentare für archivierten Beitrag deaktiviert",
   "post.actions.more": "Mehr",
   "post.actions.moreAria": "Weitere Beitragsaktionen",
   "post.badges.anonymous": "Anonym",
@@ -122,6 +123,9 @@ export const deSocialMessages = {
   "comments.auth.description":
     "Erstelle ein Konto oder melde dich an, um Quellanfragen zu kommentieren, zu beantworten und darauf zu reagieren.",
   "comments.closed.title": "Kommentare sind geschlossen",
+  "comments.archived.title": "Archivierter Beitrag",
+  "comments.archived.description":
+    "Dieser Beitrag ist schreibgeschützt. Vorhandene Kommentare bleiben sichtbar, aber neue Kommentare und Antworten sind deaktiviert.",
   "comments.closed.description":
     "Der Autor hat eine Quelle akzeptiert und diese Diskussion geschlossen. Vorhandene Kommentare bleiben sichtbar.",
   "comments.composer.addReply": "Antwort hinzufügen",

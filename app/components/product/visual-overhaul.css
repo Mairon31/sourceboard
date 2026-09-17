@@ -484,8 +484,7 @@
   height: 112px;
 }
 
-.product-profile-avatar-edit .cosmetic-identity__avatar-shell,
-.product-profile-avatar-edit .sb-avatar {
+.product-profile-avatar-edit .product-avatar-stage {
   width: 112px;
   height: 112px;
 }
@@ -862,8 +861,7 @@
 
   .product-profile-avatar-edit,
   .product-profile-avatar-edit .cosmetic-identity,
-  .product-profile-avatar-edit .cosmetic-identity__avatar-shell,
-  .product-profile-avatar-edit .sb-avatar {
+  .product-profile-avatar-edit .product-avatar-stage {
     width: 92px;
     height: 92px;
   }

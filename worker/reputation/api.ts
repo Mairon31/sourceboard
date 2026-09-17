@@ -82,6 +82,7 @@ interface AchievementMutationPayload {
   icon?: unknown;
   threshold?: unknown;
   enabled?: unknown;
+  updateUsers?: unknown;
   reason?: unknown;
 }
 
@@ -190,6 +191,7 @@ async function readAchievementMutation(
       icon,
       threshold: Number(form.get("threshold")),
       enabled: parseFormBoolean(form.get("enabled")),
+      updateUsers: parseFormBoolean(form.get("updateUsers")),
       reason: form.get("reason"),
     },
     uploadedKey,
@@ -429,6 +431,7 @@ export async function handleReputationRequest(
               icon: payload.icon,
               threshold: payload.threshold,
               enabled: payload.enabled,
+              updateUsers: payload.updateUsers,
             })
           : await createAchievementVersion(env.DB, {
               slug: payload.slug,
@@ -452,11 +455,16 @@ export async function handleReputationRequest(
             version: achievement.version,
             threshold: achievement.verifiedSourceThreshold,
             status: achievement.status,
+            updatedUsers: achievement.updatedUsers ?? 0,
             icon: achievement.icon.startsWith("media:") ? "custom-media" : "token",
           },
           requestId,
         });
-        return response({ achievement }, requestId, 201);
+        return response(
+          { achievement, updatedUsers: achievement.updatedUsers ?? 0 },
+          requestId,
+          201,
+        );
       } catch (error) {
         if (uploadedKey && uploadedAssetId && env.MEDIA && !achievementWritten) {
           await compensateAchievementMedia(env.DB, env.MEDIA, {
