@@ -184,13 +184,23 @@ async function queryDns(
   const url = new URL("https://cloudflare-dns.com/dns-query");
   url.searchParams.set("name", hostname);
   url.searchParams.set("type", type);
-  const response = await fetchImpl(url.toString(), {
-    headers: { accept: "application/dns-json" },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-  if (!response.ok) throw new Error("DNS lookup failed");
-  const payload = (await response.json()) as DnsJsonResponse;
-  return Array.isArray(payload.Answer) ? payload.Answer : [];
+  try {
+    const response = await fetchImpl(url.toString(), {
+      headers: { accept: "application/dns-json" },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error("DNS lookup failed");
+    const payload = (await response.json()) as DnsJsonResponse;
+    return Array.isArray(payload.Answer) ? payload.Answer : [];
+  } catch (error) {
+    observeImdbRecovery("dns-error", {
+      hostname,
+      type,
+      kind: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message.slice(0, 120) : null,
+    });
+    throw error;
+  }
 }
 
 export async function resolveLinkPreviewHost(
