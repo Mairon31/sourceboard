@@ -52,6 +52,7 @@ import {
   StickerIcon,
   Textarea,
   TrashIcon,
+  UndoIcon,
 } from "../ui";
 
 const COMMENT_IMAGE_MAX_BYTES = getMediaImagePolicy("COMMENT").maxBytes;
@@ -708,7 +709,9 @@ function CommentItem({
             <span>{t("comments.actions.reply")}</span>
           </button>
           {acceptedSourceCommentId === comment.id && canUndoAcceptedSource ? (
-            <div className="product-comment__source-undo">
+            <div
+              className={`product-comment__source-undo${undoingAcceptedSource ? " is-open" : ""}`}
+            >
               {undoingAcceptedSource ? (
                 <>
                   <Textarea
@@ -742,11 +745,13 @@ function CommentItem({
                 <Button
                   size="sm"
                   variant="ghost"
+                  className="product-comment__source-undo-trigger"
                   onClick={() => {
                     setUndoError(undefined);
                     setUndoingAcceptedSource(true);
                   }}
                 >
+                  <UndoIcon width="15" height="15" />
                   {t("comments.actions.undoAcceptedSource")}
                 </Button>
               )}

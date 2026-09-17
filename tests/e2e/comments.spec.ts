@@ -439,6 +439,33 @@ test("editing the accepted comment updates and removes its link preview live", a
   await expect(source.locator(".product-link-preview-card")).toHaveCount(0, { timeout: 15_000 });
 });
 
+test("accepted source metadata and undo action stay compact on mobile", async ({ page }) => {
+  await installAcceptedSourceEditFixture(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const response = await page.goto("/posts/e2e-accepted-edit-post/e2e-accepted-edit-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const source = page.locator(".product-source-resolution");
+  const comment = page.locator("#comment-e2e-accepted-edit-comment");
+  const card = source.locator(".product-link-preview-card");
+  await expect(card.locator(".product-link-preview-card__site")).toHaveText("Example Source");
+  await expect(card.locator("strong")).toHaveText("Original accepted preview");
+  await expect(card.locator(".product-link-preview-card__description")).toContainText(
+    "Preview before the accepted comment edit.",
+  );
+  await expect(card.locator(".product-link-preview-card__url")).toHaveCount(0);
+
+  const undo = comment.locator(".product-comment__source-undo-trigger");
+  await expect(undo).toBeVisible();
+  const box = await undo.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box?.width ?? Infinity).toBeLessThan(260);
+  expect(box?.height ?? Infinity).toBeLessThan(48);
+
+  await page.screenshot({ path: "test-results/accepted-source-mobile.png", fullPage: true });
+});
+
 test("ordinary users neither receive comment moderation actions nor bypass the backend capability", async ({
   page,
 }) => {

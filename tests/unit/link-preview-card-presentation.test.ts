@@ -28,4 +28,13 @@ describe("LinkPreviewCard presentation contract", () => {
     expect(css).toContain("@media (max-width: 430px)");
     expect(css).toContain(".product-link-preview-card--compact");
   });
+
+  it("shows the canonical URL only when no readable metadata was recovered", () => {
+    const component = read("../../app/components/product/LinkPreviewCard.tsx");
+
+    expect(component).toContain("const hasMetadata = Boolean(");
+    expect(component).toContain("const showCanonicalUrl = !hasMetadata;");
+    expect(component).toContain("{showCanonicalUrl ? (");
+    expect(component).toContain("product-link-preview-card__url");
+  });
 });

@@ -15,6 +15,7 @@ export interface LinkPreviewDependencies {
 
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 512 * 1024;
+const MAX_PROVIDER_JSON_BYTES = 64 * 1024;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 const FETCH_TIMEOUT_MS = 5000;
@@ -23,6 +24,8 @@ const MAX_CNAME_DEPTH = 4;
 const PREVIEW_USER_AGENT = "SourceBoard-LinkPreview/1.0";
 const BROWSER_COMPATIBLE_USER_AGENT =
   "Mozilla/5.0 (compatible; SourceBoard-LinkPreview/1.0; +https://srcboard.me)";
+const IMDB_SUGGESTION_HOST = "v2.sg.media-imdb.com";
+const IMDB_TITLE_PATH = /^\/title\/(tt\d+)(?:\/|$)/i;
 
 function linkError(status: number, code: string, message: string): PostError {
   return new PostError(status, code, message);
@@ -375,6 +378,76 @@ async function readBoundedText(response: Response, maximumBytes: number): Promis
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 }
 
+function isBotChallengeResponse(status: number, body: string): boolean {
+  return (
+    (status === 202 || status === 403) &&
+    /awswaf|gokuProps|challenge-container|AwsWafIntegration|token\.awswaf/i.test(body)
+  );
+}
+
+function imdbTitleId(url: URL): string | null {
+  const hostname = url.hostname.toLowerCase();
+  if (hostname !== "imdb.com" && !hostname.endsWith(".imdb.com")) return null;
+  return url.pathname.match(IMDB_TITLE_PATH)?.[1]?.toLowerCase() ?? null;
+}
+
+interface ImdbSuggestionEntry {
+  id?: unknown;
+  l?: unknown;
+  i?: { imageUrl?: unknown };
+}
+
+async function recoverImdbMetadata(
+  url: URL,
+  dependencies: Pick<LinkPreviewDependencies, "fetchImpl" | "resolveHost">,
+): Promise<Pick<LinkPreviewSnapshot, "siteName" | "title" | "description" | "imageUrl"> | null> {
+  const titleId = imdbTitleId(url);
+  if (!titleId) return null;
+
+  const endpoint = new URL(`https://${IMDB_SUGGESTION_HOST}/suggestion/x/${titleId}.json`);
+  try {
+    await assertPublicTarget(endpoint, dependencies.resolveHost);
+    const response = await dependencies.fetchImpl(endpoint.toString(), {
+      redirect: "manual",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: {
+        accept: "application/json",
+        "user-agent": BROWSER_COMPATIBLE_USER_AGENT,
+      },
+    });
+    const contentType = response.headers
+      .get("content-type")
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase();
+    if (!response.ok || isRedirect(response.status) || contentType !== "application/json") {
+      return null;
+    }
+    const payload = JSON.parse(await readBoundedText(response, MAX_PROVIDER_JSON_BYTES)) as {
+      d?: ImdbSuggestionEntry[];
+    };
+    const entry = Array.isArray(payload.d)
+      ? payload.d.find((candidate) => candidate?.id === titleId)
+      : undefined;
+    const title = typeof entry?.l === "string" ? cleanMetadata(entry.l, 160) : null;
+    if (!title) return null;
+
+    let imageUrl: string | null = null;
+    if (typeof entry?.i?.imageUrl === "string") {
+      try {
+        const candidate = normalizeLinkPreviewUrl(entry.i.imageUrl);
+        await assertPublicTarget(candidate, dependencies.resolveHost);
+        imageUrl = candidate.toString();
+      } catch {
+        // Provider image metadata is optional and must not weaken URL validation.
+      }
+    }
+    return { siteName: "IMDb", title, description: null, imageUrl };
+  } catch {
+    return null;
+  }
+}
+
 function urlOnly(url: URL, fetchedAt: number): LinkPreviewSnapshot {
   return {
     canonicalUrl: url.toString(),
@@ -477,6 +550,29 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
           }
 
           const html = await readBoundedText(response, MAX_HTML_BYTES);
+          if (isBotChallengeResponse(response.status, html)) {
+            const recovered = await recoverImdbMetadata(current, dependencies);
+            if (recovered) {
+              const present = [
+                recovered.title,
+                recovered.description,
+                recovered.siteName,
+                recovered.imageUrl,
+              ].filter(Boolean).length;
+              const snapshot: LinkPreviewSnapshot = {
+                canonicalUrl: current.toString(),
+                ...recovered,
+                fetchedAt,
+                metadataStatus: present >= 2 ? "COMPLETE" : "MINIMAL",
+              };
+              try {
+                await dependencies.cache?.put(cacheKey, snapshot, CACHE_TTL_SECONDS);
+              } catch {
+                // Cache writes are advisory.
+              }
+              return snapshot;
+            }
+          }
           const metadata = metadataValues(html);
           let canonicalUrl = current.toString();
           if (metadata.canonical) {

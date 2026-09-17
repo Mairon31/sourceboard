@@ -21,6 +21,8 @@ export function LinkPreviewCard({
   const { t } = useI18n();
   const [imageFailed, setImageFailed] = useState(false);
   const hasImage = Boolean(preview.imageUrl && !imageFailed);
+  const hasMetadata = Boolean(preview.title || preview.description || hasImage);
+  const showCanonicalUrl = !hasMetadata;
   return (
     <a
       className={`product-link-preview-card${compact ? " product-link-preview-card--compact" : ""}`}
@@ -47,7 +49,9 @@ export function LinkPreviewCard({
         {preview.description ? (
           <span className="product-link-preview-card__description">{preview.description}</span>
         ) : null}
-        <span className="product-link-preview-card__url">{preview.canonicalUrl}</span>
+        {showCanonicalUrl ? (
+          <span className="product-link-preview-card__url">{preview.canonicalUrl}</span>
+        ) : null}
       </span>
     </a>
   );

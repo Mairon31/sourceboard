@@ -132,6 +132,11 @@ test("all persisted preview states render in the shared card without mobile over
       } else {
         await expect(card.locator("img")).toHaveCount(0);
       }
+      if (status === "URL_ONLY") {
+        await expect(card.locator(".product-link-preview-card__url")).toBeVisible();
+      } else {
+        await expect(card.locator(".product-link-preview-card__url")).toHaveCount(0);
+      }
       const box = await card.boundingBox();
       expect(box).not.toBeNull();
       expect((box?.x ?? 0) + (box?.width ?? Infinity) <= width).toBe(true);

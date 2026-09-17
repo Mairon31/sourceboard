@@ -10,6 +10,7 @@ const root = read("../../app/root.tsx");
 const sourceResolution = read("../../app/components/product/SourceResolution.tsx");
 const sourceResolutionCss = read("../../app/components/product/source-resolution.css");
 const commentThread = read("../../app/components/product/CommentThread.tsx");
+const commentActionsCss = read("../../app/components/product/comment-actions.css");
 const shareAction = read("../../app/components/product/ShareAction.tsx");
 const commentService = read("../../worker/comments/service.ts");
 
@@ -47,5 +48,15 @@ describe("comment rendering regressions", () => {
     expect(commentService).toMatch(
       /attachment:\s*record\.comment\.state !== "DELETED" && storedAttachment/,
     );
+  });
+
+  it("keeps undo accepted source as a compact, designed action", () => {
+    expect(commentThread).toContain("product-comment__source-undo-trigger");
+    expect(commentThread).toContain("UndoIcon");
+    expect(commentActionsCss).toContain(
+      ".product-comment__actions .product-comment__source-undo-trigger",
+    );
+    expect(commentActionsCss).toContain("min-width: 0");
+    expect(commentActionsCss).toContain("max-width: 100%");
   });
 });

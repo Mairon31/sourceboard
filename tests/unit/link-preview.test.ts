@@ -130,6 +130,43 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
+  it("recovers safe IMDb title metadata when the title page returns an AWS WAF challenge", async () => {
+    const titleUrl = "https://www.imdb.com/title/tt0245429/";
+    const imageUrl = "https://m.media-amazon.com/images/M/example.jpg";
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === titleUrl) {
+        return new Response(
+          '<html><script>window.gokuProps={};</script><script src="challenge.js"></script><div id="challenge-container"></div></html>',
+          { status: 202, headers: { "content-type": "text/html; charset=UTF-8" } },
+        );
+      }
+      if (url === "https://v2.sg.media-imdb.com/suggestion/x/tt0245429.json") {
+        return new Response(
+          JSON.stringify({
+            d: [{ id: "tt0245429", l: "Spirited Away", i: { imageUrl, width: 200, height: 300 } }],
+          }),
+          { headers: { "content-type": "application/json; charset=utf-8" } },
+        );
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    }) as unknown as typeof fetch;
+    const resolveHost = vi.fn(async () => ["93.184.216.34"]);
+    const service = createLinkPreviewService({ fetchImpl, resolveHost });
+
+    await expect(service.preview(titleUrl)).resolves.toMatchObject({
+      canonicalUrl: titleUrl,
+      siteName: "IMDb",
+      title: "Spirited Away",
+      description: null,
+      imageUrl,
+      metadataStatus: "COMPLETE",
+    });
+    expect(
+      (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls.map(([input]) => String(input)),
+    ).toEqual([titleUrl, "https://v2.sg.media-imdb.com/suggestion/x/tt0245429.json"]);
+  });
+
   it("extracts bounded readable metadata and resolves a relative image", async () => {
     const html = `<!doctype html><html><head>
       <meta property="og:title" content="Example &amp; title">
