@@ -550,7 +550,15 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             imdbTitle !== null ||
             hasImdbChallengeStatus;
           const html = readsHtmlBody ? await readBoundedText(response, MAX_HTML_BYTES) : "";
-          if (isBotChallengeResponse(html) || hasImdbChallengeStatus) {
+          const metadata = metadataValues(html);
+          const hasDocumentMetadata = Boolean(
+            metadata.title || metadata.description || metadata.siteName || metadata.image,
+          );
+          if (
+            isBotChallengeResponse(html) ||
+            hasImdbChallengeStatus ||
+            (imdbTitle !== null && !hasDocumentMetadata)
+          ) {
             const recovered = await recoverImdbMetadata(current, dependencies);
             if (recovered) {
               const present = [
@@ -578,7 +586,6 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             return snapshot;
           }
 
-          const metadata = metadataValues(html);
           let canonicalUrl = current.toString();
           if (metadata.canonical) {
             try {
