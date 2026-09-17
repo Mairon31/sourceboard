@@ -510,6 +510,10 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
       let current = initial;
       try {
         for (let redirects = 0; ; redirects += 1) {
+          const imdbTitle = imdbTitleId(current);
+          if (imdbTitle !== null) {
+            observeImdbRecovery("document-target", { hostname: current.hostname });
+          }
           await assertPublicTarget(current, dependencies.resolveHost);
           const requestDocument = (userAgent: string) =>
             dependencies.fetchImpl(current.toString(), {
@@ -521,9 +525,21 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
               },
             });
           let response = await requestDocument(PREVIEW_USER_AGENT);
+          if (imdbTitle !== null) {
+            observeImdbRecovery("document-response", {
+              status: response.status,
+              contentType: response.headers.get("content-type") ?? null,
+            });
+          }
           if (response.status === 403) {
             await assertPublicTarget(current, dependencies.resolveHost);
             response = await requestDocument(BROWSER_COMPATIBLE_USER_AGENT);
+            if (imdbTitle !== null) {
+              observeImdbRecovery("document-retry-response", {
+                status: response.status,
+                contentType: response.headers.get("content-type") ?? null,
+              });
+            }
           }
           if (isRedirect(response.status)) {
             if (redirects >= MAX_REDIRECTS) {
@@ -557,7 +573,6 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             ?.split(";", 1)[0]
             ?.trim()
             .toLowerCase();
-          const imdbTitle = imdbTitleId(current);
           const hasImdbChallengeStatus =
             imdbTitle !== null && (response.status === 202 || response.status === 403);
           const readsHtmlBody =
@@ -661,6 +676,16 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
           return snapshot;
         }
       } catch (error) {
+        if (imdbTitleId(current) !== null) {
+          observeImdbRecovery("preview-error", {
+            kind:
+              error instanceof PostError
+                ? error.code
+                : error instanceof Error
+                  ? error.name
+                  : typeof error,
+          });
+        }
         if (shouldPropagate(error)) throw error;
         const snapshot = urlOnly(current, now());
         await cacheSnapshot(cacheKey, snapshot);
