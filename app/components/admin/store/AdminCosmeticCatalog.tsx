@@ -1,8 +1,18 @@
 import { useMemo, useState } from "react";
-import { Avatar, Badge, Button, Card } from "../../ui";
+import { Badge, Button, Card } from "../../ui";
 import { readCsrfToken } from "../../../data/csrf";
 import { extractCosmeticVisualDefinition } from "../../../../shared/store/custom-cosmetics";
-import { cosmeticVisualClass, cosmeticVisualStyle } from "../../product/cosmetic-visual";
+import {
+  isAvatarFramePreset,
+  isNameEffectPreset,
+  isNameFontFamily,
+  isProfileEffectPreset,
+  isProfileThemePreset,
+} from "../../../../shared/store/cosmetics";
+import {
+  CosmeticPreview as SharedCosmeticPreview,
+  type CosmeticPreviewInput,
+} from "../../product/CosmeticPreview";
 import { AdminStoreEditor } from "./AdminStoreEditor";
 import type { AdminStoreItem } from "./types";
 
@@ -68,65 +78,41 @@ function parseConfig(configJson: string): Record<string, unknown> {
   }
 }
 
+function cosmeticPreviewInput(
+  item: AdminStoreItem,
+  config: Record<string, unknown>,
+): CosmeticPreviewInput | null {
+  if (item.type === "AVATAR_FRAME" && isAvatarFramePreset(config.preset)) {
+    return { type: item.type, preset: config.preset };
+  }
+  if (item.type === "PROFILE_BANNER" && isProfileThemePreset(config.preset)) {
+    return { type: item.type, preset: config.preset };
+  }
+  if (item.type === "PROFILE_EFFECT" && isProfileEffectPreset(config.preset)) {
+    return { type: item.type, preset: config.preset };
+  }
+  if (item.type === "NAME_EFFECT" && isNameEffectPreset(config.preset)) {
+    return { type: item.type, preset: config.preset };
+  }
+  if (item.type === "NAME_FONT" && isNameFontFamily(config.family)) {
+    return { type: item.type, preset: config.family };
+  }
+  return null;
+}
+
 function CosmeticPreview({ item }: { item: AdminStoreItem }) {
   const config = parseConfig(item.configJson);
   const visual = extractCosmeticVisualDefinition(config);
-  if (item.type === "AVATAR_FRAME") {
-    const preset = typeof config.preset === "string" ? config.preset : undefined;
+  const cosmetic = cosmeticPreviewInput(item, config);
+  if (cosmetic) {
     return (
-      <div
-        className={`admin-store-cosmetic-preview admin-store-cosmetic-preview--avatar${cosmeticVisualClass(visual)}`}
-        style={cosmeticVisualStyle(visual)}
-      >
-        <Avatar
-          name={item.name}
-          size="xl"
-          className={preset ? `sb-avatar--frame-${preset}` : undefined}
-        />
-      </div>
-    );
-  }
-  if (item.type === "NAME_EFFECT") {
-    const preset = typeof config.preset === "string" ? config.preset : "red";
-    return (
-      <div className="admin-store-cosmetic-preview admin-store-cosmetic-preview--font">
-        <strong
-          className={`sb-name-effect--${preset}${cosmeticVisualClass(visual)}`}
-          style={cosmeticVisualStyle(visual)}
-        >
-          SourceBoard
-        </strong>
-        <span>{preset}</span>
-      </div>
-    );
-  }
-  if (item.type === "NAME_FONT") {
-    const family = typeof config.family === "string" ? config.family : undefined;
-    return (
-      <div className="admin-store-cosmetic-preview admin-store-cosmetic-preview--font">
-        <strong
-          className={cosmeticVisualClass(visual).trim() || undefined}
-          style={{
-            ...(family ? { fontFamily: family } : {}),
-            ...(cosmeticVisualStyle(visual) ?? {}),
-          }}
-        >
-          SourceBoard
-        </strong>
-        <span>{family ?? "Default family"}</span>
-      </div>
-    );
-  }
-  if (item.type === "PROFILE_EFFECT" || item.type === "PROFILE_BANNER") {
-    const preset = typeof config.preset === "string" ? config.preset : "none";
-    return (
-      <div
-        className={`admin-store-cosmetic-preview admin-store-cosmetic-preview--effect product-store-preview--${preset}${item.type === "PROFILE_BANNER" ? ` product-profile-banner--${preset}` : ""}${cosmeticVisualClass(visual)}`}
-        style={cosmeticVisualStyle(visual)}
-      >
-        <Avatar name={item.name} size="lg" />
-        <span>{preset}</span>
-      </div>
+      <SharedCosmeticPreview
+        cosmetic={cosmetic}
+        name={item.name}
+        visual={visual}
+        compact
+        className="admin-store-cosmetic-preview"
+      />
     );
   }
   return (

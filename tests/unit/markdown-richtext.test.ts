@@ -30,6 +30,10 @@ describe("safe Markdown rich text", () => {
     ]);
   });
 
+  it("accepts the existing post description budget without diverging from the renderer", () => {
+    expect(() => parseMarkdown("x".repeat(6_000))).not.toThrow();
+  });
+
   it("uses the same AST for preview and published normalization", () => {
     const input = "**Found** [the source](https://example.com)";
     expect(renderMarkdownPreview(input)).toEqual(parseMarkdown(input));
@@ -61,5 +65,8 @@ describe("safe Markdown rich text", () => {
     expect(() => parseMarkdown("<script>alert(1)</script>")).toThrow("HTML");
     expect(() => parseMarkdown("![private](https://example.com/image.png)")).toThrow("image");
     expect(() => parseMarkdown("[x](javascript:alert(1))")).toThrow("HTTP or HTTPS");
+    expect(() => parseMarkdown("[x](https://user:password@example.com/source)")).toThrow(
+      "credentials",
+    );
   });
 });

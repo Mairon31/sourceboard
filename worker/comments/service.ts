@@ -6,8 +6,10 @@ import type { PostStore } from "../posts/store";
 import { PostError } from "../posts/errors";
 import { decodeCommentCursor } from "./pagination";
 import { normalizeCommentBody } from "./richtext";
+import { CommentImageUnavailableError, CommentPostUnavailableError } from "./store";
 import type { CommentEmoteAsset, CommentStore } from "./store";
 import type { CommentLinkPreviewSnapshot, CommentSort, CommentWithAuthor } from "./types";
+import { normalizeLinkPreviewUrl } from "./link-preview";
 import { normalizeEmoteShortcode } from "../../shared/richtext/markdown";
 import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
 
@@ -113,6 +115,11 @@ async function toView(
   const cosmetics = profileVisible
     ? await profileStore.getEquippedCosmetics?.(record.comment.authorId)
     : undefined;
+  const storedAttachment = record.comment.attachment;
+  const firstPartyStickerUrl =
+    storedAttachment?.type === "STICKER" && storedAttachment.provider === "sourceboard"
+      ? `/api/media/catalog/sticker/${encodeURIComponent(storedAttachment.id)}`
+      : undefined;
   return {
     id: record.comment.id,
     parentCommentId: record.comment.parentCommentId ?? undefined,
@@ -162,19 +169,20 @@ async function toView(
             metadataStatus: record.linkPreview.metadataStatus,
           }
         : undefined,
-    attachment: record.comment.attachment
-      ? {
-          type: record.comment.attachment.type,
-          id: record.comment.attachment.id,
-          label: record.comment.attachment.label,
-          provider: record.comment.attachment.provider,
-          url:
-            record.comment.attachment.type === "IMAGE"
-              ? `/api/media/comment/${encodeURIComponent(record.comment.attachment.id)}`
-              : record.comment.attachment.url,
-          preview: record.comment.attachment.preview,
-        }
-      : undefined,
+    attachment:
+      record.comment.state !== "DELETED" && storedAttachment
+        ? {
+            type: storedAttachment.type,
+            id: storedAttachment.id,
+            label: storedAttachment.label,
+            provider: storedAttachment.provider,
+            url:
+              storedAttachment.type === "IMAGE"
+                ? `/api/media/comment/${encodeURIComponent(storedAttachment.id)}`
+                : (firstPartyStickerUrl ?? storedAttachment.url),
+            preview: firstPartyStickerUrl ?? storedAttachment.preview,
+          }
+        : undefined,
     replies: [],
   };
 }
@@ -356,13 +364,27 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         deletedAt: null,
         hiddenAt: null,
       };
-      await dependencies.store.createComment({
-        comment: record,
-        richtextJson: JSON.stringify(body.richtext),
-        attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,
-        linkPreview,
-        commentImageAssetId: body.attachment?.type === "IMAGE" ? body.attachment.id : undefined,
-      });
+      try {
+        await dependencies.store.createComment({
+          comment: record,
+          richtextJson: JSON.stringify(body.richtext),
+          attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,
+          linkPreview,
+          commentImageAssetId: body.attachment?.type === "IMAGE" ? body.attachment.id : undefined,
+        });
+      } catch (error) {
+        if (error instanceof CommentPostUnavailableError) {
+          throw new PostError(409, "POST_NOT_COMMENTABLE", "This post is not accepting comments.");
+        }
+        if (error instanceof CommentImageUnavailableError) {
+          throw new PostError(
+            400,
+            "COMMENT_IMAGE_NOT_FOUND",
+            "The selected comment image is invalid.",
+          );
+        }
+        throw error;
+      }
       const createdEmoteAssets = dependencies.store.getEmoteAssets
         ? await dependencies.store.getEmoteAssets(
             body.richtext
@@ -400,26 +422,28 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
       }
       const linkPreviewSpecified = Object.prototype.hasOwnProperty.call(input, "linkPreviewUrl");
       const explicitLinkPreviewUrl =
-        typeof input.linkPreviewUrl === "string" ? input.linkPreviewUrl.trim() : input.linkPreviewUrl;
+        typeof input.linkPreviewUrl === "string"
+          ? input.linkPreviewUrl.trim()
+          : input.linkPreviewUrl;
       let linkPreview: CommentLinkPreviewSnapshot | null | undefined;
       if (!linkPreviewSpecified) {
         linkPreview = undefined;
       } else if (explicitLinkPreviewUrl === null || explicitLinkPreviewUrl === "") {
         linkPreview = null;
-      } else if (
-        typeof explicitLinkPreviewUrl === "string" &&
-        current.linkPreview?.canonicalUrl === explicitLinkPreviewUrl
-      ) {
-        linkPreview = undefined;
       } else {
-        if (!dependencies.previewLink) {
-          throw new PostError(
-            503,
-            "LINK_PREVIEW_UNAVAILABLE",
-            "Link previews are temporarily unavailable.",
-          );
+        const normalizedLinkPreviewUrl = normalizeLinkPreviewUrl(explicitLinkPreviewUrl).toString();
+        if (current.linkPreview?.canonicalUrl === normalizedLinkPreviewUrl) {
+          linkPreview = undefined;
+        } else {
+          if (!dependencies.previewLink) {
+            throw new PostError(
+              503,
+              "LINK_PREVIEW_UNAVAILABLE",
+              "Link previews are temporarily unavailable.",
+            );
+          }
+          linkPreview = await dependencies.previewLink(normalizedLinkPreviewUrl);
         }
-        linkPreview = await dependencies.previewLink(explicitLinkPreviewUrl);
       }
       const hasLinkPreviewAfterUpdate =
         linkPreview === undefined ? Boolean(current.linkPreview) : Boolean(linkPreview);
@@ -440,6 +464,11 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         attachment: body.attachment,
         updatedAt: currentTime,
       };
+      const obsoleteCommentImageAssetId =
+        current.comment.attachment?.type === "IMAGE" &&
+        (body.attachment?.type !== "IMAGE" || body.attachment.id !== current.comment.attachment.id)
+          ? current.comment.attachment.id
+          : undefined;
       if (
         !(await dependencies.store.updateComment({
           comment: updated,
@@ -447,6 +476,8 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
           attachmentJson: body.attachment ? JSON.stringify(body.attachment) : null,
           revisionId: createIdentifier(),
           linkPreview,
+          commentImageAssetId: body.attachment?.type === "IMAGE" ? body.attachment.id : undefined,
+          obsoleteCommentImageAssetId,
         }))
       ) {
         throw new PostError(

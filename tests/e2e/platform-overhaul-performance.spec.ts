@@ -11,7 +11,9 @@ test.describe("platform overhaul performance budgets", () => {
     expect(fontRequests).toEqual([]);
   });
 
-  test("notification popover/page does not create unbounded DOM while signed out", async ({ page }) => {
+  test("notification popover/page does not create unbounded DOM while signed out", async ({
+    page,
+  }) => {
     await page.goto("/notifications");
     const cards = page.locator(".notification-card");
     expect(await cards.count()).toBeLessThanOrEqual(100);

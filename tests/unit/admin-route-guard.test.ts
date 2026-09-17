@@ -45,4 +45,3 @@ describe("admin route zero-flash guard", () => {
     expect(guard).toContain('new Response("", { status: 404 })');
   });
 });
-

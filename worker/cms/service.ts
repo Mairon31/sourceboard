@@ -55,6 +55,41 @@ function normalizedInput(input: CmsRevisionInput): CmsRevisionInput {
   };
 }
 
+function revisionStatements(
+  db: D1Database,
+  pageId: string,
+  actorUserId: string,
+  input: CmsRevisionInput,
+  revisionId: string,
+  version: number,
+  now: number,
+): D1PreparedStatement[] {
+  return [
+    db
+      .prepare(
+        "INSERT INTO cms_page_revisions (id,page_id,locale,version,slug,title,description,body_markdown,created_by_user_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      )
+      .bind(
+        revisionId,
+        pageId,
+        input.locale,
+        version,
+        input.slug,
+        input.title,
+        input.description,
+        input.bodyMarkdown,
+        actorUserId,
+        now,
+      ),
+    db
+      .prepare(
+        "INSERT INTO cms_page_locale_state (page_id,locale,status,published_revision_id,published_at,published_by_user_id,updated_at) VALUES (?,?,'DRAFT',NULL,NULL,NULL,?) ON CONFLICT(page_id,locale) DO UPDATE SET updated_at = excluded.updated_at",
+      )
+      .bind(pageId, input.locale, now),
+    db.prepare("UPDATE cms_pages SET updated_at = ? WHERE id = ?").bind(now, pageId),
+  ];
+}
+
 export function createCmsService(db: D1Database) {
   async function createRevision(
     pageId: string,
@@ -76,30 +111,7 @@ export function createCmsService(db: D1Database) {
     const version = Number(latest?.version ?? 0) + 1;
     const id = crypto.randomUUID();
     const now = Date.now();
-    await db.batch([
-      db
-        .prepare(
-          "INSERT INTO cms_page_revisions (id,page_id,locale,version,slug,title,description,body_markdown,created_by_user_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-        )
-        .bind(
-          id,
-          pageId,
-          normalized.locale,
-          version,
-          normalized.slug,
-          normalized.title,
-          normalized.description,
-          normalized.bodyMarkdown,
-          actorUserId,
-          now,
-        ),
-      db
-        .prepare(
-          "INSERT INTO cms_page_locale_state (page_id,locale,status,published_revision_id,published_at,published_by_user_id,updated_at) VALUES (?,?,'DRAFT',NULL,NULL,NULL,?) ON CONFLICT(page_id,locale) DO UPDATE SET updated_at = excluded.updated_at",
-        )
-        .bind(pageId, normalized.locale, now),
-      db.prepare("UPDATE cms_pages SET updated_at = ? WHERE id = ?").bind(now, pageId),
-    ]);
+    await db.batch(revisionStatements(db, pageId, actorUserId, normalized, id, version, now));
     return {
       id,
       pageId,
@@ -118,13 +130,16 @@ export function createCmsService(db: D1Database) {
     assertNamespace(namespace);
     const pageId = crypto.randomUUID();
     const now = Date.now();
-    await db
-      .prepare(
-        "INSERT INTO cms_pages (id,namespace,created_by_user_id,created_at,updated_at) VALUES (?,?,?,?,?)",
-      )
-      .bind(pageId, namespace, actorUserId, now, now)
-      .run();
-    await createRevision(pageId, actorUserId, input);
+    const normalized = normalizedInput(input);
+    const revisionId = crypto.randomUUID();
+    await db.batch([
+      db
+        .prepare(
+          "INSERT INTO cms_pages (id,namespace,created_by_user_id,created_at,updated_at) VALUES (?,?,?,?,?)",
+        )
+        .bind(pageId, namespace, actorUserId, now, now),
+      ...revisionStatements(db, pageId, actorUserId, normalized, revisionId, 1, now),
+    ]);
     return getAdminPage(pageId);
   }
 
@@ -437,4 +452,3 @@ export function createCmsService(db: D1Database) {
     publishedVariants,
   };
 }
-

@@ -14,7 +14,9 @@ describe("locale resolution", () => {
 
   it("uses explicit, cookie, account, browser, English precedence", () => {
     expect(resolveLocale({ explicitLang: "fr", cookieLocale: "de" })).toBe("fr");
-    expect(resolveLocale({ cookieLocale: "de", accountLocale: "es", acceptLanguage: "ru" })).toBe("de");
+    expect(resolveLocale({ cookieLocale: "de", accountLocale: "es", acceptLanguage: "ru" })).toBe(
+      "de",
+    );
     expect(resolveLocale({ accountLocale: "pt", acceptLanguage: "ru" })).toBe("pt");
     expect(resolveLocale({ explicitLang: "xx", acceptLanguage: "ru" })).toBe("ru");
     expect(resolveLocale({})).toBe("en");
@@ -22,7 +24,9 @@ describe("locale resolution", () => {
 
   it("keeps short links English unless lang is explicit", () => {
     expect(resolveLocale({ cookieLocale: "es", shortLinkDefaultEnglish: true })).toBe("en");
-    expect(resolveLocale({ explicitLang: "de", cookieLocale: "es", shortLinkDefaultEnglish: true })).toBe("de");
+    expect(
+      resolveLocale({ explicitLang: "de", cookieLocale: "es", shortLinkDefaultEnglish: true }),
+    ).toBe("de");
   });
 
   it("round-trips the allowlisted locale cookie", () => {

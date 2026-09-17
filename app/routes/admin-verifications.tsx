@@ -573,4 +573,3 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
     </Card>
   );
 }
-

@@ -8,11 +8,13 @@ describe("CMS public routing", () => {
     const routes = read("app/routes.ts");
     const page = read("app/routes/page-article.tsx");
     const publicCms = read("app/data/cms-public.server.ts");
-    expect(routes).toContain('route(`${locale}/docs/:slug`');
-    expect(routes).toContain('route(`${locale}/legal/:slug`');
-    expect(routes).toContain('route(`${locale}/pages/:slug`');
+    expect(routes).toContain("route(`${locale}/docs/:slug`");
+    expect(routes).toContain("route(`${locale}/legal/:slug`");
+    expect(routes).toContain("route(`${locale}/pages/:slug`");
     expect(page).toContain('resolvePublicCmsPage(request, context, "PAGE", slug)');
-    expect(publicCms).toContain('namespace === "DOCS" ? "docs" : namespace === "LEGAL" ? "legal" : "pages"');
+    expect(publicCms).toContain(
+      'namespace === "DOCS" ? "docs" : namespace === "LEGAL" ? "legal" : "pages"',
+    );
   });
 
   it("keeps published CMS page SEO tied to actual published locale variants", () => {

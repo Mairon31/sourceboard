@@ -1,20 +1,9 @@
 export type CosmeticRenderMode = "profile" | "compact" | "preview";
 
 export type AvatarStageLayer =
-  | "inner-ring"
-  | "outer-ring"
-  | "top-ornament"
-  | "side-ornament"
-  | "orbit"
-  | "foreground";
+  "inner-ring" | "outer-ring" | "top-ornament" | "side-ornament" | "orbit" | "foreground";
 
-export type AvatarStageAnchor =
-  | "center"
-  | "top"
-  | "top-left"
-  | "top-right"
-  | "left"
-  | "right";
+export type AvatarStageAnchor = "center" | "top" | "top-left" | "top-right" | "left" | "right";
 
 export interface AvatarFrameGeometry {
   layer: AvatarStageLayer;

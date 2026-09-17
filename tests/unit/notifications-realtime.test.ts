@@ -62,8 +62,14 @@ describe("notification realtime client contract", () => {
   it("deduplicates raw notification rows by notification identity before grouping", () => {
     expect(
       mergeNotificationRowsById(
-        [{ id: "n-1", value: "initial" }, { id: "n-2", value: "initial" }],
-        [{ id: "n-1", value: "reconciled" }, { id: "n-3", value: "new" }],
+        [
+          { id: "n-1", value: "initial" },
+          { id: "n-2", value: "initial" },
+        ],
+        [
+          { id: "n-1", value: "reconciled" },
+          { id: "n-3", value: "new" },
+        ],
       ),
     ).toEqual([
       { id: "n-1", value: "reconciled" },

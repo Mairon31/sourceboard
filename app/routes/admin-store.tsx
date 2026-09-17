@@ -15,12 +15,7 @@ import { readCsrfToken } from "../data/csrf";
 import type { ServerLoaderArgs } from "../data/server-request";
 
 type AdminStoreMode =
-  | "COSMETICS"
-  | "EMOTE_PACKS"
-  | "STICKER_PACKS"
-  | "COMMUNITY"
-  | "PRESETS"
-  | "GUIDE";
+  "COSMETICS" | "EMOTE_PACKS" | "STICKER_PACKS" | "COMMUNITY" | "PRESETS" | "GUIDE";
 
 const ADMIN_STORE_TABS: Array<{ mode: AdminStoreMode; label: string }> = [
   { mode: "COSMETICS", label: "Catalog" },

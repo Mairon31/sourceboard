@@ -15,4 +15,16 @@ describe("post restore UI contract", () => {
     expect(card).toContain('t("post.menu.restore")');
     expect(route).toContain("permissions.canRestore");
   });
+
+  it("explains the 24-hour recovery window in every supported locale", () => {
+    const locales = ["en", "es", "pt", "fr", "ru", "de"];
+    for (const locale of locales) {
+      const messages = read(`app/i18n/messages/locales/${locale}/social.ts`);
+      const start = messages.indexOf('"post.dialog.deleteDescription"');
+      const end = messages.indexOf('"comments.actions.like"', start);
+      const description = messages.slice(start, end);
+      expect(description, locale).toContain("24");
+      expect(description, locale).not.toMatch(/permanent|permanente|dauerhaft|définitiv|навсегда/i);
+    }
+  });
 });

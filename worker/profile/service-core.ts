@@ -432,10 +432,25 @@ export function createProfileService(dependencies: ProfileServiceDependencies): 
       }
     }
     await requireProfile(userId);
-    for (const assetId of [input.avatarAssetId, input.bannerAssetId]) {
+    if (input.avatarAssetId && input.avatarAssetId === input.bannerAssetId) {
+      throw new ProfileError(
+        400,
+        "INVALID_PROFILE_MEDIA",
+        "Avatar and banner media must be separate uploads.",
+      );
+    }
+    for (const [assetId, purpose] of [
+      [input.avatarAssetId, "AVATAR"],
+      [input.bannerAssetId, "BANNER"],
+    ] as const) {
       if (!assetId) continue;
       const asset = await dependencies.store.getMediaAsset(assetId);
-      if (!asset || asset.ownerUserId !== userId || asset.status !== "ACTIVE") {
+      if (
+        !asset ||
+        asset.ownerUserId !== userId ||
+        asset.purpose !== purpose ||
+        asset.status !== "ACTIVE"
+      ) {
         throw new ProfileError(
           400,
           "INVALID_PROFILE_MEDIA",

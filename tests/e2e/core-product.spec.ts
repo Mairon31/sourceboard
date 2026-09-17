@@ -126,6 +126,65 @@ test("signed-in source request composer previews, replaces and removes a validat
   await expect(publish).toBeDisabled();
 });
 
+test("post composer applies Markdown to the textarea and reuses the canonical emote picker", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installAdminStoreFixture(page);
+  await page.route("**/api/comments/emotes", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        packs: [
+          {
+            id: "e2e-post-emotes",
+            label: "Post emotes",
+            emotes: [
+              {
+                id: "e2e-post-wave",
+                label: "Post wave",
+                shortcode: "post_wave",
+                url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='12' fill='blue'/%3E%3C/svg%3E",
+                type: "EMOTE",
+                packId: "e2e-post-emotes",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+  });
+  await page.goto("/post/new");
+  await waitForUiReady(page);
+
+  const composer = page.locator(".product-post-composer");
+  const description = composer.locator(".product-post-composer__markdown-field textarea");
+  await description.fill("trace");
+  await description.selectText();
+  await composer.getByRole("button", { name: "Bold", exact: true }).click();
+  await expect(description).toHaveValue("**trace**");
+
+  await composer.getByRole("button", { name: "Preview", exact: true }).click();
+  await expect(composer.getByRole("region", { name: "Preview", exact: true })).toContainText(
+    "trace",
+  );
+  await composer.getByRole("button", { name: "Write", exact: true }).click();
+  await description.click();
+  await description.press("End");
+  await composer.getByRole("button", { name: "Insert emote", exact: true }).click();
+
+  const picker = composer.locator(".product-comment-media-picker");
+  await expect(picker).toBeVisible();
+  const addEmote = picker.getByRole("button", { name: "Add Post wave", exact: true });
+  await expect(addEmote).toBeVisible();
+  await addEmote.click();
+  await expect(description).toHaveValue(/:post_wave:/);
+  await expect(picker).toBeVisible();
+  await addEmote.click();
+  await expect(description).toHaveValue(/:post_wave:.*:post_wave:/);
+});
+
 test("post detail protects missing persisted data", async ({ page }) => {
   const response = await page.goto("/posts/post-verified");
   const status = response?.status();

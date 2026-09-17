@@ -15,13 +15,15 @@ import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { parsePostCategorySlug, type PostCategorySlug } from "../../shared/posts/categories";
 import { createD1ProfileStore } from "../profile/store";
 import { createMediaService } from "../media/r2";
+import { MediaUploadError, uploadMediaAsset } from "../media/upload";
 import { PostError, isPostError } from "./errors";
-import { assertPostImage, sha256Hex } from "./image";
 import { createD1PostStore } from "./store";
 import { createPostService } from "./service";
-import type { FeedKind, PostAuthorMode, PostVisibility } from "./types";
+import type { FeedKind, PostAuthorMode, PostRecord, PostVisibility } from "./types";
 import { createModerationService } from "../moderation/service";
 import { enforceRateLimit } from "../security/rate-limit";
+import { createEmoteEntitlementChecker } from "../store/entitlements";
+import { getMediaImagePolicy } from "../../shared/media/policy";
 
 function jsonResponse(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -74,7 +76,11 @@ function requireMedia(env: SourceBoardEnvironment): R2Bucket {
 function createService(env: SourceBoardEnvironment) {
   const db = requireDatabase(env);
   const store = createD1PostStore(db);
-  return createPostService({ store, profileStore: createD1ProfileStore(db) });
+  return createPostService({
+    store,
+    profileStore: createD1ProfileStore(db),
+    assertEmoteEntitlements: createEmoteEntitlementChecker(db),
+  });
 }
 
 async function getOptionalViewerId(
@@ -247,39 +253,59 @@ async function createPostFromForm(
   if (!(fileEntry instanceof File)) {
     throw new PostError(400, "INVALID_POST_IMAGE", "Attach one main image to the post.");
   }
+  if (fileEntry.size > getMediaImagePolicy("POST").maxBytes) {
+    throw new PostError(400, "INVALID_POST_IMAGE", "The image must be smaller than 25 MB.");
+  }
   const bytes = new Uint8Array(await fileEntry.arrayBuffer());
-  const metadata = assertPostImage(bytes, fileEntry.type);
   const postId = createIdentifier();
   const assetId = createIdentifier();
   const createdAt = Date.now();
-  const r2Key = `posts/${createIdentifier()}/${assetId}`;
-  const media = createMediaService(requireMedia(env));
-  await media.put(r2Key, bytes, { httpMetadata: { contentType: metadata.contentType } });
   try {
-    const service = createService(env);
-    const post = await service.createPost({
-      id: postId,
-      authorId: viewerId,
-      authorMode: parseAuthorMode(form.get("authorMode") ?? "IDENTIFIED"),
-      isNsfw: parseBoolean(form.get("isNsfw")),
-      title: String(form.get("title") ?? ""),
-      description: String(form.get("description") ?? ""),
-      categorySlug: parseCreatePostCategory(form.get("category")),
-      visibility: parsePostVisibility(String(form.get("visibility") ?? "PUBLIC")),
-      image: {
-        id: assetId,
-        r2Key,
-        contentType: metadata.contentType,
-        byteSize: bytes.byteLength,
-        width: metadata.width,
-        height: metadata.height,
-        checksumSha256: await sha256Hex(bytes.buffer),
-        createdAt,
-      },
+    const result = await uploadMediaAsset({
+      media: createMediaService(requireMedia(env)),
+      ownerUserId: viewerId,
+      assetId,
+      purpose: "POST",
+      bytes,
+      declaredContentType: fileEntry.type,
+      createdAt,
+      persist: (image) =>
+        createService(env).createPost({
+          id: postId,
+          authorId: viewerId,
+          authorMode: parseAuthorMode(form.get("authorMode") ?? "IDENTIFIED"),
+          isNsfw: parseBoolean(form.get("isNsfw")),
+          title: String(form.get("title") ?? ""),
+          description: String(form.get("description") ?? ""),
+          categorySlug: parseCreatePostCategory(form.get("category")),
+          visibility: parsePostVisibility(String(form.get("visibility") ?? "PUBLIC")),
+          image: {
+            id: image.id,
+            r2Key: image.r2Key,
+            contentType: image.contentType,
+            byteSize: image.byteSize,
+            width: image.width,
+            height: image.height,
+            checksumSha256: image.checksumSha256,
+            createdAt: image.createdAt,
+          },
+        }),
     });
-    return { post };
+    return { post: result.persisted };
   } catch (error) {
-    await media.delete(r2Key);
+    if (error instanceof MediaUploadError) {
+      if (error.code === "MEDIA_TOO_LARGE") {
+        throw new PostError(400, "INVALID_POST_IMAGE", "The image must be smaller than 25 MB.");
+      }
+      if (error.code === "MEDIA_DIMENSIONS_INVALID") {
+        throw new PostError(400, "INVALID_POST_IMAGE", "The image dimensions are too large.");
+      }
+      throw new PostError(
+        400,
+        "INVALID_POST_IMAGE",
+        "Only valid JPEG, PNG, WebP or AVIF images are supported.",
+      );
+    }
     throw error;
   }
 }
@@ -324,6 +350,20 @@ async function handleGetPosts(
     limit: Number(url.searchParams.get("limit") ?? 20),
   });
   return jsonResponse(result, requestId);
+}
+
+async function handleGetRecentlyDeletedPosts(
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  const viewerId = await requireViewerId(request, env);
+  const url = new URL(request.url);
+  const posts = await createService(env).listRecentlyDeleted(
+    viewerId,
+    Number(url.searchParams.get("limit") ?? 20),
+  );
+  return jsonResponse({ posts }, requestId);
 }
 
 async function handlePostItemRequest(
@@ -461,6 +501,18 @@ async function getViewerForMedia(
   return getOptionalViewerId(request, env);
 }
 
+export function postMediaCacheControl(
+  post: Pick<PostRecord, "visibility" | "isNsfw" | "status" | "deletedAt" | "hiddenAt">,
+): string {
+  const publicMedia =
+    post.visibility === "PUBLIC" &&
+    !post.isNsfw &&
+    !post.deletedAt &&
+    !post.hiddenAt &&
+    post.status !== "ARCHIVED";
+  return publicMedia ? "public, max-age=3600" : "private, no-store";
+}
+
 async function handlePostMedia(
   request: Request,
   requestId: string,
@@ -485,7 +537,7 @@ async function handlePostMedia(
   return new Response(object.body, {
     status: 200,
     headers: {
-      "cache-control": "private, no-store",
+      "cache-control": postMediaCacheControl(visible.post.post),
       "content-type": visible.media.contentType,
       "content-length": String(visible.media.byteSize),
       etag: `"${visible.media.checksumSha256}"`,
@@ -610,6 +662,9 @@ export async function handlePostApiRequest(
     }
     if (request.method === "GET" && url.pathname === "/api/posts") {
       return await handleGetPosts(request, requestId, env);
+    }
+    if (request.method === "GET" && url.pathname === "/api/posts/deleted") {
+      return await handleGetRecentlyDeletedPosts(request, requestId, env);
     }
     if (request.method === "POST" && url.pathname === "/api/posts") {
       return jsonResponse(await createPostFromForm(request, env), requestId, 201);

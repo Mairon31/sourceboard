@@ -35,6 +35,14 @@ describe("profile and friends workspace", () => {
     expect(profileLayoutCss).toContain("grid-area: name");
   });
 
+  it("bounds public bio Markdown without allowing oversized headings or overflow", () => {
+    expect(profileHero).toContain('className="product-profile-bio"');
+    expect(profileLayoutCss).toContain(".product-profile-bio h1");
+    expect(profileLayoutCss).toContain("font-size: var(--text-lg)");
+    expect(profileLayoutCss).toContain("overflow-wrap: anywhere");
+    expect(profileLayoutCss).toContain("max-width: 100%");
+  });
+
   it("provides Friends, Incoming, Outgoing, Add and Discover modes with search", () => {
     expect(friendsRoute).toContain("<FriendsWorkspace");
     expect(friendsWorkspace).toContain("t(workspaceLabelKeys[mode])");

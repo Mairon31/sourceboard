@@ -15,6 +15,8 @@ import { PostCategoryBadge } from "./PostCategoryBadge";
 import { ShareAction } from "./ShareAction";
 import { RichText } from "./RichText";
 import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
+import { MediaLightbox } from "./MediaLightbox";
+import { handleMarkdownShortcut, MarkdownToolbar } from "./MarkdownToolbar";
 import {
   Badge,
   Button,
@@ -39,7 +41,8 @@ function statusTone(status: PostSummary["status"]) {
   return "neutral" as const;
 }
 
-function postDescriptionNodes(description: string) {
+function postDescriptionNodes(description: string, richtext?: PostSummary["descriptionRichtext"]) {
+  if (richtext) return richtext;
   try {
     return renderMarkdownPreview(description);
   } catch {
@@ -83,6 +86,7 @@ export function PostCard({
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(post.title);
   const [editDescription, setEditDescription] = useState(post.description ?? "");
+  const editDescriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const [displayTitle, setDisplayTitle] = useState(post.title);
   const [displayDescription, setDisplayDescription] = useState(post.description ?? "");
   const [saving, setSaving] = useState(false);
@@ -102,6 +106,7 @@ export function PostCard({
   const [reportBusy, setReportBusy] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const mediaTriggerRef = useRef<HTMLElement | null>(null);
   const mediaRef = useRef<HTMLImageElement>(null);
   const editingRef = useRef(editing);
   const reactionInFlightRef = useRef(false);
@@ -361,7 +366,7 @@ export function PostCard({
   }
 
   const menuItems = [
-    ...(manage && permissions?.canRestore
+    ...(manage && (permissions?.canRestore || post.restoreAvailable)
       ? [{ label: t("post.menu.restore"), onSelect: () => void restorePost() }]
       : []),
     ...(permissions?.canReport
@@ -500,10 +505,41 @@ export function PostCard({
               onChange={(event) => setEditTitle(event.target.value)}
               required
             />
+            <MarkdownToolbar
+              value={editDescription}
+              onChange={setEditDescription}
+              inputRef={editDescriptionRef}
+              labels={{
+                toolbar: t("composer.description.toolbar"),
+                bold: t("composer.description.bold"),
+                italic: t("composer.description.italic"),
+                heading1: t("composer.description.heading1"),
+                heading2: t("composer.description.heading2"),
+                heading3: t("composer.description.heading3"),
+                quote: t("composer.description.quote"),
+                bulletList: t("composer.description.bulletList"),
+                numberedList: t("composer.description.numberedList"),
+                code: t("composer.description.code"),
+                link: t("composer.description.link"),
+                emote: t("composer.description.emote"),
+                linkText: t("composer.description.linkText"),
+              }}
+              disabled={saving}
+            />
             <Textarea
+              ref={editDescriptionRef}
               label={t("post.editor.description")}
               value={editDescription}
+              maxLength={10_000}
               onChange={(event) => setEditDescription(event.target.value)}
+              onKeyDown={(event) =>
+                handleMarkdownShortcut(
+                  event,
+                  editDescription,
+                  editDescriptionRef,
+                  setEditDescription,
+                )
+              }
             />
             <div className="product-chip-row">
               <Button size="sm" loading={saving} onClick={() => void saveEdit()}>
@@ -534,7 +570,12 @@ export function PostCard({
             {displayDescription ? (
               <RichText
                 className="product-post__description"
-                nodes={postDescriptionNodes(displayDescription)}
+                nodes={postDescriptionNodes(
+                  displayDescription,
+                  displayDescription === (post.description ?? "")
+                    ? post.descriptionRichtext
+                    : undefined,
+                )}
               />
             ) : null}
           </>
@@ -568,7 +609,16 @@ export function PostCard({
             to={detailHref}
             className="product-post__media-link"
             aria-label={t("post.openAria", { title: displayTitle })}
-            onClick={() => markNavigationStart(detailHref)}
+            onClick={(event) => {
+              if (post.imageUrl && !mediaFailed) {
+                event.preventDefault();
+                event.stopPropagation();
+                mediaTriggerRef.current = event.currentTarget;
+                setLightboxOpen(true);
+                return;
+              }
+              markNavigationStart(detailHref);
+            }}
           >
             {post.imageUrl && !mediaFailed ? (
               <img
@@ -601,9 +651,17 @@ export function PostCard({
             <button
               type="button"
               className="product-post__media-expand"
+              ref={(element) => {
+                if (element && (!mediaTriggerRef.current || !mediaTriggerRef.current.isConnected)) {
+                  mediaTriggerRef.current = element;
+                }
+              }}
               aria-label={t("post.media.previewTitle")}
               title={t("post.media.previewTitle")}
-              onClick={() => setLightboxOpen(true)}
+              onClick={(event) => {
+                mediaTriggerRef.current = event.currentTarget;
+                setLightboxOpen(true);
+              }}
             >
               <GalleryIcon width="18" height="18" />
             </button>
@@ -735,21 +793,17 @@ export function PostCard({
         onConfirm={() => void deletePost()}
         onOpenChange={setConfirmDelete}
       />
-      <Modal
-        title={t("post.media.previewTitle")}
-        open={lightboxOpen}
-        onOpenChange={setLightboxOpen}
-      >
-        {post.imageUrl ? (
-          <img
-            className="product-post__lightbox-image"
-            src={post.imageUrl}
-            alt={post.imageAlt}
-            width={post.imageWidth}
-            height={post.imageHeight}
-          />
-        ) : null}
-      </Modal>
+      {post.imageUrl ? (
+        <MediaLightbox
+          open={lightboxOpen}
+          onOpenChange={setLightboxOpen}
+          src={post.imageUrl}
+          alt={post.imageAlt}
+          width={post.imageWidth}
+          height={post.imageHeight}
+          returnFocusRef={mediaTriggerRef}
+        />
+      ) : null}
     </Card>
   );
 }

@@ -17,7 +17,8 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
     { title: "Docs and Help · SourceBoard" },
     {
       name: "description",
-      content: "SourceBoard help, source-finding guides, account documentation and product policies.",
+      content:
+        "SourceBoard help, source-finding guides, account documentation and product policies.",
     },
     { tagName: "link", rel: "canonical", href: absoluteSourceBoardUrl(`/${locale}/docs`) },
   ];

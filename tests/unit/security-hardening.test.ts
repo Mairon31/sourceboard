@@ -151,6 +151,7 @@ describe("production security boundaries", () => {
             return prepared;
           },
           run: vi.fn(async () => ({ meta: { changes: 1 } })),
+          all: vi.fn(async () => ({ results: [] })),
         };
         return prepared;
       },

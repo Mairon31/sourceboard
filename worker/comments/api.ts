@@ -26,13 +26,14 @@ import { createModerationService } from "../moderation/service";
 import { enforceRateLimit } from "../security/rate-limit";
 import { createIdentifier } from "../auth/crypto";
 import { createMediaService } from "../media/r2";
-import { validateUploadedImage } from "../media/image-policy";
+import { MediaUploadError, uploadMediaAsset } from "../media/upload";
 import {
   createLinkPreviewService,
   createWorkersLinkPreviewCache,
   fetchPreviewImage,
   resolveLinkPreviewHost,
 } from "./link-preview";
+import { getMediaImagePolicy } from "../../shared/media/policy";
 
 function isCommentRoute(pathname: string): boolean {
   return (
@@ -62,12 +63,38 @@ function safeKlipyMediaUrl(value: unknown): string | null {
   }
 }
 
-function formatUrl(formats: Record<string, unknown>, keys: string[]): string | null {
+interface MediaFormatDetails {
+  url: string;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
+}
+
+function positiveDimension(value: unknown): number | undefined {
+  const dimension =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isInteger(dimension) || dimension < 1 || dimension > 16_384) return undefined;
+  return dimension;
+}
+
+function readFormatDimensions(
+  value: Record<string, unknown>,
+): Pick<MediaFormatDetails, "width" | "height" | "aspectRatio"> {
+  const dims = Array.isArray(value.dims) ? value.dims : [];
+  const width = positiveDimension(value.width ?? dims[0]);
+  const height = positiveDimension(value.height ?? dims[1]);
+  if (!width || !height) return {};
+  const aspectRatio = Math.min(4, Math.max(0.25, width / height));
+  return { width, height, aspectRatio };
+}
+
+function formatMedia(formats: Record<string, unknown>, keys: string[]): MediaFormatDetails | null {
   for (const key of keys) {
     const value = formats[key];
     if (!value || typeof value !== "object" || Array.isArray(value)) continue;
-    const url = safeKlipyMediaUrl((value as Record<string, unknown>).url);
-    if (url) return url;
+    const format = value as Record<string, unknown>;
+    const url = safeKlipyMediaUrl(format.url);
+    if (url) return { url, ...readFormatDimensions(format) };
   }
   return null;
 }
@@ -90,30 +117,41 @@ function normalizeKlipyResults(payload: unknown, kind: KlipyMediaKind) {
       !Array.isArray(item.media_formats)
         ? (item.media_formats as Record<string, unknown>)
         : {};
-    const url =
+    const media =
       kind === "STICKER"
-        ? formatUrl(formats, [
+        ? formatMedia(formats, [
             "tinywebp_transparent",
             "tinygif_transparent",
             "webp_transparent",
             "gif_transparent",
             "tinygif",
           ])
-        : formatUrl(formats, ["tinygif", "webp", "gif"]);
+        : formatMedia(formats, ["tinygif", "webp", "gif"]);
     const preview =
       kind === "STICKER"
-        ? formatUrl(formats, [
+        ? formatMedia(formats, [
             "nanowebp_transparent",
             "nanogif_transparent",
             "tinywebp_transparent",
             "tinygif_transparent",
           ])
-        : url;
-    if (!id || !url) return [];
+        : media;
+    if (!id || !media) return [];
     const title =
       typeof item.title === "string" && item.title.trim() ? item.title.trim() : "Klipy media";
     return [
-      { id, title, label: title, url, preview: preview ?? url, type: kind, provider: "klipy" },
+      {
+        id,
+        title,
+        label: title,
+        url: media.url,
+        preview: preview?.url ?? media.url,
+        width: media.width,
+        height: media.height,
+        aspectRatio: media.aspectRatio,
+        type: kind,
+        provider: "klipy",
+      },
     ];
   });
 }
@@ -287,10 +325,6 @@ function imageUploadError(code: string): PostError {
   return new PostError(400, "INVALID_COMMENT_IMAGE", messages[code] ?? "The image is invalid.");
 }
 
-function toHex(bytes: Uint8Array): string {
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 async function uploadCommentImage(
   request: Request,
   requestId: string,
@@ -319,29 +353,35 @@ async function uploadCommentImage(
   if (!(file instanceof File)) {
     throw new PostError(400, "INVALID_COMMENT_IMAGE", "Choose an image before uploading.");
   }
+  if (file.size > getMediaImagePolicy("COMMENT").maxBytes) {
+    throw imageUploadError("MEDIA_TOO_LARGE");
+  }
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const metadata = validateUploadedImage(bytes, file.type, "COMMENT");
-  if (!metadata.ok) throw imageUploadError(metadata.code);
   const assetId = createIdentifier();
-  const r2Key = `comments/${ownerUserId}/${assetId}`;
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  const checksumSha256 = toHex(new Uint8Array(digest));
-  const media = createMediaService(requireMedia(env));
-  await media.put(r2Key, bytes, { httpMetadata: { contentType: metadata.contentType } });
   try {
-    await createD1CommentStore(database(env)).createCommentImageAsset({
-      id: assetId,
+    await uploadMediaAsset({
+      media: createMediaService(requireMedia(env)),
       ownerUserId,
-      r2Key,
-      contentType: metadata.contentType,
-      byteSize: bytes.byteLength,
-      width: metadata.width,
-      height: metadata.height,
-      checksumSha256,
+      assetId,
+      purpose: "COMMENT",
+      bytes,
+      declaredContentType: file.type,
       createdAt: Date.now(),
+      persist: (asset) =>
+        createD1CommentStore(database(env)).createCommentImageAsset({
+          id: asset.id,
+          ownerUserId: asset.ownerUserId,
+          r2Key: asset.r2Key,
+          contentType: asset.contentType,
+          byteSize: asset.byteSize,
+          width: asset.width,
+          height: asset.height,
+          checksumSha256: asset.checksumSha256,
+          createdAt: asset.createdAt,
+        }),
     });
   } catch (error) {
-    await media.delete(r2Key).catch(() => undefined);
+    if (error instanceof MediaUploadError) throw imageUploadError(error.code);
     throw error;
   }
   return json(

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLoaderData, useParams } from "react-router";
 import { hasCapability } from "../../worker/auth/rbac";
-import type { CmsAdminLocaleState, CmsAdminPage, CmsNamespace, CmsRevision } from "../../worker/cms/types";
+import type {
+  CmsAdminLocaleState,
+  CmsAdminPage,
+  CmsNamespace,
+  CmsRevision,
+} from "../../worker/cms/types";
 import type { MessageKey } from "../i18n";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { useI18n } from "../i18n/I18nProvider";
@@ -152,7 +157,9 @@ export default function AdminContentPageRoute() {
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        throw new Error(payload?.error?.message ?? t("admin.content.couldAction", { action: actionMessage }));
+        throw new Error(
+          payload?.error?.message ?? t("admin.content.couldAction", { action: actionMessage }),
+        );
       }
       await refresh(selectedLocale);
       setStatus(
@@ -163,7 +170,11 @@ export default function AdminContentPageRoute() {
             : t("admin.content.localeUnpublished"),
       );
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : t("admin.content.couldAction", { action: actionMessage }));
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : t("admin.content.couldAction", { action: actionMessage }),
+      );
     } finally {
       setBusy(null);
     }
@@ -183,7 +194,11 @@ export default function AdminContentPageRoute() {
       ) : null}
 
       <Card className="admin-content-editor">
-        <div className="admin-content-locale-tabs" role="tablist" aria-label={t("admin.content.contentLocale")}>
+        <div
+          className="admin-content-locale-tabs"
+          role="tablist"
+          aria-label={t("admin.content.contentLocale")}
+        >
           {LOCALES.map((locale) => {
             const state = page?.locales.find((candidate) => candidate.locale === locale);
             return (

@@ -19,7 +19,11 @@ export async function loader({ request, context, params }: LoaderArgs) {
 }
 
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
-  if (!loaderData) return [{ title: "Page not found · SourceBoard" }, { name: "robots", content: "noindex,nofollow" }];
+  if (!loaderData)
+    return [
+      { title: "Page not found · SourceBoard" },
+      { name: "robots", content: "noindex,nofollow" },
+    ];
   const resolution = loaderData.resolution;
   return officialPageMeta({
     locale: loaderData.locale,

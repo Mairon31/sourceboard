@@ -55,4 +55,3 @@ test("Content admin creates, versions, publishes, translates and archives a page
   await page.getByRole("button", { name: "Publish latest draft", exact: true }).click();
   await expect(spanishTab).toContainText("Published");
 });
-

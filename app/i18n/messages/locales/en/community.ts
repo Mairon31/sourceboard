@@ -41,6 +41,7 @@ export const enCommunityMessages = {
   "community.state.archived": "Archived",
   "community.saveError":
     "This community cosmetic could not be saved. Check your connection and try again.",
+  "community.loadError": "Your community submissions could not be loaded. Try again.",
   "community.invalidCss": "Custom CSS is invalid.",
   "community.routeTitle": "Create cosmetic · SourceBoard",
   "community.routeDescription": "Build a sandboxed community cosmetic for SourceBoard.",

@@ -44,7 +44,8 @@ export function createCmsNavigationService(db: D1Database) {
       }>();
     return rows.results.map((row) => {
       assertSurface(row.surface);
-      const section = row.namespace === "DOCS" ? "docs" : row.namespace === "LEGAL" ? "legal" : "pages";
+      const section =
+        row.namespace === "DOCS" ? "docs" : row.namespace === "LEGAL" ? "legal" : "pages";
       return {
         id: row.id,
         pageId: row.pageId,
@@ -64,20 +65,30 @@ export function createCmsNavigationService(db: D1Database) {
     orderedIds: string[],
   ): Promise<void> {
     assertSurface(surface);
-    if (!groupKey.trim() || orderedIds.length > 100 || new Set(orderedIds).size !== orderedIds.length) {
+    if (
+      !groupKey.trim() ||
+      orderedIds.length > 100 ||
+      new Set(orderedIds).size !== orderedIds.length
+    ) {
       throw new Error("CMS_NAV_ORDER_INVALID");
     }
     if (!orderedIds.length) return;
     const placeholders = orderedIds.map(() => "?").join(",");
     const rows = await db
-      .prepare(`SELECT id FROM cms_navigation_items WHERE surface = ? AND group_key = ? AND id IN (${placeholders})`)
+      .prepare(
+        `SELECT id FROM cms_navigation_items WHERE surface = ? AND group_key = ? AND id IN (${placeholders})`,
+      )
       .bind(surface, groupKey, ...orderedIds)
       .all<{ id: string }>();
     if (rows.results.length !== orderedIds.length) throw new Error("CMS_NAV_SCOPE_INVALID");
     const now = Date.now();
     await db.batch(
       orderedIds.map((id, sortOrder) =>
-        db.prepare("UPDATE cms_navigation_items SET sort_order = ?, updated_at = ? WHERE id = ? AND surface = ? AND group_key = ?").bind(sortOrder, now, id, surface, groupKey),
+        db
+          .prepare(
+            "UPDATE cms_navigation_items SET sort_order = ?, updated_at = ? WHERE id = ? AND surface = ? AND group_key = ?",
+          )
+          .bind(sortOrder, now, id, surface, groupKey),
       ),
     );
   }

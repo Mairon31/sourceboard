@@ -5,11 +5,7 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { Badge, HeartIcon, MessageIcon } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
-
-function postDetailHref(post: PostSummary): string {
-  const base = `/posts/${encodeURIComponent(post.id)}`;
-  return post.slug ? `${base}/${encodeURIComponent(post.slug)}` : base;
-}
+import { postDetailHref, SearchPostMedia } from "./SearchPostMedia";
 
 export function SearchPostGrid({
   posts,
@@ -33,36 +29,16 @@ export function SearchPostGrid({
         }[post.status];
         return (
           <article className="product-search-grid-card" key={post.id} data-search-post-id={post.id}>
-            <Link
-              to={detailHref}
-              className="product-search-grid-card__media"
-              aria-label={`${t("post.openAria", { title: post.title })}, ${statusLabel}`}
-              onClick={() => markNavigationStart(detailHref)}
-            >
-              {post.imageUrl && !mediaRestricted ? (
-                <img
-                  src={post.imageUrl}
-                  alt={post.imageAlt}
-                  width={post.imageWidth}
-                  height={post.imageHeight}
-                  loading="lazy"
-                />
-              ) : (
-                <div
-                  className="product-search-grid-card__placeholder"
-                  role="img"
-                  aria-label={
-                    mediaRestricted
-                      ? `${post.imageAlt}. ${t("post.nsfw.hiddenTitle")}`
-                      : post.imageAlt
-                  }
-                >
-                  <span>
-                    {mediaRestricted ? t("post.nsfw.hiddenTitle") : t("post.media.unavailable")}
-                  </span>
-                </div>
-              )}
-            </Link>
+            <SearchPostMedia
+              post={post}
+              mediaRestricted={mediaRestricted}
+              mediaClassName="product-search-grid-card__media"
+              mediaButtonClassName="product-search-grid-card__media-button"
+              placeholderClassName="product-search-grid-card__placeholder"
+              placeholderLabel={
+                mediaRestricted ? t("post.nsfw.hiddenTitle") : t("post.media.unavailable")
+              }
+            />
             <div className="product-search-grid-card__body">
               <div className="product-search-grid-card__author">
                 {post.author.mode === "ANONYMOUS" ? (
@@ -100,7 +76,10 @@ export function SearchPostGrid({
                 <Badge>{statusLabel}</Badge>
                 {sourceMode ? <Badge tone="accent">{t("post.meta.acceptedSource")}</Badge> : null}
               </div>
-              <div className="product-search-grid-card__metrics" aria-label={t("post.engagementAria")}>
+              <div
+                className="product-search-grid-card__metrics"
+                aria-label={t("post.engagementAria")}
+              >
                 <span>
                   <HeartIcon width="16" height="16" aria-hidden="true" />
                   {tp("metrics.likes", post.reaction.count)}

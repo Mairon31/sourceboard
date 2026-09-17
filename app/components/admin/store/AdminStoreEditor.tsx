@@ -14,6 +14,7 @@ import {
 import { Button, Card, Input, Textarea } from "../../ui";
 import { CosmeticPreview, type CosmeticPreviewInput } from "../../product/CosmeticPreview";
 import { readCsrfToken } from "../../../data/csrf";
+import { useI18n } from "../../../i18n/I18nProvider";
 import { CosmeticConfigEditor } from "./CosmeticConfigEditor";
 import type { AdminStoreItem } from "./types";
 
@@ -88,6 +89,7 @@ export function AdminStoreEditor({
   onSaved: (item: AdminStoreItem) => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const storedConfig = parseConfigObject(item.configJson);
@@ -107,7 +109,7 @@ export function AdminStoreEditor({
 
     if (creatorProEnabled) {
       if (!storedConfig) {
-        setError("Stored config JSON must contain a valid object before Creator Pro can save it.");
+        setError(t("admin.store.editor.invalidStoredConfig"));
         setBusy(false);
         return;
       }
@@ -118,7 +120,7 @@ export function AdminStoreEditor({
       try {
         config = JSON.parse(String(form.get("config") ?? "{}"));
       } catch {
-        setError("Config JSON must contain valid JSON.");
+        setError(t("admin.store.editor.invalidConfigJson"));
         setBusy(false);
         return;
       }
@@ -140,10 +142,12 @@ export function AdminStoreEditor({
         item?: AdminStoreItem;
       } | null;
       if (!response.ok || !payload?.item) {
-        setError(errorMessage(payload, "Could not update this Store item."));
+        setError(errorMessage(payload, t("admin.store.editor.updateFallback")));
         return;
       }
       onSaved(payload.item);
+    } catch {
+      setError(t("admin.store.updateFailed"));
     } finally {
       setBusy(false);
     }
@@ -153,24 +157,30 @@ export function AdminStoreEditor({
     <Card className="admin-store-editor">
       <div className="admin-store-editor__header">
         <div>
-          <span className="product-eyebrow">Edit catalog item</span>
+          <span className="product-eyebrow">{t("admin.store.editor.editItem")}</span>
           <h3>{item.name}</h3>
         </div>
         <Button type="button" size="sm" variant="secondary" onClick={onCancel}>
-          Close
+          {t("common.close")}
         </Button>
       </div>
       <form className="product-form-grid" onSubmit={(event) => void submit(event)}>
-        <Input name="name" label="Name" defaultValue={item.name} required maxLength={120} />
+        <Input
+          name="name"
+          label={t("admin.store.editor.name")}
+          defaultValue={item.name}
+          required
+          maxLength={120}
+        />
         <Textarea
           name="description"
-          label="Description"
+          label={t("admin.store.editor.description")}
           defaultValue={item.description}
           maxLength={1000}
         />
         <Input
           name="pricePoints"
-          label="Price in points"
+          label={t("admin.store.editor.pricePoints")}
           type="number"
           min={0}
           step={1}
@@ -179,7 +189,7 @@ export function AdminStoreEditor({
         />
         <Input
           name="sortOrder"
-          label="Sort order"
+          label={t("admin.store.editor.sortOrder")}
           type="number"
           step={1}
           defaultValue={item.sortOrder}
@@ -188,10 +198,13 @@ export function AdminStoreEditor({
 
         {creatorProEnabled ? (
           <div className="admin-store-editor__creator-pro">
-            <section className="admin-store-editor__preview" aria-label="Canonical cosmetic preview">
+            <section
+              className="admin-store-editor__preview"
+              aria-label={t("admin.store.editor.cosmeticPreviewAria")}
+            >
               <div>
-                <span className="product-eyebrow">Canonical preview</span>
-                <strong>Profile / Store / Admin renderer</strong>
+                <span className="product-eyebrow">{t("admin.store.editor.canonicalPreview")}</span>
+                <strong>{t("admin.store.editor.rendererDescription")}</strong>
               </div>
               {preview ? (
                 <CosmeticPreview
@@ -201,10 +214,7 @@ export function AdminStoreEditor({
                   name={item.name}
                 />
               ) : (
-                <small>
-                  This item has no valid preset or family identity yet. Creator Pro settings can be
-                  saved once the catalog identity is repaired.
-                </small>
+                <small>{t("admin.store.editor.invalidIdentity")}</small>
               )}
             </section>
             <CosmeticConfigEditor
@@ -213,18 +223,15 @@ export function AdminStoreEditor({
               onChange={setCreatorConfig}
             />
             <details className="admin-store-editor__config-inspector">
-              <summary>Catalog identity metadata</summary>
+              <summary>{t("admin.store.editor.identityMetadata")}</summary>
               <pre>{JSON.stringify(storedConfig ?? {}, null, 2)}</pre>
             </details>
           </div>
         ) : (
           <label className="sb-field admin-store-editor__config">
-            <span>Config JSON</span>
+            <span>{t("admin.store.editor.configJson")}</span>
             <textarea name="config" rows={9} defaultValue={item.configJson} spellCheck={false} />
-            <small>
-              Pack configuration only. Executable CSS, scripts, external font URLs and unsafe style
-              fields are rejected by the server.
-            </small>
+            <small>{t("admin.store.editor.packConfigHelp")}</small>
           </label>
         )}
 
@@ -235,10 +242,10 @@ export function AdminStoreEditor({
         ) : null}
         <div className="admin-store-editor__actions">
           <Button type="submit" loading={busy}>
-            Save changes
+            {t("admin.store.editor.saveChanges")}
           </Button>
           <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </Button>
         </div>
       </form>

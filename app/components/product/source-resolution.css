@@ -119,6 +119,27 @@
   object-fit: contain;
 }
 
+.product-source-answer__media-button {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: var(--space-3);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.product-source-answer__media-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.product-source-answer__media-button .product-source-answer__media {
+  margin-top: 0;
+}
+
 .product-source-answer__media--sticker,
 .product-source-answer__media--emote {
   width: min(160px, 50vw);

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { sanitizeCommunityCosmeticCss } from "../../shared/store/community-css";
+import { normalizeCommunityCosmeticConfig } from "../../worker/store/community-api";
 
 function read(path: string): string {
   const url = new URL(path, import.meta.url);
@@ -8,6 +9,24 @@ function read(path: string): string {
 }
 
 describe("community plan phase D", () => {
+  it("accepts the creator payload with custom CSS and stores the sanitized preview", () => {
+    const config = JSON.parse(
+      normalizeCommunityCosmeticConfig(
+        "PROFILE_BANNER",
+        {
+          namespace: "sourceboard.cosmetic.v1",
+          preset: "nebula",
+          visual: { backgroundColor: "#172033", borderColor: "#7c8cff" },
+          customCss: ".cosmetic-root .profile-card { border-radius: 20px; }",
+        },
+        "community-item",
+      ),
+    ) as Record<string, unknown>;
+
+    expect(config.communityCssSource).toBe(".cosmetic-root .profile-card { border-radius: 20px; }");
+    expect(config.communityCss).toContain('[data-community-cosmetic~="community-item"]');
+  });
+
   it("scopes allowlisted cosmetic CSS to one community cosmetic root", () => {
     const result = sanitizeCommunityCosmeticCss(
       `.cosmetic-root { --accent: #ff88cc; opacity: .95; }\n.cosmetic-root .profile-card { background: linear-gradient(120deg, #111, #335); border-radius: 20px; }\n.cosmetic-root .profile-name-area { color: #ffd8ef; transform: scale(1.03); }`,
@@ -111,6 +130,13 @@ describe("community plan phase D", () => {
     expect(studio).toContain('t("community.saveDraft")');
     expect(studio).toContain('t("community.submit")');
     expect(studio).toContain("useI18n");
+  });
+
+  it("surfaces submission-list failures instead of silently showing an empty list", () => {
+    const studio = read("../../app/components/product/CommunityCosmeticStudio.tsx");
+    expect(studio).toContain('t("community.loadError")');
+    expect(studio).toContain("if (!response.ok)");
+    expect(studio).toContain("catch {");
   });
 
   it("implements community publishing, moderation and creator attribution without exposing unapproved items", () => {

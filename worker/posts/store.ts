@@ -30,6 +30,11 @@ export interface PostStore {
     cursor: PostCursor | null;
     limit: number;
   }): Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }>;
+  listDeletedByAuthor(input: {
+    authorId: string;
+    cutoff: number;
+    limit: number;
+  }): Promise<PostWithAuthor[]>;
   listAcceptedByContributor(input: {
     contributorId: string;
     cursor: PostCursor | null;
@@ -496,6 +501,27 @@ export function createD1PostStore(db: D1Database): PostStore {
       };
     },
 
+    async listDeletedByAuthor({ authorId, cutoff, limit }) {
+      const where = `p.author_id = ?
+        AND p.deleted_at IS NOT NULL
+        AND p.deleted_at > ?
+        AND m.status = 'ACTIVE'
+        AND m.purpose = 'POST_IMAGE'`;
+      const runQuery = (legacyCategory = false) =>
+        db
+          .prepare(
+            `${postQuery(where, legacyCategory)} ORDER BY p.deleted_at DESC, p.id DESC LIMIT ?`,
+          )
+          .bind(authorId, cutoff, limit)
+          .all<PostWithAuthorRow>();
+      try {
+        return (await runQuery()).results.map(toPost);
+      } catch (error) {
+        if (!isMissingPostCategoryColumn(error)) throw error;
+        return (await runQuery(true)).results.map(toPost);
+      }
+    },
+
     async listAcceptedByContributor({ contributorId, cursor, limit }) {
       const conditions = [
         "p.accepted_comment_id IS NOT NULL",
@@ -557,7 +583,8 @@ export function createD1PostStore(db: D1Database): PostStore {
            SET author_mode = ?, is_nsfw = ?, nsfw_marked_by = ?, nsfw_marked_at = ?,
                title = ?, slug = ?, description = ?, visibility = ?, updated_at = ?
            WHERE id = ? AND (author_id = ? OR ? = 1) AND deleted_at IS NULL
-             AND (? = 1 OR edit_deadline_at >= ?)`,
+             AND (? = 1 OR edit_deadline_at >= ?)
+           RETURNING id`,
         )
         .bind(
           next.authorMode,
@@ -575,8 +602,8 @@ export function createD1PostStore(db: D1Database): PostStore {
           allowNonOwner ? 1 : 0,
           now,
         )
-        .run();
-      if (result.meta.changes !== 1) return false;
+        .first<{ id: string }>();
+      if (!result?.id) return false;
       await db
         .prepare(
           `INSERT INTO post_revisions
@@ -605,13 +632,15 @@ export function createD1PostStore(db: D1Database): PostStore {
         .prepare(
           archived
             ? `UPDATE posts SET status = 'ARCHIVED', archived_at = ?, updated_at = ?
-               WHERE id = ? AND author_id = ? AND deleted_at IS NULL`
+               WHERE id = ? AND author_id = ? AND deleted_at IS NULL
+               RETURNING id`
             : `UPDATE posts SET status = 'OPEN', archived_at = NULL, updated_at = ?
-               WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND status = 'ARCHIVED'`,
+               WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND status = 'ARCHIVED'
+               RETURNING id`,
         )
         .bind(...(archived ? [now, now, postId, authorId] : [now, postId, authorId]))
-        .run();
-      return result.meta.changes === 1;
+        .first<{ id: string }>();
+      return Boolean(result?.id);
     },
 
     async setCommentsClosed(postId, authorId, now, closed) {
@@ -621,14 +650,16 @@ export function createD1PostStore(db: D1Database): PostStore {
             ? `UPDATE posts
                SET comments_closed = 1, comments_closed_at = ?, updated_at = ?
                WHERE id = ? AND author_id = ? AND accepted_comment_id IS NOT NULL
-                 AND deleted_at IS NULL AND comments_closed = 0`
+                 AND deleted_at IS NULL AND comments_closed = 0
+               RETURNING id`
             : `UPDATE posts
                SET comments_closed = 0, comments_closed_at = NULL, updated_at = ?
-               WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND comments_closed = 1`,
+               WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND comments_closed = 1
+               RETURNING id`,
         )
         .bind(...(closed ? [now, now, postId, authorId] : [now, postId, authorId]))
-        .run();
-      return result.meta.changes === 1;
+        .first<{ id: string }>();
+      return Boolean(result?.id);
     },
 
     async deletePost(postId, authorId, now) {
@@ -636,11 +667,12 @@ export function createD1PostStore(db: D1Database): PostStore {
         .prepare(
           `UPDATE posts
            SET deleted_previous_status = status, deleted_at = ?, status = 'ARCHIVED', updated_at = ?
-           WHERE id = ? AND author_id = ? AND deleted_at IS NULL`,
+           WHERE id = ? AND author_id = ? AND deleted_at IS NULL
+           RETURNING id`,
         )
         .bind(now, now, postId, authorId)
-        .run();
-      return result.meta.changes === 1;
+        .first<{ id: string }>();
+      return Boolean(result?.id);
     },
 
     async restorePost(postId, authorId, deletedAt, now) {
@@ -649,11 +681,12 @@ export function createD1PostStore(db: D1Database): PostStore {
           `UPDATE posts
            SET status = COALESCE(deleted_previous_status, 'OPEN'), deleted_previous_status = NULL,
                deleted_at = NULL, updated_at = ?
-           WHERE id = ? AND author_id = ? AND deleted_at = ? AND deleted_at > ?`,
+           WHERE id = ? AND author_id = ? AND deleted_at = ? AND deleted_at > ?
+           RETURNING id`,
         )
         .bind(now, postId, authorId, deletedAt, now - 24 * 60 * 60 * 1000)
-        .run();
-      return result.meta.changes === 1;
+        .first<{ id: string }>();
+      return Boolean(result?.id);
     },
 
     async getMediaAsset(assetId) {

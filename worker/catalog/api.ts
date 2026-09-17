@@ -7,9 +7,11 @@ import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { sha256Hex } from "../posts/image";
-import { assertCatalogImage } from "./image";
+import { assertCatalogImage, type CatalogImageMetadata } from "./image";
 import { enforceRateLimit } from "../security/rate-limit";
 import { resolvePublicFailure } from "../http/public-failure";
+import { observeBackgroundFailure } from "../observability";
+import { createManagedMediaMetadata } from "../media/upload";
 
 type CatalogKind = "emote" | "sticker";
 type LifecycleState = "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -23,6 +25,56 @@ const CAPABILITIES: Record<CatalogKind, Capability> = {
 const EMOTE_PACK_ROUTE = "/api/admin/catalog/emote-packs";
 const STICKER_PACK_ROUTE = "/api/admin/catalog/sticker-packs";
 const LIFECYCLE_STATES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
+
+export async function deleteCatalogAssetBestEffort(
+  media: R2Bucket,
+  assetKey: string,
+  component = "catalog_media_cleanup",
+): Promise<void> {
+  try {
+    await media.delete(assetKey);
+  } catch {
+    observeBackgroundFailure(component);
+  }
+}
+
+export async function updateEmoteMediaReference(
+  db: D1Database,
+  input: {
+    id: string;
+    currentAssetKey: string;
+    newAssetKey: string;
+    now: number;
+  },
+  metadata: CatalogImageMetadata | null = null,
+  lifecycleSchema = false,
+): Promise<boolean> {
+  const result =
+    lifecycleSchema && metadata
+      ? await db
+          .prepare(
+            `UPDATE emote_catalog
+           SET asset_key = ?, content_type = ?, media_width = ?, media_height = ?,
+               is_animated = ?, updated_at = ?
+           WHERE id = ? AND asset_key = ?`,
+          )
+          .bind(
+            input.newAssetKey,
+            metadata.contentType,
+            metadata.width,
+            metadata.height,
+            metadata.animated ? 1 : 0,
+            input.now,
+            input.id,
+            input.currentAssetKey,
+          )
+          .run()
+      : await db
+          .prepare("UPDATE emote_catalog SET asset_key = ? WHERE id = ? AND asset_key = ?")
+          .bind(input.newAssetKey, input.id, input.currentAssetKey)
+          .run();
+  return Number(result.meta.changes ?? 0) >= 1;
+}
 
 export function isEmoteBecomingPubliclyUsable(
   current: { lifecycleState: LifecycleState; isEnabled: boolean },
@@ -408,7 +460,13 @@ async function handleCreate(
   const id = createIdentifier();
   const assetKey = `catalog/${kind}/${id}`;
   const now = Date.now();
-  await env.MEDIA.put(assetKey, bytes, { httpMetadata: { contentType: metadata.contentType } });
+  await env.MEDIA.put(assetKey, bytes, {
+    httpMetadata: { contentType: metadata.contentType },
+    customMetadata: createManagedMediaMetadata({
+      purpose: kind === "emote" ? "CATALOG_EMOTE" : "CATALOG_STICKER",
+      assetId: id,
+    }),
+  });
   try {
     if (kind === "emote") {
       try {
@@ -464,7 +522,7 @@ async function handleCreate(
         .run();
     }
   } catch (error) {
-    await env.MEDIA.delete(assetKey);
+    await deleteCatalogAssetBestEffort(env.MEDIA, assetKey, "catalog_media_compensation");
     if (String(error).includes("UNIQUE"))
       return failure("CATALOG_KEY_EXISTS", "That key is already in use.", requestId, 409);
     throw error;
@@ -1038,7 +1096,13 @@ async function duplicateEmotePack(
       const newEmoteId = createIdentifier();
       const newAssetKey = `catalog/emote/${newEmoteId}`;
       const bytes = await sourceObject.arrayBuffer();
-      await env.MEDIA.put(newAssetKey, bytes, { httpMetadata: sourceObject.httpMetadata });
+      await env.MEDIA.put(newAssetKey, bytes, {
+        httpMetadata: sourceObject.httpMetadata,
+        customMetadata: createManagedMediaMetadata({
+          purpose: "CATALOG_EMOTE",
+          assetId: newEmoteId,
+        }),
+      });
       newAssets.push(newAssetKey);
       emoteRows.push({
         id: newEmoteId,
@@ -1117,7 +1181,11 @@ async function duplicateEmotePack(
     ];
     await env.DB.batch(statements);
   } catch (error) {
-    await Promise.all(newAssets.map((key) => env.MEDIA!.delete(key)));
+    await Promise.all(
+      newAssets.map((key) =>
+        deleteCatalogAssetBestEffort(env.MEDIA!, key, "catalog_pack_duplication_compensation"),
+      ),
+    );
     throw error;
   }
   return response({ pack: { id: newPackId, storeItemId: newStoreItemId } }, requestId, 201);
@@ -1280,33 +1348,41 @@ async function replaceEmoteImage(
     return failure("INVALID_CATALOG_ITEM", "An image file is required.", requestId, 400);
   const bytes = new Uint8Array(await file.arrayBuffer());
   const metadata = assertCatalogImage(bytes, file.type);
-  const newAssetKey = `catalog/emote/${createIdentifier()}`;
-  await env.MEDIA.put(newAssetKey, bytes, { httpMetadata: { contentType: metadata.contentType } });
+  const newAssetId = createIdentifier();
+  const newAssetKey = `catalog/emote/${newAssetId}`;
+  await env.MEDIA.put(newAssetKey, bytes, {
+    httpMetadata: { contentType: metadata.contentType },
+    customMetadata: createManagedMediaMetadata({
+      purpose: "CATALOG_EMOTE",
+      assetId: newAssetId,
+    }),
+  });
   try {
-    if (await hasCatalogLifecycleSchema(env.DB)) {
-      await env.DB.prepare(
-        "UPDATE emote_catalog SET asset_key = ?, content_type = ?, media_width = ?, media_height = ?, is_animated = ?, updated_at = ? WHERE id = ?",
-      )
-        .bind(
-          newAssetKey,
-          metadata.contentType,
-          metadata.width,
-          metadata.height,
-          metadata.animated ? 1 : 0,
-          Date.now(),
-          id,
-        )
-        .run();
-    } else {
-      await env.DB.prepare("UPDATE emote_catalog SET asset_key = ? WHERE id = ?")
-        .bind(newAssetKey, id)
-        .run();
+    const updated = await updateEmoteMediaReference(
+      env.DB,
+      {
+        id,
+        currentAssetKey: current.assetKey,
+        newAssetKey,
+        now: Date.now(),
+      },
+      metadata,
+      await hasCatalogLifecycleSchema(env.DB),
+    );
+    if (!updated) {
+      await deleteCatalogAssetBestEffort(env.MEDIA, newAssetKey, "catalog_media_compensation");
+      return failure(
+        "CATALOG_CONFLICT",
+        "The emote image changed while it was being replaced. Reload and try again.",
+        requestId,
+        409,
+      );
     }
   } catch (error) {
-    await env.MEDIA.delete(newAssetKey);
+    await deleteCatalogAssetBestEffort(env.MEDIA, newAssetKey, "catalog_media_compensation");
     throw error;
   }
-  await env.MEDIA.delete(current.assetKey);
+  await deleteCatalogAssetBestEffort(env.MEDIA, current.assetKey);
   await audit(env.DB, actorUserId, requestId, "EMOTE_IMAGE_REPLACED", "EMOTE", id, null, {
     oldAssetKey: current.assetKey,
     newAssetKey,

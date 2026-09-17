@@ -155,13 +155,20 @@ export async function handleCmsRequest(
       mutationSecurity(request);
       requireContentManager(actor.authorization);
       const body = bodyObject(await request.json());
-      const page = await cms.createPage(namespace(body.namespace), actor.userId, revisionInput(body));
+      const page = await cms.createPage(
+        namespace(body.namespace),
+        actor.userId,
+        revisionInput(body),
+      );
       return json({ page }, requestId, 201);
     }
 
     const pageMatch = /^\/api\/admin\/content\/pages\/([^/]+)$/.exec(url.pathname);
     if (request.method === "GET" && pageMatch) {
-      return json({ page: await cms.getAdminPage(decodeURIComponent(pageMatch[1] ?? "")) }, requestId);
+      return json(
+        { page: await cms.getAdminPage(decodeURIComponent(pageMatch[1] ?? "")) },
+        requestId,
+      );
     }
 
     const revisionMatch = /^\/api\/admin\/content\/pages\/([^/]+)\/revisions$/.exec(url.pathname);
@@ -177,9 +184,10 @@ export async function handleCmsRequest(
       return json({ revision }, requestId, 201);
     }
 
-    const localeActionMatch = /^\/api\/admin\/content\/pages\/([^/]+)\/locales\/([^/]+)\/(publish|unpublish|archive)$/.exec(
-      url.pathname,
-    );
+    const localeActionMatch =
+      /^\/api\/admin\/content\/pages\/([^/]+)\/locales\/([^/]+)\/(publish|unpublish|archive)$/.exec(
+        url.pathname,
+      );
     if (request.method === "POST" && localeActionMatch) {
       mutationSecurity(request);
       requireContentManager(actor.authorization);
@@ -189,7 +197,12 @@ export async function handleCmsRequest(
       if (action === "publish") {
         const body = bodyObject(await request.json());
         if (typeof body.revisionId !== "string" || !body.revisionId) {
-          return failure(requestId, 400, "CMS_REVISION_REQUIRED", "A revision is required for publish.");
+          return failure(
+            requestId,
+            400,
+            "CMS_REVISION_REQUIRED",
+            "A revision is required for publish.",
+          );
         }
         return json(
           { page: await cms.publish(pageId, pageLocale, body.revisionId, actor.userId) },

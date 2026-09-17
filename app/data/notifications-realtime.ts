@@ -108,10 +108,11 @@ export async function markNotificationCardRead(
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-csrf-token": document.cookie
-        .split("; ")
-        .find((entry) => entry.startsWith("__Host-sourceboard_csrf="))
-        ?.split("=")[1] ?? "",
+      "x-csrf-token":
+        document.cookie
+          .split("; ")
+          .find((entry) => entry.startsWith("__Host-sourceboard_csrf="))
+          ?.split("=")[1] ?? "",
     },
     body: JSON.stringify({ notificationIds: card.notificationIds }),
   }).catch(() => null);
@@ -120,11 +121,7 @@ export async function markNotificationCardRead(
     marked?: unknown;
     unreadCount?: unknown;
   } | null;
-  if (
-    !payload ||
-    typeof payload.marked !== "number" ||
-    typeof payload.unreadCount !== "number"
-  ) {
+  if (!payload || typeof payload.marked !== "number" || typeof payload.unreadCount !== "number") {
     return null;
   }
   return { marked: payload.marked, unreadCount: payload.unreadCount };

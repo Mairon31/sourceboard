@@ -22,6 +22,7 @@ import type {
   UserPreferenceRecord,
 } from "./types";
 import { createPairKey, type FriendshipStatus, type Relationship } from "./types";
+import { observeBackgroundFailure } from "../observability";
 
 export interface ProfileUpdateInput {
   displayName: string;
@@ -65,6 +66,8 @@ export interface MediaAssetRecord {
   r2Key: string;
   contentType: string;
   byteSize: number;
+  width: number | null;
+  height: number | null;
   checksumSha256: string;
   status: "ACTIVE" | "DELETED";
   createdAt: number;
@@ -78,6 +81,8 @@ export interface CreateMediaAssetInput {
   r2Key: string;
   contentType: string;
   byteSize: number;
+  width: number;
+  height: number;
   checksumSha256: string;
   createdAt: number;
 }
@@ -203,6 +208,8 @@ interface MediaAssetRow {
   r2_key: string;
   content_type: string;
   byte_size: number;
+  width: number | null;
+  height: number | null;
   checksum_sha256: string;
   status: "ACTIVE" | "DELETED";
   created_at: number;
@@ -291,6 +298,8 @@ function toMediaAsset(row: MediaAssetRow): MediaAssetRecord {
     r2Key: row.r2_key,
     contentType: row.content_type,
     byteSize: row.byte_size,
+    width: row.width,
+    height: row.height,
     checksumSha256: row.checksum_sha256,
     status: row.status,
     createdAt: row.created_at,
@@ -861,7 +870,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
     async getMediaAsset(assetId) {
       const row = await db
         .prepare(
-          `SELECT id, owner_user_id, purpose, r2_key, content_type, byte_size,
+          `SELECT id, owner_user_id, purpose, r2_key, content_type, byte_size, width, height,
                   checksum_sha256, status, created_at, deleted_at
            FROM media_assets WHERE id = ?`,
         )
@@ -879,19 +888,33 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
       const previous = current?.asset_id
         ? await db
             .prepare(
-              `SELECT id, owner_user_id, purpose, r2_key, content_type, byte_size,
+              `SELECT id, owner_user_id, purpose, r2_key, content_type, byte_size, width, height,
                       checksum_sha256, status, created_at, deleted_at
                FROM media_assets WHERE id = ? AND owner_user_id = ? AND purpose = ? AND status = 'ACTIVE'`,
             )
             .bind(current.asset_id, input.ownerUserId, input.purpose)
             .first<MediaAssetRow>()
         : null;
-      await db.batch([
+      const profileUpdate = current?.asset_id
+        ? db
+            .prepare(
+              `UPDATE user_profiles SET ${assetColumn} = ?, updated_at = ?
+               WHERE user_id = ? AND ${assetColumn} = ?`,
+            )
+            .bind(input.id, input.createdAt, input.ownerUserId, current.asset_id)
+        : db
+            .prepare(
+              `UPDATE user_profiles SET ${assetColumn} = ?, updated_at = ?
+               WHERE user_id = ? AND ${assetColumn} IS NULL`,
+            )
+            .bind(input.id, input.createdAt, input.ownerUserId);
+      const results = await db.batch([
         db
           .prepare(
             `INSERT INTO media_assets
-               (id, owner_user_id, purpose, r2_key, content_type, byte_size, checksum_sha256, status, created_at, deleted_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, NULL)`,
+               (id, owner_user_id, purpose, r2_key, content_type, byte_size, width, height,
+                checksum_sha256, status, created_at, deleted_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, NULL)`,
           )
           .bind(
             input.id,
@@ -900,25 +923,68 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
             input.r2Key,
             input.contentType,
             input.byteSize,
+            input.width,
+            input.height,
             input.checksumSha256,
             input.createdAt,
           ),
-        db
-          .prepare(`UPDATE user_profiles SET ${assetColumn} = ?, updated_at = ? WHERE user_id = ?`)
-          .bind(input.id, input.createdAt, input.ownerUserId),
+        profileUpdate,
         ...(previous
           ? [
               db
                 .prepare(
                   `UPDATE media_assets
-                   SET status = 'DELETED', deleted_at = ?
-                   WHERE id = ? AND owner_user_id = ? AND purpose = ? AND status = 'ACTIVE'`,
+                     SET status = 'DELETED', deleted_at = ?
+                     WHERE id = ? AND owner_user_id = ? AND purpose = ? AND status = 'ACTIVE'
+                       AND EXISTS (
+                         SELECT 1 FROM user_profiles
+                         WHERE user_id = ? AND ${assetColumn} = ?
+                       )
+                     AND NOT EXISTS (
+                       SELECT 1 FROM user_profiles
+                       WHERE avatar_asset_id = ? OR banner_asset_id = ?
+                     )`,
                 )
-                .bind(input.createdAt, previous.id, input.ownerUserId, input.purpose),
+                .bind(
+                  input.createdAt,
+                  previous.id,
+                  input.ownerUserId,
+                  input.purpose,
+                  input.ownerUserId,
+                  input.id,
+                  previous.id,
+                  previous.id,
+                ),
             ]
           : []),
       ]);
-      return previous ? toMediaAsset(previous) : null;
+      if ((results[1]?.meta.changes ?? 0) < 1) {
+        try {
+          await db
+            .prepare(
+              `DELETE FROM media_assets
+               WHERE id = ? AND owner_user_id = ? AND r2_key = ? AND status = 'ACTIVE'`,
+            )
+            .bind(input.id, input.ownerUserId, input.r2Key)
+            .run();
+        } catch {
+          try {
+            await db
+              .prepare(
+                `UPDATE media_assets
+                 SET status = 'DELETED', deleted_at = ?
+                 WHERE id = ? AND owner_user_id = ? AND r2_key = ? AND status = 'ACTIVE'`,
+              )
+              .bind(input.createdAt, input.id, input.ownerUserId, input.r2Key)
+              .run();
+          } catch {
+            observeBackgroundFailure("profile_media_attach_compensation");
+          }
+        }
+        throw new Error("PROFILE_MEDIA_ATTACH_FAILED");
+      }
+      const previousWasDeleted = previous && (results[2]?.meta.changes ?? 0) >= 1;
+      return previousWasDeleted ? toMediaAsset(previous) : null;
     },
 
     async clearMediaAsset(userId, purpose, assetId, now) {
@@ -932,11 +998,16 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
           .bind(now, userId, assetId),
         db
           .prepare(
-            `UPDATE media_assets SET status = 'DELETED', deleted_at = ? WHERE id = ? AND owner_user_id = ?`,
+            `UPDATE media_assets SET status = 'DELETED', deleted_at = ?
+             WHERE id = ? AND owner_user_id = ? AND purpose = ? AND status = 'ACTIVE'
+               AND NOT EXISTS (
+                 SELECT 1 FROM user_profiles
+                 WHERE avatar_asset_id = ? OR banner_asset_id = ?
+               )`,
           )
-          .bind(now, assetId, userId),
+          .bind(now, assetId, userId, purpose, assetId, assetId),
       ]);
-      return (result[0]?.meta.changes ?? 0) === 1;
+      return (result[0]?.meta.changes ?? 0) >= 1;
     },
   };
 }

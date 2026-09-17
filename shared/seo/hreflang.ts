@@ -13,10 +13,7 @@ export interface HreflangLink {
   href: string;
 }
 
-export function hreflangLinks(
-  variants: HreflangVariant[],
-  defaultHref?: string,
-): HreflangLink[] {
+export function hreflangLinks(variants: HreflangVariant[], defaultHref?: string): HreflangLink[] {
   const deduped = new Map<Locale, string>();
   for (const variant of variants) {
     if (!isLocale(variant.locale) || deduped.has(variant.locale)) continue;
@@ -33,7 +30,12 @@ export function hreflangLinks(
   if (defaultHref) {
     const url = new URL(defaultHref, "https://srcboard.me");
     if (url.origin === "https://srcboard.me") {
-      links.push({ tagName: "link", rel: "alternate", hrefLang: "x-default", href: url.toString() });
+      links.push({
+        tagName: "link",
+        rel: "alternate",
+        hrefLang: "x-default",
+        href: url.toString(),
+      });
     }
   }
   return links;

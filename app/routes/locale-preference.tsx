@@ -5,18 +5,25 @@ import { localeCookie } from "../data/locale.server";
 import { readServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 export async function action({ request, context }: ServerLoaderArgs) {
-  if (request.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
+  if (request.method !== "POST")
+    return new Response(null, { status: 405, headers: { Allow: "POST" } });
   try {
     assertSameOrigin(request);
     assertCsrfToken(request);
   } catch {
-    return Response.json({ error: { code: "LOCALE_SECURITY", message: "Request validation failed." } }, { status: 403 });
+    return Response.json(
+      { error: { code: "LOCALE_SECURITY", message: "Request validation failed." } },
+      { status: 403 },
+    );
   }
 
   const body = (await request.json().catch(() => null)) as { locale?: unknown } | null;
   const localeCandidate = typeof body?.locale === "string" ? body.locale : null;
   if (!isLocale(localeCandidate)) {
-    return Response.json({ error: { code: "LOCALE_INVALID", message: "Unsupported locale." } }, { status: 400 });
+    return Response.json(
+      { error: { code: "LOCALE_INVALID", message: "Unsupported locale." } },
+      { status: 400 },
+    );
   }
   const locale = localeCandidate;
   const requestContext = readSourceBoardRequestContext(context);

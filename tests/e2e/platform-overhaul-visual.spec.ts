@@ -9,7 +9,9 @@ const VIEWPORTS = [
 
 test.describe("platform overhaul responsive geometry", () => {
   for (const viewport of VIEWPORTS) {
-    test(`keeps 404 actions reachable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    test(`keeps 404 actions reachable at ${viewport.width}x${viewport.height}`, async ({
+      page,
+    }) => {
       await page.setViewportSize(viewport);
       await page.goto("/platform-overhaul-visual-missing");
       const actions = page.locator(".product-not-found__actions");

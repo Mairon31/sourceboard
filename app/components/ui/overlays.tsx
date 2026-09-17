@@ -2,8 +2,9 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
 import { Menu } from "@base-ui/react/menu";
 import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
-import type { ReactNode } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from "react";
 import { joinClassNames } from "../../../shared/design/component-variants";
+import { useI18n } from "../../i18n/I18nProvider";
 import { Button, IconButton } from "./controls";
 import { ChevronDownIcon, CloseIcon } from "./icons";
 
@@ -14,6 +15,8 @@ export interface ModalProps {
   children: ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  className?: string;
+  finalFocus?: RefObject<HTMLElement | null>;
 }
 
 export interface ConfirmDialogProps {
@@ -29,6 +32,46 @@ export interface ConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function getModalTabbables(container: HTMLElement): HTMLElement[] {
+  return [
+    ...container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ].filter((element) => {
+    const style = window.getComputedStyle(element);
+    return (
+      style.visibility !== "hidden" &&
+      style.display !== "none" &&
+      element.getClientRects().length > 0
+    );
+  });
+}
+
+function handleModalTabKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+  if (event.key !== "Tab") return;
+
+  const currentTarget = event.currentTarget;
+  const activeElement = document.activeElement;
+  if (!(activeElement instanceof HTMLElement) || !currentTarget.contains(activeElement)) return;
+
+  const tabbables = getModalTabbables(currentTarget);
+  if (tabbables.length === 0) {
+    event.preventDefault();
+    currentTarget.focus();
+    return;
+  }
+
+  const currentIndex = tabbables.indexOf(activeElement);
+  if (currentIndex < 0) return;
+
+  const nextIndex = event.shiftKey
+    ? (currentIndex - 1 + tabbables.length) % tabbables.length
+    : (currentIndex + 1) % tabbables.length;
+  event.preventDefault();
+  event.stopPropagation();
+  tabbables[nextIndex]?.focus({ preventScroll: true });
+}
+
 export function Modal({
   triggerLabel,
   title,
@@ -36,7 +79,11 @@ export function Modal({
   children,
   open,
   onOpenChange,
+  className,
+  finalFocus,
 }: ModalProps) {
+  const { t } = useI18n();
+
   return (
     <Dialog.Root
       open={open}
@@ -50,7 +97,11 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Backdrop className="sb-overlay-backdrop" />
         <Dialog.Viewport className="sb-overlay-viewport">
-          <Dialog.Popup className="sb-modal glass-panel glass-panel--strong">
+          <Dialog.Popup
+            className={joinClassNames("sb-modal glass-panel glass-panel--strong", className)}
+            finalFocus={finalFocus}
+            onKeyDownCapture={handleModalTabKeyDown}
+          >
             <header className="sb-overlay-header">
               <div>
                 <Dialog.Title className="sb-overlay-title">{title}</Dialog.Title>
@@ -62,7 +113,7 @@ export function Modal({
               </div>
               <Dialog.Close
                 className="sb-button sb-button--ghost sb-button--sm sb-icon-button motion-interactive"
-                aria-label="Close dialog"
+                aria-label={t("common.close")}
               >
                 <CloseIcon />
               </Dialog.Close>
@@ -116,6 +167,8 @@ export interface DrawerProps {
 }
 
 export function Drawer({ triggerLabel, title, description, children }: DrawerProps) {
+  const { t } = useI18n();
+
   return (
     <BaseDrawer.Root swipeDirection="down">
       <BaseDrawer.Trigger className="sb-button sb-button--secondary sb-button--md motion-interactive">
@@ -138,7 +191,7 @@ export function Drawer({ triggerLabel, title, description, children }: DrawerPro
                 </div>
                 <BaseDrawer.Close
                   className="sb-button sb-button--ghost sb-button--sm sb-icon-button motion-interactive"
-                  aria-label="Close drawer"
+                  aria-label={t("common.close")}
                 >
                   <CloseIcon />
                 </BaseDrawer.Close>

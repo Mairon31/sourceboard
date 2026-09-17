@@ -99,23 +99,19 @@ test("persisted link preview survives an ordinary comment API reload", async ({ 
   });
 });
 
-
 test("all persisted preview states render in the shared card without mobile overflow", async ({
   page,
 }) => {
-  await page.route(
-    "**/api/comments/e2e-link-preview-comment/link-preview-image",
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "image/png",
-        body: Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-          "base64",
-        ),
-      });
-    },
-  );
+  await page.route("**/api/comments/e2e-link-preview-comment/link-preview-image", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    });
+  });
   for (const width of [320, 375, 390, 430]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
@@ -138,7 +134,7 @@ test("all persisted preview states render in the shared card without mobile over
       }
       const box = await card.boundingBox();
       expect(box).not.toBeNull();
-      expect(((box?.x ?? 0) + (box?.width ?? Infinity)) <= width).toBe(true);
+      expect((box?.x ?? 0) + (box?.width ?? Infinity) <= width).toBe(true);
     }
 
     await expect(

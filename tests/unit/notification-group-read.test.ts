@@ -11,7 +11,8 @@ function fakeDatabase(seed: Row[]): D1Database {
         bind(...args: unknown[]) {
           return {
             async run() {
-              if (!sql.includes("UPDATE notifications")) throw new Error(`Unexpected run SQL: ${sql}`);
+              if (!sql.includes("UPDATE notifications"))
+                throw new Error(`Unexpected run SQL: ${sql}`);
               const [now, userId, ...ids] = args as [number, string, ...string[]];
               let changes = 0;
               for (const row of rows) {
@@ -25,7 +26,9 @@ function fakeDatabase(seed: Row[]): D1Database {
             async first<T>() {
               if (!sql.includes("COUNT(*)")) throw new Error(`Unexpected first SQL: ${sql}`);
               const [userId] = args as [string];
-              const count = rows.filter((row) => row.userId === userId && row.readAt === null).length;
+              const count = rows.filter(
+                (row) => row.userId === userId && row.readAt === null,
+              ).length;
               return { count } as T;
             },
           };
@@ -43,11 +46,15 @@ describe("grouped notification read", () => {
       { id: "other", userId: "other-user", readAt: null },
     ]);
 
-    await expect(markNotificationsReadBatch(db, "viewer", ["own-a", "own-b", "other"], 100)).resolves.toEqual({
+    await expect(
+      markNotificationsReadBatch(db, "viewer", ["own-a", "own-b", "other"], 100),
+    ).resolves.toEqual({
       marked: 2,
       unreadCount: 0,
     });
-    await expect(markNotificationsReadBatch(db, "viewer", ["own-a", "own-b"], 200)).resolves.toEqual({
+    await expect(
+      markNotificationsReadBatch(db, "viewer", ["own-a", "own-b"], 200),
+    ).resolves.toEqual({
       marked: 0,
       unreadCount: 0,
     });
@@ -59,12 +66,18 @@ describe("grouped notification read", () => {
 
   it("deduplicates ids and rejects more than 50 supplied ids", async () => {
     const db = fakeDatabase([{ id: "own-a", userId: "viewer", readAt: null }]);
-    await expect(markNotificationsReadBatch(db, "viewer", ["own-a", "own-a"], 100)).resolves.toEqual({
+    await expect(
+      markNotificationsReadBatch(db, "viewer", ["own-a", "own-a"], 100),
+    ).resolves.toEqual({
       marked: 1,
       unreadCount: 0,
     });
     await expect(
-      markNotificationsReadBatch(db, "viewer", Array.from({ length: 51 }, (_, index) => `n-${index}`)),
+      markNotificationsReadBatch(
+        db,
+        "viewer",
+        Array.from({ length: 51 }, (_, index) => `n-${index}`),
+      ),
     ).rejects.toBeInstanceOf(RangeError);
   });
 });

@@ -1,7 +1,4 @@
-import {
-  parseCosmeticVisualConfig,
-  type CosmeticVisualConfigV1,
-} from "./cosmetic-config";
+import { parseCosmeticVisualConfig, type CosmeticVisualConfigV1 } from "./cosmetic-config";
 
 const CREATOR_PRO_KEYS = [
   "schemaVersion",

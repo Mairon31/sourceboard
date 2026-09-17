@@ -34,6 +34,8 @@ describe("responsive GIF, sticker and emote picker", () => {
   it("paginates KLIPY results with an observer, deduplication and opaque next positions", () => {
     expect(commentsApi).toContain('url.searchParams.get("pos")');
     expect(commentsApi).toContain('upstream.searchParams.set("pos"');
+    expect(commentsApi).toContain("media_formats");
+    expect(commentsApi).toContain("aspectRatio");
     expect(commentsApi).toContain("next:");
     expect(picker).toContain("IntersectionObserver");
     expect(picker).toContain("nextPos");
@@ -130,10 +132,10 @@ describe("responsive GIF, sticker and emote picker", () => {
       expect(icons).toContain(`function ${icon}`);
       expect(thread).toContain(`<${icon}`);
     }
-    expect(thread).toContain('aria-label="GIF"');
+    expect(thread).toContain('aria-label={t("comments.composer.gif")}');
     expect(thread).toContain('aria-label={t("comments.composer.sticker")}');
     expect(thread).toContain('aria-label={t("comments.composer.emote")}');
-    expect(thread).toContain('title="GIF"');
+    expect(thread).toContain('title={t("comments.composer.gif")}');
     expect(thread).toContain('title={t("comments.composer.sticker")}');
     expect(thread).toContain('title={t("comments.composer.emote")}');
     expect(thread).toContain("product-comment-composer__media-action");
@@ -150,6 +152,15 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(css).toContain("aspect-ratio: 1 / 1");
     expect(css).toContain("env(safe-area-inset-bottom)");
     expect(css).toContain("overflow-y: auto");
+    expect(css).toContain(".product-comment-media-picker__results--gif button {");
+    expect(css).toContain("aspect-ratio: 3 / 2");
+    expect(picker).toContain("style={{ aspectRatio: mediaAspectRatio(item) }}");
+  });
+
+  it("lets variable GIF aspect ratios contribute to grid row sizing", () => {
+    expect(css).not.toContain("contain: layout paint");
+    expect(css).toContain("contain: paint");
+    expect(css).toContain("grid-auto-rows: max-content");
   });
 
   it("keeps animated media URLs and applies the requested compact comment sizes", () => {

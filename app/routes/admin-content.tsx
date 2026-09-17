@@ -222,7 +222,11 @@ export default function AdminContentRoute() {
             <div className="admin-store-section-heading">
               <div>
                 <span className="product-eyebrow">{namespaceLabel(group.namespace, t)}</span>
-                <h2>{group.namespace === "PAGE" ? t("admin.content.generalPages") : namespaceLabel(group.namespace, t)}</h2>
+                <h2>
+                  {group.namespace === "PAGE"
+                    ? t("admin.content.generalPages")
+                    : namespaceLabel(group.namespace, t)}
+                </h2>
               </div>
               <span className="product-search-count">{group.pages.length}</span>
             </div>
@@ -249,7 +253,9 @@ export default function AdminContentRoute() {
                       </Badge>
                     </div>
                     <div className="admin-store-card-actions">
-                      <Link to={`/admin/content/${encodeURIComponent(page.id)}`}>{t("admin.content.openEditor")}</Link>
+                      <Link to={`/admin/content/${encodeURIComponent(page.id)}`}>
+                        {t("admin.content.openEditor")}
+                      </Link>
                     </div>
                   </div>
                 </Card>

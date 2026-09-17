@@ -169,6 +169,10 @@ export const ruProductMessages = {
     "Принятые вклады в качестве источников появятся здесь, когда будут доступны.",
   "profile.activity.emptyPostsDescription":
     "Публичные запросы и публикации, доступные вам, появятся здесь.",
+  "profile.recentlyDeleted.eyebrow": "Личный архив",
+  "profile.recentlyDeleted.title": "Недавно удалённые",
+  "profile.recentlyDeleted.description":
+    "Восстановите публикации в течение 24 часов. Комментарии, реакции и история источников сохраняются.",
   "profile.relationship.none": "Нет связи",
   "profile.relationship.friend": "Друзья",
   "profile.relationship.incoming": "Входящий запрос",

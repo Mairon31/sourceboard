@@ -1,7 +1,11 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import type { SourceBoardEnvironment } from "../../worker/environment";
-import { handleProfileApiRequest } from "../../worker/profile/api-core";
+import {
+  handleProfileApiRequest,
+  isProfileMediaReadyForObjectDeletion,
+  resolveProfileMediaIds,
+} from "../../worker/profile/api-core";
 
 function createSqliteD1(sqlite: DatabaseSync): D1Database {
   function prepare(query: string) {
@@ -94,6 +98,8 @@ function createMediaDatabase() {
       r2_key TEXT NOT NULL,
       content_type TEXT NOT NULL,
       byte_size INTEGER NOT NULL,
+      width INTEGER,
+      height INTEGER,
       checksum_sha256 TEXT NOT NULL,
       status TEXT NOT NULL,
       created_at INTEGER NOT NULL,
@@ -137,9 +143,9 @@ function seedMedia(
   sqlite
     .prepare(
       `INSERT INTO media_assets
-         (id, owner_user_id, purpose, r2_key, content_type, byte_size, checksum_sha256,
-          status, created_at, deleted_at)
-       VALUES (?, ?, 'AVATAR', ?, 'image/png', 5, 'checksum', ?, 1, ?)`,
+         (id, owner_user_id, purpose, r2_key, content_type, byte_size, width, height,
+          checksum_sha256, status, created_at, deleted_at)
+       VALUES (?, ?, 'AVATAR', ?, 'image/png', 5, 256, 256, 'checksum', ?, 1, ?)`,
     )
     .run(
       input.assetId,
@@ -169,6 +175,27 @@ async function requestAsset(
 }
 
 describe("Block B public profile media policy", () => {
+  it("preserves media fields omitted from a partial profile patch", () => {
+    expect(
+      resolveProfileMediaIds(
+        {},
+        { avatarAssetId: "current-avatar", bannerAssetId: "current-banner" },
+      ),
+    ).toEqual({ avatarAssetId: "current-avatar", bannerAssetId: "current-banner" });
+    expect(
+      resolveProfileMediaIds(
+        { avatarAssetId: null },
+        { avatarAssetId: "current-avatar", bannerAssetId: "current-banner" },
+      ),
+    ).toEqual({ avatarAssetId: null, bannerAssetId: "current-banner" });
+  });
+
+  it("only deletes an R2 object after the media row is durably detached", () => {
+    expect(isProfileMediaReadyForObjectDeletion({ status: "DELETED" })).toBe(true);
+    expect(isProfileMediaReadyForObjectDeletion({ status: "ACTIVE" })).toBe(false);
+    expect(isProfileMediaReadyForObjectDeletion(null)).toBe(false);
+  });
+
   it("serves only the current active media of publicly viewable active profiles signed out", async () => {
     const sqlite = createMediaDatabase();
     try {

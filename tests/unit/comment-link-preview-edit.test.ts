@@ -97,11 +97,23 @@ describe("comment link-preview edit lifecycle", () => {
     const oldPreview = preview("https://example.com/old");
     const { service, previewLink } = harness(oldPreview);
 
-    const result = await service.update(
-      "comment-1",
-      "author-1",
-      { markdown: "Updated text", linkPreviewUrl: "https://example.com/old" } as never,
-    );
+    const result = await service.update("comment-1", "author-1", {
+      markdown: "Updated text",
+      linkPreviewUrl: "https://example.com/old",
+    } as never);
+
+    expect(previewLink).not.toHaveBeenCalled();
+    expect(result.linkPreview?.canonicalUrl).toBe(oldPreview.canonicalUrl);
+  });
+
+  it("does not refetch when only a URL fragment differs from the canonical URL", async () => {
+    const oldPreview = preview("https://example.com/old");
+    const { service, previewLink } = harness(oldPreview);
+
+    const result = await service.update("comment-1", "author-1", {
+      markdown: "Updated text",
+      linkPreviewUrl: "https://example.com/old#section",
+    } as never);
 
     expect(previewLink).not.toHaveBeenCalled();
     expect(result.linkPreview?.canonicalUrl).toBe(oldPreview.canonicalUrl);
@@ -110,11 +122,10 @@ describe("comment link-preview edit lifecycle", () => {
   it("fetches and atomically replaces a changed preview URL", async () => {
     const { service, previewLink, updateComment } = harness(preview("https://example.com/old"));
 
-    const result = await service.update(
-      "comment-1",
-      "author-1",
-      { markdown: "Updated text", linkPreviewUrl: "https://example.com/new" } as never,
-    );
+    const result = await service.update("comment-1", "author-1", {
+      markdown: "Updated text",
+      linkPreviewUrl: "https://example.com/new",
+    } as never);
 
     expect(previewLink).toHaveBeenCalledWith("https://example.com/new");
     expect(updateComment.mock.calls[0]?.[0].linkPreview).toMatchObject({
@@ -127,11 +138,10 @@ describe("comment link-preview edit lifecycle", () => {
   it("clears a persisted preview when the URL is explicitly removed", async () => {
     const { service, previewLink, updateComment } = harness(preview("https://example.com/old"));
 
-    const result = await service.update(
-      "comment-1",
-      "author-1",
-      { markdown: "Text without a source link", linkPreviewUrl: null } as never,
-    );
+    const result = await service.update("comment-1", "author-1", {
+      markdown: "Text without a source link",
+      linkPreviewUrl: null,
+    } as never);
 
     expect(previewLink).not.toHaveBeenCalled();
     expect(updateComment.mock.calls[0]?.[0].linkPreview).toBeNull();
@@ -141,11 +151,10 @@ describe("comment link-preview edit lifecycle", () => {
   it("adds a preview to an older comment that did not previously have one", async () => {
     const { service, previewLink, updateComment } = harness(null);
 
-    const result = await service.update(
-      "comment-1",
-      "author-1",
-      { markdown: "Updated", linkPreviewUrl: "https://example.com/new" } as never,
-    );
+    const result = await service.update("comment-1", "author-1", {
+      markdown: "Updated",
+      linkPreviewUrl: "https://example.com/new",
+    } as never);
 
     expect(previewLink).toHaveBeenCalledOnce();
     expect(updateComment.mock.calls[0]?.[0].linkPreview).toMatchObject({

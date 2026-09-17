@@ -57,4 +57,3 @@ test("persisted link previews feed accepted and verified source canonical URLs",
   expect(adminVerificationsLoader).toContain("lp.canonical_url AS canonicalSourceUrl");
   expect(adminVerifications).toContain('defaultValue={candidate.canonicalSourceUrl ?? ""}');
 });
-

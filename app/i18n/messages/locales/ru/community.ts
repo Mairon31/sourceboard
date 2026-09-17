@@ -44,6 +44,7 @@ export const ruCommunityMessages = {
   "community.state.archived": "В архиве",
   "community.saveError":
     "Не удалось сохранить косметику. Проверьте соединение и попробуйте ещё раз.",
+  "community.loadError": "Не удалось загрузить ваши работы сообщества. Повторите попытку.",
   "community.invalidCss": "Пользовательский CSS недействителен.",
   "community.routeTitle": "Создать косметику · SourceBoard",
   "community.routeDescription": "Создайте изолированную косметику сообщества для SourceBoard.",

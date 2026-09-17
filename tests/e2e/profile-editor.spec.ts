@@ -130,7 +130,9 @@ test("private Edit profile changes username through the existing username policy
   await expect(page.getByText(`@${NEXT_USERNAME}`, { exact: true }).first()).toBeVisible();
 });
 
-test("private Edit profile stays usable when username settings are unavailable", async ({ page }) => {
+test("private Edit profile stays usable when username settings are unavailable", async ({
+  page,
+}) => {
   await installProfileEditorFixture(page);
   await page.route("**/api/profile/me/username", async (route) => {
     if (route.request().method() !== "GET") {
@@ -190,6 +192,102 @@ test("public profile never exposes private editing controls", async ({ page }) =
   await page.goto("/profile");
   await waitForUiReady(page);
   await expect(page.getByRole("button", { name: "Edit profile" })).toBeVisible();
+});
+
+test("profile editor saves safe bio Markdown and public profile renders it without raw HTML", async ({
+  page,
+}) => {
+  await installProfileEditorFixture(page);
+  await page.goto("/profile");
+  await waitForUiReady(page);
+
+  const profileGet = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/profile/me") && response.request().method() === "GET",
+  );
+  await page.getByRole("button", { name: "Edit profile" }).click();
+  expect((await profileGet).status()).toBe(200);
+
+  const bio = page.locator(".product-profile-editor-inline__bio textarea");
+  await expect(bio).toBeVisible();
+  await bio.fill("**Bio trace** [Source](https://example.com/profile-source)");
+
+  const profilePatch = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/profile/me") && response.request().method() === "PATCH",
+  );
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await profilePatch).status()).toBe(200);
+  await expect(page).toHaveURL(/\/profile$/);
+
+  await page.getByRole("button", { name: "Edit profile" }).click();
+  await expect(bio).toBeVisible();
+  await bio.fill("<script>alert(1)</script>");
+  const maliciousPatch = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/profile/me") && response.request().method() === "PATCH",
+  );
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  expect((await maliciousPatch).status()).toBe(400);
+  await expect(page.getByRole("alert")).toContainText("Bio contains unsupported Markdown.");
+
+  await page.goto(`/u/${ORIGINAL_USERNAME}`);
+  await waitForUiReady(page);
+  const publicBio = page.locator(".product-profile-bio");
+  await expect(publicBio.locator("strong")).toHaveText("Bio trace");
+  await expect(publicBio.getByRole("link", { name: "Source" })).toHaveAttribute(
+    "href",
+    "https://example.com/profile-source",
+  );
+  await expect(publicBio.locator("script")).toHaveCount(0);
+});
+
+test("profile bio reuses the canonical entitled emote picker", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installProfileEditorFixture(page);
+  await page.route("**/api/comments/emotes", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        packs: [
+          {
+            id: "e2e-profile-emotes",
+            label: "Profile emotes",
+            emotes: [
+              {
+                id: "e2e-profile-wave",
+                label: "Profile wave",
+                shortcode: "profile_wave",
+                url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='12' fill='purple'/%3E%3C/svg%3E",
+                type: "EMOTE",
+                packId: "e2e-profile-emotes",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto("/profile");
+  await waitForUiReady(page);
+  await page.getByRole("button", { name: "Edit profile" }).click();
+
+  const bio = page.locator(".product-profile-editor-inline__bio textarea");
+  await expect(bio).toBeVisible();
+  await bio.fill("");
+  await page.getByRole("button", { name: "Insert emote", exact: true }).click();
+  const picker = page.locator(".product-comment-media-picker");
+  await expect(picker).toBeVisible();
+  await picker.getByRole("button", { name: "Add Profile wave", exact: true }).click();
+  await expect(bio).toHaveValue(":profile_wave:");
+  await expect(picker).toBeVisible();
+
+  await page.getByRole("tab", { name: "Preview", exact: true }).click();
+  await expect(
+    page.locator('.product-profile-editor-inline__bio-preview img[alt="Profile wave"]'),
+  ).toBeVisible();
 });
 
 test("profile avatar never collides with identity text on a narrow viewport", async ({ page }) => {

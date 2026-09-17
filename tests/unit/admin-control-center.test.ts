@@ -107,4 +107,3 @@ describe("admin control center", () => {
     expect(auditRoute).toContain("metadataJson");
   });
 });
-

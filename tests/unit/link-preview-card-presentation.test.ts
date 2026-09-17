@@ -14,8 +14,8 @@ describe("LinkPreviewCard presentation contract", () => {
     expect(component).toContain('rel="noopener noreferrer"');
     expect(component).toContain('alt=""');
     expect(component).toContain("aria-label=");
-    expect(css).toContain(".product-link-preview-card[data-metadata-status=\"MINIMAL\"]");
-    expect(css).toContain(".product-link-preview-card[data-metadata-status=\"URL_ONLY\"]");
+    expect(css).toContain('.product-link-preview-card[data-metadata-status="MINIMAL"]');
+    expect(css).toContain('.product-link-preview-card[data-metadata-status="URL_ONLY"]');
   });
 
   it("clamps descriptions and keeps preview content inside narrow layouts", () => {

@@ -44,6 +44,8 @@ export const deCommunityMessages = {
   "community.state.archived": "Archiviert",
   "community.saveError":
     "Diese Community-Kosmetik konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut.",
+  "community.loadError":
+    "Deine Community-Einsendungen konnten nicht geladen werden. Versuche es erneut.",
   "community.invalidCss": "Das benutzerdefinierte CSS ist ungültig.",
   "community.routeTitle": "Kosmetik erstellen · SourceBoard",
   "community.routeDescription": "Erstelle eine isolierte Community-Kosmetik für SourceBoard.",

@@ -22,7 +22,9 @@ const releaseSuites = [
 
 describe("platform overhaul release contract", () => {
   it("keeps the canonical specification and all permanent block plans", () => {
-    expect(existsSync("docs/superpowers/specs/2026-09-12-sourceboard-platform-overhaul-design.md")).toBe(true);
+    expect(
+      existsSync("docs/superpowers/specs/2026-09-12-sourceboard-platform-overhaul-design.md"),
+    ).toBe(true);
     for (const plan of requiredPlans) expect(existsSync(plan), plan).toBe(true);
   });
 

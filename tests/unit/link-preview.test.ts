@@ -155,6 +155,29 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
+  it("falls back when a higher-priority metadata tag is blank after cleaning", async () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:title" content="   ">
+      <meta name="twitter:title" content="Twitter fallback">
+      <title>HTML title fallback</title>
+      <meta property="og:description" content="&#160;">
+      <meta name="twitter:description" content="Twitter description fallback">
+      <meta name="description" content="HTML description fallback">
+    </head></html>`;
+    const service = createLinkPreviewService({
+      fetchImpl: vi.fn(
+        async () => new Response(html, { headers: { "content-type": "text/html" } }),
+      ) as unknown as typeof fetch,
+      resolveHost: publicResolver(),
+    });
+
+    await expect(service.preview("https://example.com/fallbacks")).resolves.toMatchObject({
+      title: "Twitter fallback",
+      description: "Twitter description fallback",
+      metadataStatus: "COMPLETE",
+    });
+  });
+
   it("classifies rich, partial, minimal and URL-only metadata consistently", async () => {
     const preview = async (html: string) => {
       const service = createLinkPreviewService({
@@ -167,12 +190,12 @@ describe("link preview metadata fetcher", () => {
     };
 
     await expect(
-      preview(
-        '<title>Rich title</title><meta name="description" content="Rich description">',
-      ),
+      preview('<title>Rich title</title><meta name="description" content="Rich description">'),
     ).resolves.toMatchObject({ metadataStatus: "COMPLETE" });
     await expect(
-      preview('<meta property="og:description" content="Useful"><meta property="og:site_name" content="Example">'),
+      preview(
+        '<meta property="og:description" content="Useful"><meta property="og:site_name" content="Example">',
+      ),
     ).resolves.toMatchObject({ metadataStatus: "PARTIAL" });
     await expect(preview("<title>Only title</title>")).resolves.toMatchObject({
       metadataStatus: "MINIMAL",

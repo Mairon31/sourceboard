@@ -48,42 +48,29 @@
   font-size: var(--text-xs);
 }
 
-.product-post-composer__markdown-toolbar {
+.product-post-composer__markdown-mode-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
 }
 
-.product-post-composer__markdown-toolbar button {
-  min-width: 34px;
+.product-post-composer__markdown-mode {
+  padding-inline: var(--space-3);
   min-height: 32px;
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-sm);
   background: var(--surface-solid);
-  color: var(--text-primary);
+  color: var(--accent);
   font: inherit;
   font-size: var(--text-sm);
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.product-post-composer__markdown-toolbar button:hover,
-.product-post-composer__markdown-toolbar button:focus-visible {
+.product-post-composer__markdown-mode:hover,
+.product-post-composer__markdown-mode:focus-visible {
   border-color: var(--accent);
   outline: 2px solid color-mix(in srgb, var(--accent) 24%, transparent);
   outline-offset: 1px;
-}
-
-.product-post-composer__markdown-toolbar button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.product-post-composer__markdown-toolbar .product-post-composer__markdown-mode {
-  margin-left: auto;
-  padding-inline: var(--space-3);
-  color: var(--accent);
 }
 
 .product-post-composer__markdown-preview {

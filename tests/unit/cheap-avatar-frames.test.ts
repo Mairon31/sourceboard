@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AVATAR_FRAME_DEFINITIONS, AVATAR_STAGE_LAYER_ORDER } from "../../app/components/product/avatar-frame-definitions";
+import {
+  AVATAR_FRAME_DEFINITIONS,
+  AVATAR_STAGE_LAYER_ORDER,
+} from "../../app/components/product/avatar-frame-definitions";
 import { AVATAR_FRAME_PRESETS, isAvatarFramePreset } from "../../shared/store/cosmetics";
 
 const catalog = readFileSync(

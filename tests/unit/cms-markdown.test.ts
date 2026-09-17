@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { cmsMarkdownNodes } from "../../app/components/product/CmsMarkdown";
 import { normalizeCmsMarkdown } from "../../worker/cms/markdown";
+import { parseMarkdown } from "../../shared/richtext/markdown";
 
 describe("CMS Markdown", () => {
   it("keeps safe headings, lists, code and links", () => {
@@ -8,8 +10,20 @@ describe("CMS Markdown", () => {
   });
 
   it("rejects raw HTML, images and unsafe protocols", () => {
-    expect(() => normalizeCmsMarkdown("<script>alert(1)</script>")).toThrow("CMS_RAW_HTML_FORBIDDEN");
-    expect(() => normalizeCmsMarkdown("![x](https://example.com/a.png)")).toThrow("CMS_IMAGES_FORBIDDEN");
+    expect(() => normalizeCmsMarkdown("<script>alert(1)</script>")).toThrow(
+      "CMS_RAW_HTML_FORBIDDEN",
+    );
+    expect(() => normalizeCmsMarkdown("![x](https://example.com/a.png)")).toThrow(
+      "CMS_IMAGES_FORBIDDEN",
+    );
     expect(() => normalizeCmsMarkdown("[x](javascript:alert(1))")).toThrow("CMS_LINK_INVALID");
+    expect(() => normalizeCmsMarkdown("[x](https://user:password@example.com/source)")).toThrow(
+      "CMS_LINK_INVALID",
+    );
+  });
+
+  it("renders the canonical Markdown AST, including ordered lists and emotes", () => {
+    const value = "1. first\n2. second\n\n:wave:";
+    expect(cmsMarkdownNodes(value)).toEqual(parseMarkdown(value));
   });
 });

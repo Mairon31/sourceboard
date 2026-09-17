@@ -8,7 +8,9 @@ describe("notification preview text", () => {
   });
 
   it("does not expose internal emote IDs", () => {
-    expect(notificationPreviewText({ bodyPlaintext: "hello :emt_abc123: world" })).toBe("hello world");
+    expect(notificationPreviewText({ bodyPlaintext: "hello :emt_abc123: world" })).toBe(
+      "hello world",
+    );
     expect(notificationPreviewText({ bodyPlaintext: ":emt_abc123:" })).toBeUndefined();
   });
 
@@ -18,7 +20,9 @@ describe("notification preview text", () => {
   });
 
   it("extracts safe text from rich text JSON without returning storage JSON", () => {
-    const preview = notificationPreviewText({ bodyRichtextJson: JSON.stringify({ content: [{ text: "hello" }, { text: "world" }] }) });
+    const preview = notificationPreviewText({
+      bodyRichtextJson: JSON.stringify({ content: [{ text: "hello" }, { text: "world" }] }),
+    });
     expect(preview).toBe("hello world");
     expect(preview).not.toContain("content");
   });

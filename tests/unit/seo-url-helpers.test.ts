@@ -4,7 +4,9 @@ import { canonicalProfileUrl, canonicalUgcUrl } from "../../shared/seo/urls";
 
 describe("SEO URL helpers", () => {
   it("removes language/query duplication from UGC canonicals", () => {
-    expect(canonicalUgcUrl("https://srcboard.me/posts/1/a?lang=es&x=1", "/posts/1/a")).toBe("https://srcboard.me/posts/1/a");
+    expect(canonicalUgcUrl("https://srcboard.me/posts/1/a?lang=es&x=1", "/posts/1/a")).toBe(
+      "https://srcboard.me/posts/1/a",
+    );
     expect(canonicalProfileUrl("a b")).toBe("https://srcboard.me/u/a%20b");
   });
 

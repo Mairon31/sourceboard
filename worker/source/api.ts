@@ -123,6 +123,7 @@ function storedPreviewUrl(value: unknown): string | null {
   try {
     const parsed = new URL(value);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    if (parsed.username || parsed.password) return null;
     return parsed.toString();
   } catch {
     return null;
@@ -281,7 +282,7 @@ export async function handleSourceRequest(
       }
     }
     if (
-      kind === "accept" &&
+      (kind === "accept" || kind === "verify") &&
       !hasSourceEligibleCommentContent(
         storedCommentRichtext(target.comment_richtext_json),
         typeof target.comment_plaintext === "string" ? target.comment_plaintext : "",
@@ -291,7 +292,7 @@ export async function handleSourceRequest(
       throw new PostError(
         400,
         "SOURCE_TEXT_REQUIRED",
-        "Accepted sources must include text or a link; media-only comments cannot be accepted.",
+        "Source resolutions require text or a link; media-only comments cannot be resolved.",
       );
     }
     if (kind === "accept") {

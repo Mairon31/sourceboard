@@ -42,6 +42,7 @@ export const frCommunityMessages = {
   "community.state.archived": "Archivé",
   "community.saveError":
     "Impossible d’enregistrer ce cosmétique. Vérifiez votre connexion et réessayez.",
+  "community.loadError": "Impossible de charger vos créations communautaires. Réessayez.",
   "community.invalidCss": "Le CSS personnalisé est invalide.",
   "community.routeTitle": "Créer un cosmétique · SourceBoard",
   "community.routeDescription": "Créez un cosmétique communautaire isolé pour SourceBoard.",

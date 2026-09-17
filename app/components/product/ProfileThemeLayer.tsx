@@ -16,7 +16,10 @@ export function ProfileThemeLayer({ preset, visual, creatorPro }: ProfileThemeLa
       className={`product-profile-theme-layer${cosmeticVisualClass(visual)}`}
       data-profile-theme={preset ?? "default"}
       data-creator-pro={creatorPro ? "true" : undefined}
-      style={{ ...(cosmeticVisualStyle(visual) ?? {}), ...(creatorProVisualStyle(creatorPro, "theme") ?? {}) }}
+      style={{
+        ...(cosmeticVisualStyle(visual) ?? {}),
+        ...(creatorProVisualStyle(creatorPro, "theme") ?? {}),
+      }}
       aria-hidden="true"
     />
   );

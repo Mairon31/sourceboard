@@ -1,8 +1,5 @@
 import type { CSSProperties } from "react";
-import type {
-  NameEffectPreset,
-  NameFontFamily,
-} from "../../../shared/store/cosmetics";
+import type { NameEffectPreset, NameFontFamily } from "../../../shared/store/cosmetics";
 import type { CreatorProIdentityVisuals } from "../../../shared/store/creator-pro-config";
 import type { CosmeticIdentityVisuals } from "../../../shared/store/custom-cosmetics";
 import { AnonymousAvatar } from "./AnonymousAvatar";
@@ -42,8 +39,7 @@ interface IdentifiedCosmeticIdentityProps extends CosmeticIdentityBaseProps {
 }
 
 export type CosmeticIdentityProps =
-  | AnonymousCosmeticIdentityProps
-  | IdentifiedCosmeticIdentityProps;
+  AnonymousCosmeticIdentityProps | IdentifiedCosmeticIdentityProps;
 
 function stageSize(
   mode: CosmeticIdentityBaseProps["mode"],
@@ -66,10 +62,21 @@ function graphemes(value: string): string[] {
   return Array.from(value);
 }
 
-function NameContent({ displayName, nameEffect }: { displayName: string; nameEffect?: NameEffectPreset }) {
+function NameContent({
+  displayName,
+  nameEffect,
+}: {
+  displayName: string;
+  nameEffect?: NameEffectPreset;
+}) {
   if (nameEffect !== "sequential-bounce" && nameEffect !== "bounce-neon") return displayName;
   return graphemes(displayName).map((letter, index) => (
-    <span key={`${letter}-${index}`} className="sb-name-effect__grapheme" style={{ "--name-letter-index": index } as CSSProperties} aria-hidden="true">
+    <span
+      key={`${letter}-${index}`}
+      className="sb-name-effect__grapheme"
+      style={{ "--name-letter-index": index } as CSSProperties}
+      aria-hidden="true"
+    >
       {letter}
     </span>
   ));

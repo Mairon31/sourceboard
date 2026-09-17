@@ -11,6 +11,7 @@ const sourceResolution = read("../../app/components/product/SourceResolution.tsx
 const sourceResolutionCss = read("../../app/components/product/source-resolution.css");
 const commentThread = read("../../app/components/product/CommentThread.tsx");
 const shareAction = read("../../app/components/product/ShareAction.tsx");
+const commentService = read("../../worker/comments/service.ts");
 
 describe("comment rendering regressions", () => {
   it("loads the accepted-source layout and collapses the inherited two-column source card grid", () => {
@@ -40,5 +41,11 @@ describe("comment rendering regressions", () => {
     expect(commentThread).toContain("threadCount.comments");
     expect(commentThread).toContain("threadCount.replies");
     expect(commentThread).toContain("product-comments__summary");
+  });
+
+  it("does not expose deleted comment attachments", () => {
+    expect(commentService).toMatch(
+      /attachment:\s*record\.comment\.state !== "DELETED" && storedAttachment/,
+    );
   });
 });

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { prepareImageForUpload } from "../../data/media-preparation";
+import { getMediaImagePolicy } from "../../../shared/media/policy";
 import type { MessageKey } from "../../i18n";
 import { useI18n } from "../../i18n/I18nProvider";
 
 const POST_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/avif";
 const POST_IMAGE_TYPES = new Set(POST_IMAGE_ACCEPT.split(","));
-const MAX_POST_IMAGE_BYTES = 25 * 1024 * 1024;
-const MAX_POST_IMAGE_DIMENSION = 6_000;
+const MAX_POST_IMAGE_BYTES = getMediaImagePolicy("POST").maxBytes;
 
 interface ImageUploadFieldProps {
   file: File | null;
@@ -23,7 +23,7 @@ function validatePostImageFile(file: File): MessageKey | null {
 }
 
 export async function preparePostImageForUpload(file: File): Promise<File> {
-  return prepareImageForUpload(file, { maxDimension: MAX_POST_IMAGE_DIMENSION });
+  return prepareImageForUpload(file, { purpose: "POST" });
 }
 
 export function ImageUploadField({
@@ -34,6 +34,7 @@ export function ImageUploadField({
 }: ImageUploadFieldProps) {
   const { t, locale } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
+  const preparationInFlight = useRef(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,13 +51,14 @@ export function ImageUploadField({
   }, [file]);
 
   async function selectFile(next: File | null) {
-    if (!next || disabled) return;
+    if (!next || disabled || uploading || preparationInFlight.current) return;
     const validationError = validatePostImageFile(next);
     if (validationError) {
       setError(t(validationError));
       return;
     }
 
+    preparationInFlight.current = true;
     setPreparing(true);
     setError(null);
     try {
@@ -71,12 +73,13 @@ export function ImageUploadField({
         ),
       );
     } finally {
+      preparationInFlight.current = false;
       setPreparing(false);
     }
   }
 
   function removeFile() {
-    if (disabled) return;
+    if (disabled || preparing || uploading || preparationInFlight.current) return;
     onFileChange(null);
     setError(null);
     if (inputRef.current) inputRef.current.value = "";
@@ -85,10 +88,12 @@ export function ImageUploadField({
   function onDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setDragging(false);
+    if (disabled || preparing || uploading || preparationInFlight.current) return;
     void selectFile(event.dataTransfer.files.item(0));
   }
 
   function onPaste(event: React.ClipboardEvent<HTMLDivElement>) {
+    if (disabled || preparing || uploading || preparationInFlight.current) return;
     const pasted = Array.from(event.clipboardData.files).find((candidate) =>
       candidate.type.startsWith("image/"),
     );
@@ -110,14 +115,17 @@ export function ImageUploadField({
         className={`product-image-upload-field__dropzone${dragging ? " is-dragging" : ""}${file ? " has-image" : ""}`}
         onDragEnter={(event) => {
           event.preventDefault();
-          if (!disabled) setDragging(true);
+          if (!disabled && !preparing && !uploading && !preparationInFlight.current) {
+            setDragging(true);
+          }
         }}
         onDragOver={(event) => event.preventDefault()}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         onPaste={onPaste}
-        tabIndex={disabled ? -1 : 0}
+        tabIndex={disabled || preparing || uploading ? -1 : 0}
         aria-label={t("imageUpload.dropzoneAria")}
+        aria-busy={preparing || uploading || undefined}
       >
         <input
           ref={inputRef}

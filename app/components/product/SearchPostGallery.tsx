@@ -4,11 +4,7 @@ import type { PostSummary } from "../../../shared/ui/contracts";
 import { markNavigationStart } from "../../data/performance-metrics";
 import { useI18n } from "../../i18n/I18nProvider";
 import { HeartIcon, MessageIcon } from "../ui";
-
-function postDetailHref(post: PostSummary): string {
-  const base = `/posts/${encodeURIComponent(post.id)}`;
-  return post.slug ? `${base}/${encodeURIComponent(post.slug)}` : base;
-}
+import { postDetailHref, SearchPostMedia } from "./SearchPostMedia";
 
 export function SearchPostGallery({
   posts,
@@ -32,49 +28,40 @@ export function SearchPostGallery({
           LOCKED: t("post.status.locked"),
         }[post.status];
         return (
-          <Link
+          <article
             key={post.id}
-            to={detailHref}
             className={`product-search-gallery__item${
               mediaRestricted ? " product-search-gallery__item--restricted" : ""
             }`}
+            tabIndex={0}
             data-search-post-id={post.id}
-            aria-label={`${t("post.openAria", { title: post.title })}, ${statusLabel}`}
-            onClick={() => markNavigationStart(detailHref)}
           >
-            <div className="product-search-gallery__media">
-              {post.imageUrl && !mediaRestricted ? (
-                <img
-                  src={post.imageUrl}
-                  alt={post.imageAlt}
-                  width={post.imageWidth}
-                  height={post.imageHeight}
-                  loading="lazy"
-                />
-              ) : (
-                <div
-                  className="product-search-gallery__placeholder"
-                  role="img"
-                  aria-label={
-                    mediaRestricted
-                      ? `${post.imageAlt}. ${t("post.nsfw.hiddenTitle")}`
-                      : post.imageAlt
-                  }
-                >
-                  <span>
-                    {mediaRestricted ? t("post.nsfw.hiddenTitle") : t("post.media.unavailable")}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="product-search-gallery__overlay">
+            <SearchPostMedia
+              post={post}
+              mediaRestricted={mediaRestricted}
+              mediaClassName="product-search-gallery__media"
+              mediaButtonClassName="product-search-gallery__media-button"
+              placeholderClassName="product-search-gallery__placeholder"
+              placeholderLabel={
+                mediaRestricted ? t("post.nsfw.hiddenTitle") : t("post.media.unavailable")
+              }
+            />
+            <Link
+              to={detailHref}
+              className="product-search-gallery__overlay"
+              aria-label={t("post.openAria", { title: post.title })}
+              onClick={() => markNavigationStart(detailHref)}
+            >
               <div className="product-search-gallery__labels">
                 <span>{category.label}</span>
                 <span>{statusLabel}</span>
                 {sourceMode ? <span>{t("post.meta.acceptedSource")}</span> : null}
               </div>
               <strong>{post.title}</strong>
-              <div className="product-search-gallery__metrics" aria-label={t("post.engagementAria")}>
+              <div
+                className="product-search-gallery__metrics"
+                aria-label={t("post.engagementAria")}
+              >
                 <span>
                   <HeartIcon width="15" height="15" aria-hidden="true" />
                   {post.reaction.count}
@@ -84,8 +71,8 @@ export function SearchPostGallery({
                   {post.commentCount}
                 </span>
               </div>
-            </div>
-          </Link>
+            </Link>
+          </article>
         );
       })}
     </div>

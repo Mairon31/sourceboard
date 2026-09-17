@@ -30,6 +30,24 @@ export interface CommentImageAsset {
   deletedAt: number | null;
 }
 
+export class CommentImageUnavailableError extends Error {
+  readonly code = "COMMENT_IMAGE_NOT_AVAILABLE";
+
+  constructor() {
+    super("COMMENT_IMAGE_NOT_AVAILABLE");
+    this.name = "CommentImageUnavailableError";
+  }
+}
+
+export class CommentPostUnavailableError extends Error {
+  readonly code = "COMMENT_POST_NOT_AVAILABLE";
+
+  constructor() {
+    super("COMMENT_POST_NOT_AVAILABLE");
+    this.name = "CommentPostUnavailableError";
+  }
+}
+
 export interface CommentStore {
   listForPost(input: {
     postId: string;
@@ -67,6 +85,8 @@ export interface CommentStore {
     attachmentJson: string | null;
     revisionId: string;
     linkPreview?: CommentLinkPreviewSnapshot | null;
+    commentImageAssetId?: string;
+    obsoleteCommentImageAssetId?: string;
   }): Promise<boolean>;
   deleteComment(commentId: string, authorId: string, now: number): Promise<boolean>;
   toggleLike(input: {
@@ -505,45 +525,91 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       linkPreview,
       commentImageAssetId,
     }) {
+      const commentInsert = commentImageAssetId
+        ? db
+            .prepare(
+              `INSERT INTO comments
+                (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+                 attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+                 deleted_at, hidden_at)
+               SELECT ?, ?, ?, ?, ?, ?, ?, 'VISIBLE', 0, ?, ?, ?, NULL, NULL
+               WHERE EXISTS (
+                 SELECT 1 FROM media_assets
+                 WHERE id = ? AND owner_user_id = ? AND purpose = 'COMMENT_IMAGE'
+                   AND status IN ('PENDING', 'ACTIVE')
+                   AND NOT EXISTS (
+                     SELECT 1 FROM comments
+                     WHERE json_extract(attachment_json, '$.id') = ?
+                   )
+               )
+               AND EXISTS (
+                 SELECT 1 FROM posts WHERE id = ? AND deleted_at IS NULL
+               )`,
+            )
+            .bind(
+              comment.id,
+              comment.postId,
+              comment.authorId,
+              comment.parentCommentId,
+              richtextJson,
+              comment.plaintext,
+              attachmentJson,
+              comment.createdAt,
+              comment.updatedAt,
+              comment.editDeadlineAt,
+              commentImageAssetId,
+              comment.authorId,
+              commentImageAssetId,
+              comment.postId,
+            )
+        : db
+            .prepare(
+              `INSERT INTO comments
+                (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+                 attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+                 deleted_at, hidden_at)
+               SELECT ?, ?, ?, ?, ?, ?, ?, 'VISIBLE', 0, ?, ?, ?, NULL, NULL
+               WHERE EXISTS (
+                 SELECT 1 FROM posts WHERE id = ? AND deleted_at IS NULL
+               )`,
+            )
+            .bind(
+              comment.id,
+              comment.postId,
+              comment.authorId,
+              comment.parentCommentId,
+              richtextJson,
+              comment.plaintext,
+              attachmentJson,
+              comment.createdAt,
+              comment.updatedAt,
+              comment.editDeadlineAt,
+              comment.postId,
+            );
       const baseStatements = [
+        commentInsert,
         db
           .prepare(
-            `INSERT INTO comments
-              (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
-               attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
-               deleted_at, hidden_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'VISIBLE', 0, ?, ?, ?, NULL, NULL)`,
+            `UPDATE posts SET comment_count = comment_count + 1, updated_at = ?
+             WHERE id = ? AND EXISTS (SELECT 1 FROM comments WHERE id = ?)`,
           )
-          .bind(
-            comment.id,
-            comment.postId,
-            comment.authorId,
-            comment.parentCommentId,
-            richtextJson,
-            comment.plaintext,
-            attachmentJson,
-            comment.createdAt,
-            comment.updatedAt,
-            comment.editDeadlineAt,
-          ),
-        db
-          .prepare(
-            `UPDATE posts SET comment_count = comment_count + 1, updated_at = ? WHERE id = ?`,
-          )
-          .bind(comment.createdAt, comment.postId),
+          .bind(comment.createdAt, comment.postId, comment.id),
       ];
-      const statements = [...baseStatements];
-      if (commentImageAssetId) {
-        statements.push(
-          db
+      const imageActivation = commentImageAssetId
+        ? db
             .prepare(
               `UPDATE media_assets SET status = 'ACTIVE'
                WHERE id = ? AND owner_user_id = ? AND purpose = 'COMMENT_IMAGE'
-                 AND status IN ('PENDING', 'ACTIVE')`,
+                 AND status IN ('PENDING', 'ACTIVE')
+                 AND EXISTS (
+                   SELECT 1 FROM comments
+                   WHERE id = ? AND author_id = ?
+                     AND json_extract(attachment_json, '$.id') = media_assets.id
+                 )`,
             )
-            .bind(commentImageAssetId, comment.authorId),
-        );
-      }
+            .bind(commentImageAssetId, comment.authorId, comment.id, comment.authorId)
+        : null;
+      const statements = [...baseStatements, ...(imageActivation ? [imageActivation] : [])];
       if (linkPreview && linkPreviewSchemaAvailable !== false) {
         statements.push(
           db
@@ -551,7 +617,8 @@ export function createD1CommentStore(db: D1Database): CommentStore {
               `INSERT INTO comment_link_previews
                 (comment_id, canonical_url, site_name, title, description, image_url, fetched_at,
                  metadata_status)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+               SELECT ?, ?, ?, ?, ?, ?, ?, ?
+               WHERE EXISTS (SELECT 1 FROM comments WHERE id = ? AND author_id = ?)`,
             )
             .bind(
               comment.id,
@@ -562,15 +629,25 @@ export function createD1CommentStore(db: D1Database): CommentStore {
               linkPreview.imageUrl,
               linkPreview.fetchedAt,
               linkPreview.metadataStatus,
+              comment.id,
+              comment.authorId,
             ),
         );
       }
+      let results: D1Result<unknown>[];
       try {
-        await db.batch(statements);
+        results = await db.batch(statements);
       } catch (error) {
         if (!linkPreview || !isMissingCommentLinkPreviewTable(error)) throw error;
         linkPreviewSchemaAvailable = false;
-        await db.batch(baseStatements);
+        results = await db.batch([
+          ...baseStatements,
+          ...(imageActivation ? [imageActivation] : []),
+        ]);
+      }
+      if ((results[0]?.meta.changes ?? 0) < 1) {
+        if (!commentImageAssetId) throw new CommentPostUnavailableError();
+        throw new CommentImageUnavailableError();
       }
     },
 
@@ -601,25 +678,82 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       }
     },
 
-    async updateComment({ comment, richtextJson, attachmentJson, revisionId, linkPreview }) {
-      const buildCommentUpdate = () =>
-        db
+    async updateComment({
+      comment,
+      richtextJson,
+      attachmentJson,
+      revisionId,
+      linkPreview,
+      commentImageAssetId,
+      obsoleteCommentImageAssetId,
+    }) {
+      const buildCommentUpdate = () => {
+        const imageOwnershipGuard = commentImageAssetId
+          ? ` AND EXISTS (
+               SELECT 1 FROM media_assets
+               WHERE id = ? AND owner_user_id = ? AND purpose = 'COMMENT_IMAGE'
+                 AND status IN ('PENDING', 'ACTIVE')
+             )
+             AND NOT EXISTS (
+               SELECT 1 FROM comments
+               WHERE json_extract(attachment_json, '$.id') = ?
+                 AND id <> ?
+             )`
+          : "";
+        const bindings = [
+          richtextJson,
+          comment.plaintext,
+          attachmentJson,
+          comment.updatedAt,
+          comment.id,
+          comment.authorId,
+          comment.updatedAt,
+          ...(commentImageAssetId
+            ? [commentImageAssetId, comment.authorId, commentImageAssetId, comment.id]
+            : []),
+        ];
+        return db
           .prepare(
             `UPDATE comments SET body_richtext_json = ?, body_plaintext = ?, attachment_json = ?,
                updated_at = ?
-             WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND edit_deadline_at >= ?`,
+             WHERE id = ? AND author_id = ? AND deleted_at IS NULL AND edit_deadline_at >= ?${imageOwnershipGuard}`,
           )
-          .bind(
-            richtextJson,
-            comment.plaintext,
-            attachmentJson,
-            comment.updatedAt,
-            comment.id,
-            comment.authorId,
-            comment.updatedAt,
-          );
+          .bind(...bindings);
+      };
       const buildStatements = (withLinkPreview: boolean) => {
         const statements = [buildCommentUpdate()];
+        if (commentImageAssetId) {
+          statements.push(
+            db
+              .prepare(
+                `UPDATE media_assets SET status = 'ACTIVE'
+                 WHERE id = ? AND owner_user_id = ? AND purpose = 'COMMENT_IMAGE'
+                   AND status IN ('PENDING', 'ACTIVE')
+                   AND EXISTS (
+                     SELECT 1 FROM comments
+                     WHERE id = ? AND author_id = ?
+                       AND json_extract(attachment_json, '$.id') = media_assets.id
+                   )`,
+              )
+              .bind(commentImageAssetId, comment.authorId, comment.id, comment.authorId),
+          );
+        }
+        if (obsoleteCommentImageAssetId) {
+          statements.push(
+            db
+              .prepare(
+                `UPDATE media_assets
+                 SET status = 'DELETED', deleted_at = ?
+                 WHERE id = ? AND owner_user_id = ? AND purpose = 'COMMENT_IMAGE'
+                   AND status = 'ACTIVE'
+                   AND NOT EXISTS (
+                     SELECT 1 FROM comments
+                     WHERE json_extract(attachment_json, '$.id') = media_assets.id
+                   )`,
+              )
+              .bind(comment.updatedAt, obsoleteCommentImageAssetId, comment.authorId),
+          );
+        }
         if (!withLinkPreview || linkPreview === undefined) return statements;
         if (linkPreview === null) {
           statements.push(
@@ -675,7 +809,9 @@ export function createD1CommentStore(db: D1Database): CommentStore {
 
       let results: D1Result<unknown>[];
       const shouldPersistLinkPreview =
-        linkPreview !== undefined && linkPreviewSchemaAvailable !== false;
+        (linkPreview !== undefined && linkPreviewSchemaAvailable !== false) ||
+        Boolean(commentImageAssetId) ||
+        Boolean(obsoleteCommentImageAssetId);
       if (!shouldPersistLinkPreview) {
         results = [await buildCommentUpdate().run()];
       } else {
@@ -684,7 +820,8 @@ export function createD1CommentStore(db: D1Database): CommentStore {
         } catch (error) {
           if (!isMissingCommentLinkPreviewTable(error)) throw error;
           linkPreviewSchemaAvailable = false;
-          results = [await buildCommentUpdate().run()];
+          const fallback = await db.batch(buildStatements(false));
+          results = [fallback[0] ?? { meta: { changes: 0 } }];
         }
       }
       // D1 includes writes performed by AFTER UPDATE triggers in meta.changes.
@@ -724,6 +861,23 @@ export function createD1CommentStore(db: D1Database): CommentStore {
         .bind(commentId)
         .first<{ post_id: string }>();
       if (comment) {
+        await db
+          .prepare(
+            `UPDATE media_assets
+             SET status = 'DELETED', deleted_at = ?
+             WHERE id = (
+               SELECT json_extract(attachment_json, '$.id')
+               FROM comments WHERE id = ? AND state = 'DELETED'
+             )
+               AND owner_user_id = ? AND purpose = 'COMMENT_IMAGE' AND status = 'ACTIVE'
+               AND NOT EXISTS (
+                 SELECT 1 FROM comments
+                 WHERE json_extract(attachment_json, '$.id') = media_assets.id
+                   AND id <> ?
+               )`,
+          )
+          .bind(now, commentId, authorId, commentId)
+          .run();
         await db
           .prepare(
             `UPDATE posts SET comment_count = MAX(comment_count - 1, 0), updated_at = ? WHERE id = ?`,

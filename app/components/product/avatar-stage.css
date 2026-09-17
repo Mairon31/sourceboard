@@ -497,14 +497,15 @@
   box-shadow: 0 0 7px var(--avatar-frame-glow);
 }
 
-.product-avatar-stage[data-avatar-frame="double-blue"] .product-avatar-stage__part[data-layer="outer-ring"] {
+.product-avatar-stage[data-avatar-frame="double-blue"]
+  .product-avatar-stage__part[data-layer="outer-ring"] {
   border-style: double;
 }
 
-.product-avatar-stage[data-avatar-frame="thin-neon"] .product-avatar-stage__part[data-layer="outer-ring"] {
+.product-avatar-stage[data-avatar-frame="thin-neon"]
+  .product-avatar-stage__part[data-layer="outer-ring"] {
   border-width: 1px;
 }
-
 
 /* Legacy structural frames are expressed as AvatarStage parts so every surface
    shares the same geometry, containment and reduced-motion behavior. */
@@ -605,17 +606,7 @@
   height: 16px;
   border-radius: 0;
   background: #72da45;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    88% 42%,
-    77% 20%,
-    66% 100%,
-    54% 28%,
-    42% 72%,
-    28% 18%,
-    16% 60%
-  );
+  clip-path: polygon(0 0, 100% 0, 88% 42%, 77% 20%, 66% 100%, 54% 28%, 42% 72%, 28% 18%, 16% 60%);
   filter: drop-shadow(0 2px 3px #347f2777);
 }
 

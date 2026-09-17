@@ -4,6 +4,7 @@ import {
   type CosmeticVisualConfigV1,
 } from "../../../../shared/store/cosmetic-config";
 import { Button, Input } from "../../ui";
+import { useI18n } from "../../../i18n/I18nProvider";
 import "./cosmetic-config-editor.css";
 
 const DEFAULT_CONFIG: CosmeticVisualConfigV1 = {
@@ -53,20 +54,21 @@ export function CosmeticConfigEditor({
   initial?: CosmeticVisualConfigV1;
   onChange?: (config: CosmeticVisualConfigV1) => void;
 }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState<CosmeticVisualConfigV1>(() =>
     parseCosmeticVisualConfig(initial),
   );
-  const [validation, setValidation] = useState("Valid schema v1");
+  const [validation, setValidation] = useState(() => t("admin.creatorPro.validSchema"));
   const raw = useMemo(() => JSON.stringify(draft, null, 2), [draft]);
 
   function update(next: CosmeticVisualConfigV1) {
     try {
       const parsed = parseCosmeticVisualConfig(next);
       setDraft(parsed);
-      setValidation("Valid schema v1");
+      setValidation(t("admin.creatorPro.validSchema"));
       onChange?.(parsed);
     } catch (error) {
-      setValidation(error instanceof Error ? error.message : "Invalid configuration");
+      setValidation(error instanceof Error ? error.message : t("admin.creatorPro.invalidConfig"));
     }
   }
 
@@ -75,34 +77,48 @@ export function CosmeticConfigEditor({
   const glow = draft.glow ?? DEFAULT_CONFIG.glow!;
   const particles = draft.particles ?? DEFAULT_CONFIG.particles!;
   const intensity = draft.intensity ?? DEFAULT_CONFIG.intensity!;
+  const easingOptions = [
+    ["linear", t("admin.creatorPro.easing.linear")],
+    ["ease", t("admin.creatorPro.easing.ease")],
+    ["ease-in", t("admin.creatorPro.easing.easeIn")],
+    ["ease-out", t("admin.creatorPro.easing.easeOut")],
+    ["ease-in-out", t("admin.creatorPro.easing.easeInOut")],
+  ] as const;
+  const particlePathOptions = [
+    ["rise", t("admin.creatorPro.path.rise")],
+    ["fall", t("admin.creatorPro.path.fall")],
+    ["orbit", t("admin.creatorPro.path.orbit")],
+    ["drift", t("admin.creatorPro.path.drift")],
+    ["burst", t("admin.creatorPro.path.burst")],
+  ] as const;
 
   return (
-    <section className="admin-cosmetic-config-editor" aria-label="Creator Pro cosmetic editor">
+    <section className="admin-cosmetic-config-editor" aria-label={t("admin.creatorPro.ariaLabel")}>
       <div className="admin-cosmetic-config-editor__header">
         <div>
-          <strong>Creator Pro</strong>
-          <span>Structured cosmetic configuration · schema v1</span>
+          <strong>{t("admin.creatorPro.title")}</strong>
+          <span>{t("admin.creatorPro.schema")}</span>
         </div>
         <Button type="button" variant="secondary" onClick={() => update(structuredClone(draft))}>
-          Clone preset
+          {t("admin.creatorPro.clone")}
         </Button>
       </div>
 
       <div className="admin-cosmetic-config-editor__controls">
         <Input
-          label="Primary color"
+          label={t("admin.creatorPro.primaryColor")}
           type="color"
           value={draft.palette[0] ?? DEFAULT_CONFIG.palette[0]}
           onChange={(event) => update(withPaletteColor(draft, 0, event.currentTarget.value))}
         />
         <Input
-          label="Secondary color"
+          label={t("admin.creatorPro.secondaryColor")}
           type="color"
           value={draft.palette[1] ?? DEFAULT_CONFIG.palette[1]}
           onChange={(event) => update(withPaletteColor(draft, 1, event.currentTarget.value))}
         />
         <Input
-          label="Gradient angle"
+          label={t("admin.creatorPro.gradientAngle")}
           type="number"
           min={0}
           max={360}
@@ -116,7 +132,7 @@ export function CosmeticConfigEditor({
           }
         />
         <Input
-          label="Duration (ms)"
+          label={t("admin.creatorPro.duration")}
           type="number"
           min={300}
           max={60000}
@@ -130,7 +146,7 @@ export function CosmeticConfigEditor({
           }
         />
         <label className="sb-field">
-          <span className="sb-field__label">Easing</span>
+          <span className="sb-field__label">{t("admin.creatorPro.easing")}</span>
           <select
             className="sb-input focus-ring"
             value={animation.easing}
@@ -146,21 +162,15 @@ export function CosmeticConfigEditor({
               })
             }
           >
-            {[
-              "linear",
-              "ease",
-              "ease-in",
-              "ease-out",
-              "ease-in-out",
-            ].map((value) => (
+            {easingOptions.map(([value, label]) => (
               <option key={value} value={value}>
-                {value}
+                {label}
               </option>
             ))}
           </select>
         </label>
         <Input
-          label="Intensity"
+          label={t("admin.creatorPro.intensity")}
           type="number"
           min={0}
           max={1}
@@ -169,7 +179,7 @@ export function CosmeticConfigEditor({
           onChange={(event) => update({ ...draft, intensity: Number(event.currentTarget.value) })}
         />
         <Input
-          label="Glow blur (px)"
+          label={t("admin.creatorPro.glowBlur")}
           type="number"
           min={0}
           max={32}
@@ -180,7 +190,7 @@ export function CosmeticConfigEditor({
           }
         />
         <Input
-          label="Glow opacity"
+          label={t("admin.creatorPro.glowOpacity")}
           type="number"
           min={0}
           max={1}
@@ -191,7 +201,7 @@ export function CosmeticConfigEditor({
           }
         />
         <Input
-          label="Particle count"
+          label={t("admin.creatorPro.particleCount")}
           type="number"
           min={0}
           max={48}
@@ -205,7 +215,7 @@ export function CosmeticConfigEditor({
           }
         />
         <Input
-          label="Particle size"
+          label={t("admin.creatorPro.particleSize")}
           type="number"
           min={0.1}
           max={2}
@@ -219,7 +229,7 @@ export function CosmeticConfigEditor({
           }
         />
         <Input
-          label="Particle speed"
+          label={t("admin.creatorPro.particleSpeed")}
           type="number"
           min={0}
           max={2}
@@ -233,7 +243,7 @@ export function CosmeticConfigEditor({
           }
         />
         <Input
-          label="Particle spread"
+          label={t("admin.creatorPro.particleSpread")}
           type="number"
           min={0}
           max={1}
@@ -247,7 +257,7 @@ export function CosmeticConfigEditor({
           }
         />
         <label className="sb-field">
-          <span className="sb-field__label">Particle path</span>
+          <span className="sb-field__label">{t("admin.creatorPro.particlePath")}</span>
           <select
             className="sb-input focus-ring"
             value={particles.path}
@@ -263,9 +273,9 @@ export function CosmeticConfigEditor({
               })
             }
           >
-            {["rise", "fall", "orbit", "drift", "burst"].map((value) => (
+            {particlePathOptions.map(([value, label]) => (
               <option key={value} value={value}>
-                {value}
+                {label}
               </option>
             ))}
           </select>
@@ -274,7 +284,7 @@ export function CosmeticConfigEditor({
 
       <p role="status">{validation}</p>
       <details>
-        <summary>Normalized JSON</summary>
+        <summary>{t("admin.creatorPro.normalizedJson")}</summary>
         <pre>{raw}</pre>
       </details>
     </section>

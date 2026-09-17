@@ -3,15 +3,19 @@ import type {
   CommentView,
   VerifiedSourceView,
 } from "../../../shared/ui/contracts";
+import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { useI18n } from "../../i18n/I18nProvider";
 import { Badge, Card, CheckIcon, ExternalLinkIcon, ShieldCheckIcon } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { LinkPreviewCard } from "./LinkPreviewCard";
 import { RichText } from "./RichText";
+import { MediaLightbox } from "./MediaLightbox";
 
 function AcceptedComment({ comment }: { comment: CommentView }) {
   const { t, date } = useI18n();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const imageTriggerRef = useRef<HTMLElement | null>(null);
   const nodes = [
     {
       type: "paragraph" as const,
@@ -62,15 +66,43 @@ function AcceptedComment({ comment }: { comment: CommentView }) {
       <div className="product-source-answer__content">
         <RichText nodes={nodes} />
         {imageUrl ? (
-          <img
-            className={`product-source-answer__media product-source-answer__media--${comment.attachment?.type.toLowerCase()}`}
-            src={imageUrl}
-            alt={comment.attachment?.label ?? t("source.accepted.attachmentAlt")}
-            loading="lazy"
-          />
+          comment.attachment?.type === "IMAGE" ? (
+            <button
+              type="button"
+              className="product-source-answer__media-button"
+              aria-label={t("comments.composer.openImage")}
+              onClick={(event) => {
+                imageTriggerRef.current = event.currentTarget;
+                setLightboxOpen(true);
+              }}
+            >
+              <img
+                className="product-source-answer__media product-source-answer__media--image"
+                src={imageUrl}
+                alt={comment.attachment.label ?? t("source.accepted.attachmentAlt")}
+                loading="lazy"
+              />
+            </button>
+          ) : (
+            <img
+              className={`product-source-answer__media product-source-answer__media--${comment.attachment?.type.toLowerCase()}`}
+              src={imageUrl}
+              alt={comment.attachment?.label ?? t("source.accepted.attachmentAlt")}
+              loading="lazy"
+            />
+          )
         ) : null}
         {comment.linkPreview ? <LinkPreviewCard preview={comment.linkPreview} compact /> : null}
       </div>
+      {imageUrl && comment.attachment?.type === "IMAGE" ? (
+        <MediaLightbox
+          open={lightboxOpen}
+          onOpenChange={setLightboxOpen}
+          src={imageUrl}
+          alt={comment.attachment.label ?? t("source.accepted.attachmentAlt")}
+          returnFocusRef={imageTriggerRef}
+        />
+      ) : null}
     </article>
   );
 }
@@ -103,7 +135,11 @@ export function SourceResolution({
       >
         <div className="product-source-card__heading">
           <div className="product-source-card__icon" aria-hidden="true">
-            {isVerified ? <ShieldCheckIcon width="20" height="20" /> : <CheckIcon width="20" height="20" />}
+            {isVerified ? (
+              <ShieldCheckIcon width="20" height="20" />
+            ) : (
+              <CheckIcon width="20" height="20" />
+            )}
           </div>
           <div className="product-source-card__summary">
             <Badge tone={isVerified ? "success" : "accent"}>{badge}</Badge>

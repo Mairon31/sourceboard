@@ -3,10 +3,7 @@ import { officialPageMeta } from "../../shared/seo/official-pages";
 import { CmsMarkdown } from "../components/product/CmsMarkdown";
 import { DocsShell, type DocsNavigationGroup } from "../components/product/DocsShell";
 import { ProductShell } from "../components/product/ProductShell";
-import {
-  listPublicCmsNavigation,
-  resolvePublicCmsPage,
-} from "../data/cms-public.server";
+import { listPublicCmsNavigation, resolvePublicCmsPage } from "../data/cms-public.server";
 import { docsArticle } from "../data/docs-content";
 import type { ServerLoaderArgs } from "../data/server-request";
 
@@ -14,7 +11,9 @@ interface LoaderArgs extends ServerLoaderArgs {
   params: { slug?: string };
 }
 
-function cmsGroups(items: Awaited<ReturnType<typeof listPublicCmsNavigation>>["items"]): DocsNavigationGroup[] {
+function cmsGroups(
+  items: Awaited<ReturnType<typeof listPublicCmsNavigation>>["items"],
+): DocsNavigationGroup[] {
   const groups = new Map<string, DocsNavigationGroup["items"]>();
   for (const item of items) {
     if (!item.href) continue;

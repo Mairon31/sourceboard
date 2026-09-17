@@ -5,6 +5,8 @@ import {
   NAME_FONT_FAMILIES,
   PROFILE_EFFECT_PRESETS,
   PROFILE_THEME_PRESETS,
+  type NameEffectPreset,
+  type NameFontFamily,
 } from "../../../shared/store/cosmetics";
 import { sanitizeCommunityCosmeticCss } from "../../../shared/store/community-css";
 import {
@@ -15,7 +17,7 @@ import { readCsrfToken } from "../../data/csrf";
 import { Button, Card, Input, Textarea } from "../ui";
 import { useI18n } from "../../i18n/I18nProvider";
 import type { MessageKey } from "../../i18n";
-import { cosmeticVisualStyle } from "./cosmetic-visual";
+import { CosmeticPreview } from "./CosmeticPreview";
 import { ProfileCosmeticPreview } from "./ProfileCosmeticPreview";
 import "./community-cosmetics.css";
 
@@ -132,8 +134,13 @@ export function CommunityCosmeticStudio() {
       const payload = (await response.json().catch(() => null)) as {
         submissions?: Submission[];
       } | null;
-      if (response.ok)
-        setSubmissions(Array.isArray(payload?.submissions) ? payload.submissions : []);
+      if (!response.ok) {
+        setStatus(t("community.loadError"));
+        return;
+      }
+      setSubmissions(Array.isArray(payload?.submissions) ? payload.submissions : []);
+    } catch {
+      setStatus(t("community.loadError"));
     } finally {
       setLoading(false);
     }
@@ -360,25 +367,17 @@ export function CommunityCosmeticStudio() {
                 className="product-community-live-preview__profile"
               />
             ) : (
-              <div className="cosmetic-root" data-community-cosmetic="preview">
-                {cssPreview.css ? <style>{cssPreview.css}</style> : null}
-                <div className="profile-card" style={cosmeticVisualStyle(visual)}>
-                  <div className="profile-header">
-                    <div className="profile-avatar-area" aria-hidden="true">
-                      SB
-                    </div>
-                    <div className="profile-name-area">
-                      <strong
-                        className={type === "NAME_EFFECT" ? `sb-name-effect--${base}` : undefined}
-                        style={type === "NAME_FONT" ? { fontFamily: base } : undefined}
-                      >
-                        {previewName}
-                      </strong>
-                      <span>@creator</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <CosmeticPreview
+                cosmetic={
+                  type === "NAME_FONT"
+                    ? { type: "NAME_FONT", preset: base as NameFontFamily }
+                    : { type: "NAME_EFFECT", preset: base as NameEffectPreset }
+                }
+                name={previewName}
+                visual={visual}
+                communityStyles={communityStyles}
+                className="product-community-live-preview__name"
+              />
             )}
             <p>{description.trim() || t("community.previewFallback")}</p>
             <small>

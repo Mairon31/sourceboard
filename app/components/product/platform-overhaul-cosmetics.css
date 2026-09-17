@@ -13,7 +13,11 @@
     linear-gradient(90deg, #a86dff20 1px, transparent 1px),
     radial-gradient(circle at 72% 14%, #b65cff3b, transparent 35%),
     linear-gradient(145deg, #08131f, #111a2b);
-  background-size: 22px 22px, 22px 22px, auto, auto;
+  background-size:
+    22px 22px,
+    22px 22px,
+    auto,
+    auto;
 }
 
 .product-profile-theme-layer[data-profile-theme="plasma-wave"] {
@@ -59,7 +63,9 @@
   background:
     linear-gradient(90deg, transparent 0 68%, #ffffff0d 68% 69%, transparent 69%),
     linear-gradient(155deg, #151515, #262626 55%, #101010);
-  background-size: 46px 46px, auto;
+  background-size:
+    46px 46px,
+    auto;
 }
 
 .product-profile-theme-layer[data-profile-theme="holo-scan"] {
@@ -143,14 +149,23 @@
 }
 
 .product-profile-effect-layer--scan-pulse::after {
-  background: linear-gradient(180deg, transparent 0 46%, #71e9ff26 49%, #d9fbff5c 50%, #71e9ff26 51%, transparent 54%);
+  background: linear-gradient(
+    180deg,
+    transparent 0 46%,
+    #71e9ff26 49%,
+    #d9fbff5c 50%,
+    #71e9ff26 51%,
+    transparent 54%
+  );
   background-size: 100% 220%;
   animation: profile-overhaul-scan 7s linear infinite;
 }
 
 .product-profile-effect-layer--glitch-ambient::after {
   background: repeating-linear-gradient(0deg, #5ce9ff0c 0 2px, transparent 2px 7px);
-  box-shadow: inset 3px 0 #ff5bb72c, inset -3px 0 #5ce9ff2c;
+  box-shadow:
+    inset 3px 0 #ff5bb72c,
+    inset -3px 0 #5ce9ff2c;
   animation: profile-overhaul-glitch 6s steps(2, end) infinite;
 }
 

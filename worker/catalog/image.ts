@@ -1,4 +1,5 @@
 import { assertPostImage, type PostImageContentType } from "../posts/image";
+import { readGifMetadata } from "../media/image-policy";
 import { PostError } from "../posts/errors";
 
 export type CatalogImageContentType = Exclude<PostImageContentType, "image/avif"> | "image/gif";
@@ -20,14 +21,6 @@ function isGif(bytes: Uint8Array): boolean {
   return signature === "GIF87a" || signature === "GIF89a";
 }
 
-function gifFrameCount(bytes: Uint8Array): number {
-  let frames = 0;
-  for (let index = 13; index < bytes.length; index += 1) {
-    if (bytes[index] === 0x2c) frames += 1;
-  }
-  return frames;
-}
-
 export function assertCatalogImage(
   bytes: Uint8Array,
   declaredContentType: string,
@@ -43,11 +36,19 @@ export function assertCatalogImage(
         "IMAGE_MIME_MISMATCH",
         "The declared MIME type does not match the GIF file signature.",
       );
-    const width = (bytes[6] ?? 0) | ((bytes[7] ?? 0) << 8);
-    const height = (bytes[8] ?? 0) | ((bytes[9] ?? 0) << 8);
-    if (!width || !height || width > MAX_CATALOG_DIMENSION || height > MAX_CATALOG_DIMENSION)
+    const gifMetadata = readGifMetadata(bytes);
+    if (
+      !gifMetadata ||
+      gifMetadata.width > MAX_CATALOG_DIMENSION ||
+      gifMetadata.height > MAX_CATALOG_DIMENSION
+    )
       throw new PostError(400, "INVALID_IMAGE", "The GIF dimensions are invalid.");
-    return { contentType: "image/gif", width, height, animated: gifFrameCount(bytes) > 1 };
+    return {
+      contentType: "image/gif",
+      width: gifMetadata.width,
+      height: gifMetadata.height,
+      animated: gifMetadata.frameCount > 1,
+    };
   }
 
   if (!STATIC_TYPES.has(declaredContentType as CatalogImageContentType)) {

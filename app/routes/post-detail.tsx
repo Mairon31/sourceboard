@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { readCsrfToken } from "../data/csrf";
 import { readViewerLikedPostIds } from "../data/viewer-post-likes";
 import {
@@ -324,6 +324,11 @@ export default function PostDetailRoute() {
   const { t } = useI18n();
   const location = useLocation();
   const revalidator = useRevalidator();
+  const [updatedComment, setUpdatedComment] = useState<CommentView>();
+
+  useEffect(() => {
+    setUpdatedComment(undefined);
+  }, [post?.id]);
 
   useEffect(() => {
     if (!location.hash) return;
@@ -353,7 +358,10 @@ export default function PostDetailRoute() {
   const currentPost = post;
   const sourceCommentId =
     currentPost.verifiedSource?.commentId ?? currentPost.acceptedSource?.commentId;
-  const acceptedComment = findComment(currentPost.comments, sourceCommentId);
+  const acceptedComment =
+    updatedComment?.id === sourceCommentId
+      ? updatedComment
+      : findComment(currentPost.comments, sourceCommentId);
   const canUndoAcceptedSource = Boolean(
     currentPost.acceptedSource &&
     isAcceptedSourceUndoable(Date.parse(currentPost.acceptedSource.acceptedAt), Date.now()),
@@ -400,6 +408,7 @@ export default function PostDetailRoute() {
         onAcceptSource={(commentId) => void acceptSource(commentId)}
         onUndoAcceptedSource={revokeAcceptedSource}
         onCommentsChanged={() => revalidator.revalidate()}
+        onCommentUpdated={setUpdatedComment}
       />
     </ProductShell>
   );

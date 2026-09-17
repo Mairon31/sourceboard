@@ -18,10 +18,7 @@ function nodeHasTextualContent(node: unknown): boolean {
   if (!value) return false;
   if (value.type === "text") return typeof value.text === "string" && value.text.trim().length > 0;
   if (value.type === "link") {
-    return (
-      (typeof value.label === "string" && value.label.trim().length > 0) ||
-      (typeof value.url === "string" && value.url.trim().length > 0)
-    );
+    return typeof value.label === "string" && value.label.trim().length > 0;
   }
   return false;
 }
@@ -34,7 +31,11 @@ function hasExplicitLinkPreview(value: string | null | undefined): boolean {
   if (!value || value.length > 2048) return false;
   try {
     const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
+    return (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      !parsed.username &&
+      !parsed.password
+    );
   } catch {
     return false;
   }
@@ -46,7 +47,7 @@ export function hasSourceEligibleCommentContent(
   explicitLinkPreviewUrl?: string | null,
 ): boolean {
   if (hasExplicitLinkPreview(explicitLinkPreviewUrl)) return true;
-  if (richtext) return richtext.some(nodeHasTextualContent);
+  if (richtext?.length) return richtext.some(nodeHasTextualContent);
   return fallbackBody.trim().length > 0;
 }
 

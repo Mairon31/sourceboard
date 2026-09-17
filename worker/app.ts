@@ -33,7 +33,9 @@ async function gateAdminPageRequest(
   if (!env.DB) return new Response("Service unavailable", { status: 503 });
 
   const authStore = createD1AuthStore(env.DB);
-  const session = await createAuthService({ store: authStore, env }).getSession(request).catch(() => null);
+  const session = await createAuthService({ store: authStore, env })
+    .getSession(request)
+    .catch(() => null);
   if (!session) {
     const next = `${url.pathname}${url.search}`;
     const login = new URL("/login", url.origin);

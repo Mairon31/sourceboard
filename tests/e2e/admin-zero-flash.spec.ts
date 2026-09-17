@@ -16,7 +16,10 @@ const ADMIN_PATHS = [
 
 test.describe("admin zero-flash authorization", () => {
   for (const path of ADMIN_PATHS) {
-    test(`signed-out ${path} redirects before privileged HTML renders`, async ({ request, page }) => {
+    test(`signed-out ${path} redirects before privileged HTML renders`, async ({
+      request,
+      page,
+    }) => {
       const raw = await request.get(path, { maxRedirects: 0 });
       expect(raw.status(), path).toBe(302);
       expect(raw.headers().location, path).toContain("/login?next=");

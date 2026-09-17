@@ -97,6 +97,7 @@ export function ProfileCosmeticPreview({
         className={`product-cosmetic-preview product-cosmetic-preview--frame cosmetic-root${presetClass}${className ? ` ${className}` : ""}`}
         data-cosmetic-preview="AVATAR_FRAME"
         data-preview-preset={frame}
+        data-community-cosmetic={communityStyles?.map((style) => style.id).join(" ") || undefined}
       >
         {communityStyles?.map((style) => (
           <style key={style.id}>{style.css}</style>

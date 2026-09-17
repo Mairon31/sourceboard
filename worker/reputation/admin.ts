@@ -147,8 +147,12 @@ function normalizeText(value: unknown, label: string, min: number, max: number):
 function normalizeAchievementIcon(value: unknown): string {
   const icon = normalizeText(value, "Icon", 1, 256);
   if (icon.startsWith("media:")) {
-    if (!/^media:[A-Za-z0-9_-]+$/.test(icon)) {
-      throw new ReputationAdminError(400, "INVALID_ACHIEVEMENT_ICON", "The icon media reference is invalid.");
+    if (!/^media:[A-Za-z0-9_-]{8,128}$/.test(icon)) {
+      throw new ReputationAdminError(
+        400,
+        "INVALID_ACHIEVEMENT_ICON",
+        "The icon media reference is invalid.",
+      );
     }
     return icon;
   }
@@ -156,6 +160,38 @@ function normalizeAchievementIcon(value: unknown): string {
     throw new ReputationAdminError(400, "INVALID_ACHIEVEMENT_ICON", "The icon token is too long.");
   }
   return icon;
+}
+
+export async function assertAchievementMediaReference(
+  db: D1Database,
+  icon: unknown,
+): Promise<void> {
+  if (typeof icon !== "string" || !icon.startsWith("media:")) return;
+  if (!/^media:[A-Za-z0-9_-]{8,128}$/.test(icon)) {
+    throw new ReputationAdminError(
+      400,
+      "INVALID_ACHIEVEMENT_ICON",
+      "The icon media reference is invalid.",
+    );
+  }
+  const assetId = icon.slice("media:".length);
+  const asset = await db
+    .prepare(
+      `SELECT id
+       FROM media_assets
+       WHERE id = ? AND purpose = 'ACHIEVEMENT' AND status = 'ACTIVE'
+         AND r2_key = ?
+       LIMIT 1`,
+    )
+    .bind(assetId, `achievement-icons/${assetId}`)
+    .first<{ id: string }>();
+  if (!asset) {
+    throw new ReputationAdminError(
+      400,
+      "INVALID_ACHIEVEMENT_ICON",
+      "The referenced achievement media is not available.",
+    );
+  }
 }
 
 function toRule(row: RewardRuleRow): RewardRuleAdminView {
@@ -224,9 +260,7 @@ export async function listTopReputationUsers(
   db: D1Database,
   limit = 15,
 ): Promise<ReputationRankingView[]> {
-  const boundedLimit = Number.isFinite(limit)
-    ? Math.max(1, Math.min(Math.trunc(limit), 15))
-    : 15;
+  const boundedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(Math.trunc(limit), 15)) : 15;
   const result = await db
     .prepare(
       `SELECT u.id AS user_id, u.username, u.username_normalized,
@@ -401,6 +435,7 @@ export async function createAchievementVersion(
   const name = normalizeText(input.name, "Name", 2, 80);
   const description = normalizeText(input.description, "Description", 5, 300);
   const icon = normalizeAchievementIcon(input.icon);
+  await assertAchievementMediaReference(db, icon);
   const threshold = normalizePositiveInteger(
     input.threshold,
     "INVALID_ACHIEVEMENT_THRESHOLD",
@@ -457,7 +492,6 @@ export async function createAchievementVersion(
     createdAt: now,
   };
 }
-
 
 export async function updateAchievementVersion(
   db: D1Database,

@@ -144,15 +144,37 @@ function price(value: unknown): number {
   return amount;
 }
 
-function sanitizedConfig(type: CommunityCosmeticType, value: unknown, itemId: string): string {
-  const custom = normalizeCosmeticVisualConfig(value);
+export function normalizeCommunityCosmeticConfig(
+  type: CommunityCosmeticType,
+  value: unknown,
+  itemId: string,
+): string {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new CosmeticSubmissionError(
+      400,
+      "INVALID_COSMETIC_VISUAL",
+      "A structured cosmetic configuration is required.",
+    );
+  const input = value as Record<string, unknown>;
+  const allowedKeys = new Set(["namespace", "visual", "customCss", "preset", "family"]);
+  if (Object.keys(input).some((key) => !allowedKeys.has(key)))
+    throw new CosmeticSubmissionError(
+      400,
+      "INVALID_COSMETIC_VISUAL",
+      "The cosmetic configuration contains an unsupported field.",
+    );
+  if (input.customCss !== undefined && typeof input.customCss !== "string")
+    throw new CosmeticSubmissionError(400, "INVALID_COSMETIC_CSS", "Custom CSS must be a string.");
+  const custom = normalizeCosmeticVisualConfig({
+    namespace: input.namespace,
+    visual: input.visual,
+  });
   if (!custom)
     throw new CosmeticSubmissionError(
       400,
       "INVALID_COSMETIC_VISUAL",
       "Use the SourceBoard cosmetic namespace and only allowlisted visual properties.",
     );
-  const input = value as Record<string, unknown>;
   const config: Record<string, unknown> = {
     namespace: COSMETIC_VISUAL_NAMESPACE,
     visual: custom.visual,
@@ -262,7 +284,7 @@ async function createSubmission(
   const description = text(body.description, "Description", 3, 1000);
   const pricePoints = price(body.pricePoints);
   const id = createIdentifier();
-  const configJson = sanitizedConfig(type, body.config, id);
+  const configJson = normalizeCommunityCosmeticConfig(type, body.config, id);
   const submitForReview = body.submitForReview !== false;
   const communityState: CommunityState = submitForReview ? "PENDING_REVIEW" : "DRAFT";
   const now = Date.now();
@@ -336,7 +358,7 @@ async function updateSubmission(
   const name = text(body.name, "Name", 2, 120);
   const description = text(body.description, "Description", 3, 1000);
   const pricePoints = price(body.pricePoints);
-  const configJson = sanitizedConfig(type, body.config, itemId);
+  const configJson = normalizeCommunityCosmeticConfig(type, body.config, itemId);
   const submitForReview = body.submitForReview === true;
   const nextState: CommunityState = submitForReview ? "PENDING_REVIEW" : "DRAFT";
   const now = Date.now();

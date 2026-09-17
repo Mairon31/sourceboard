@@ -84,7 +84,9 @@ describe("profile account actions and KLIPY media picker", () => {
     expect(commentThread).toContain("submitInFlightRef");
     expect(commentThread).toContain("setSubmitting(true)");
     expect(commentThread).toContain("submitInFlightRef.current = true");
-    expect(commentThread).toContain("!body.trim() && !attachment && !linkPreview && !linkUrl.trim()");
+    expect(commentThread).toContain(
+      "!body.trim() && !attachment && !linkPreview && !linkUrl.trim()",
+    );
   });
 
   it("keeps mobile store effects visually centered while retaining animation", () => {

@@ -8,12 +8,24 @@ describe("official page SEO", () => {
       page: {
         pageId: "privacy",
         variants: [
-          { locale: "en", path: "/en/legal/privacy", title: "Privacy", description: "Privacy policy" },
-          { locale: "es", path: "/es/legal/privacidad", title: "Privacidad", description: "Política de privacidad" },
+          {
+            locale: "en",
+            path: "/en/legal/privacy",
+            title: "Privacy",
+            description: "Privacy policy",
+          },
+          {
+            locale: "es",
+            path: "/es/legal/privacidad",
+            title: "Privacidad",
+            description: "Política de privacidad",
+          },
         ],
       },
     });
-    const alternates = meta.filter((entry) => "hrefLang" in entry).map((entry) => (entry as { hrefLang: string }).hrefLang);
+    const alternates = meta
+      .filter((entry) => "hrefLang" in entry)
+      .map((entry) => (entry as { hrefLang: string }).hrefLang);
     expect(alternates).toContain("en");
     expect(alternates).toContain("es");
     expect(alternates).not.toContain("fr");

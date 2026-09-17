@@ -441,6 +441,7 @@ export const posts = sqliteTable(
     editDeadlineAt: integer("edit_deadline_at", { mode: "number" }).notNull(),
     archivedAt: integer("archived_at", { mode: "number" }),
     deletedAt: integer("deleted_at", { mode: "number" }),
+    deletedPreviousStatus: text("deleted_previous_status"),
     hiddenAt: integer("hidden_at", { mode: "number" }),
     lockedAt: integer("locked_at", { mode: "number" }),
     commentsClosed: integer("comments_closed", { mode: "boolean" }).notNull().default(false),
@@ -451,6 +452,7 @@ export const posts = sqliteTable(
     index("posts_author_created_index").on(table.authorId, table.createdAt, table.id),
     index("posts_slug_index").on(table.slug),
     index("posts_image_asset_index").on(table.imageAssetId),
+    index("posts_soft_delete_retention_index").on(table.deletedAt),
     index("posts_category_created_idx").on(table.categorySlug, table.createdAt, table.id),
     check("posts_author_mode_check", sql`${table.authorMode} IN ('IDENTIFIED', 'ANONYMOUS')`),
     check(

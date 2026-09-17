@@ -86,6 +86,13 @@ export function creatorProParticleNodeCount(
   context: CreatorProRenderContext,
 ): number {
   const requested = config?.particles?.count ?? 0;
-  const ceiling = context === "compact" ? 8 : context === "store" ? 12 : context === "preview" || context === "admin" ? 24 : 48;
+  const ceiling =
+    context === "compact"
+      ? 8
+      : context === "store"
+        ? 12
+        : context === "preview" || context === "admin"
+          ? 24
+          : 48;
   return Math.max(0, Math.min(requested, ceiling));
 }

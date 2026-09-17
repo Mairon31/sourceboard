@@ -614,7 +614,6 @@
     justify-content: flex-start;
   }
 
-
   .admin-sidebar {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -637,7 +636,6 @@
     align-items: stretch;
   }
 }
-
 
 .admin-integrity-toolbar {
   display: flex;

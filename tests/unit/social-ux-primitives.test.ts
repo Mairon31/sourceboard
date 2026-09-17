@@ -21,6 +21,13 @@ describe("social UX primitives", () => {
     expect(overlays).toContain("aria-live");
   });
 
+  it("localizes shared overlay close controls", () => {
+    expect(overlays).toContain('import { useI18n } from "../../i18n/I18nProvider"');
+    expect(overlays).toContain('aria-label={t("common.close")}');
+    expect(overlays).not.toContain('aria-label="Close dialog"');
+    expect(overlays).not.toContain('aria-label="Close drawer"');
+  });
+
   it("tries Web Share before clipboard and exposes copied feedback", () => {
     expect(share).toContain("navigator.share");
     expect(share.indexOf("navigator.share")).toBeLessThan(share.indexOf("navigator.clipboard"));

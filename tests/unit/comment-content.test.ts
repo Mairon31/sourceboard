@@ -53,6 +53,14 @@ describe("comment content classification", () => {
     expect(eligible).toBe(true);
   });
 
+  it("does not treat an invisible link label as source text", () => {
+    expect(
+      hasSourceEligibleCommentContent([
+        { type: "link", url: "https://example.com/source", label: "   " },
+      ]),
+    ).toBe(false);
+  });
+
   it("accepts an explicit link preview as source evidence without prose", () => {
     const eligible = hasSourceEligibleCommentContent([], "", "https://example.com/source");
 
@@ -62,5 +70,15 @@ describe("comment content classification", () => {
   it("preserves legacy text comments when richtext is absent", () => {
     const eligible = hasSourceEligibleCommentContent(undefined, "Legacy source explanation");
     expect(eligible).toBe(true);
+  });
+
+  it("falls back to persisted plaintext when a legacy AST is empty", () => {
+    expect(hasSourceEligibleCommentContent([], "Legacy source explanation")).toBe(true);
+  });
+
+  it("does not treat a credentialed preview URL as source evidence", () => {
+    expect(
+      hasSourceEligibleCommentContent([], "", "https://user:password@example.com/source"),
+    ).toBe(false);
   });
 });

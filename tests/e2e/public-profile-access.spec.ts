@@ -165,6 +165,32 @@ test("public profile remains visible to a signed-in viewer", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Public Profile User" })).toBeVisible();
 });
 
+test("public profile renders bounded safe bio Markdown", async ({ page }) => {
+  executeLocalSql(`
+    UPDATE user_profiles
+    SET bio = '**Bold profile bio**' || char(10) || char(10) ||
+      '# Profile heading' || char(10) || char(10) ||
+      '[Source](https://example.com/profile-source)'
+    WHERE user_id = '${PUBLIC_USER_ID}';
+  `);
+
+  const response = await page.goto(`/u/${PUBLIC_USERNAME}`);
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const bio = page.locator(".product-profile-bio");
+  await expect(bio).toContainText("Bold profile bio");
+  await expect(bio.locator("strong")).toHaveText("Bold profile bio");
+  await expect(bio.getByRole("link", { name: "Source" })).toHaveAttribute(
+    "href",
+    "https://example.com/profile-source",
+  );
+  const headingSize = await bio
+    .locator("h1")
+    .evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+  expect(headingSize).toBeLessThanOrEqual(24);
+});
+
 test("blocked public profile resolves to the same 404 surface", async ({ page }) => {
   await signInViewer(page);
   executeLocalSql(`

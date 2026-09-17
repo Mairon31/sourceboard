@@ -96,6 +96,9 @@ export interface EntitledStickerView {
   provider: "sourceboard";
   packId: string;
   isAnimated: boolean;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
 }
 
 export interface EntitledStickerPackView {
@@ -110,6 +113,26 @@ interface EntitledStickerRow {
   packId: string;
   packLabel: string;
   isAnimated: number;
+  width: number | null;
+  height: number | null;
+}
+
+function stickerDimensions(width: number | null, height: number | null) {
+  const safeWidth = width ?? 0;
+  const safeHeight = height ?? 0;
+  if (
+    !Number.isInteger(safeWidth) ||
+    !Number.isInteger(safeHeight) ||
+    safeWidth < 1 ||
+    safeHeight < 1
+  ) {
+    return {};
+  }
+  return {
+    width: safeWidth,
+    height: safeHeight,
+    aspectRatio: Math.min(4, Math.max(0.25, safeWidth / safeHeight)),
+  };
 }
 
 function groupStickers(rows: EntitledStickerRow[]): EntitledStickerPackView[] {
@@ -126,6 +149,7 @@ function groupStickers(rows: EntitledStickerRow[]): EntitledStickerPackView[] {
       provider: "sourceboard",
       packId: row.packId,
       isAnimated: Boolean(row.isAnimated),
+      ...stickerDimensions(row.width, row.height),
     });
     packs.set(row.packId, pack);
   }
@@ -141,7 +165,8 @@ export async function listEntitledStickerPacks(
     const rows = await db
       .prepare(
         `SELECT DISTINCT st.id, st.label, st.pack_id AS packId, p.label AS packLabel,
-                COALESCE(st.is_animated, 0) AS isAnimated
+                COALESCE(st.is_animated, 0) AS isAnimated,
+                st.media_width AS width, st.media_height AS height
          FROM sticker_catalog st
          JOIN sticker_packs p ON p.id = st.pack_id
          JOIN store_items s ON s.type = 'STICKER_PACK'
@@ -163,7 +188,8 @@ export async function listEntitledStickerPacks(
     const rows = await db
       .prepare(
         `SELECT DISTINCT st.id, st.label, st.pack_id AS packId, p.label AS packLabel,
-                COALESCE(st.is_animated, 0) AS isAnimated
+                COALESCE(st.is_animated, 0) AS isAnimated,
+                st.media_width AS width, st.media_height AS height
          FROM sticker_catalog st
          JOIN sticker_packs p ON p.id = st.pack_id
          JOIN store_items s ON s.type = 'STICKER_PACK' AND s.is_active = 1
@@ -179,19 +205,29 @@ export async function listEntitledStickerPacks(
   }
 }
 
-export function createEntitlementChecker(db: D1Database) {
-  return async function assertEntitlements(
+function collectEmoteShortcodes(nodes: readonly unknown[]): string[] {
+  const shortcodes = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return;
+    const node = value as Record<string, unknown>;
+    if (node.type === "emote" && typeof node.shortcode === "string") {
+      const shortcode = normalizeEmoteShortcode(node.shortcode);
+      if (shortcode) shortcodes.add(shortcode);
+    }
+    if (Array.isArray(node.children)) node.children.forEach(visit);
+    if (Array.isArray(node.items)) node.items.forEach(visit);
+  };
+  nodes.forEach(visit);
+  return [...shortcodes];
+}
+
+export function createEmoteEntitlementChecker(db: D1Database) {
+  return async function assertEmoteEntitlements(
     userId: string,
-    body: NormalizedCommentBody,
+    nodes: readonly unknown[],
   ): Promise<void> {
-    const shortcodes = [
-      ...new Set(
-        body.richtext
-          .filter((node) => node.type === "emote")
-          .map((node) => normalizeEmoteShortcode(node.shortcode))
-          .filter((shortcode): shortcode is string => Boolean(shortcode)),
-      ),
-    ];
+    const shortcodes = collectEmoteShortcodes(nodes);
+    if (!shortcodes.length) return;
     let adminUnlocked: boolean | null = null;
 
     async function hasAdminUnlock(): Promise<boolean> {
@@ -279,8 +315,23 @@ export function createEntitlementChecker(db: D1Database) {
       if ((await hasAdminUnlock()) && (await hasAdminEmoteAccess(shortcode))) continue;
       throw new PostError(403, "EMOTE_NOT_ENTITLED", "This emote pack is not in your inventory.");
     }
+  };
+}
+
+export function createEntitlementChecker(db: D1Database) {
+  const assertEmoteEntitlements = createEmoteEntitlementChecker(db);
+  return async function assertEntitlements(
+    userId: string,
+    body: NormalizedCommentBody,
+  ): Promise<void> {
+    await assertEmoteEntitlements(userId, body.richtext);
 
     if (body.attachment?.type !== "STICKER" || body.attachment.provider === "klipy") return;
+    let adminUnlocked: boolean | null = null;
+    async function hasAdminUnlock(): Promise<boolean> {
+      if (adminUnlocked === null) adminUnlocked = await isStoreAdmin(db, userId);
+      return adminUnlocked;
+    }
     let available: unknown;
     try {
       available = await db

@@ -6,7 +6,12 @@ const MARKDOWN_DECORATION_PATTERN = /(?:\*\*|__|~~|`{1,3}|\*|_)/gu;
 function truncateVisible(value: string, limit: number): string {
   const points = Array.from(value);
   if (points.length <= limit) return value;
-  return points.slice(0, limit - 1).join("").trimEnd() + "…";
+  return (
+    points
+      .slice(0, limit - 1)
+      .join("")
+      .trimEnd() + "…"
+  );
 }
 
 function normalizePlaintext(value: string): string {

@@ -181,7 +181,7 @@ test("moderation reports expose View and contextual Details on desktop and mobil
   await expect(page.getByRole("dialog")).toContainText("e2e-report-reporter");
   await expect(page.getByRole("dialog")).toContainText("e2e-report-author");
   await expect(page.getByRole("dialog")).toContainText("Initial context review.");
-  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).last().click();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(".admin-mobile-card-list .admin-mobile-review-card")).toHaveCount(3);
@@ -203,6 +203,7 @@ test("Source Integrity exposes accepted, verified and dispute context with filte
   await expect(page.getByRole("heading", { name: "Accepted source integrity" })).toBeVisible();
   const integritySearch = page.getByRole("textbox", { name: "Search source integrity" });
   await expect(integritySearch).toBeVisible();
+  await integritySearch.fill("E2E accepted source candidate");
   await expect(page.getByRole("link", { name: "Open post" }).first()).toHaveAttribute(
     "href",
     "/posts/e2e-integrity-candidate/e2e-integrity-candidate",
@@ -267,4 +268,3 @@ test("Reputation supports achievement versioning, custom icon upload and Top 15 
   expect(response.status()).toBe(201);
   await expect(page.getByText("A new achievement version was recorded.")).toBeVisible();
 });
-

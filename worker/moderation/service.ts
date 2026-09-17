@@ -129,8 +129,12 @@ export interface ModerationQueueReport {
   moderationHistory: ModerationHistoryEntry[];
 }
 
-interface ModerationQueueRow extends Omit<ModerationQueueReport, "resourceUrl" | "moderationHistory"> {
+interface ModerationQueueRow extends Omit<
+  ModerationQueueReport,
+  "resourceUrl" | "moderationHistory"
+> {
   moderationHistoryJson: string | null;
+  moderationActionHistoryJson: string | null;
 }
 
 function parseModerationHistory(value: unknown): ModerationHistoryEntry[] {
@@ -280,7 +284,25 @@ export function createModerationService(db: D1Database, options: { events?: Queu
              LEFT JOIN users auditActor ON auditActor.id = audit.actor_user_id
              WHERE (audit.target_type = mr.target_type AND audit.target_id = mr.target_id)
                 OR (audit.target_type = 'REPORT' AND audit.target_id = mr.id)
-           ), '[]') AS moderationHistoryJson
+           ), '[]') AS moderationHistoryJson,
+           COALESCE((
+             SELECT json_group_array(json_object(
+               'id', action.id,
+               'kind', 'ACTION',
+               'action', action.action,
+               'reason', action.reason,
+               'actorUserId', action.actor_user_id,
+               'actorUsername', actionActor.username,
+               'createdAt', action.created_at
+             ))
+             FROM moderation_actions action
+             LEFT JOIN users actionActor ON actionActor.id = action.actor_user_id
+             WHERE (action.target_type = mr.target_type AND action.target_id = mr.target_id)
+                OR (
+                  mr.target_type = 'SOURCE' AND action.target_type = 'POST'
+                  AND action.target_id = sourceResolution.post_id
+                )
+           ), '[]') AS moderationActionHistoryJson
          FROM moderation_reports mr
          JOIN users reporter ON reporter.id = mr.reporter_user_id
          LEFT JOIN posts directPost
@@ -312,7 +334,10 @@ export function createModerationService(db: D1Database, options: { events?: Queu
     return result.results.map((row) => ({
       ...row,
       resourceUrl: moderationResourceUrl(row),
-      moderationHistory: parseModerationHistory(row.moderationHistoryJson),
+      moderationHistory: [
+        ...parseModerationHistory(row.moderationHistoryJson),
+        ...parseModerationHistory(row.moderationActionHistoryJson),
+      ].sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id)),
     }));
   }
 

@@ -29,7 +29,12 @@ export interface NotificationCardProps {
   onMarkRead?: (card: NotificationCardView) => void;
 }
 
-export function NotificationCard({ card, compact = false, onOpen, onMarkRead }: NotificationCardProps) {
+export function NotificationCard({
+  card,
+  compact = false,
+  onOpen,
+  onMarkRead,
+}: NotificationCardProps) {
   const { t, relative } = useI18n();
   const actors = actorStackInput(card);
   const groupLabel = card.grouped

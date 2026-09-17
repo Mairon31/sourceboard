@@ -54,10 +54,17 @@ function actorIdentity(actor: NotificationCardActor): string {
   return actor.userId ?? actor.id ?? actor.username ?? actor.displayName;
 }
 
-function groupedTitle(type: string, actors: NotificationCardActor[], count: number, fallback: string) {
+function groupedTitle(
+  type: string,
+  actors: NotificationCardActor[],
+  count: number,
+  fallback: string,
+) {
   if (count <= 1) return fallback;
   const first = actors[0]?.displayName;
-  const people = first ? `${first} and ${count - 1} ${count === 2 ? "other" : "others"}` : `${count} people`;
+  const people = first
+    ? `${first} and ${count - 1} ${count === 2 ? "other" : "others"}`
+    : `${count} people`;
   if (type === "post.liked") return `${people} liked your post`;
   if (type === "comment.liked") return `${people} liked your comment`;
   if (type === "comment.reply") return `${people} replied to you`;
@@ -89,11 +96,7 @@ export function groupNotificationCards(rows: NotificationGroupInput[]): Notifica
   const groups = new Map<string, NotificationCardView>();
 
   for (const row of ordered) {
-    if (
-      notificationImportance(row.type) === "INDIVIDUAL" ||
-      !row.entityType ||
-      !row.entityId
-    ) {
+    if (notificationImportance(row.type) === "INDIVIDUAL" || !row.entityType || !row.entityId) {
       cards.push(cardFromInput(row));
       continue;
     }
@@ -118,7 +121,12 @@ export function groupNotificationCards(rows: NotificationGroupInput[]): Notifica
       }
     }
     existing.actorCount = Math.max(existing.notificationIds.length, existing.actors.length);
-    existing.title = groupedTitle(existing.type, existing.actors, existing.actorCount, existing.title);
+    existing.title = groupedTitle(
+      existing.type,
+      existing.actors,
+      existing.actorCount,
+      existing.title,
+    );
   }
 
   return cards.sort((a, b) => b.createdAt - a.createdAt || a.key.localeCompare(b.key));

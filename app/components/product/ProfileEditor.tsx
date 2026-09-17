@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate, useRevalidator } from "react-router";
 import { prepareImageForUpload } from "../../data/media-preparation";
+import { localizeApiError, type ApiErrorPayload } from "../../data/user-facing-errors";
+import { getMediaImagePolicy } from "../../../shared/media/policy";
 import {
   canonicalSocialPlatform,
   normalizeSocialUrl,
@@ -11,13 +13,13 @@ import {
 } from "../../../shared/profile/social-links";
 import type { PublicProfileDto } from "../../../worker/profile/types";
 import type { UsernameChangeStatus } from "../../../worker/profile/username-policy";
-import { formatEmoteMarkdown, renderMarkdownPreview } from "../../../shared/richtext/markdown";
+import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
 import type { SafeInlineRichTextNode, SafeRichTextNode } from "../../../shared/richtext/markdown";
 import type { MessageKey } from "../../i18n";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Button, Card, Checkbox, Input, LinkIcon, SmileIcon, Textarea } from "../ui";
+import { Button, Card, Checkbox, Input, Textarea } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
-import { MediaPicker, type MediaPickerSelection } from "./MediaPicker";
+import { BIO_MARKDOWN_ACTIONS, handleMarkdownShortcut, MarkdownToolbar } from "./MarkdownToolbar";
 import { ProfileHero } from "./ProfileHero";
 import { ProfileIdentityCard } from "./ProfileIdentityCard";
 import { RichText } from "./RichText";
@@ -72,10 +74,22 @@ function readCookie(name: string): string | undefined {
   return entry ? decodeURIComponent(entry.slice(name.length + 1)) : undefined;
 }
 
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+async function readErrorMessage(
+  response: Response,
+  fallback: string,
+  options?: {
+    t: Translate;
+    surface: "AVATAR" | "BANNER";
+    vars?: Record<string, string | number>;
+  },
+): Promise<string> {
   try {
-    const body = (await response.json()) as { error?: { message?: string } };
-    return body.error?.message || fallback;
+    const body = (await response.json()) as ApiErrorPayload;
+    return options
+      ? localizeApiError(body, options.t, "profileEditor.uploadError", options)
+      : typeof body.error?.message === "string" && body.error.message
+        ? body.error.message
+        : fallback;
   } catch {
     return fallback;
   }
@@ -154,6 +168,7 @@ async function uploadProfileMedia(
       await readErrorMessage(
         response,
         t("profileEditor.uploadError", { purpose: purpose.toLowerCase() }),
+        { t, surface: purpose, vars: { purpose: purpose.toLowerCase() } },
       ),
     );
   }
@@ -163,7 +178,7 @@ async function uploadProfileMedia(
 
 function validateImage(file: File | null, purpose: "AVATAR" | "BANNER", t: Translate): void {
   if (!file) return;
-  const maxBytes = purpose === "BANNER" ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+  const maxBytes = getMediaImagePolicy(purpose).maxBytes;
   if (file.size > maxBytes) {
     throw new Error(
       t(purpose === "BANNER" ? "profileEditor.bannerImageSize" : "profileEditor.imageSize"),
@@ -214,7 +229,7 @@ function bioPreviewNodes(value: string, assets: Map<string, BioEmoteAsset>) {
         if (node.type !== "emote") return node;
         const shortcode = node.shortcode.replace(/^:|:$/g, "");
         const asset = assets.get(shortcode);
-        return asset ? { ...node, ...asset } : node;
+        return asset ? { ...node, id: asset.id, label: asset.label, url: asset.url } : node;
       });
     const hydrate = (node: SafeRichTextNode): SafeRichTextNode => {
       if (node.type === "paragraph" || node.type === "heading") {
@@ -274,9 +289,10 @@ export function ProfileEditor({
   const [usernameDraft, setUsernameDraft] = useState(profile.username);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+  const [removeBanner, setRemoveBanner] = useState(false);
   const [preparingMedia, setPreparingMedia] = useState(false);
   const [bioMode, setBioMode] = useState<"write" | "preview">("write");
-  const [bioEmotePickerOpen, setBioEmotePickerOpen] = useState(false);
   const [bioEmoteAssets, setBioEmoteAssets] = useState<Map<string, BioEmoteAsset>>(() => new Map());
   const bioRef = useRef<HTMLTextAreaElement | null>(null);
   const [busy, setBusy] = useState(false);
@@ -285,7 +301,11 @@ export function ProfileEditor({
   const bannerPreview = useObjectUrl(bannerFile);
   const profileDirty = Boolean(
     draft &&
-    (draftFingerprint(draft) !== initialFingerprint || avatarFile !== null || bannerFile !== null),
+    (draftFingerprint(draft) !== initialFingerprint ||
+      avatarFile !== null ||
+      bannerFile !== null ||
+      removeAvatar ||
+      removeBanner),
   );
   const usernameDirty = Boolean(usernameStatus && usernameDraft.trim() !== usernameStatus.username);
   const dirty = profileDirty || usernameDirty;
@@ -347,7 +367,6 @@ export function ProfileEditor({
 
   function beginEditing() {
     setBioMode("write");
-    setBioEmotePickerOpen(false);
     setBioEmoteAssets(new Map());
     setEditing(true);
     onEditingChange?.(true);
@@ -355,7 +374,6 @@ export function ProfileEditor({
 
   function cancelEditing() {
     setBioMode("write");
-    setBioEmotePickerOpen(false);
     setBioEmoteAssets(new Map());
     setEditing(false);
     onEditingChange?.(false);
@@ -367,62 +385,9 @@ export function ProfileEditor({
     setUsernameDraft(profile.username);
     setAvatarFile(null);
     setBannerFile(null);
+    setRemoveAvatar(false);
+    setRemoveBanner(false);
     setStatus(null);
-  }
-
-  function wrapBio(prefix: string, suffix = prefix) {
-    if (!draft) return;
-    const input = bioRef.current;
-    const start = input?.selectionStart ?? draft.bio.length;
-    const end = input?.selectionEnd ?? start;
-    const selected = draft.bio.slice(start, end);
-    const next = `${draft.bio.slice(0, start)}${prefix}${selected}${suffix}${draft.bio.slice(end)}`;
-    setDraft((current) => (current ? { ...current, bio: next } : current));
-    requestAnimationFrame(() => {
-      bioRef.current?.focus();
-      const cursor = selected
-        ? start + prefix.length + selected.length + suffix.length
-        : start + prefix.length;
-      bioRef.current?.setSelectionRange(cursor, cursor);
-    });
-  }
-
-  function insertBioLink() {
-    if (!draft) return;
-    const input = bioRef.current;
-    const start = input?.selectionStart ?? draft.bio.length;
-    const end = input?.selectionEnd ?? start;
-    const selected = draft.bio.slice(start, end) || t("profileEditor.bioLinkText");
-    const token = `[${selected}](https://)`;
-    const next = `${draft.bio.slice(0, start)}${token}${draft.bio.slice(end)}`;
-    setDraft((current) => (current ? { ...current, bio: next } : current));
-    requestAnimationFrame(() => {
-      bioRef.current?.focus();
-      const urlStart = start + selected.length + 3;
-      bioRef.current?.setSelectionRange(urlStart, urlStart + 8);
-    });
-  }
-
-  function insertBioEmote(selection: MediaPickerSelection) {
-    if (!draft || selection.type !== "EMOTE") return;
-    setBioEmoteAssets((current) => {
-      const next = new Map(current);
-      next.set(selection.shortcode.replace(/^:|:$/g, ""), selection);
-      return next;
-    });
-    const input = bioRef.current;
-    const start = input?.selectionStart ?? draft.bio.length;
-    const end = input?.selectionEnd ?? start;
-    const before = draft.bio.slice(0, start);
-    const after = draft.bio.slice(end);
-    const token = `${before && !/\\s$/.test(before) ? " " : ""}${formatEmoteMarkdown(selection.shortcode)}${after && !/^\\s/.test(after) ? " " : ""}`;
-    const next = `${before}${token}${after}`;
-    setDraft((current) => (current ? { ...current, bio: next } : current));
-    requestAnimationFrame(() => {
-      bioRef.current?.focus();
-      const cursor = start + token.length;
-      bioRef.current?.setSelectionRange(cursor, cursor);
-    });
   }
 
   function updateLink(key: string, change: Partial<SocialLinkDraft>) {
@@ -476,8 +441,8 @@ export function ProfileEditor({
       validateImage(bannerFile, "BANNER", t);
       const socialLinks = normalizeSocialLinks(draft.socialLinks, t);
       const csrfToken = readCookie("__Host-sourceboard_csrf") ?? "";
-      let avatarAssetId = source.profile.avatarAssetId;
-      let bannerAssetId = source.profile.bannerAssetId;
+      let avatarAssetId = removeAvatar ? null : source.profile.avatarAssetId;
+      let bannerAssetId = removeBanner ? null : source.profile.bannerAssetId;
       let profileSaved = false;
 
       if (avatarFile) avatarAssetId = await uploadProfileMedia("AVATAR", avatarFile, csrfToken, t);
@@ -521,6 +486,8 @@ export function ProfileEditor({
         );
         setAvatarFile(null);
         setBannerFile(null);
+        setRemoveAvatar(false);
+        setRemoveBanner(false);
       }
 
       if (usernameDirty && usernameStatus) {
@@ -550,6 +517,8 @@ export function ProfileEditor({
         setInitialFingerprint("");
         setAvatarFile(null);
         setBannerFile(null);
+        setRemoveAvatar(false);
+        setRemoveBanner(false);
         setStatus(
           profileSaved ? t("profileEditor.bothUpdated") : t("profileEditor.usernameUpdated"),
         );
@@ -569,6 +538,8 @@ export function ProfileEditor({
       setInitialFingerprint("");
       setAvatarFile(null);
       setBannerFile(null);
+      setRemoveAvatar(false);
+      setRemoveBanner(false);
       setStatus(t("profileEditor.profileUpdated"));
       revalidator.revalidate();
     } catch (error) {
@@ -584,13 +555,24 @@ export function ProfileEditor({
       validateImage(file, purpose, t);
       setPreparingMedia(true);
       setStatus(null);
-      const prepared = await prepareImageForUpload(file, {
-        maxDimension: purpose === "AVATAR" ? 2_048 : 4_096,
-      });
-      if (purpose === "AVATAR") setAvatarFile(prepared);
-      else setBannerFile(prepared);
+      const prepared = await prepareImageForUpload(file, { purpose });
+      if (purpose === "AVATAR") {
+        setAvatarFile(prepared);
+        setRemoveAvatar(false);
+      } else {
+        setBannerFile(prepared);
+        setRemoveBanner(false);
+      }
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : t("profileEditor.imagePrepareError"));
+      setStatus(
+        error instanceof Error && error.message === "IMAGE_DIMENSIONS_INVALID"
+          ? t(
+              purpose === "BANNER"
+                ? "profileEditor.bannerImageDimensions"
+                : "profileEditor.imageDimensions",
+            )
+          : t("profileEditor.imagePrepareError"),
+      );
     } finally {
       setPreparingMedia(false);
     }
@@ -637,49 +619,79 @@ export function ProfileEditor({
       profileTheme={profile.cosmetics?.profileTheme}
       legacyProfileBanner={profile.cosmetics?.profileBanner}
       profileEffect={profile.cosmetics?.profileEffect}
-      bannerUrl={bannerPreview ?? profile.bannerUrl}
+      bannerUrl={bannerPreview ?? (removeBanner ? undefined : profile.bannerUrl)}
       visuals={profile.cosmetics?.visuals}
       communityStyles={profile.cosmetics?.communityStyles}
       className="product-profile-editor-inline"
     >
-      <label
-        className="product-profile-theme-edit"
-        title={t("profileEditor.changeBackgroundTitle")}
-      >
-        <span>{t("profileEditor.changeBackground")}</span>
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/avif,image/gif"
-          onChange={(event) => void selectProfileMedia("BANNER", event.target.files?.[0])}
-        />
-      </label>
+      <div className="product-profile-editor-inline__banner-controls">
+        <label
+          className="product-profile-theme-edit"
+          title={t("profileEditor.changeBackgroundTitle")}
+        >
+          <span>{t("profileEditor.changeBackground")}</span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/avif,image/gif"
+            onChange={(event) => void selectProfileMedia("BANNER", event.target.files?.[0])}
+          />
+        </label>
+        {(source?.profile.bannerAssetId || bannerPreview) && !removeBanner ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setBannerFile(null);
+              setRemoveBanner(true);
+            }}
+          >
+            {t("profileEditor.removeBanner")}
+          </Button>
+        ) : null}
+      </div>
 
       <form
         className="product-profile-content product-profile-editor-inline__form profile-header"
         onSubmit={(event) => void saveProfile(event)}
       >
         <div className="product-profile-editor-inline__identity">
-          <label
-            className="product-profile-avatar-edit"
-            title={t("profileEditor.changeAvatarTitle")}
-          >
-            <CosmeticIdentity
-              displayName={draft.displayName.trim() || usernameDraft.trim() || profile.username}
-              avatarUrl={avatarPreview ?? profile.avatarUrl}
-              avatarFrame={profile.cosmetics?.avatarFrame}
-              nameFont={profile.cosmetics?.nameFont}
-              nameEffect={profile.cosmetics?.nameEffect}
-              visuals={profile.cosmetics?.visuals}
-              mode="profile"
-              nameAs="h1"
-            />
-            <span>{t("profileEditor.change")}</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/avif,image/gif"
-              onChange={(event) => void selectProfileMedia("AVATAR", event.target.files?.[0])}
-            />
-          </label>
+          <div className="product-profile-editor-inline__avatar-controls">
+            <label
+              className="product-profile-avatar-edit"
+              title={t("profileEditor.changeAvatarTitle")}
+            >
+              <CosmeticIdentity
+                displayName={draft.displayName.trim() || usernameDraft.trim() || profile.username}
+                avatarUrl={avatarPreview ?? (removeAvatar ? undefined : profile.avatarUrl)}
+                avatarFrame={profile.cosmetics?.avatarFrame}
+                nameFont={profile.cosmetics?.nameFont}
+                nameEffect={profile.cosmetics?.nameEffect}
+                visuals={profile.cosmetics?.visuals}
+                mode="profile"
+                nameAs="h1"
+              />
+              <span>{t("profileEditor.change")}</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/avif,image/gif"
+                onChange={(event) => void selectProfileMedia("AVATAR", event.target.files?.[0])}
+              />
+            </label>
+            {(source?.profile.avatarAssetId || avatarPreview) && !removeAvatar ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setAvatarFile(null);
+                  setRemoveAvatar(true);
+                }}
+              >
+                {t("profileEditor.removeAvatar")}
+              </Button>
+            ) : null}
+          </div>
           <div className="product-profile-editor-inline__identity-copy">
             <strong>{draft.displayName.trim() || usernameDraft.trim() || profile.username}</strong>
             <span>@{usernameDraft.trim() || profile.username}</span>
@@ -770,57 +782,37 @@ export function ProfileEditor({
             </div>
             {bioMode === "write" ? (
               <>
-                <div
-                  className="product-profile-editor-inline__bio-toolbar"
-                  role="toolbar"
-                  aria-label={t("profileEditor.bioFormatting")}
-                >
-                  <button
-                    type="button"
-                    onClick={() => wrapBio("**")}
-                    aria-label={t("profileEditor.bioBold")}
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => wrapBio("*")}
-                    aria-label={t("profileEditor.bioItalic")}
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => wrapBio("> ", "")}
-                    aria-label={t("profileEditor.bioQuote")}
-                  >
-                    ❯
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => wrapBio("`")}
-                    aria-label={t("profileEditor.bioCode")}
-                  >
-                    &lt;/&gt;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={insertBioLink}
-                    aria-label={t("profileEditor.bioLink")}
-                    title={t("profileEditor.bioLink")}
-                  >
-                    <LinkIcon width="16" height="16" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBioEmotePickerOpen((current) => !current)}
-                    aria-label={t("profileEditor.bioEmote")}
-                    title={t("profileEditor.bioEmote")}
-                    aria-expanded={bioEmotePickerOpen}
-                  >
-                    <SmileIcon width="16" height="16" />
-                  </button>
-                </div>
+                <MarkdownToolbar
+                  value={draft.bio}
+                  onChange={(value) =>
+                    setDraft((current) => (current ? { ...current, bio: value } : current))
+                  }
+                  inputRef={bioRef}
+                  actions={BIO_MARKDOWN_ACTIONS}
+                  labels={{
+                    toolbar: t("profileEditor.bioFormatting"),
+                    bold: t("profileEditor.bioBold"),
+                    italic: t("profileEditor.bioItalic"),
+                    heading1: t("composer.description.heading1"),
+                    heading2: t("composer.description.heading2"),
+                    heading3: t("composer.description.heading3"),
+                    quote: t("profileEditor.bioQuote"),
+                    bulletList: t("composer.description.bulletList"),
+                    numberedList: t("composer.description.numberedList"),
+                    code: t("profileEditor.bioCode"),
+                    link: t("profileEditor.bioLink"),
+                    emote: t("profileEditor.bioEmote"),
+                    linkText: t("profileEditor.bioLinkText"),
+                  }}
+                  onEmoteSelected={(selection) => {
+                    if (selection.type !== "EMOTE") return;
+                    setBioEmoteAssets((current) => {
+                      const next = new Map(current);
+                      next.set(selection.shortcode.replace(/^:|:$/g, ""), selection);
+                      return next;
+                    });
+                  }}
+                />
                 <Textarea
                   ref={bioRef}
                   label={t("profileEditor.bio")}
@@ -832,16 +824,12 @@ export function ProfileEditor({
                       current ? { ...current, bio: event.target.value } : current,
                     )
                   }
+                  onKeyDown={(event) =>
+                    handleMarkdownShortcut(event, draft.bio, bioRef, (value) =>
+                      setDraft((current) => (current ? { ...current, bio: value } : current)),
+                    )
+                  }
                 />
-                {bioEmotePickerOpen ? (
-                  <MediaPicker
-                    kind="EMOTE"
-                    allowedKinds={["EMOTE"]}
-                    onKindChange={() => undefined}
-                    onSelect={insertBioEmote}
-                    onClose={() => setBioEmotePickerOpen(false)}
-                  />
-                ) : null}
               </>
             ) : (
               <div className="product-profile-editor-inline__bio-preview" role="tabpanel">

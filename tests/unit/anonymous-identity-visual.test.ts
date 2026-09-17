@@ -43,4 +43,12 @@ describe("anonymous identity visual privacy", () => {
       expect(source).toMatch(/<CosmeticIdentity\s+anonymous\b/);
     }
   });
+
+  it("uses the shared identity for the anonymous comment composer avatar", () => {
+    const composerStart = commentThread.indexOf("product-comment-composer glass-panel");
+    const composer = commentThread.slice(composerStart, composerStart + 1_200);
+
+    expect(composer).toContain("<CosmeticIdentity anonymous");
+    expect(composer).not.toContain("<Avatar");
+  });
 });

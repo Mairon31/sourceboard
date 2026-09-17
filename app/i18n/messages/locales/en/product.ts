@@ -165,6 +165,10 @@ export const enProductMessages = {
     "Accepted source contributions will appear here when available.",
   "profile.activity.emptyPostsDescription":
     "Public source requests and posts visible to you will appear here.",
+  "profile.recentlyDeleted.eyebrow": "Private archive",
+  "profile.recentlyDeleted.title": "Recently deleted",
+  "profile.recentlyDeleted.description":
+    "Restore your posts within 24 hours. Their comments, reactions and source history stay intact.",
   "profile.relationship.none": "Not connected",
   "profile.relationship.friend": "Friends",
   "profile.relationship.incoming": "Incoming request",

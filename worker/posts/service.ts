@@ -1,5 +1,10 @@
 import type { PostCategorySlug } from "../../shared/posts/categories";
-import { parseMarkdown } from "../../shared/richtext/markdown";
+import {
+  normalizeEmoteShortcode,
+  parseMarkdown,
+  type SafeInlineRichTextNode,
+  type SafeRichTextNode,
+} from "../../shared/richtext/markdown";
 import type { PostDetail, PostSummary, PublicPostAuthor } from "../../shared/ui/contracts";
 import { createIdentifier } from "../auth/crypto";
 import { canViewNsfwPost, canViewUser } from "../privacy/policy";
@@ -23,9 +28,17 @@ const MAX_FEED_LIMIT = 30;
 const EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const SOFT_DELETE_RETENTION_MS = 24 * 60 * 60 * 1000;
 
+type PostEmoteAsset = {
+  id: string;
+  label: string;
+  shortcode: string;
+  url: string;
+};
+
 export interface PostServiceDependencies {
   store: PostStore;
   profileStore: ProfileStore;
+  assertEmoteEntitlements?: (userId: string, nodes: readonly unknown[]) => Promise<void>;
   now?: () => number;
 }
 
@@ -51,6 +64,7 @@ export interface PostService {
     viewerId: string | null;
     limit: number;
   }): Promise<{ posts: PostSummary[]; acceptedSources: PostSummary[] }>;
+  listRecentlyDeleted(authorId: string, limit: number): Promise<PostSummary[]>;
   updatePost(
     postId: string,
     editorUserId: string,
@@ -200,6 +214,100 @@ async function canListAcceptedSourceOnProfile(
   return canViewPost(viewerId, post, dependencies);
 }
 
+function hydratePostInline(
+  nodes: SafeInlineRichTextNode[],
+  assets: Map<string, PostEmoteAsset>,
+): SafeInlineRichTextNode[] {
+  return nodes.map((node) => {
+    if (node.type !== "emote") return node;
+    const shortcode = normalizeEmoteShortcode(node.shortcode);
+    const asset = shortcode ? assets.get(shortcode) : undefined;
+    return asset ? { ...node, id: asset.id, label: asset.label, url: asset.url } : node;
+  });
+}
+
+function hydratePostRichtext(
+  nodes: SafeRichTextNode[],
+  assets: Map<string, PostEmoteAsset>,
+): SafeRichTextNode[] {
+  return nodes.map((node) => {
+    if (node.type === "paragraph" || node.type === "heading") {
+      return { ...node, children: hydratePostInline(node.children, assets) };
+    }
+    if (node.type === "quote") {
+      return { ...node, children: hydratePostRichtext(node.children, assets) };
+    }
+    if (node.type === "list") {
+      return {
+        ...node,
+        items: node.items.map((item) => ({
+          ...item,
+          children: hydratePostInline(item.children, assets),
+        })),
+      };
+    }
+    return node;
+  });
+}
+
+function parsePostRichtext(
+  description: string,
+  assets: Map<string, PostEmoteAsset>,
+): SafeRichTextNode[] | undefined {
+  try {
+    return hydratePostRichtext(parseMarkdown(description), assets);
+  } catch {
+    // Legacy records may predate the canonical parser. Preserve the raw text
+    // fallback in the UI instead of making a feed unavailable.
+    return undefined;
+  }
+}
+
+function collectPostEmoteShortcodes(nodes: SafeRichTextNode[], output: Set<string>): void {
+  for (const node of nodes) {
+    if (node.type === "paragraph" || node.type === "heading") {
+      for (const child of node.children) {
+        if (child.type === "emote") {
+          const shortcode = normalizeEmoteShortcode(child.shortcode);
+          if (shortcode) output.add(shortcode);
+        }
+      }
+    } else if (node.type === "quote") {
+      collectPostEmoteShortcodes(node.children, output);
+    } else if (node.type === "list") {
+      for (const item of node.items) {
+        for (const child of item.children) {
+          if (child.type === "emote") {
+            const shortcode = normalizeEmoteShortcode(child.shortcode);
+            if (shortcode) output.add(shortcode);
+          }
+        }
+      }
+    }
+  }
+}
+
+async function getPostEmoteAssets(
+  posts: PostWithAuthor[],
+  viewerId: string | null,
+  profileStore: ProfileStore,
+): Promise<Map<string, PostEmoteAsset>> {
+  if (!profileStore.getEmoteAssets) return new Map();
+  const shortcodes = new Set<string>();
+  for (const post of posts) {
+    const nodes = parsePostRichtext(post.post.description, new Map());
+    if (nodes) collectPostEmoteShortcodes(nodes, shortcodes);
+  }
+  if (!shortcodes.size) return new Map();
+  try {
+    return await profileStore.getEmoteAssets([...shortcodes], viewerId);
+  } catch {
+    // Emote hydration is optional presentation data; the safe shortcode
+    // remains renderable if the catalog is temporarily unavailable.
+    return new Map();
+  }
+}
+
 function authorForPost(
   post: PostWithAuthor,
   profileVisible: boolean,
@@ -232,6 +340,7 @@ async function toPostSummary(
   viewerId: string | null,
   dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
   allowDeletedOwner = false,
+  emoteAssets: Map<string, PostEmoteAsset> = new Map(),
 ): Promise<PostSummary> {
   const profileVisible =
     post.post.authorMode === "IDENTIFIED"
@@ -258,12 +367,16 @@ async function toPostSummary(
         ? "BLURRED"
         : "VISIBLE";
   const isMediaVisible =
-    !allowDeletedOwner && nsfwPresentation !== "HIDDEN" && post.media.status === "ACTIVE";
+    (allowDeletedOwner || nsfwPresentation !== "HIDDEN") && post.media.status === "ACTIVE";
+  const descriptionRichtext = post.post.description
+    ? parsePostRichtext(post.post.description, emoteAssets)
+    : undefined;
   return {
     id: post.post.id,
     slug: post.post.slug,
     title: post.post.title,
     description: post.post.description || undefined,
+    ...(descriptionRichtext ? { descriptionRichtext } : {}),
     categorySlug: post.post.categorySlug,
     author: authorForPost(post, profileVisible, cosmetics),
     createdAt: new Date(post.post.createdAt).toISOString(),
@@ -279,6 +392,12 @@ async function toPostSummary(
     imageUrl: isMediaVisible ? `/api/media/post/${encodeURIComponent(post.media.id)}` : undefined,
     imageWidth: post.media.width ?? undefined,
     imageHeight: post.media.height ?? undefined,
+    ...(allowDeletedOwner && post.post.deletedAt
+      ? {
+          deletedAt: new Date(post.post.deletedAt).toISOString(),
+          restoreAvailable: true,
+        }
+      : {}),
     acceptedSource: post.acceptedSource
       ? {
           commentId: post.acceptedSource.commentId,
@@ -305,11 +424,21 @@ async function toPostDetail(
   viewerId: string | null,
   dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
   allowDeletedOwner = false,
+  emoteAssets?: Map<string, PostEmoteAsset>,
 ): Promise<PostDetail> {
-  const summary = await toPostSummary(post, viewerId, dependencies, allowDeletedOwner);
+  const summary = await toPostSummary(
+    post,
+    viewerId,
+    dependencies,
+    allowDeletedOwner,
+    emoteAssets ?? (await getPostEmoteAssets([post], viewerId, dependencies.profileStore)),
+  );
   const isOwner = viewerId === post.post.authorId;
   const canEdit =
-    isOwner && post.post.editDeadlineAt >= dependencies.now() && post.post.status !== "LOCKED";
+    isOwner &&
+    !post.post.deletedAt &&
+    post.post.editDeadlineAt >= dependencies.now() &&
+    post.post.status !== "LOCKED";
   return {
     ...summary,
     comments: [],
@@ -351,6 +480,10 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
   return {
     async createPost(input) {
       const validated = validatePostFields(input);
+      await dependencies.assertEmoteEntitlements?.(
+        input.authorId,
+        parseMarkdown(validated.description),
+      );
       const createdAt = input.now ?? now();
       const slug = createPostSlug(validated.title, input.id);
       await dependencies.store.createPost({
@@ -381,7 +514,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
     async listFeed({ viewerId, kind, categorySlug, cursor, limit }) {
       const safeLimit = Math.min(Math.max(1, Math.floor(limit)), MAX_FEED_LIMIT);
       let decodedCursor = decodePostCursor(cursor);
-      const visible: PostSummary[] = [];
+      const visible: PostWithAuthor[] = [];
       let nextCursor: string | null = null;
       for (let page = 0; page < 5 && visible.length < safeLimit; page += 1) {
         const result = await dependencies.store.listFeed({
@@ -393,7 +526,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         });
         for (const post of result.posts) {
           if (await canViewPost(viewerId, post.post, policyDependencies)) {
-            visible.push(await toPostSummary(post, viewerId, policyDependencies));
+            visible.push(post);
             if (visible.length >= safeLimit) break;
           }
         }
@@ -401,13 +534,21 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         if (!result.nextCursor) break;
         decodedCursor = decodePostCursor(result.nextCursor);
       }
-      return { posts: visible, nextCursor };
+      const emoteAssets = await getPostEmoteAssets(visible, viewerId, dependencies.profileStore);
+      return {
+        posts: await Promise.all(
+          visible.map((post) =>
+            toPostSummary(post, viewerId, policyDependencies, false, emoteAssets),
+          ),
+        ),
+        nextCursor,
+      };
     },
 
     async listProfileActivity({ authorId, viewerId, limit }) {
       const safeLimit = Math.min(Math.max(1, Math.floor(limit)), MAX_FEED_LIMIT);
       let decodedCursor = decodePostCursor(null);
-      const visible: PostSummary[] = [];
+      const visible: PostWithAuthor[] = [];
       for (let page = 0; page < 5 && visible.length < safeLimit; page += 1) {
         const result = await dependencies.store.listByAuthor({
           authorId,
@@ -416,7 +557,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         });
         for (const post of result.posts) {
           if (await canListPostOnProfile(viewerId, post.post, policyDependencies)) {
-            visible.push(await toPostSummary(post, viewerId, policyDependencies));
+            visible.push(post);
             if (visible.length >= safeLimit) break;
           }
         }
@@ -425,7 +566,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
       }
 
       let acceptedCursor = decodePostCursor(null);
-      const acceptedSources: PostSummary[] = [];
+      const acceptedSources: PostWithAuthor[] = [];
       for (let page = 0; page < 5 && acceptedSources.length < safeLimit; page += 1) {
         const result = await dependencies.store.listAcceptedByContributor({
           contributorId: authorId,
@@ -436,7 +577,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
           if (
             await canListAcceptedSourceOnProfile(authorId, viewerId, post.post, policyDependencies)
           ) {
-            acceptedSources.push(await toPostSummary(post, viewerId, policyDependencies));
+            acceptedSources.push(post);
             if (acceptedSources.length >= safeLimit) break;
           }
         }
@@ -444,7 +585,49 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         acceptedCursor = decodePostCursor(result.nextCursor);
       }
 
-      return { posts: visible, acceptedSources };
+      const emoteAssets = await getPostEmoteAssets(
+        [...visible, ...acceptedSources],
+        viewerId,
+        dependencies.profileStore,
+      );
+      const [posts, acceptedSourceSummaries] = await Promise.all([
+        Promise.all(
+          visible.map((post) =>
+            toPostSummary(post, viewerId, policyDependencies, false, emoteAssets),
+          ),
+        ),
+        Promise.all(
+          acceptedSources.map((post) =>
+            toPostSummary(post, viewerId, policyDependencies, false, emoteAssets),
+          ),
+        ),
+      ]);
+      return { posts, acceptedSources: acceptedSourceSummaries };
+    },
+
+    async listRecentlyDeleted(authorId, limit) {
+      const safeLimit = Math.min(Math.max(1, Math.floor(limit)), MAX_FEED_LIMIT);
+      const deleted = await dependencies.store.listDeletedByAuthor({
+        authorId,
+        cutoff: now() - SOFT_DELETE_RETENTION_MS,
+        limit: safeLimit,
+      });
+      const visibleDeleted = deleted.filter(
+        (post) =>
+          post.post.authorId === authorId &&
+          Boolean(post.post.deletedAt) &&
+          now() - (post.post.deletedAt ?? 0) < SOFT_DELETE_RETENTION_MS,
+      );
+      const emoteAssets = await getPostEmoteAssets(
+        visibleDeleted,
+        authorId,
+        dependencies.profileStore,
+      );
+      return Promise.all(
+        visibleDeleted.map((post) =>
+          toPostSummary(post, authorId, policyDependencies, true, emoteAssets),
+        ),
+      );
     },
 
     async updatePost(postId, editorUserId, input) {
@@ -456,6 +639,10 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         throw new PostError(409, "POST_NOT_EDITABLE", "This post cannot be edited.");
       }
       const validated = validatePostFields(input);
+      await dependencies.assertEmoteEntitlements?.(
+        editorUserId,
+        parseMarkdown(validated.description),
+      );
       const currentTime = now();
       if (current.post.editDeadlineAt < currentTime) {
         throw new PostError(
@@ -616,7 +803,14 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
     async getVisibleMedia(assetId, viewerId) {
       const post = await dependencies.store.getPostForMedia(assetId);
       if (!post || post.media.status !== "ACTIVE") return null;
-      if (!(await canViewPost(viewerId, post.post, policyDependencies))) return null;
+      const ownerCanRestore = Boolean(
+        viewerId === post.post.authorId &&
+        post.post.deletedAt &&
+        now() - post.post.deletedAt < SOFT_DELETE_RETENTION_MS,
+      );
+      if (!ownerCanRestore && !(await canViewPost(viewerId, post.post, policyDependencies))) {
+        return null;
+      }
       return { post, media: post.media };
     },
 

@@ -13,6 +13,8 @@ const profileEditor = read("../../app/components/product/ProfileEditor.tsx");
 const postRoute = read("../../app/routes/post-new.tsx");
 const imageValidation = read("../../worker/posts/image.ts");
 const mediaPolicy = read("../../worker/media/image-policy.ts");
+const sharedMediaPolicy = read("../../shared/media/policy.ts");
+const mediaUpload = read("../../worker/media/upload.ts");
 const postsApi = read("../../worker/posts/api.ts");
 const postsStore = read("../../worker/posts/store.ts");
 
@@ -29,23 +31,35 @@ describe("new post image upload pipeline", () => {
     expect(uploadField).toContain('role="progressbar"');
   });
 
+  it("serializes async preparation and ignores new attachments while busy", () => {
+    expect(uploadField).toContain("preparationInFlight");
+    expect(uploadField).toContain(
+      "if (!next || disabled || uploading || preparationInFlight.current) return;",
+    );
+    expect(uploadField).toContain(
+      "if (disabled || preparing || uploading || preparationInFlight.current) return;",
+    );
+  });
+
   it("keeps the canonical post upload allowlist and does not silently accept GIF uploads", () => {
     for (const type of ["image/jpeg", "image/png", "image/webp", "image/avif"]) {
       expect(mediaPolicy).toContain(`"${type}"`);
       expect(uploadField).toContain(type);
     }
-    expect(mediaPolicy).not.toContain('"image/gif"');
-    expect(imageValidation).toContain('validateUploadedImage(bytes, contentType, "POST")');
+    expect(sharedMediaPolicy).toContain("allowedContentTypes: STATIC_IMAGE_TYPES");
+    expect(sharedMediaPolicy).toContain('"image/gif"');
+    expect(mediaPolicy).toContain("validateUploadedImage");
+    expect(imageValidation).toContain("validateUploadedImage");
     expect(uploadField).toContain('file.type === "image/gif"');
     expect(mediaPreparation).toContain("return file");
-    expect(uploadField).toContain("25 * 1024 * 1024");
-    expect(uploadField).toContain("MAX_POST_IMAGE_DIMENSION = 6_000");
+    expect(sharedMediaPolicy).toContain("maxBytes: 25 * 1024 * 1024");
+    expect(sharedMediaPolicy).toContain("maxDimension: 4_096");
   });
 
   it("optimizes compatible static images and bounds oversized dimensions before upload", () => {
-    expect(uploadField).toContain("MAX_POST_IMAGE_DIMENSION");
+    expect(uploadField).toContain('getMediaImagePolicy("POST").maxBytes');
     expect(mediaPreparation).toContain(
-      "options.maxDimension / Math.max(bitmap.width, bitmap.height)",
+      "policy.maxDimension / Math.max(bitmap.width, bitmap.height)",
     );
     expect(mediaPreparation).toContain("canvas.toBlob");
     expect(mediaPreparation).toContain('"image/webp"');
@@ -55,17 +69,30 @@ describe("new post image upload pipeline", () => {
   it("reuses the bounded client preparation for profile media and comment images", () => {
     const comments = read("../../app/components/product/CommentThread.tsx");
     expect(profileEditor).toContain("prepareImageForUpload");
-    expect(profileEditor).toContain('maxDimension: purpose === "AVATAR" ? 2_048 : 4_096');
+    expect(profileEditor).toContain("prepareImageForUpload(file, { purpose })");
     expect(comments).toContain("prepareImageForUpload");
-    expect(comments).toContain("maxDimension: 3_000");
+    expect(comments).toContain('purpose: "COMMENT"');
+  });
+
+  it("rejects an oversized original comment image before client optimization", () => {
+    const comments = read("../../app/components/product/CommentThread.tsx");
+    expect(comments).toContain('getMediaImagePolicy("COMMENT").maxBytes');
+    expect(comments).toContain('t("comments.error.imageTooLarge")');
   });
 
   it("revalidates bytes on the server and persists only image metadata in D1", () => {
-    expect(postsApi).toContain("assertPostImage(bytes, fileEntry.type)");
-    expect(postsApi).toContain("sha256Hex(bytes.buffer)");
+    expect(postsApi).toContain("uploadMediaAsset");
+    expect(postsApi).toContain('fileEntry.size > getMediaImagePolicy("POST").maxBytes');
+    expect(read("../../worker/comments/api.ts")).toContain(
+      'file.size > getMediaImagePolicy("COMMENT").maxBytes',
+    );
+    expect(read("../../worker/profile/api-core.ts")).toContain(
+      "file.size > getMediaImagePolicy(purpose).maxBytes",
+    );
+    expect(mediaUpload).toContain("crypto.subtle.digest");
     expect(postsApi).toContain("createIdentifier()");
-    expect(postsApi).toContain("media.put(r2Key, bytes");
-    expect(postsApi).toContain("httpMetadata: { contentType: metadata.contentType }");
+    expect(mediaUpload).toContain("httpMetadata: { contentType: validation.contentType }");
+    expect(mediaUpload).toContain("createMediaStorageKey");
     expect(postsStore).toContain("checksum_sha256");
     expect(postsStore).toContain("byte_size");
     expect(postsStore).not.toMatch(/base64|body_blob|image_bytes/i);

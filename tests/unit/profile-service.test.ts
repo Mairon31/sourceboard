@@ -217,6 +217,55 @@ describe("profile and social service", () => {
     expect(store.updateProfile).not.toHaveBeenCalled();
   });
 
+  it("validates profile media purpose and rejects one mutable asset shared by avatar and banner", async () => {
+    const { store } = createStore();
+    const getMediaAsset = vi.fn(async (assetId: string) => ({
+      id: assetId,
+      ownerUserId: "viewer",
+      purpose: assetId === "banner-asset" ? "BANNER" : "AVATAR",
+      r2Key: `profile/${assetId}`,
+      contentType: "image/webp",
+      byteSize: 100,
+      width: 256,
+      height: 256,
+      checksumSha256: "checksum",
+      status: "ACTIVE" as const,
+      createdAt: 1,
+      deletedAt: null,
+    }));
+    Object.assign(store, { getMediaAsset });
+    const service = createProfileService({ store, now: () => 10 });
+
+    await expect(
+      service.updateMyProfile(
+        "viewer",
+        {
+          displayName: "Viewer",
+          bio: "bio",
+          profileVisibility: "PUBLIC",
+          avatarAssetId: "banner-asset",
+          bannerAssetId: null,
+        },
+        [],
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_PROFILE_MEDIA" });
+
+    await expect(
+      service.updateMyProfile(
+        "viewer",
+        {
+          displayName: "Viewer",
+          bio: "bio",
+          profileVisibility: "PUBLIC",
+          avatarAssetId: "shared-asset",
+          bannerAssetId: "shared-asset",
+        },
+        [],
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_PROFILE_MEDIA" });
+    expect(store.updateProfile).not.toHaveBeenCalled();
+  });
+
   it("rejects unsafe or layout-breaking Markdown in profile bios", async () => {
     const { store } = createStore();
     const service = createProfileService({ store, now: () => 10 });

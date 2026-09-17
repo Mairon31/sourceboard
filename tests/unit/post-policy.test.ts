@@ -83,6 +83,8 @@ function dependencies() {
     }),
   );
   const getPost = vi.fn(async () => post());
+  const getPostForMedia = vi.fn(async () => post());
+  const assertEmoteEntitlements = vi.fn(async () => undefined);
   const profileStore = {
     getProfileByUserId: vi.fn(async () => ({
       userId: "author-1",
@@ -110,7 +112,7 @@ function dependencies() {
   } as unknown as ProfileStore;
   const store = {
     getPost,
-    getPostForMedia: vi.fn(async () => post()),
+    getPostForMedia,
     getNsfwPost: vi.fn(async () => ({
       id: "post-1",
       authorUserId: "author-1",
@@ -137,6 +139,8 @@ function dependencies() {
     listByAuthor,
     listAcceptedByContributor,
     getPost,
+    getPostForMedia,
+    assertEmoteEntitlements,
   };
 }
 
@@ -206,6 +210,80 @@ describe("Phase 4 post policy", () => {
       1_000,
       1_000 + 23 * 60 * 60 * 1_000,
     );
+  });
+
+  it("rejects restore for a different user before touching the store", async () => {
+    const { profileStore, store, getPost } = dependencies();
+    const restorePost = vi.fn(async () => true);
+    Object.assign(store, { restorePost });
+    getPost.mockResolvedValue(post({ deletedAt: 1_000, status: "ARCHIVED" }));
+    const service = createPostService({
+      store,
+      profileStore,
+      now: () => 1_000 + 23 * 60 * 60 * 1_000,
+    });
+
+    await expect(service.restorePost("post-1", "intruder-1")).rejects.toMatchObject({
+      status: 409,
+      code: "POST_RESTORE_UNAVAILABLE",
+    });
+    expect(restorePost).not.toHaveBeenCalled();
+  });
+
+  it("rejects restore at the 24-hour boundary before touching the store", async () => {
+    const { profileStore, store, getPost } = dependencies();
+    const restorePost = vi.fn(async () => true);
+    Object.assign(store, { restorePost });
+    getPost.mockResolvedValue(post({ deletedAt: 1_000, status: "ARCHIVED" }));
+    const service = createPostService({
+      store,
+      profileStore,
+      now: () => 1_000 + 24 * 60 * 60 * 1_000,
+    });
+
+    await expect(service.restorePost("post-1", "author-1")).rejects.toMatchObject({
+      status: 409,
+      code: "POST_RESTORE_UNAVAILABLE",
+    });
+    expect(restorePost).not.toHaveBeenCalled();
+  });
+
+  it("serves recently deleted post media only to its owner during retention", async () => {
+    const { profileStore, store, getPostForMedia } = dependencies();
+    getPostForMedia.mockResolvedValue(post({ deletedAt: 1_000, status: "ARCHIVED" }));
+    const service = createPostService({
+      store,
+      profileStore,
+      now: () => 1_000 + 23 * 60 * 60 * 1_000,
+    });
+
+    await expect(service.getVisibleMedia("asset-1", "author-1")).resolves.toMatchObject({
+      media: { id: "asset-1" },
+    });
+    await expect(service.getVisibleMedia("asset-1", "viewer-1")).resolves.toBeNull();
+
+    const expiredService = createPostService({
+      store,
+      profileStore,
+      now: () => 1_000 + 24 * 60 * 60 * 1_000,
+    });
+    await expect(expiredService.getVisibleMedia("asset-1", "author-1")).resolves.toBeNull();
+  });
+
+  it("does not expose edit permission for a deleted post", async () => {
+    const { profileStore, store, getPost } = dependencies();
+    getPost.mockResolvedValue(
+      post({ deletedAt: 1_000, status: "ARCHIVED", editDeadlineAt: 100_000_000_000 }),
+    );
+    const service = createPostService({
+      store,
+      profileStore,
+      now: () => 1_000 + 23 * 60 * 60 * 1_000,
+    });
+
+    await expect(service.getPost("post-1", "author-1")).resolves.toMatchObject({
+      permissions: { canEdit: false, canRestore: true },
+    });
   });
 
   it("keeps profile activity discoverable-only for visitors", async () => {
@@ -432,6 +510,42 @@ describe("Phase 4 post policy", () => {
       }),
     ).rejects.toMatchObject({ code: "INVALID_POST_DESCRIPTION" });
     expect(store.createPost).not.toHaveBeenCalled();
+  });
+
+  it("checks post emote entitlements before writing Markdown", async () => {
+    const { profileStore, store, assertEmoteEntitlements } = dependencies();
+    const service = createPostService({
+      store,
+      profileStore,
+      assertEmoteEntitlements,
+      now: () => 2,
+    });
+
+    await service.createPost({
+      id: "post-emote",
+      authorId: "author-1",
+      authorMode: "IDENTIFIED",
+      isNsfw: false,
+      title: "Entitled emote",
+      description: "Found :wave:",
+      categorySlug: "other",
+      visibility: "PUBLIC",
+      image: {
+        id: "asset-2",
+        r2Key: "posts/random/asset-2",
+        contentType: "image/png",
+        byteSize: 100,
+        width: 1,
+        height: 1,
+        checksumSha256: "hash",
+        createdAt: 2,
+      },
+    });
+
+    expect(assertEmoteEntitlements).toHaveBeenCalledWith(
+      "author-1",
+      expect.arrayContaining([expect.objectContaining({ type: "paragraph" })]),
+    );
   });
 
   it("serializes anonymous posts without identity-bearing public fields", async () => {

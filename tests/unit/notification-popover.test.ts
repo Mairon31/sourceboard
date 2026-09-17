@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(new URL("../../app/components/layout/TopBar.tsx", import.meta.url), "utf8");
+const source = readFileSync(
+  new URL("../../app/components/layout/TopBar.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("notification popover", () => {
   it("uses grouped cards, bounded recent history and batch-read semantics", () => {

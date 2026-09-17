@@ -46,23 +46,23 @@ describe("community plan phase E2", () => {
     expect(lab).toContain("NAME_EFFECT_PRESETS");
     expect(lab).toContain("NAME_FONT_FAMILIES");
     expectOrdered(lab, [
-      'label: "Avatar Frames"',
-      'label: "Profile Styles"',
-      'label: "Name Effects"',
-      'label: "Fonts"',
-      'label: "Effects"',
-      'label: "Stickers"',
-      'label: "Emotes"',
+      '"admin.presetLab.filter.avatarFrames"',
+      '"admin.presetLab.filter.profileStyles"',
+      '"admin.presetLab.filter.nameEffects"',
+      '"admin.presetLab.filter.fonts"',
+      '"admin.presetLab.filter.effects"',
+      '"admin.presetLab.filter.stickers"',
+      '"admin.presetLab.filter.emotes"',
     ]);
-    for (const copy of [
-      "Preset ID",
-      "Configuration",
-      "Lifecycle",
-      "Edit",
-      "Duplicate",
-      "Archive",
+    for (const key of [
+      "admin.presetLab.presetId",
+      "admin.presetLab.configuration",
+      "admin.presetLab.lifecycle",
+      "admin.presetLab.edit",
+      "admin.presetLab.duplicate",
+      "admin.presetLab.archive",
     ]) {
-      expect(lab).toContain(copy);
+      expect(lab).toContain(key);
     }
     expect(lab).toContain("/api/admin/store");
   });
@@ -87,12 +87,14 @@ describe("community plan phase E2", () => {
     ]) {
       expect(guide).toContain(slot);
     }
-    expect(guide).toContain("Live preview");
+    const english = read("../../app/i18n/messages/locales/en/admin.ts");
+    expect(guide).toContain("admin.cosmeticGuide.livePreview");
     expect(guide).toContain("COMMUNITY_CSS_MAX_BYTES / 1024");
     expect(guide).toContain("COMMUNITY_CSS_MAX_RULES");
     expect(guide).toContain("COMMUNITY_CSS_MAX_KEYFRAMES");
-    expect(guide).toContain("800ms");
-    expect(guide).toContain("20s");
+    expect(english).toContain('"admin.cosmeticGuide.animationDuration"');
+    expect(english).toContain("800ms");
+    expect(english).toContain("20s");
   });
 
   it("orders the public Store filters and sections around Featured then New", () => {

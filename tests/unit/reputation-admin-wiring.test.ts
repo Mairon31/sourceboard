@@ -47,4 +47,13 @@ describe("reputation admin wiring", () => {
     expect(route).not.toContain(">Open ledger<");
   });
 
+  it("renders custom achievement media through the shared icon component", () => {
+    const route = read("app/routes/admin-reputation.tsx");
+    const icon = read("app/components/product/AchievementIcon.tsx");
+
+    expect(route).toContain('from "../components/product/AchievementIcon"');
+    expect(route).toContain("<AchievementIcon icon={achievement.icon} />");
+    expect(icon).toContain("/api/media/achievement-icons/");
+    expect(icon).toContain("product-achievement-icon");
+  });
 });

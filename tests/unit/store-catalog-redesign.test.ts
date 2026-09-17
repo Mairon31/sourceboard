@@ -95,7 +95,7 @@ describe("store catalog lifecycle", () => {
     expect(adminCosmetics).toContain("equippedCount");
     expect(adminCosmetics).toContain("Archive");
     expect(adminCosmetics).toContain("Delete");
-    expect(adminEditor).toContain("Config JSON");
+    expect(adminEditor).toContain('t("admin.store.editor.configJson")');
     expect(adminEditor).toContain("/api/admin/store/");
   });
 

@@ -461,6 +461,11 @@
   display: grid;
   place-items: center;
   padding: var(--space-4);
+  pointer-events: none;
+}
+
+.sb-overlay-viewport > [data-base-ui-focus-guard] {
+  pointer-events: auto;
 }
 
 .sb-modal {
@@ -471,9 +476,20 @@
   padding: var(--space-6);
   transform: translateY(0) scale(1);
   opacity: 1;
+  pointer-events: auto;
   transition:
     opacity var(--motion-normal) var(--ease-enter),
     transform var(--motion-normal) var(--ease-enter);
+}
+
+.sb-modal--media {
+  width: min(96vw, 1_100px);
+  max-height: 94vh;
+  padding: var(--space-4);
+}
+
+.sb-modal--media .sb-overlay-content {
+  padding-top: var(--space-3);
 }
 
 .sb-modal[data-starting-style],

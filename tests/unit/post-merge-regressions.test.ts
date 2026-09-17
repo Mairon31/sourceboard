@@ -30,6 +30,7 @@ describe("post-merge production regressions", () => {
     expect(sourceApi).toContain("c.body_plaintext AS comment_plaintext");
     expect(sourceApi).not.toContain("c.richtext_json AS comment_richtext_json");
     expect(sourceApi).not.toContain("c.plaintext AS comment_plaintext");
+    expect(sourceApi).toContain('kind === "accept" || kind === "verify"');
   });
 
   it("marks comments written by the post author with a localized badge", () => {

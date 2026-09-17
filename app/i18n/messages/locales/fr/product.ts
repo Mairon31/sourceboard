@@ -171,6 +171,10 @@ export const frProductMessages = {
     "Les contributions acceptées comme sources apparaîtront ici lorsqu’elles seront disponibles.",
   "profile.activity.emptyPostsDescription":
     "Les demandes publiques et publications visibles pour vous apparaîtront ici.",
+  "profile.recentlyDeleted.eyebrow": "Archive privée",
+  "profile.recentlyDeleted.title": "Supprimées récemment",
+  "profile.recentlyDeleted.description":
+    "Restaurez vos publications sous 24 heures. Leurs commentaires, réactions et historique des sources restent intacts.",
   "profile.relationship.none": "Non connecté",
   "profile.relationship.friend": "Amis",
   "profile.relationship.incoming": "Demande reçue",

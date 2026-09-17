@@ -11,6 +11,9 @@ export interface KlipyMediaItem {
   preview: string;
   type: "GIF" | "STICKER";
   provider: "klipy";
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
 }
 
 export interface EmotePickerItem {
@@ -37,6 +40,9 @@ export interface SourceBoardStickerItem {
   provider: "sourceboard";
   packId: string;
   isAnimated: boolean;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
 }
 
 interface StickerPack {
@@ -62,6 +68,13 @@ function mergeMediaItems(current: KlipyMediaItem[], next: KlipyMediaItem[]): Kli
 
 function readNextPosition(value: unknown): string | null {
   return typeof value === "string" || typeof value === "number" ? String(value) : null;
+}
+
+function mediaAspectRatio(item: Pick<KlipyMediaItem, "aspectRatio" | "width" | "height">): string {
+  const ratio =
+    item.aspectRatio ??
+    (item.width && item.height ? Math.min(4, Math.max(0.25, item.width / item.height)) : 1.5);
+  return String(ratio);
 }
 
 export function MediaPicker({
@@ -518,6 +531,7 @@ export function MediaPicker({
             <button
               key={item.id}
               type="button"
+              style={{ aspectRatio: mediaAspectRatio(item) }}
               aria-label={t("mediaPicker.addItem", { name: item.title })}
               onClick={() => onSelect(item)}
             >
@@ -531,7 +545,11 @@ export function MediaPicker({
           />
         </div>
       ) : (
-        <div className="product-comment-media-picker__sticker-scroll" data-media-kind="sticker">
+        <div
+          ref={resultsRef}
+          className="product-comment-media-picker__sticker-scroll"
+          data-media-kind="sticker"
+        >
           {stickerPacks.length ? (
             <div className="product-comment-media-picker__sourceboard-stickers">
               {stickerPacks.map((pack) => (
@@ -555,11 +573,10 @@ export function MediaPicker({
                   </div>
                 </section>
               ))}
-              <h3>KLIPY</h3>
+              <h3>{t("mediaPicker.klipy")}</h3>
             </div>
           ) : null}
           <div
-            ref={resultsRef}
             className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
             aria-label={t("mediaPicker.stickerResults")}
           >

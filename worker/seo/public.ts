@@ -2,11 +2,7 @@ import { SUPPORTED_LOCALES, type Locale } from "../../shared/i18n/locales";
 import { POST_CATEGORIES } from "../../shared/posts/categories";
 import { absoluteSourceBoardUrl } from "../../shared/seo/urls";
 import type { SourceBoardEnvironment } from "../environment";
-import {
-  createD1SitemapStore,
-  SITEMAP_PAGE_SIZE,
-  type SitemapPageEntry,
-} from "./sitemap-store";
+import { createD1SitemapStore, SITEMAP_PAGE_SIZE, type SitemapPageEntry } from "./sitemap-store";
 
 const CACHE_CONTROL = "public, max-age=300, s-maxage=300";
 const CACHE_NAMESPACE = "seo:v3:";
@@ -120,7 +116,9 @@ function cmsPath(row: CmsSitemapRow): string {
   return `/${row.locale}/${segment}/${encodeURIComponent(row.slug)}`;
 }
 
-export async function listOfficialSitemapEntries(db: D1Database | null): Promise<SitemapPageEntry[]> {
+export async function listOfficialSitemapEntries(
+  db: D1Database | null,
+): Promise<SitemapPageEntry[]> {
   const entries = new Map<string, SitemapPageEntry>();
   for (const entry of staticOfficialEntries()) entries.set(entry.loc, entry);
   if (!db) return [...entries.values()];

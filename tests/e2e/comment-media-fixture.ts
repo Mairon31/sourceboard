@@ -62,3 +62,46 @@ export function seedCommentMediaRegressionFixture() {
   `;
   executeLocalSql(sql);
 }
+
+export function seedCommentImageLightboxFixture() {
+  seedNavigationPostFixture();
+  const now = Date.now();
+  const deadline = now + 24 * 60 * 60 * 1000;
+  const sql = `
+    DELETE FROM comments WHERE id = 'e2e-lightbox-comment';
+    DELETE FROM media_assets WHERE id = 'e2e-lightbox-comment-image';
+
+    INSERT INTO media_assets
+      (id, owner_user_id, purpose, r2_key, content_type, byte_size, checksum_sha256,
+       status, created_at, deleted_at, width, height)
+    VALUES
+      ('e2e-lightbox-comment-image', 'e2e-navigation-user', 'COMMENT_IMAGE',
+       'e2e/lightbox-comment.webp', 'image/webp', 1, 'e2e-lightbox-comment-checksum',
+       'ACTIVE', ${now}, NULL, 900, 600);
+
+    INSERT INTO comments
+      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+       deleted_at, hidden_at)
+    VALUES
+      ('e2e-lightbox-comment', 'e2e-navigation-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Comment lightbox fixture"}]', 'Comment lightbox fixture',
+       '{"type":"IMAGE","id":"e2e-lightbox-comment-image","label":"Comment lightbox image"}',
+       'VISIBLE', 0, ${now}, ${now}, ${deadline}, NULL, NULL);
+
+    UPDATE posts
+    SET comment_count = (
+      SELECT COUNT(*) FROM comments
+      WHERE post_id = 'e2e-navigation-post' AND deleted_at IS NULL
+    )
+    WHERE id = 'e2e-navigation-post';
+  `;
+  executeLocalSql(sql);
+}
+
+export function cleanupCommentImageLightboxFixture() {
+  executeLocalSql(`
+    DELETE FROM comments WHERE id = 'e2e-lightbox-comment';
+    DELETE FROM media_assets WHERE id = 'e2e-lightbox-comment-image';
+  `);
+}

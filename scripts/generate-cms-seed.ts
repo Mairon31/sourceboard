@@ -84,5 +84,8 @@ const stdout = process.argv.includes("--stdout");
 if (stdout) {
   process.stdout.write(output);
 } else {
-  writeFileSync(new URL("../migrations/0034_cms_seed_existing_content.sql", import.meta.url), output);
+  writeFileSync(
+    new URL("../migrations/0034_cms_seed_existing_content.sql", import.meta.url),
+    output,
+  );
 }

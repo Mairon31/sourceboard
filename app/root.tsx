@@ -92,7 +92,9 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 
   const locale = requestedLocale(request, accountLocale);
   const footerNavigation = requestContext?.env.DB
-    ? await createCmsNavigationService(requestContext.env.DB).list("FOOTER", locale).catch(() => [])
+    ? await createCmsNavigationService(requestContext.env.DB)
+        .list("FOOTER", locale)
+        .catch(() => [])
     : [];
 
   return {

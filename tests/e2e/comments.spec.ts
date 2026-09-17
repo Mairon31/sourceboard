@@ -384,9 +384,7 @@ test("freshly submitted root comment is placed by active sort and receives focus
   await expect(page).toHaveURL(/\?comments=recent#comment-/);
 });
 
-test("editing the accepted comment updates and removes its link preview live", async ({
-  page,
-}) => {
+test("editing the accepted comment updates and removes its link preview live", async ({ page }) => {
   await installAcceptedSourceEditFixture(page);
   const response = await page.goto("/posts/e2e-accepted-edit-post/e2e-accepted-edit-post");
   expect(response?.status()).toBe(200);

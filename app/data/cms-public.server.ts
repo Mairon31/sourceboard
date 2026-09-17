@@ -20,7 +20,10 @@ function database(context: ServerLoaderArgs["context"]): D1Database | null {
   return readSourceBoardRequestContext(context)?.env.DB ?? null;
 }
 
-export function publicCmsRuntime(request: Request, context: ServerLoaderArgs["context"]): PublicCmsRuntime {
+export function publicCmsRuntime(
+  request: Request,
+  context: ServerLoaderArgs["context"],
+): PublicCmsRuntime {
   return { locale: requestedLocale(request), available: Boolean(database(context)) };
 }
 
@@ -34,7 +37,10 @@ export async function resolvePublicCmsPage(
   const db = database(context);
   if (!db) return { locale, resolution: null };
   try {
-    return { locale, resolution: await createCmsService(db).resolvePublic(namespace, locale, slug) };
+    return {
+      locale,
+      resolution: await createCmsService(db).resolvePublic(namespace, locale, slug),
+    };
   } catch {
     // Rolling deploy compatibility: the static source remains authoritative until
     // the CMS migration/seed exists in the target environment.
@@ -57,11 +63,7 @@ export async function listPublicCmsNavigation(
   }
 }
 
-export function localizedCmsPath(
-  locale: Locale,
-  namespace: CmsNamespace,
-  slug: string,
-): string {
+export function localizedCmsPath(locale: Locale, namespace: CmsNamespace, slug: string): string {
   const section = namespace === "DOCS" ? "docs" : namespace === "LEGAL" ? "legal" : "pages";
   return `/${locale}/${section}/${encodeURIComponent(slug)}`;
 }

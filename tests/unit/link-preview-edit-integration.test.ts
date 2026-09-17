@@ -10,9 +10,15 @@ const sourceResolution = read("../../app/components/product/SourceResolution.tsx
 describe("link preview edit and accepted-source integration", () => {
   it("exposes linkPreviewUrl on comment edits and persists its lifecycle with the comment update", () => {
     expect(service).toContain("linkPreviewUrl?: unknown");
-    const updateContract = service.slice(service.indexOf("update("), service.indexOf("delete(commentId"));
+    const updateContract = service.slice(
+      service.indexOf("update("),
+      service.indexOf("delete(commentId"),
+    );
     expect(updateContract).toContain("linkPreviewUrl?: unknown");
-    const storeContract = store.slice(store.indexOf("updateComment(input"), store.indexOf("deleteComment("));
+    const storeContract = store.slice(
+      store.indexOf("updateComment(input"),
+      store.indexOf("deleteComment("),
+    );
     expect(storeContract).toContain("linkPreview?: CommentLinkPreviewSnapshot | null");
   });
 
@@ -20,11 +26,21 @@ describe("link preview edit and accepted-source integration", () => {
     expect(thread).toContain("editLinkUrl");
     expect(thread).toContain("setEditLinkUrl");
     expect(thread).toContain("comment.linkPreview?.canonicalUrl");
-    expect(thread).toContain("linkPreviewUrl: editLinkUrl.trim() || null");
+    expect(thread).toMatch(/linkPreviewUrl:\s*editLinkUrl\.trim\(\) \|\| null/);
+    expect(thread).toMatch(
+      /if \(\s*!editBody\.trim\(\) && !comment\.attachment && !comment\.linkPreview && !editLinkUrl\.trim\(\)\s*\)\s*return;/,
+    );
   });
 
   it("renders the accepted comment link preview through the shared compact card", () => {
     expect(sourceResolution).toContain('import { LinkPreviewCard } from "./LinkPreviewCard"');
-    expect(sourceResolution).toContain("comment.linkPreview ? <LinkPreviewCard preview={comment.linkPreview} compact /> : null");
+    expect(sourceResolution).toContain(
+      "comment.linkPreview ? <LinkPreviewCard preview={comment.linkPreview} compact /> : null",
+    );
+    expect(thread).toContain("onCommentUpdated?: (comment: CommentView) => void");
+    expect(thread).toContain("onCommentUpdated?.(next)");
+    expect(read("../../app/routes/post-detail.tsx")).toContain(
+      "updatedComment?.id === sourceCommentId",
+    );
   });
 });

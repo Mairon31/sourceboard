@@ -490,7 +490,9 @@ function SessionSecurityPanel() {
 
   function sessionActivityLabel(session: SessionSummary): string {
     const location = formatSessionLocation(session);
-    const activity = t("settings.sessions.lastActiveAt", { date: formatMoment(session.lastUsedAt) });
+    const activity = t("settings.sessions.lastActiveAt", {
+      date: formatMoment(session.lastUsedAt),
+    });
     return location ? `${location} · ${activity}` : activity;
   }
 
@@ -584,7 +586,9 @@ function SessionSecurityPanel() {
         <>
           <div className="product-settings-session-summary">
             <strong>{sessions.length}</strong>
-            <span>{tp("settings.sessions.count", sessions.length, { count: sessions.length })}</span>
+            <span>
+              {tp("settings.sessions.count", sessions.length, { count: sessions.length })}
+            </span>
           </div>
           <div className="product-settings-session-list">
             {sessions.map((session) => {

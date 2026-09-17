@@ -232,10 +232,16 @@ describe("Cosmetic presentation overhaul", () => {
     const legacyFrameCss = read("../../app/components/product/avatar-frames.css");
     const stageCss = read("../../app/components/product/avatar-stage.css");
     const definitions = read("../../app/components/product/avatar-frame-definitions.ts");
+    const stage = read("../../app/components/product/AvatarStage.tsx");
+    const productCss = read("../../app/components/product/product.css");
+    const storeCss = read("../../app/components/product/store.css");
 
     expect(legacyFrameCss).not.toContain('data-avatar-frame="');
     expect(legacyFrameCss).not.toContain("position: absolute");
     expect(legacyFrameCss).not.toContain("@keyframes avatar-frame-");
+    expect(stage).not.toContain("sb-avatar--frame-");
+    expect(productCss).not.toContain("sb-avatar--frame-");
+    expect(storeCss).not.toContain("sb-avatar--frame-");
     expect(stageCss).toContain('data-avatar-frame="neko-neon"');
     expect(stageCss).toContain('data-avatar-frame="retro-arcade"');
     expect(stageCss).toContain('data-avatar-frame="slime"');
@@ -255,6 +261,21 @@ describe("Cosmetic presentation overhaul", () => {
     const store = read("../../app/components/product/StoreItemCard.tsx");
     expect(store).not.toContain('<div className="product-profile-theme-layer"');
     expect(store).toContain("preset={config.preset}");
+  });
+
+  it("scopes community CSS on avatar-frame previews as well as profile-card previews", () => {
+    const profilePreview = read("../../app/components/product/ProfileCosmeticPreview.tsx");
+    const sharedPreview = read("../../app/components/product/CosmeticPreview.tsx");
+    expect(profilePreview).toContain("data-community-cosmetic");
+    expect(sharedPreview).toContain("data-community-cosmetic");
+  });
+
+  it("keeps community name previews on the shared renderer instead of parallel card geometry", () => {
+    const community = read("../../app/components/product/CommunityCosmeticStudio.tsx");
+    expect(community).toContain("<CosmeticPreview");
+    expect(community).not.toContain('className="profile-card"');
+    expect(community).not.toContain('className="profile-avatar-area"');
+    expect(community).not.toContain('className="profile-name-area"');
   });
 
   it("validates shared preview presets through the canonical registries", () => {
@@ -318,4 +339,3 @@ describe("Cosmetic presentation overhaul", () => {
     }
   });
 });
-

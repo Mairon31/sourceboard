@@ -11,7 +11,9 @@ const postCard = read("../../app/components/product/PostCard.tsx");
 describe("canonical accepted / verified source presentation", () => {
   it("renders one canonical source card with accepted and verified variants", () => {
     expect(sourceResolution).toContain("const isVerified = Boolean(verified)");
-    expect(sourceResolution).toContain("product-source-card--${isVerified ? \"verified\" : \"accepted\"}");
+    expect(sourceResolution).toContain(
+      'product-source-card--${isVerified ? "verified" : "accepted"}',
+    );
     expect(sourceResolution.match(/<Card/g)?.length ?? 0).toBe(1);
     expect(postCard).toContain("post.verifiedSource || post.acceptedSource");
   });
@@ -32,6 +34,8 @@ describe("canonical accepted / verified source presentation", () => {
   });
 
   it("keeps the accepted comment as the live canonical content for verified state", () => {
-    expect(sourceResolution).toContain("acceptedComment ? <AcceptedComment comment={acceptedComment} />");
+    expect(sourceResolution).toContain(
+      "acceptedComment ? <AcceptedComment comment={acceptedComment} />",
+    );
   });
 });

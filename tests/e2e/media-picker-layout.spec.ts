@@ -78,6 +78,13 @@ async function mockMediaApis(page: Page) {
       preview: isSticker ? STICKER : IMAGE,
       type: isSticker ? "STICKER" : "GIF",
       provider: "klipy",
+      ...(isSticker
+        ? { width: 96, height: 96, aspectRatio: 1 }
+        : {
+            width: [160, 100, 240, 320, 180, 120, 400, 200][index],
+            height: [100, 160, 120, 80, 180, 240, 100, 200][index],
+            aspectRatio: [1.6, 0.625, 2, 4, 1, 0.5, 4, 1][index],
+          }),
     }));
     await route.fulfill({
       status: 200,
@@ -269,9 +276,86 @@ async function mockInteractiveMediaApis(page: Page, requests: string[]) {
   });
 }
 
+async function mockFourPageMediaApis(
+  page: Page,
+  requests: string[],
+  { includeOwnedStickers = false } = {},
+) {
+  await page.route("**/api/comments/media/search?**", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    const type = requestUrl.searchParams.get("type") ?? "GIF";
+    const position = requestUrl.searchParams.get("pos");
+    const pageNumber = position ? Number.parseInt(position.replace("cursor-", ""), 10) : 1;
+    const currentPage = Number.isFinite(pageNumber) ? pageNumber : 1;
+    requests.push(`${type}:${currentPage}`);
+    const isSticker = type === "STICKER";
+    const items = Array.from({ length: 4 }, (_, index) => {
+      const itemNumber = (currentPage - 1) * 4 + index + 1;
+      return {
+        id: `e2e-four-page-${isSticker ? "sticker" : "gif"}-${itemNumber}`,
+        title: `${isSticker ? "Paged sticker" : "Paged GIF"} ${itemNumber}`,
+        label: `${isSticker ? "Paged sticker" : "Paged GIF"} ${itemNumber}`,
+        url: isSticker ? STICKER : IMAGE,
+        preview: isSticker ? STICKER : IMAGE,
+        type,
+        provider: "klipy",
+        ...(isSticker
+          ? { width: 96, height: 96, aspectRatio: 1 }
+          : {
+              width: [160, 240, 320, 120][index],
+              height: [100, 120, 80, 240][index],
+              aspectRatio: [1.6, 2, 4, 0.5][index],
+            }),
+      };
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items,
+        next: currentPage < 4 ? `cursor-${currentPage + 1}` : null,
+      }),
+    });
+  });
+  await page.route("**/api/comments/stickers", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        packs: includeOwnedStickers
+          ? [
+              {
+                id: "e2e-owned-pack",
+                label: "Owned stickers",
+                stickers: Array.from({ length: 8 }, (_, index) => ({
+                  id: `e2e-owned-sticker-${index}`,
+                  label: `Owned sticker ${index + 1}`,
+                  url: STICKER,
+                  preview: STICKER,
+                  type: "STICKER",
+                  provider: "sourceboard",
+                  packId: "e2e-owned-pack",
+                  isAnimated: false,
+                  width: 96,
+                  height: 96,
+                  aspectRatio: 1,
+                })),
+              },
+            ]
+          : [],
+      }),
+    });
+  });
+  await page.route("**/api/comments/emotes", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: '{"packs":[]}' });
+  });
+}
+
 async function expectSquareNonOverlapping(page: Page, selector: string) {
-  const boxes = await page.locator(selector).evaluateAll((nodes) =>
-    nodes.slice(0, 6).map((node) => {
+  const locator = page.locator(selector);
+  await expect.poll(() => locator.count()).toBeGreaterThan(1);
+  const boxes = await locator.evaluateAll((nodes) =>
+    nodes.map((node) => {
       const rect = node.getBoundingClientRect();
       return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
     }),
@@ -279,6 +363,31 @@ async function expectSquareNonOverlapping(page: Page, selector: string) {
   expect(boxes.length).toBeGreaterThan(1);
   for (const box of boxes) {
     expect(Math.abs(box.width - box.height)).toBeLessThanOrEqual(1.5);
+  }
+  for (let index = 0; index < boxes.length; index += 1) {
+    for (let other = index + 1; other < boxes.length; other += 1) {
+      const a = boxes[index];
+      const b = boxes[other];
+      const overlaps =
+        a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+      expect(overlaps).toBe(false);
+    }
+  }
+}
+
+async function expectNonOverlapping(page: Page, selector: string) {
+  const locator = page.locator(selector);
+  await expect.poll(() => locator.count()).toBeGreaterThan(1);
+  const boxes = await locator.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const rect = node.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }),
+  );
+  expect(boxes.length).toBeGreaterThan(1);
+  for (const box of boxes) {
+    expect(box.width).toBeGreaterThan(0);
+    expect(box.height).toBeGreaterThan(0);
   }
   for (let index = 0; index < boxes.length; index += 1) {
     for (let other = index + 1; other < boxes.length; other += 1) {
@@ -339,6 +448,21 @@ for (const viewport of [
       }),
     );
     expect(gifBoxes.every((box) => box.width > 0 && box.height > 0)).toBe(true);
+    await expectNonOverlapping(
+      page,
+      '[data-media-kind="gif"].product-comment-media-picker__results--gif button',
+    );
+    await expect
+      .poll(() =>
+        picker
+          .locator("button")
+          .first()
+          .evaluate((button) => {
+            const ratio = Number.parseFloat(getComputedStyle(button).aspectRatio);
+            return Number.isFinite(ratio) ? ratio : 0;
+          }),
+      )
+      .toBeCloseTo(1.6, 1);
 
     await picker
       .locator("img")
@@ -473,5 +597,98 @@ test("media picker paginates, replaces attachments and keeps multi-emote inserti
   expect(activeBox?.x ?? 0).toBeGreaterThanOrEqual((packbarBox?.x ?? 0) - 1);
   expect((activeBox?.x ?? 0) + (activeBox?.width ?? 0)).toBeLessThanOrEqual(
     (packbarBox?.x ?? 0) + (packbarBox?.width ?? 0) + 1,
+  );
+});
+
+test("GIF and sticker pages one through four keep stable proportions and rows", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installSession(page);
+  const requests: string[] = [];
+  await mockFourPageMediaApis(page, requests);
+  await openPost(page);
+
+  await page.getByRole("button", { name: "GIF", exact: true }).click();
+  const gifs = page.locator('[data-media-kind="gif"]');
+  const gifButtons = gifs.locator("button");
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (requests.filter((request) => request.startsWith("GIF:")).length >= 4) break;
+    await gifs.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    await page.waitForTimeout(100);
+  }
+  await expect.poll(() => requests.filter((request) => request.startsWith("GIF:")).length).toBe(4);
+  await expect(gifButtons).toHaveCount(16);
+  await expectNonOverlapping(
+    page,
+    '[data-media-kind="gif"].product-comment-media-picker__results--gif button',
+  );
+  await expect(gifButtons.nth(3)).toHaveAttribute("aria-label", "Add Paged GIF 4");
+  await expect(gifButtons.nth(15)).toHaveAttribute("aria-label", "Add Paged GIF 16");
+
+  await page.getByRole("button", { name: "Sticker", exact: true }).click();
+  const stickers = page.locator('[data-media-kind="sticker"]');
+  const stickerButtons = stickers.locator(".product-comment-media-picker__results--sticker button");
+  const stickerResults = stickers.locator(".product-comment-media-picker__results--sticker");
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (requests.filter((request) => request.startsWith("STICKER:")).length >= 4) break;
+    await stickerResults.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    await page.waitForTimeout(100);
+  }
+  await expect
+    .poll(() => requests.filter((request) => request.startsWith("STICKER:")).length)
+    .toBe(4);
+  await expect(stickerButtons).toHaveCount(16);
+  await expectSquareNonOverlapping(
+    page,
+    '[data-media-kind="sticker"] .product-comment-media-picker__results--sticker button',
+  );
+  await expect(stickerButtons.nth(3)).toHaveAttribute("aria-label", "Add Paged sticker 4");
+  await expect(stickerButtons.nth(15)).toHaveAttribute("aria-label", "Add Paged sticker 16");
+});
+
+test("sticker pagination keeps one scroll surface when owned stickers are present", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installSession(page);
+  const requests: string[] = [];
+  await mockFourPageMediaApis(page, requests, { includeOwnedStickers: true });
+  await openPost(page);
+
+  await page.getByRole("button", { name: "GIF", exact: true }).click();
+  await page.getByRole("button", { name: "Sticker", exact: true }).click();
+  const stickerSurface = page.locator('[data-media-kind="sticker"]');
+  await expect(stickerSurface).toBeVisible();
+  const stickerResults = stickerSurface.locator(".product-comment-media-picker__results--sticker");
+  await expect(stickerResults.locator("button").first()).toBeVisible();
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (requests.filter((request) => request.startsWith("STICKER:")).length >= 4) break;
+    await stickerSurface.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    await page.waitForTimeout(100);
+  }
+
+  await expect
+    .poll(() => requests.filter((request) => request.startsWith("STICKER:")).length)
+    .toBe(4);
+  await expect(
+    stickerSurface
+      .locator(".product-comment-media-picker__results--sticker")
+      .last()
+      .locator("button"),
+  ).toHaveCount(16);
+  await expectSquareNonOverlapping(
+    page,
+    '[data-media-kind="sticker"] .product-comment-media-picker__results--sticker button',
   );
 });

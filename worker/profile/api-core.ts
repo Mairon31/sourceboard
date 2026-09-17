@@ -13,7 +13,8 @@ import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { createMediaService } from "../media/r2";
-import { validateUploadedImage } from "../media/image-policy";
+import { validateUploadedMedia } from "../media/image-policy";
+import { uploadMediaAsset } from "../media/upload";
 import { ProfileError, isProfileError } from "./errors";
 import {
   createD1ProfileStore,
@@ -27,6 +28,7 @@ import { createReputationReader } from "../reputation/read";
 import { enforceRateLimit } from "../security/rate-limit";
 import { canViewUser } from "../privacy/policy";
 import { observeBackgroundFailure } from "../observability";
+import { getMediaImagePolicy } from "../../shared/media/policy";
 
 const profileUpdateSchema = z.object({
   displayName: z.string(),
@@ -58,6 +60,16 @@ const preferencesSchema = z.object({
 const usernameChangeSchema = z.object({ username: z.string() });
 
 type InputRecord = Record<string, unknown>;
+
+export function resolveProfileMediaIds(
+  input: Pick<z.infer<typeof profileUpdateSchema>, "avatarAssetId" | "bannerAssetId">,
+  current: { avatarAssetId: string | null; bannerAssetId: string | null },
+): { avatarAssetId: string | null; bannerAssetId: string | null } {
+  return {
+    avatarAssetId: input.avatarAssetId === undefined ? current.avatarAssetId : input.avatarAssetId,
+    bannerAssetId: input.bannerAssetId === undefined ? current.bannerAssetId : input.bannerAssetId,
+  };
+}
 
 function jsonResponse(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -214,14 +226,25 @@ async function handleProfilePatch(ctx: ProfileRouteContext): Promise<Response> {
   requireSameOriginAndCsrf(ctx.request);
   const viewerId = await requireViewerId(ctx.request, ctx.env);
   const input = parseSchema(profileUpdateSchema, await parseJson(ctx.request));
+  const currentProfile =
+    input.avatarAssetId === undefined || input.bannerAssetId === undefined
+      ? (await ctx.service.getMyProfile(viewerId)).profile
+      : null;
+  const media = resolveProfileMediaIds(
+    input,
+    currentProfile ?? {
+      avatarAssetId: null,
+      bannerAssetId: null,
+    },
+  );
   await ctx.service.updateMyProfile(
     viewerId,
     {
       displayName: input.displayName.trim(),
       bio: input.bio,
       profileVisibility: input.profileVisibility,
-      avatarAssetId: input.avatarAssetId ?? null,
-      bannerAssetId: input.bannerAssetId ?? null,
+      avatarAssetId: media.avatarAssetId,
+      bannerAssetId: media.bannerAssetId,
     },
     createSocialLinks(input.socialLinks ?? []),
   );
@@ -483,21 +506,7 @@ export function assertProfileImage(
   contentType: string,
   purpose: "AVATAR" | "BANNER",
 ): { contentType: string; width: number | null; height: number | null } {
-  if (contentType === "image/gif") {
-    if (
-      bytes.byteLength < 1 ||
-      bytes.byteLength > 5 * 1024 * 1024 ||
-      !isSupportedImageBytes(bytes, contentType)
-    ) {
-      throw new ProfileError(
-        400,
-        "INVALID_MEDIA_UPLOAD",
-        "The image bytes do not match the declared type.",
-      );
-    }
-    return { contentType, width: null, height: null };
-  }
-  const result = validateUploadedImage(bytes, contentType, purpose);
+  const result = validateUploadedMedia(bytes, contentType, purpose, { allowAnimatedGif: true });
   if (result.ok) return result;
   if (result.code === "MEDIA_TOO_LARGE") {
     throw new ProfileError(400, "INVALID_MEDIA_UPLOAD", "The profile image is too large.");
@@ -527,6 +536,9 @@ async function readImageFile(request: Request): Promise<{
   const file = form.get("file");
   if ((purpose !== "AVATAR" && purpose !== "BANNER") || !(file instanceof File)) {
     throw new ProfileError(400, "INVALID_MEDIA_UPLOAD", "Provide a profile image and purpose.");
+  }
+  if (file.size > getMediaImagePolicy(purpose).maxBytes) {
+    throw new ProfileError(400, "INVALID_MEDIA_UPLOAD", "The profile image is too large.");
   }
   const bytes = await file.arrayBuffer();
   return {
@@ -586,30 +598,36 @@ async function uploadProfileMedia(ctx: MediaRouteContext): Promise<Response> {
   );
   const { purpose, bytes, metadata } = await readImageFile(ctx.request);
   const assetId = createIdentifier();
-  const r2Key = `profile/${viewerId}/${assetId}`;
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  const checksumSha256 = toHex(new Uint8Array(digest));
-  const media = createMediaService(requireMedia(ctx.env));
-  await media.put(r2Key, bytes, { httpMetadata: { contentType: metadata.contentType } });
-  try {
-    const previous = await ctx.store.createMediaAssetAndAttach({
-      id: assetId,
-      ownerUserId: viewerId,
-      purpose,
-      r2Key,
-      contentType: metadata.contentType,
-      byteSize: bytes.byteLength,
-      checksumSha256,
-      createdAt: Date.now(),
-    });
-    if (previous) {
-      await media.delete(previous.r2Key).catch(() => {
+  const result = await uploadMediaAsset({
+    media: createMediaService(requireMedia(ctx.env)),
+    ownerUserId: viewerId,
+    assetId,
+    purpose,
+    bytes: new Uint8Array(bytes),
+    declaredContentType: metadata.contentType,
+    allowAnimatedGif: metadata.contentType === "image/gif",
+    createdAt: Date.now(),
+    persist: (asset) =>
+      ctx.store.createMediaAssetAndAttach({
+        id: asset.id,
+        ownerUserId: asset.ownerUserId,
+        purpose: asset.purpose as "AVATAR" | "BANNER",
+        r2Key: asset.r2Key,
+        contentType: asset.contentType,
+        byteSize: asset.byteSize,
+        width: asset.width,
+        height: asset.height,
+        checksumSha256: asset.checksumSha256,
+        createdAt: asset.createdAt,
+      }),
+  });
+  if (result.persisted) {
+    await createMediaService(requireMedia(ctx.env))
+      .delete(result.persisted.r2Key)
+      .catch(() => {
+        // The previous asset is already marked DELETED in D1 and is retried by maintenance.
         observeBackgroundFailure("profile_media_replacement_cleanup");
       });
-    }
-  } catch (error) {
-    await media.delete(r2Key);
-    throw error;
   }
   return jsonResponse(
     { assetId, url: `/api/media/profile/${encodeURIComponent(assetId)}` },
@@ -630,7 +648,19 @@ async function deleteProfileMedia(
     throw new ProfileError(404, "MEDIA_NOT_FOUND", "Profile media was not found.");
   }
   if (await ctx.store.clearMediaAsset(viewerId, purpose, assetId, Date.now())) {
-    await createMediaService(requireMedia(ctx.env)).delete(asset.r2Key);
+    // A legacy asset may still be referenced by another profile slot/user.
+    // Only remove its object after the store has marked the row DELETED.
+    const detached = await ctx.store.getMediaAsset(assetId);
+    if (!isProfileMediaReadyForObjectDeletion(detached)) {
+      return jsonResponse({ deleted: true }, ctx.requestId);
+    }
+    await createMediaService(requireMedia(ctx.env))
+      .delete(asset.r2Key)
+      .catch(() => {
+        // D1 already points away from the object. The deleted row remains as a
+        // durable retry record for scheduled media cleanup.
+        observeBackgroundFailure("profile_media_delete_cleanup");
+      });
   }
   return jsonResponse({ deleted: true }, ctx.requestId);
 }
@@ -686,8 +716,10 @@ async function canViewProfileMedia(
   return canViewUser(viewerId, asset.ownerUserId, { store, now: () => now });
 }
 
-function toHex(bytes: Uint8Array): string {
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+export function isProfileMediaReadyForObjectDeletion(
+  asset: Pick<MediaAssetRecord, "status"> | null,
+): boolean {
+  return asset?.status === "DELETED";
 }
 
 export async function handleProfileApiRequest(

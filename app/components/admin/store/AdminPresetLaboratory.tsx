@@ -5,9 +5,14 @@ import {
   NAME_FONT_FAMILIES,
   PROFILE_EFFECT_PRESETS,
   PROFILE_THEME_PRESETS,
+  type NameEffectPreset,
+  type NameFontFamily,
 } from "../../../../shared/store/cosmetics";
 import { Badge, Button, Card } from "../../ui";
 import { readCsrfToken } from "../../../data/csrf";
+import { useI18n } from "../../../i18n/I18nProvider";
+import type { MessageKey } from "../../../i18n";
+import { CosmeticPreview } from "../../product/CosmeticPreview";
 import { ProfileCosmeticPreview } from "../../product/ProfileCosmeticPreview";
 import { AdminStoreEditor } from "./AdminStoreEditor";
 import type { AdminStoreItem, EmotePackSummary } from "./types";
@@ -23,19 +28,74 @@ type PresetDescriptor = {
   config: Record<string, unknown>;
   type: AdminStoreItem["type"];
   item?: AdminStoreItem;
-  meta?: string;
+  meta?: { count: number; kind: "owners" | "emotes" };
   materializable: boolean;
 };
 
-const PRESET_FILTERS: Array<{ value: PresetCategory; label: string }> = [
-  { value: "AVATAR_FRAMES", label: "Avatar Frames" },
-  { value: "PROFILE_STYLES", label: "Profile Styles" },
-  { value: "NAME_EFFECTS", label: "Name Effects" },
-  { value: "FONTS", label: "Fonts" },
-  { value: "EFFECTS", label: "Effects" },
-  { value: "STICKERS", label: "Stickers" },
-  { value: "EMOTES", label: "Emotes" },
+const PRESET_FILTERS: Array<{ value: PresetCategory }> = [
+  { value: "AVATAR_FRAMES" },
+  { value: "PROFILE_STYLES" },
+  { value: "NAME_EFFECTS" },
+  { value: "FONTS" },
+  { value: "EFFECTS" },
+  { value: "STICKERS" },
+  { value: "EMOTES" },
 ];
+
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+function filterLabel(value: PresetCategory, t: Translate): string {
+  switch (value) {
+    case "AVATAR_FRAMES":
+      return t("admin.presetLab.filter.avatarFrames");
+    case "PROFILE_STYLES":
+      return t("admin.presetLab.filter.profileStyles");
+    case "NAME_EFFECTS":
+      return t("admin.presetLab.filter.nameEffects");
+    case "FONTS":
+      return t("admin.presetLab.filter.fonts");
+    case "EFFECTS":
+      return t("admin.presetLab.filter.effects");
+    case "STICKERS":
+      return t("admin.presetLab.filter.stickers");
+    case "EMOTES":
+      return t("admin.presetLab.filter.emotes");
+  }
+}
+
+function typeLabel(type: AdminStoreItem["type"], t: Translate): string {
+  switch (type) {
+    case "AVATAR_FRAME":
+      return t("admin.presetLab.type.avatarFrame");
+    case "PROFILE_BANNER":
+      return t("admin.presetLab.type.profileBanner");
+    case "PROFILE_EFFECT":
+      return t("admin.presetLab.type.profileEffect");
+    case "NAME_EFFECT":
+      return t("admin.presetLab.type.nameEffect");
+    case "NAME_FONT":
+      return t("admin.presetLab.type.nameFont");
+    case "STICKER_PACK":
+      return t("admin.presetLab.type.stickerPack");
+    case "EMOTE_PACK":
+      return t("admin.presetLab.type.emotePack");
+  }
+}
+
+function lifecycleLabel(value: string, t: Translate): string {
+  switch (value) {
+    case "SYSTEM":
+      return t("admin.presetLab.lifecycle.system");
+    case "PACK":
+      return t("admin.presetLab.lifecycle.pack");
+    case "PUBLISHED":
+      return t("admin.presetLab.lifecycle.published");
+    case "ARCHIVED":
+      return t("admin.presetLab.lifecycle.archived");
+    default:
+      return value;
+  }
+}
 
 function humanize(value: string): string {
   return value
@@ -69,7 +129,7 @@ function errorMessage(payload: unknown, fallback: string): string {
   return typeof message === "string" && message ? message : fallback;
 }
 
-function PresetPreview({ preset }: { preset: PresetDescriptor }) {
+function PresetPreview({ preset, t }: { preset: PresetDescriptor; t: Translate }) {
   if (
     preset.category === "AVATAR_FRAMES" ||
     preset.category === "PROFILE_STYLES" ||
@@ -93,7 +153,13 @@ function PresetPreview({ preset }: { preset: PresetDescriptor }) {
   if (preset.category === "NAME_EFFECTS") {
     return (
       <div className="admin-preset-preview admin-preset-preview--name">
-        <strong className={`sb-name-effect--${preset.id}`}>SourceBoard</strong>
+        <CosmeticPreview
+          cosmetic={{
+            type: "NAME_EFFECT",
+            preset: preset.id as NameEffectPreset,
+          }}
+          name="SourceBoard"
+        />
         <span>{preset.label}</span>
       </div>
     );
@@ -101,7 +167,10 @@ function PresetPreview({ preset }: { preset: PresetDescriptor }) {
   if (preset.category === "FONTS") {
     return (
       <div className="admin-preset-preview admin-preset-preview--name">
-        <strong style={{ fontFamily: preset.id }}>SourceBoard</strong>
+        <CosmeticPreview
+          cosmetic={{ type: "NAME_FONT", preset: preset.id as NameFontFamily }}
+          name="SourceBoard"
+        />
         <span>{preset.id}</span>
       </div>
     );
@@ -109,7 +178,13 @@ function PresetPreview({ preset }: { preset: PresetDescriptor }) {
   return (
     <div className="admin-preset-preview admin-preset-preview--pack">
       <strong>{preset.label}</strong>
-      <span>{preset.meta ?? preset.type.replaceAll("_", " ")}</span>
+      <span>
+        {preset.meta
+          ? t(preset.meta.kind === "owners" ? "admin.presetLab.owners" : "admin.presetLab.emotes", {
+              count: preset.meta.count,
+            })
+          : typeLabel(preset.type, t)}
+      </span>
     </div>
   );
 }
@@ -170,6 +245,7 @@ export function AdminPresetLaboratory({
   onRefresh: () => Promise<void>;
   onStatus: (message: string) => void;
 }) {
+  const { t } = useI18n();
   const [category, setCategory] = useState<PresetCategory>("AVATAR_FRAMES");
   const [editing, setEditing] = useState<AdminStoreItem | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -188,7 +264,7 @@ export function AdminPresetLaboratory({
         type: "STICKER_PACK",
         config: parseConfig(item.configJson),
         item,
-        meta: `${item.ownerCount} owners`,
+        meta: { count: item.ownerCount, kind: "owners" },
         materializable: false,
       }));
     const emotes: PresetDescriptor[] = packs.map((pack) => ({
@@ -198,7 +274,7 @@ export function AdminPresetLaboratory({
       type: "EMOTE_PACK",
       config: { slug: pack.slug, packId: pack.id },
       item: pack.storeItemId ? items.find((item) => item.id === pack.storeItemId) : undefined,
-      meta: `${pack.emoteCount} emotes`,
+      meta: { count: pack.emoteCount, kind: "emotes" },
       materializable: false,
     }));
     return [...staticPresets, ...stickers, ...emotes];
@@ -226,7 +302,7 @@ export function AdminPresetLaboratory({
       body: JSON.stringify({
         type: preset.type,
         name: `${preset.label}${suffix}`,
-        description: `Catalog draft for the ${preset.label} internal preset.`,
+        description: t("admin.presetLab.materializeDescription", { preset: preset.label }),
         pricePoints: 0,
         sortOrder: 0,
         config: preset.config,
@@ -235,7 +311,7 @@ export function AdminPresetLaboratory({
     });
     const payload = (await response.json().catch(() => null)) as { id?: string } | null;
     if (!response.ok || !payload?.id) {
-      onStatus(errorMessage(payload, `Could not materialize ${preset.label}.`));
+      onStatus(errorMessage(payload, t("admin.presetLab.materializeFailed")));
       return null;
     }
     await onRefresh();
@@ -257,7 +333,7 @@ export function AdminPresetLaboratory({
     });
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      onStatus(errorMessage(payload, `Could not ${action.toLowerCase()} this preset.`));
+      onStatus(errorMessage(payload, t("admin.presetLab.actionFailed")));
       return false;
     }
     await onRefresh();
@@ -269,7 +345,7 @@ export function AdminPresetLaboratory({
     try {
       const item = await ensureItem(preset);
       if (!item) {
-        onStatus(`${preset.label} is managed from its dedicated pack workspace.`);
+        onStatus(t("admin.presetLab.packManaged"));
         return;
       }
       setEditing(item);
@@ -283,10 +359,10 @@ export function AdminPresetLaboratory({
     try {
       const item = await ensureItem(preset);
       if (!item) {
-        onStatus(`${preset.label} is managed from its dedicated pack workspace.`);
+        onStatus(t("admin.presetLab.packManaged"));
         return;
       }
-      if (await perform(item, "DUPLICATE")) onStatus(`${preset.label} duplicated as a draft.`);
+      if (await perform(item, "DUPLICATE")) onStatus(t("admin.presetLab.duplicated"));
     } finally {
       setBusyKey(null);
     }
@@ -297,10 +373,10 @@ export function AdminPresetLaboratory({
     try {
       const item = await ensureItem(preset);
       if (!item) {
-        onStatus(`${preset.label} is managed from its dedicated pack workspace.`);
+        onStatus(t("admin.presetLab.packManaged"));
         return;
       }
-      if (await perform(item, "ARCHIVE")) onStatus(`${preset.label} archived.`);
+      if (await perform(item, "ARCHIVE")) onStatus(t("admin.presetLab.archived"));
     } finally {
       setBusyKey(null);
     }
@@ -311,9 +387,9 @@ export function AdminPresetLaboratory({
       <AdminStoreEditor
         item={editing}
         onCancel={() => setEditing(null)}
-        onSaved={(updated) => {
+        onSaved={() => {
           setEditing(null);
-          onStatus(`${updated.name} updated from Preset Laboratory.`);
+          onStatus(t("admin.presetLab.updated"));
           void onRefresh();
         }}
       />
@@ -321,20 +397,19 @@ export function AdminPresetLaboratory({
   }
 
   return (
-    <section className="admin-preset-lab">
+    <section className="admin-preset-lab" aria-label={t("admin.presetLab.ariaLabel")}>
       <div className="admin-store-section-heading">
         <div>
-          <span className="product-eyebrow">Preset Laboratory</span>
-          <h2>Inspect the internal cosmetic registry</h2>
-          <p>
-            Preview SourceBoard presets, inspect their exact configuration and materialize an
-            editable catalog draft without creating a second rendering system.
-          </p>
+          <span className="product-eyebrow">{t("admin.presetLab.eyebrow")}</span>
+          <h2>{t("admin.presetLab.title")}</h2>
+          <p>{t("admin.presetLab.description")}</p>
         </div>
-        <span className="product-search-count">{visible.length} presets shown</span>
+        <span className="product-search-count">
+          {t("admin.presetLab.count", { count: visible.length })}
+        </span>
       </div>
 
-      <nav className="admin-store-type-filters" aria-label="Preset category">
+      <nav className="admin-store-type-filters" aria-label={t("admin.presetLab.category")}>
         {PRESET_FILTERS.map((filter) => (
           <button
             key={filter.value}
@@ -343,7 +418,7 @@ export function AdminPresetLaboratory({
             className={category === filter.value ? "is-active" : undefined}
             onClick={() => setCategory(filter.value)}
           >
-            {filter.label}
+            {filterLabel(filter.value, t)}
           </button>
         ))}
       </nav>
@@ -355,30 +430,30 @@ export function AdminPresetLaboratory({
           const archived = preset.item?.lifecycleState === "ARCHIVED";
           return (
             <Card key={`${preset.category}:${preset.id}`} className="admin-store-cosmetic-card">
-              <PresetPreview preset={preset} />
+              <PresetPreview preset={preset} t={t} />
               <div className="admin-store-cosmetic-card__body">
                 <div className="admin-store-cosmetic-card__title">
                   <div>
-                    <span className="product-eyebrow">{preset.type.replaceAll("_", " ")}</span>
+                    <span className="product-eyebrow">{typeLabel(preset.type, t)}</span>
                     <h3>{preset.label}</h3>
                   </div>
                   <Badge tone={lifecycle === "PUBLISHED" ? "success" : "neutral"}>
-                    {lifecycle}
+                    {lifecycleLabel(lifecycle, t)}
                   </Badge>
                 </div>
                 <dl className="admin-preset-metadata">
                   <div>
-                    <dt>Preset ID</dt>
+                    <dt>{t("admin.presetLab.presetId")}</dt>
                     <dd>
                       <code>{preset.id}</code>
                     </dd>
                   </div>
                   <div>
-                    <dt>Lifecycle</dt>
-                    <dd>{lifecycle}</dd>
+                    <dt>{t("admin.presetLab.lifecycle")}</dt>
+                    <dd>{lifecycleLabel(lifecycle, t)}</dd>
                   </div>
                   <div>
-                    <dt>Configuration</dt>
+                    <dt>{t("admin.presetLab.configuration")}</dt>
                     <dd>
                       <code>{JSON.stringify(preset.config)}</code>
                     </dd>
@@ -392,7 +467,7 @@ export function AdminPresetLaboratory({
                       loading={busyKey === `edit:${preset.category}:${preset.id}`}
                       onClick={() => void editPreset(preset)}
                     >
-                      Edit
+                      {t("admin.presetLab.edit")}
                     </Button>
                     <Button
                       type="button"
@@ -401,7 +476,7 @@ export function AdminPresetLaboratory({
                       loading={busyKey === `duplicate:${preset.category}:${preset.id}`}
                       onClick={() => void duplicatePreset(preset)}
                     >
-                      Duplicate
+                      {t("admin.presetLab.duplicate")}
                     </Button>
                     {!archived ? (
                       <Button
@@ -411,15 +486,18 @@ export function AdminPresetLaboratory({
                         loading={busyKey === `archive:${preset.category}:${preset.id}`}
                         onClick={() => void archivePreset(preset)}
                       >
-                        Archive
+                        {t("admin.presetLab.archive")}
                       </Button>
                     ) : null}
                   </div>
                 ) : (
                   <small>
-                    Use the dedicated{" "}
-                    {preset.category === "EMOTES" ? "Emote Packs" : "Sticker Packs"} workspace for
-                    pack-level editing.
+                    {t("admin.presetLab.packWorkspace", {
+                      workspace: filterLabel(
+                        preset.category === "EMOTES" ? "EMOTES" : "STICKERS",
+                        t,
+                      ),
+                    })}
                   </small>
                 )}
               </div>

@@ -277,6 +277,14 @@ function cleanMetadata(value: string | null, max: number): string | null {
   return Array.from(cleaned).slice(0, max).join("");
 }
 
+function firstCleanMetadata(values: Array<string | null | undefined>, max: number): string | null {
+  for (const value of values) {
+    const cleaned = cleanMetadata(value ?? null, max);
+    if (cleaned) return cleaned;
+  }
+  return null;
+}
+
 function parseAttributes(tag: string): Record<string, string> {
   const attributes: Record<string, string> = {};
   const pattern = /([^\s=/>]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g;
@@ -328,10 +336,10 @@ function metadataValues(html: string): {
   }
   const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
   return {
-    title: cleanMetadata(ogTitle ?? twitterTitle ?? titleMatch?.[1] ?? null, 160),
-    description: cleanMetadata(ogDescription ?? twitterDescription ?? description, 320),
+    title: firstCleanMetadata([ogTitle, twitterTitle, titleMatch?.[1]], 160),
+    description: firstCleanMetadata([ogDescription, twitterDescription, description], 320),
     siteName: cleanMetadata(siteName, 80),
-    image: cleanMetadata(ogImage ?? twitterImage, MAX_URL_LENGTH),
+    image: firstCleanMetadata([ogImage, twitterImage], MAX_URL_LENGTH),
     canonical: cleanMetadata(canonical, MAX_URL_LENGTH),
   };
 }

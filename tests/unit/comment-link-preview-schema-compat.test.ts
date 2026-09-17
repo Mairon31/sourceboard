@@ -161,6 +161,35 @@ describe("comment link-preview production schema compatibility", () => {
     );
   });
 
+  it("still activates a pending image when the optional preview table is unavailable", async () => {
+    const { db, batches } = createWriteSchemaLagDb();
+
+    await expect(
+      createD1CommentStore(db).createComment({
+        comment: {
+          ...comment(),
+          attachment: { type: "IMAGE", id: "image-1", label: "Image" },
+        },
+        richtextJson: JSON.stringify([{ type: "text", text: "Legacy comment" }]),
+        attachmentJson: JSON.stringify({ type: "IMAGE", id: "image-1", label: "Image" }),
+        linkPreview: {
+          canonicalUrl: "https://example.com/source",
+          siteName: "Example",
+          title: "Source",
+          description: null,
+          imageUrl: null,
+          fetchedAt: 100,
+          metadataStatus: "PARTIAL",
+        },
+        commentImageAssetId: "image-1",
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(
+      batches[1]?.some((sql) => sql.includes("UPDATE media_assets SET status = 'ACTIVE'")),
+    ).toBe(true);
+  });
+
   it("does not hide unrelated D1 read failures", async () => {
     const db = {
       prepare: vi.fn(() => {

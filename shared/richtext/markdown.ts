@@ -28,10 +28,15 @@ export type SafeRichTextNode =
     }
   | { type: "code-block"; code: string; language?: string };
 
-const MAX_INPUT_LENGTH = 5_000;
+const MAX_INPUT_LENGTH = 10_000;
 const MAX_NODES = 100;
 const MAX_DEPTH = 4;
 const EMOTE_SHORTCODE_PATTERN = /^[a-z0-9_+-]{1,32}$/i;
+
+export interface MarkdownParseOptions {
+  maxInputLength?: number;
+  maxNodes?: number;
+}
 
 function invalid(message: string): never {
   throw new Error(`Invalid Markdown: ${message}`);
@@ -76,6 +81,8 @@ export function serializeInlineRichTextMarkdown(nodes: SafeInlineRichTextNode[])
 }
 
 function safeUrl(value: string): string {
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  if (value.startsWith("#")) return value;
   let url: URL;
   try {
     url = new URL(value);
@@ -85,6 +92,7 @@ function safeUrl(value: string): string {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     invalid("links must use HTTP or HTTPS.");
   }
+  if (url.username || url.password) invalid("links cannot contain credentials.");
   return url.toString();
 }
 
@@ -277,14 +285,25 @@ function countNodes(nodes: SafeRichTextNode[]): number {
   }, 0);
 }
 
-export function parseMarkdown(input: string): SafeRichTextNode[] {
+export function parseMarkdown(
+  input: string,
+  options: MarkdownParseOptions = {},
+): SafeRichTextNode[] {
   if (typeof input !== "string") invalid("content must be text.");
-  if (input.length > MAX_INPUT_LENGTH) invalid("content is too long.");
+  const maxInputLength = options.maxInputLength ?? MAX_INPUT_LENGTH;
+  const maxNodes = options.maxNodes ?? MAX_NODES;
+  if (!Number.isSafeInteger(maxInputLength) || maxInputLength < 0) {
+    invalid("the input length limit is invalid.");
+  }
+  if (!Number.isSafeInteger(maxNodes) || maxNodes < 0) {
+    invalid("the node limit is invalid.");
+  }
+  if (input.length > maxInputLength) invalid("content is too long.");
   if (/<\/?[a-z][^>]*>/i.test(input) || /!\[[^\]]*\]\([^)]*\)/.test(input)) {
     invalid("HTML and image Markdown are not allowed.");
   }
   const nodes = parseBlocks(input.split(/\r?\n/), 0);
-  if (countNodes(nodes) > MAX_NODES) invalid("content contains too many nodes.");
+  if (countNodes(nodes) > maxNodes) invalid("content contains too many nodes.");
   return nodes;
 }
 

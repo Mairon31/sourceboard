@@ -170,6 +170,10 @@ export const deProductMessages = {
     "Als Quelle akzeptierte Beiträge erscheinen hier, sobald sie verfügbar sind.",
   "profile.activity.emptyPostsDescription":
     "Öffentliche Quellenanfragen und für dich sichtbare Beiträge erscheinen hier.",
+  "profile.recentlyDeleted.eyebrow": "Privates Archiv",
+  "profile.recentlyDeleted.title": "Kürzlich gelöscht",
+  "profile.recentlyDeleted.description":
+    "Stelle deine Beiträge innerhalb von 24 Stunden wieder her. Kommentare, Reaktionen und Quellenverlauf bleiben erhalten.",
   "profile.relationship.none": "Nicht verbunden",
   "profile.relationship.friend": "Freunde",
   "profile.relationship.incoming": "Eingehende Anfrage",

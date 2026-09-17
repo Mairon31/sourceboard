@@ -76,10 +76,7 @@ function actionLabel(action: ModerationAction, translate: (key: MessageKey) => s
   return translate(ACTION_LABEL_KEYS[action]);
 }
 
-function targetLabel(
-  targetType: ActionTarget,
-  translate: (key: MessageKey) => string,
-): string {
+function targetLabel(targetType: ActionTarget, translate: (key: MessageKey) => string): string {
   const key =
     targetType === "POST"
       ? "admin.moderation.targetPost"
@@ -173,10 +170,12 @@ export default function AdminModerationRoute() {
         setActionError(payload?.error?.message ?? t("admin.moderation.actionFailed"));
         return;
       }
-      setFeedback(t("admin.moderation.actionApplied", {
-        action: actionLabel(selectedAction.action, t),
-        target: targetLabel(selectedAction.targetType, t),
-      }));
+      setFeedback(
+        t("admin.moderation.actionApplied", {
+          action: actionLabel(selectedAction.action, t),
+          target: targetLabel(selectedAction.targetType, t),
+        }),
+      );
       setSelectedAction(null);
       setReason("");
       revalidator.revalidate();
@@ -197,7 +196,8 @@ export default function AdminModerationRoute() {
 
   function actionMenu(report: QueueReport) {
     const actions = actionsForTarget(String(report.targetType));
-    if (!actions.length) return <span className="product-search-count">{t("admin.moderation.noDirectActions")}</span>;
+    if (!actions.length)
+      return <span className="product-search-count">{t("admin.moderation.noDirectActions")}</span>;
     return (
       <AdminActionMenu
         label={t("admin.moderation.actions")}
@@ -312,7 +312,9 @@ export default function AdminModerationRoute() {
                   </div>
                   <div className="admin-table__copy">
                     <span>{report.reporterUsername ?? report.reporterUserId}</span>
-                    <span>{String(report.targetType)} · {String(report.category)}</span>
+                    <span>
+                      {String(report.targetType)} · {String(report.category)}
+                    </span>
                   </div>
                   <div className="admin-table__copy">
                     <span className="admin-status-badge">{String(report.status)}</span>
@@ -325,11 +327,7 @@ export default function AdminModerationRoute() {
                         {t("common.view")}
                       </Link>
                     ) : null}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setSelectedReport(report)}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedReport(report)}>
                       {t("admin.moderation.details")}
                     </Button>
                     {actionMenu(report)}
@@ -349,7 +347,10 @@ export default function AdminModerationRoute() {
                     <span className="admin-status-badge">{String(report.status)}</span>
                   </div>
                   <div className="admin-table__copy">
-                    <span>{t("admin.moderation.reporter")}: {report.reporterUsername ?? report.reporterUserId}</span>
+                    <span>
+                      {t("admin.moderation.reporter")}:{" "}
+                      {report.reporterUsername ?? report.reporterUserId}
+                    </span>
                     <span>{report.commentBody ?? report.detail ?? "—"}</span>
                   </div>
                   <div className="product-chip-row">
@@ -362,11 +363,7 @@ export default function AdminModerationRoute() {
                         {t("common.view")}
                       </Link>
                     ) : null}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setSelectedReport(report)}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedReport(report)}>
                       {t("admin.moderation.details")}
                     </Button>
                     {actionMenu(report)}
@@ -411,7 +408,9 @@ export default function AdminModerationRoute() {
                 <dt>{t("admin.moderation.resource")}</dt>
                 <dd>
                   {selectedReport.resourceUrl ? (
-                    <Link to={selectedReport.resourceUrl}>{t("admin.moderation.openResource")}</Link>
+                    <Link to={selectedReport.resourceUrl}>
+                      {t("admin.moderation.openResource")}
+                    </Link>
                   ) : (
                     t("admin.moderation.noResource")
                   )}
@@ -429,7 +428,8 @@ export default function AdminModerationRoute() {
                     <li key={entry.id}>
                       <strong>{entry.action}</strong>
                       <span>
-                        {entry.actorUsername ?? entry.actorUserId ?? "—"} · {formatReportDate({
+                        {entry.actorUsername ?? entry.actorUserId ?? "—"} ·{" "}
+                        {formatReportDate({
                           ...selectedReport,
                           createdAt: entry.createdAt,
                         })}
@@ -458,9 +458,9 @@ export default function AdminModerationRoute() {
             if (!open && !busy) setSelectedAction(null);
           }}
           title={t("admin.moderation.actionTitle", {
-              action: actionLabel(selectedAction.action, t),
-              target: targetLabel(selectedAction.targetType, t),
-            })}
+            action: actionLabel(selectedAction.action, t),
+            target: targetLabel(selectedAction.targetType, t),
+          })}
           description={t("admin.moderation.targetDescription", { target: selectedAction.targetId })}
         >
           <div className="product-form-card">

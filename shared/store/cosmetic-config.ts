@@ -87,7 +87,8 @@ function color(value: unknown): string {
 export function parseCosmeticVisualConfig(input: unknown): CosmeticVisualConfigV1 {
   const root = object(input, "INVALID_CONFIG");
   keys(root, ROOT_KEYS, "UNKNOWN_CONFIG_KEY");
-  if (root.schemaVersion !== 1) throw new CosmeticConfigError("INVALID_SCHEMA_VERSION", "schemaVersion must be 1.");
+  if (root.schemaVersion !== 1)
+    throw new CosmeticConfigError("INVALID_SCHEMA_VERSION", "schemaVersion must be 1.");
   if (!Array.isArray(root.palette) || root.palette.length < 1 || root.palette.length > 8) {
     throw new CosmeticConfigError("INVALID_PALETTE", "Palette must contain 1..8 colors.");
   }
@@ -150,7 +151,8 @@ export function parseCosmeticVisualConfig(input: unknown): CosmeticVisualConfigV
     };
   }
   if (root.opacity !== undefined) result.opacity = number(root.opacity, 0, 1, "INVALID_OPACITY");
-  if (root.intensity !== undefined) result.intensity = number(root.intensity, 0, 1, "INVALID_INTENSITY");
+  if (root.intensity !== undefined)
+    result.intensity = number(root.intensity, 0, 1, "INVALID_INTENSITY");
   if (root.blendMode !== undefined) {
     if (typeof root.blendMode !== "string" || !BLENDS.has(root.blendMode)) {
       throw new CosmeticConfigError("INVALID_BLEND_MODE", "Unsupported blend mode.");

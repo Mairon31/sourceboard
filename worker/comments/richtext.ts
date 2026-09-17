@@ -49,6 +49,7 @@ function safeUrl(value: string): string {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     invalid("Comment links must use HTTP or HTTPS.");
   }
+  if (url.username || url.password) invalid("Comment links cannot contain credentials.");
   return url.toString();
 }
 
@@ -62,6 +63,7 @@ function safeKlipyUrl(value: string): string {
   if (url.protocol !== "https:" || !KLIPY_MEDIA_HOSTS.has(url.hostname)) {
     invalid("The selected KLIPY media is invalid.");
   }
+  if (url.username || url.password) invalid("The selected KLIPY media is invalid.");
   return url.toString();
 }
 
@@ -88,6 +90,7 @@ function normalizeNode(node: unknown): RichTextNode {
     value.type === "link" &&
     typeof value.url === "string" &&
     typeof value.label === "string" &&
+    value.label.trim().length > 0 &&
     value.label.length <= MAX_LINK_LABEL
   ) {
     return {
@@ -142,7 +145,10 @@ function flattenMarkdown(nodes: SafeRichTextNode[]): RichTextNode[] {
   return flattened;
 }
 
-function normalizeAttachment(value: unknown): CommentAttachment | null {
+function normalizeAttachment(
+  value: unknown,
+  allowLegacyMetadata = false,
+): CommentAttachment | null {
   if (value === null || value === undefined) return null;
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     invalid("The comment attachment is invalid.");
@@ -152,6 +158,7 @@ function normalizeAttachment(value: unknown): CommentAttachment | null {
     (attachment.type !== "IMAGE" && attachment.type !== "GIF" && attachment.type !== "STICKER") ||
     typeof attachment.id !== "string" ||
     typeof attachment.label !== "string" ||
+    attachment.id.length < 1 ||
     attachment.id.length > 200 ||
     attachment.label.length > 300
   ) {
@@ -169,25 +176,36 @@ function normalizeAttachment(value: unknown): CommentAttachment | null {
   }
   const provider =
     typeof attachment.provider === "string" ? attachment.provider.toLowerCase() : undefined;
-  if (attachment.url !== undefined && provider !== "klipy") {
-    invalid("Only KLIPY media URLs can be attached to comments.");
+  if (
+    allowLegacyMetadata &&
+    provider === undefined &&
+    attachment.url === undefined &&
+    attachment.preview === undefined
+  ) {
+    return { type: attachment.type, id: attachment.id, label: attachment.label };
   }
-  if (attachment.preview !== undefined && provider !== "klipy") {
-    invalid("Only KLIPY media previews can be attached to comments.");
+  if (provider === "sourceboard") {
+    if (attachment.type !== "STICKER") {
+      invalid("Only catalog stickers can use the SourceBoard media provider.");
+    }
+    // Catalog URLs are derived again by the server when the view is serialized.
+    // Never persist a client-provided path or external URL for first-party media.
+    return { type: "STICKER", id: attachment.id, label: attachment.label, provider };
+  }
+  if (provider !== "klipy" || typeof attachment.url !== "string") {
+    invalid(
+      attachment.type === "GIF"
+        ? "A provider GIF must include a valid KLIPY URL."
+        : "A provider sticker must include a valid KLIPY URL.",
+    );
   }
   return {
     type: attachment.type,
     id: attachment.id,
     label: attachment.label,
     provider,
-    url:
-      typeof attachment.url === "string" && provider === "klipy"
-        ? safeKlipyUrl(attachment.url)
-        : undefined,
-    preview:
-      typeof attachment.preview === "string" && provider === "klipy"
-        ? safeKlipyUrl(attachment.preview)
-        : undefined,
+    url: safeKlipyUrl(attachment.url),
+    preview: typeof attachment.preview === "string" ? safeKlipyUrl(attachment.preview) : undefined,
   };
 }
 
@@ -220,13 +238,20 @@ function upgradeLegacyMarkdownNodes(value: unknown): unknown {
   return flattenMarkdown(parseMarkdown(current.text));
 }
 
-export function normalizeCommentBody(input: {
-  richtext?: unknown;
-  plaintext?: unknown;
-  markdown?: unknown;
-  attachment?: unknown;
-  allowEmpty?: boolean;
-}): NormalizedCommentBody {
+interface NormalizeCommentBodyOptions {
+  allowLegacyAttachmentMetadata?: boolean;
+}
+
+export function normalizeCommentBody(
+  input: {
+    richtext?: unknown;
+    plaintext?: unknown;
+    markdown?: unknown;
+    attachment?: unknown;
+    allowEmpty?: boolean;
+  },
+  options: NormalizeCommentBodyOptions = {},
+): NormalizedCommentBody {
   const nodes = Array.isArray(input.richtext)
     ? input.richtext
     : typeof input.markdown === "string"
@@ -248,7 +273,7 @@ export function normalizeCommentBody(input: {
     .join("")
     .trim();
   if (plaintext.length > MAX_TEXT_LENGTH) invalid("Comments are limited to 5,000 characters.");
-  const attachment = normalizeAttachment(input.attachment);
+  const attachment = normalizeAttachment(input.attachment, options.allowLegacyAttachmentMetadata);
   if (!plaintext && !attachment && !input.allowEmpty)
     invalid("A comment must contain text or an attachment.");
   return { richtext, plaintext, attachment };
@@ -260,11 +285,17 @@ export function parseStoredCommentBody(
   allowEmpty = false,
 ): NormalizedCommentBody {
   try {
-    return normalizeCommentBody({
-      richtext: upgradeLegacyMarkdownNodes(JSON.parse(richtextJson)),
-      attachment: attachmentJson ? JSON.parse(attachmentJson) : null,
-      allowEmpty,
-    });
+    const storedNodes = JSON.parse(richtextJson);
+    return normalizeCommentBody(
+      {
+        richtext: Array.isArray(storedNodes)
+          ? upgradeLegacyMarkdownNodes(storedNodes)
+          : storedNodes,
+        attachment: attachmentJson ? JSON.parse(attachmentJson) : null,
+        allowEmpty,
+      },
+      { allowLegacyAttachmentMetadata: true },
+    );
   } catch (error) {
     if (error instanceof PostError) throw error;
     throw new PostError(500, "INVALID_STORED_COMMENT", "The stored comment could not be read.");

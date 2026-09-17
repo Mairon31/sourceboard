@@ -12,10 +12,12 @@ function htmlResponse(html: string) {
 describe("link preview metadata contract", () => {
   it("falls back to Twitter title and description metadata", async () => {
     const service = createLinkPreviewService({
-      fetchImpl: vi.fn(async () => htmlResponse(`<!doctype html><head>
+      fetchImpl: vi.fn(async () =>
+        htmlResponse(`<!doctype html><head>
         <meta name="twitter:title" content="Twitter title">
         <meta name="twitter:description" content="Twitter description">
-      </head>`)) as unknown as typeof fetch,
+      </head>`),
+      ) as unknown as typeof fetch,
       resolveHost: resolverFor(),
       now: () => 10,
     });
@@ -30,10 +32,12 @@ describe("link preview metadata contract", () => {
   it("adopts a safe relative canonical URL after validating its target", async () => {
     const resolveHost = resolverFor();
     const service = createLinkPreviewService({
-      fetchImpl: vi.fn(async () => htmlResponse(`<!doctype html><head>
+      fetchImpl: vi.fn(async () =>
+        htmlResponse(`<!doctype html><head>
         <link rel="canonical" href="/canonical-story">
         <meta property="og:title" content="Canonical story">
-      </head>`)) as unknown as typeof fetch,
+      </head>`),
+      ) as unknown as typeof fetch,
       resolveHost,
       now: () => 20,
     });
@@ -48,10 +52,12 @@ describe("link preview metadata contract", () => {
   it("ignores a canonical URL whose hostname resolves privately", async () => {
     const resolveHost = resolverFor({ "private.example": ["192.168.1.5"] });
     const service = createLinkPreviewService({
-      fetchImpl: vi.fn(async () => htmlResponse(`<!doctype html><head>
+      fetchImpl: vi.fn(async () =>
+        htmlResponse(`<!doctype html><head>
         <link rel="canonical" href="https://private.example/internal">
         <meta property="og:title" content="Public story">
-      </head>`)) as unknown as typeof fetch,
+      </head>`),
+      ) as unknown as typeof fetch,
       resolveHost,
       now: () => 30,
     });
@@ -65,7 +71,9 @@ describe("link preview metadata contract", () => {
 
   it("classifies a single useful metadata field as MINIMAL", async () => {
     const service = createLinkPreviewService({
-      fetchImpl: vi.fn(async () => htmlResponse('<meta property="og:title" content="Only title">')) as unknown as typeof fetch,
+      fetchImpl: vi.fn(async () =>
+        htmlResponse('<meta property="og:title" content="Only title">'),
+      ) as unknown as typeof fetch,
       resolveHost: resolverFor(),
       now: () => 40,
     });
@@ -80,10 +88,12 @@ describe("link preview metadata contract", () => {
     const title = "😀".repeat(170);
     const description = "界".repeat(340);
     const service = createLinkPreviewService({
-      fetchImpl: vi.fn(async () => htmlResponse(`
+      fetchImpl: vi.fn(async () =>
+        htmlResponse(`
         <meta property="og:title" content="${title}">
         <meta property="og:description" content="${description}">
-      `)) as unknown as typeof fetch,
+      `),
+      ) as unknown as typeof fetch,
       resolveHost: resolverFor(),
     });
 

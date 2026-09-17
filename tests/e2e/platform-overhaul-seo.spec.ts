@@ -12,7 +12,9 @@ test.describe("platform overhaul SEO/CMS matrix", () => {
     expect(xml).not.toContain("?lang=");
   });
 
-  test("localized official pages use clean canonicals and parseable JSON-LD when present", async ({ page }) => {
+  test("localized official pages use clean canonicals and parseable JSON-LD when present", async ({
+    page,
+  }) => {
     await page.goto("/es/docs");
     const canonical = page.locator('link[rel="canonical"]');
     if ((await canonical.count()) > 0) {

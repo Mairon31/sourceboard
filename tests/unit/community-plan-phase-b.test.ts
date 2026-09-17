@@ -27,7 +27,7 @@ describe("community plan phase B sticker packs", () => {
     expect(picker).toContain("StickerPack");
     expect(picker).toContain('provider: "sourceboard"');
     expect(picker).toContain("/api/comments/stickers");
-    expect(picker).toContain("KLIPY");
+    expect(picker).toContain('t("mediaPicker.klipy")');
   });
 
   it("provides real Admin pack and individual sticker management", () => {

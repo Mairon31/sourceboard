@@ -79,7 +79,7 @@ test("structural fox ears stay on the avatar shell", async ({ page }) => {
   const shell = page.locator('.product-avatar-stage[data-avatar-frame="fox-ears"]');
   await expect(shell).toHaveCount(1);
   await expect(shell).toHaveClass(/product-avatar-frame--decorative/);
-  await expect(shell.locator(".sb-avatar--frame-fox-ears")).toHaveCount(1);
+  await expect(shell.locator(".product-avatar-stage__avatar .sb-avatar")).toHaveCount(1);
 
   const ears = shell.locator('.product-avatar-stage__part[data-layer="top-ornament"]');
   await expect(ears).toHaveCount(2);
@@ -96,7 +96,7 @@ test("orbit animation decorates the shell without transforming the avatar image"
   await page.goto("/u/e2e-cosmetics-orbit");
 
   const shell = page.locator('.product-avatar-stage[data-avatar-frame="orbit-planets"]');
-  const avatar = shell.locator(".sb-avatar--frame-orbit-planets");
+  const avatar = shell.locator(".product-avatar-stage__avatar .sb-avatar");
   await expect(shell).toHaveCount(1);
   await expect(avatar).toHaveCount(1);
 

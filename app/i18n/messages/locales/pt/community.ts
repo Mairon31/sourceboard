@@ -43,6 +43,7 @@ export const ptCommunityMessages = {
   "community.state.archived": "Arquivado",
   "community.saveError":
     "Não foi possível salvar este cosmético. Verifique sua conexão e tente novamente.",
+  "community.loadError": "Não foi possível carregar seus envios comunitários. Tente novamente.",
   "community.invalidCss": "O CSS personalizado é inválido.",
   "community.routeTitle": "Criar cosmético · SourceBoard",
   "community.routeDescription": "Crie um cosmético comunitário isolado para o SourceBoard.",

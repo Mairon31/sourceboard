@@ -4,7 +4,9 @@ import { seedCosmeticsProfileFixture, seedNavigationPostFixture } from "./test-h
 test.describe("social/share/404", () => {
   test.beforeAll(() => seedNavigationPostFixture());
 
-  test("keeps public post identity stable and random routes on the unified 404", async ({ page }) => {
+  test("keeps public post identity stable and random routes on the unified 404", async ({
+    page,
+  }) => {
     await page.goto("/posts/e2e-navigation-post/e2e-navigation-post?lang=es");
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
@@ -41,7 +43,9 @@ test.describe("notifications", () => {
 test.describe("cosmetics/fonts/creator", () => {
   test.beforeAll(() => seedCosmeticsProfileFixture());
 
-  test("renders the same canonical cosmetic profile surface with bounded stage geometry", async ({ page }) => {
+  test("renders the same canonical cosmetic profile surface with bounded stage geometry", async ({
+    page,
+  }) => {
     await page.goto("/u/e2e-cosmetics");
     await expect(page.getByText("E2E Cosmetics")).toBeVisible();
     const stages = page.locator(".avatar-stage");

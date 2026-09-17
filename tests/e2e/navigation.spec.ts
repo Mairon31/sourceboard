@@ -138,7 +138,9 @@ test("post card surface opens canonical detail", async ({ page }) => {
   await page.goto("/");
   await waitForUiReady(page);
   const card = page.locator(".product-post", { hasText: "E2E navigation post" });
-  await card.locator(".product-post__media").click();
+  // The media surface intentionally opens the shared lightbox; the non-interactive
+  // card copy surface remains the detail-navigation target.
+  await card.locator(".product-post__copy").click();
   await expect(page).toHaveURL(/\/posts\/e2e-navigation-post\/e2e-navigation-post$/);
 });
 

@@ -15,8 +15,17 @@ export interface PublicOfficialPageSeo {
   variants: PublishedLocaleVariant[];
 }
 
-export function officialPageMeta({ page, locale }: { page: PublicOfficialPageSeo; locale: Locale }) {
-  const selected = page.variants.find((variant) => variant.locale === locale) ?? page.variants.find((variant) => variant.locale === "en") ?? page.variants[0];
+export function officialPageMeta({
+  page,
+  locale,
+}: {
+  page: PublicOfficialPageSeo;
+  locale: Locale;
+}) {
+  const selected =
+    page.variants.find((variant) => variant.locale === locale) ??
+    page.variants.find((variant) => variant.locale === "en") ??
+    page.variants[0];
   if (!selected) return [{ name: "robots", content: "noindex,nofollow" }];
   const canonical = absoluteSourceBoardUrl(selected.path);
   const alternates = page.variants.map((variant) => ({
@@ -30,6 +39,11 @@ export function officialPageMeta({ page, locale }: { page: PublicOfficialPageSeo
     { property: "og:title", content: selected.title },
     { property: "og:description", content: selected.description },
     { property: "og:url", content: canonical },
-    ...hreflangLinks(alternates, page.variants.find((variant) => variant.locale === "en") ? absoluteSourceBoardUrl(page.variants.find((variant) => variant.locale === "en")!.path) : canonical),
+    ...hreflangLinks(
+      alternates,
+      page.variants.find((variant) => variant.locale === "en")
+        ? absoluteSourceBoardUrl(page.variants.find((variant) => variant.locale === "en")!.path)
+        : canonical,
+    ),
   ];
 }

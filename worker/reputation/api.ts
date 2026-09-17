@@ -5,16 +5,20 @@ import { assertCsrfToken, assertSameOrigin } from "../auth/security";
 import { createD1AuthStore } from "../auth/store";
 import type { SourceBoardEnvironment } from "../environment";
 import { createMediaService } from "../media/r2";
-import { validateAchievementIcon } from "../media/achievement-icon-policy";
+import { MediaUploadError, uploadMediaAsset } from "../media/upload";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { PublicHttpError } from "../http/error";
+import { observeBackgroundFailure } from "../observability";
+import { getMediaImagePolicy } from "../../shared/media/policy";
 import {
   createAchievementVersion,
   createRewardRuleVersion,
   updateAchievementVersion,
 } from "./admin";
 import { createManualAdjustment } from "./service";
+
+export { assertAchievementMediaReference } from "./admin";
 
 function response(body: unknown, requestId: string, status = 200): Response {
   return Response.json(body, {
@@ -99,12 +103,18 @@ function parseFormBoolean(value: FormDataEntryValue | null): boolean {
 async function readAchievementMutation(
   request: Request,
   env: SourceBoardEnvironment,
-): Promise<{ payload: AchievementMutationPayload; uploadedKey: string | null }> {
+  ownerUserId: string,
+): Promise<{
+  payload: AchievementMutationPayload;
+  uploadedKey: string | null;
+  uploadedAssetId: string | null;
+}> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().startsWith("multipart/form-data")) {
     return {
       payload: (await request.json()) as AchievementMutationPayload,
       uploadedKey: null,
+      uploadedAssetId: null,
     };
   }
 
@@ -112,22 +122,63 @@ async function readAchievementMutation(
   const iconFile = form.get("iconFile");
   let icon = form.get("icon");
   let uploadedKey: string | null = null;
+  let uploadedAssetId: string | null = null;
   if (iconFile instanceof File && iconFile.size > 0) {
-    const bytes = new Uint8Array(await iconFile.arrayBuffer());
-    const validation = validateAchievementIcon(bytes, iconFile.type);
-    if (!validation.ok) {
+    if (iconFile.size > getMediaImagePolicy("ACHIEVEMENT").maxBytes) {
       throw new PublicHttpError(
         400,
         "INVALID_ACHIEVEMENT_ICON",
         "Use a valid PNG or GIF icon no larger than 2 MiB and 1024 pixels.",
       );
     }
+    const bytes = new Uint8Array(await iconFile.arrayBuffer());
     const assetId = createIdentifier();
-    uploadedKey = `achievement-icons/${assetId}`;
-    await createMediaService(requireAchievementMedia(env)).put(uploadedKey, bytes, {
-      httpMetadata: { contentType: validation.contentType },
-    });
-    icon = `media:${assetId}`;
+    try {
+      const result = await uploadMediaAsset({
+        media: createMediaService(requireAchievementMedia(env)),
+        ownerUserId,
+        assetId,
+        purpose: "ACHIEVEMENT",
+        bytes,
+        declaredContentType: iconFile.type,
+        allowAnimatedGif: true,
+        createdAt: Date.now(),
+        persist: async (asset) => {
+          if (!env.DB)
+            throw new PublicHttpError(503, "POINTS_UNAVAILABLE", "Points are unavailable.");
+          await env.DB.prepare(
+            `INSERT INTO media_assets
+                 (id, owner_user_id, purpose, r2_key, content_type, byte_size, width, height,
+                  checksum_sha256, status, created_at, deleted_at)
+               VALUES (?, ?, 'ACHIEVEMENT', ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, NULL)`,
+          )
+            .bind(
+              asset.id,
+              asset.ownerUserId,
+              asset.r2Key,
+              asset.contentType,
+              asset.byteSize,
+              asset.width,
+              asset.height,
+              asset.checksumSha256,
+              asset.createdAt,
+            )
+            .run();
+        },
+      });
+      uploadedKey = result.r2Key;
+      uploadedAssetId = result.id;
+      icon = `media:${result.id}`;
+    } catch (error) {
+      if (error instanceof MediaUploadError) {
+        throw new PublicHttpError(
+          400,
+          "INVALID_ACHIEVEMENT_ICON",
+          "Use a valid PNG or GIF icon no larger than 2 MiB and 1024 pixels.",
+        );
+      }
+      throw error;
+    }
   }
 
   return {
@@ -142,6 +193,7 @@ async function readAchievementMutation(
       reason: form.get("reason"),
     },
     uploadedKey,
+    uploadedAssetId,
   };
 }
 
@@ -161,17 +213,86 @@ async function serveAchievementIcon(
       503,
     );
   }
+  if (!env.DB) {
+    return failure(
+      "MEDIA_INFRASTRUCTURE_UNAVAILABLE",
+      "Achievement media is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  }
+  const asset = await env.DB.prepare(
+    `SELECT r2_key AS r2Key, content_type AS contentType, byte_size AS byteSize,
+              checksum_sha256 AS checksumSha256
+       FROM media_assets
+       WHERE id = ? AND purpose = 'ACHIEVEMENT' AND status = 'ACTIVE'
+         AND r2_key = ?`,
+  )
+    .bind(assetId, `achievement-icons/${assetId}`)
+    .first<{
+      r2Key: string;
+      contentType: string;
+      byteSize: number;
+      checksumSha256: string;
+    }>();
+  if (!asset) return failure("NOT_FOUND", "Achievement icon not found.", requestId, 404);
   const object = await createMediaService(env.MEDIA).get(`achievement-icons/${assetId}`);
   if (!object) return failure("NOT_FOUND", "Achievement icon not found.", requestId, 404);
   return new Response(object.body, {
     status: 200,
     headers: {
       "cache-control": "public, max-age=31536000, immutable",
-      "content-type": object.httpMetadata?.contentType ?? "application/octet-stream",
+      "content-length": String(asset.byteSize),
+      "content-type": asset.contentType,
+      etag: `"${asset.checksumSha256}"`,
       "x-content-type-options": "nosniff",
       [REQUEST_ID_HEADER]: requestId,
     },
   });
+}
+
+export async function compensateAchievementMedia(
+  db: D1Database,
+  media: R2Bucket,
+  input: { assetId: string; ownerUserId: string; r2Key: string },
+): Promise<void> {
+  let deletedFromR2 = false;
+  try {
+    await createMediaService(media).delete(input.r2Key);
+    deletedFromR2 = true;
+  } catch {
+    observeBackgroundFailure("achievement_media_compensation");
+  }
+
+  if (deletedFromR2) {
+    try {
+      await db
+        .prepare(
+          `DELETE FROM media_assets
+           WHERE id = ? AND owner_user_id = ? AND purpose = 'ACHIEVEMENT'
+             AND r2_key = ? AND status = 'ACTIVE'`,
+        )
+        .bind(input.assetId, input.ownerUserId, input.r2Key)
+        .run();
+      return;
+    } catch {
+      observeBackgroundFailure("achievement_media_compensation");
+    }
+  }
+
+  try {
+    await db
+      .prepare(
+        `UPDATE media_assets
+         SET status = 'DELETED', deleted_at = COALESCE(deleted_at, ?)
+         WHERE id = ? AND owner_user_id = ? AND purpose = 'ACHIEVEMENT'
+           AND r2_key = ? AND status = 'ACTIVE'`,
+      )
+      .bind(Date.now(), input.assetId, input.ownerUserId, input.r2Key)
+      .run();
+  } catch {
+    observeBackgroundFailure("achievement_media_compensation");
+  }
 }
 
 export function isReputationRoute(pathname: string): boolean {
@@ -292,7 +413,12 @@ export async function handleReputationRequest(
 
     if (url.pathname === "/api/admin/reputation/achievements") {
       requireCapability("achievement.manage");
-      const { payload, uploadedKey } = await readAchievementMutation(request, env);
+      const { payload, uploadedKey, uploadedAssetId } = await readAchievementMutation(
+        request,
+        env,
+        session.user.id,
+      );
+      let achievementWritten = false;
       try {
         const reason = requireReason(payload.reason);
         const achievement = payload.existingAchievementId
@@ -312,6 +438,7 @@ export async function handleReputationRequest(
               threshold: payload.threshold,
               enabled: payload.enabled,
             });
+        achievementWritten = true;
         await audit(env.DB, {
           actorUserId: session.user.id,
           action: payload.existingAchievementId
@@ -331,8 +458,12 @@ export async function handleReputationRequest(
         });
         return response({ achievement }, requestId, 201);
       } catch (error) {
-        if (uploadedKey && env.MEDIA) {
-          await createMediaService(env.MEDIA).delete(uploadedKey).catch(() => undefined);
+        if (uploadedKey && uploadedAssetId && env.MEDIA && !achievementWritten) {
+          await compensateAchievementMedia(env.DB, env.MEDIA, {
+            assetId: uploadedAssetId,
+            ownerUserId: session.user.id,
+            r2Key: uploadedKey,
+          });
         }
         throw error;
       }

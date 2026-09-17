@@ -325,7 +325,10 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
   }
 
   return (
-    <section className="product-stack product-friends-workspace" aria-label={t("friends.workspaceAria")}>
+    <section
+      className="product-stack product-friends-workspace"
+      aria-label={t("friends.workspaceAria")}
+    >
       <div className="product-friends-overview">
         <div className="product-friends-summary">
           <div>
@@ -340,17 +343,42 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
         </div>
 
         <div className="product-friends-tabs" role="tablist" aria-label={t("friends.viewsAria")}>
-          <WorkspaceTab mode="friends" activeMode={mode} count={friends.length} onSelect={selectMode} />
-          <WorkspaceTab mode="incoming" activeMode={mode} count={incoming.length} onSelect={selectMode} />
-          <WorkspaceTab mode="outgoing" activeMode={mode} count={outgoing.length} onSelect={selectMode} />
+          <WorkspaceTab
+            mode="friends"
+            activeMode={mode}
+            count={friends.length}
+            onSelect={selectMode}
+          />
+          <WorkspaceTab
+            mode="incoming"
+            activeMode={mode}
+            count={incoming.length}
+            onSelect={selectMode}
+          />
+          <WorkspaceTab
+            mode="outgoing"
+            activeMode={mode}
+            count={outgoing.length}
+            onSelect={selectMode}
+          />
           <WorkspaceTab mode="add" activeMode={mode} onSelect={selectMode} />
           <WorkspaceTab mode="discover" activeMode={mode} onSelect={selectMode} />
-          <WorkspaceTab mode="blocked" activeMode={mode} count={blocked.length} onSelect={selectMode} />
+          <WorkspaceTab
+            mode="blocked"
+            activeMode={mode}
+            count={blocked.length}
+            onSelect={selectMode}
+          />
         </div>
       </div>
 
       {mode === "friends" ? (
-        <div id="friends-panel" role="tabpanel" aria-label={t("friends.workspace.friends")} className="product-friends-panel">
+        <div
+          id="friends-panel"
+          role="tabpanel"
+          aria-label={t("friends.workspace.friends")}
+          className="product-friends-panel"
+        >
           <FriendList
             items={friends}
             emptyTitle={t("friends.empty.friendsTitle")}
@@ -361,7 +389,12 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
       ) : null}
 
       {mode === "incoming" ? (
-        <div id="incoming-panel" role="tabpanel" aria-label={t("friends.workspace.incoming")} className="product-friends-panel">
+        <div
+          id="incoming-panel"
+          role="tabpanel"
+          aria-label={t("friends.workspace.incoming")}
+          className="product-friends-panel"
+        >
           <FriendList
             items={incoming}
             emptyTitle={t("friends.empty.incomingTitle")}
@@ -372,7 +405,12 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
       ) : null}
 
       {mode === "outgoing" ? (
-        <div id="outgoing-panel" role="tabpanel" aria-label={t("friends.workspace.outgoing")} className="product-friends-panel">
+        <div
+          id="outgoing-panel"
+          role="tabpanel"
+          aria-label={t("friends.workspace.outgoing")}
+          className="product-friends-panel"
+        >
           <FriendList
             items={outgoing}
             emptyTitle={t("friends.empty.outgoingTitle")}
@@ -383,7 +421,12 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
       ) : null}
 
       {mode === "blocked" ? (
-        <div id="blocked-panel" role="tabpanel" aria-label={t("friends.workspace.blocked")} className="product-friends-panel">
+        <div
+          id="blocked-panel"
+          role="tabpanel"
+          aria-label={t("friends.workspace.blocked")}
+          className="product-friends-panel"
+        >
           <FriendList
             items={blocked}
             emptyTitle={t("friends.empty.blockedTitle")}
@@ -394,7 +437,12 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
       ) : null}
 
       {mode === "add" || mode === "discover" ? (
-        <div id={`${mode}-panel`} role="tabpanel" aria-label={t(workspaceLabelKeys[mode])} className="product-stack product-friends-panel">
+        <div
+          id={`${mode}-panel`}
+          role="tabpanel"
+          aria-label={t(workspaceLabelKeys[mode])}
+          className="product-stack product-friends-panel"
+        >
           <form
             className="product-friends-search"
             onSubmit={(event) => {
@@ -403,7 +451,11 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
             }}
           >
             <Input
-              label={mode === "add" ? t("friends.search.findLabel") : t("friends.search.suggestionsLabel")}
+              label={
+                mode === "add"
+                  ? t("friends.search.findLabel")
+                  : t("friends.search.suggestionsLabel")
+              }
               type="search"
               value={query}
               onChange={(event) => setQuery(event.currentTarget.value)}
@@ -418,7 +470,10 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
           <div className="product-list product-friends-list">
             {suggestions.map((friend) => (
               <article key={friend.id} className="product-list-row product-friend-row">
-                <Link className="product-list-row__identity" to={`/u/${encodeURIComponent(friend.username)}`}>
+                <Link
+                  className="product-list-row__identity"
+                  to={`/u/${encodeURIComponent(friend.username)}`}
+                >
                   <FriendIdentity friend={friend} />
                   <span className="product-list-row__copy">@{friend.username}</span>
                 </Link>
@@ -434,8 +489,16 @@ export function FriendsWorkspace({ initialFriends }: { initialFriends: Friend[] 
           </div>
           {!searching && !searchError && suggestions.length === 0 ? (
             <EmptyFriends
-              title={mode === "discover" ? t("friends.empty.suggestionsTitle") : t("friends.empty.searchTitle")}
-              description={mode === "discover" ? t("friends.empty.suggestionsDescription") : t("friends.empty.searchDescription")}
+              title={
+                mode === "discover"
+                  ? t("friends.empty.suggestionsTitle")
+                  : t("friends.empty.searchTitle")
+              }
+              description={
+                mode === "discover"
+                  ? t("friends.empty.suggestionsDescription")
+                  : t("friends.empty.searchDescription")
+              }
             />
           ) : null}
         </div>

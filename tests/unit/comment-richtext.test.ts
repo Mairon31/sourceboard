@@ -66,15 +66,74 @@ describe("Phase 5 comment rich text", () => {
     ).toThrow("Only text");
   });
 
+  it("rejects links without visible labels", () => {
+    expect(() =>
+      normalizeCommentBody({
+        richtext: [{ type: "link", url: "https://example.com/source", label: "   " }],
+      }),
+    ).toThrow("Only text");
+  });
+
   it("allows provider/catalog attachments but no upload-shaped payload", () => {
     expect(
       normalizeCommentBody({
         plaintext: "Evidence",
-        attachment: { type: "GIF", id: "provider-result", label: "Evidence reaction" },
+        attachment: {
+          type: "GIF",
+          id: "provider-result",
+          label: "Evidence reaction",
+          provider: "klipy",
+          url: "https://static.klipy.com/media/evidence.gif",
+        },
       }).attachment,
-    ).toMatchObject({ type: "GIF", id: "provider-result" });
+    ).toMatchObject({ type: "GIF", id: "provider-result", provider: "klipy" });
     expect(() =>
       normalizeCommentBody({ plaintext: "x", attachment: { type: "IMAGE", id: "file" } }),
     ).toThrow("Only an image, provider GIF, or catalog sticker");
+  });
+
+  it("rejects provider GIFs without a safe media URL", () => {
+    expect(() =>
+      normalizeCommentBody({
+        plaintext: "Evidence",
+        attachment: { type: "GIF", id: "provider-result", label: "Evidence reaction" },
+      }),
+    ).toThrow("A provider GIF must include a valid KLIPY URL");
+  });
+
+  it("normalizes first-party stickers without trusting client media URLs", () => {
+    expect(
+      normalizeCommentBody({
+        plaintext: "Evidence",
+        attachment: {
+          type: "STICKER",
+          id: "sticker-1",
+          label: "SourceBoard sticker",
+          provider: "sourceboard",
+          url: "/api/media/catalog/sticker/sticker-1",
+          preview: "/api/media/catalog/sticker/sticker-1",
+        },
+      }).attachment,
+    ).toEqual({
+      type: "STICKER",
+      id: "sticker-1",
+      label: "SourceBoard sticker",
+      provider: "sourceboard",
+    });
+  });
+
+  it("rejects credentialed provider media URLs", () => {
+    expect(() =>
+      normalizeCommentBody({
+        plaintext: "Evidence",
+        attachment: {
+          type: "GIF",
+          id: "provider-result",
+          label: "Evidence reaction",
+          provider: "klipy",
+          url: "https://user:password@static.klipy.com/media.gif",
+        },
+      }),
+    ).toThrow("selected KLIPY media is invalid");
   });
 });

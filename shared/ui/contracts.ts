@@ -8,7 +8,7 @@ import type {
   ProfileEffectPreset,
 } from "../store/cosmetics";
 import type { CosmeticIdentityVisuals, CosmeticVisualDefinition } from "../store/custom-cosmetics";
-import type { RichTextMarks } from "../richtext/markdown";
+import type { RichTextMarks, SafeRichTextNode } from "../richtext/markdown";
 
 export type AuthorMode = "IDENTIFIED" | "ANONYMOUS";
 export type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
@@ -139,6 +139,7 @@ export interface PostSummary {
   slug?: string;
   title: string;
   description?: string;
+  descriptionRichtext?: SafeRichTextNode[];
   categorySlug: PostCategorySlug;
   author: PublicPostAuthor;
   createdAt: string;
@@ -156,6 +157,8 @@ export interface PostSummary {
   acceptedSource?: AcceptedSourceView;
   verifiedSource?: VerifiedSourceView;
   commentsClosed?: boolean;
+  deletedAt?: string;
+  restoreAvailable?: boolean;
 }
 
 export interface PostPermissionView {

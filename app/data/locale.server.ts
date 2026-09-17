@@ -1,9 +1,4 @@
-import {
-  DEFAULT_LOCALE,
-  isLocale,
-  normalizeLocale,
-  type Locale,
-} from "../../shared/i18n/locales";
+import { DEFAULT_LOCALE, isLocale, normalizeLocale, type Locale } from "../../shared/i18n/locales";
 
 export const LOCALE_COOKIE_NAME = "sourceboard_locale";
 export const LOCALE_COOKIE_MAX_AGE = 31_536_000;
@@ -73,7 +68,6 @@ export function requestedLocale(request: Request, accountLocale?: string | null)
     cookieLocale: readLocaleCookie(request.headers.get("cookie")),
     accountLocale,
     acceptLanguage: request.headers.get("accept-language"),
-    shortLinkDefaultEnglish:
-      url.pathname.startsWith("/sh/") && !url.searchParams.has("lang"),
+    shortLinkDefaultEnglish: url.pathname.startsWith("/sh/") && !url.searchParams.has("lang"),
   });
 }

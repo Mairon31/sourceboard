@@ -44,4 +44,3 @@ describe("source integrity admin presentation contract", () => {
     expect(adminCss).toContain("@media (max-width: 720px)");
   });
 });
-

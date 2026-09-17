@@ -33,8 +33,7 @@ test("authorized Admin Store edits cosmetics through Creator Pro and rejects uns
 
   const saveResponsePromise = page.waitForResponse(
     (response) =>
-      response.url().includes("/api/admin/store/") &&
-      response.request().method() === "PATCH",
+      response.url().includes("/api/admin/store/") && response.request().method() === "PATCH",
   );
   await editor.getByRole("button", { name: "Save changes" }).click();
   const saveResponse = await saveResponsePromise;

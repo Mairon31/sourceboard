@@ -12,6 +12,8 @@ const adminPacks = read("../../app/components/admin/store/AdminEmotePackManager.
 const routes = read("../../app/routes.ts");
 const adminShell = read("../../app/components/admin/AdminShell.tsx");
 const storeCss = read("../../app/components/product/store.css");
+const avatarStageCss = read("../../app/components/product/avatar-stage.css");
+const avatarDefinitions = read("../../app/components/product/avatar-frame-definitions.ts");
 const catalogApi = read("../../worker/catalog/api.ts");
 const storeApi = read("../../worker/store/api.ts");
 const storeService = read("../../worker/store/service.ts");
@@ -66,7 +68,8 @@ describe("refreshed store experience", () => {
       "crystal",
     ]) {
       expect(cosmetics).toContain(`"${preset}"`);
-      expect(storeCss).toContain(`.sb-avatar--frame-${preset}`);
+      expect(avatarDefinitions).toContain(`${preset}: [`);
+      expect(avatarStageCss).toContain(`data-avatar-frame="${preset}"`);
     }
     for (const preset of [
       "star-dust",
@@ -104,8 +107,9 @@ describe("refreshed store experience", () => {
     expect(catalogApi).toContain("packId");
   });
 
-  it("lets admin and owner roles use pack entitlements without inventory purchases", () => {
+  it("uses the persisted store capability for pack entitlements without inventory purchases", () => {
     expect(entitlements).toContain("isStoreAdmin");
-    expect(storeService).toContain("r.slug IN ('admin', 'owner')");
+    expect(storeService).toContain("role_permissions");
+    expect(storeService).toContain("p.slug = 'store.manage'");
   });
 });

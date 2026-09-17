@@ -24,4 +24,19 @@ describe("comment image attachments", () => {
       }),
     ).toThrow("First-party comment images cannot include a URL.");
   });
+
+  it("rejects provider attachments without a canonical provider id", () => {
+    expect(() =>
+      normalizeCommentBody({
+        plaintext: "GIF",
+        attachment: {
+          type: "GIF",
+          id: "",
+          label: "GIF",
+          provider: "klipy",
+          url: "https://static.klipy.com/media/example.gif",
+        },
+      }),
+    ).toThrow("Only an image, provider GIF, or catalog sticker can be attached to comments.");
+  });
 });

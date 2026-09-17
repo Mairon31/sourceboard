@@ -47,12 +47,7 @@ export function AvatarStage({
         {anonymous ? (
           <AnonymousAvatar size={size === "xl" || size === "preview" ? "lg" : size} />
         ) : (
-          <Avatar
-            name={alt}
-            src={avatarUrl}
-            size={avatarSize(size)}
-            className={frame ? `sb-avatar--frame-${frame}` : undefined}
-          />
+          <Avatar name={alt} src={avatarUrl} size={avatarSize(size)} />
         )}
       </span>
       {AVATAR_STAGE_LAYER_ORDER.flatMap((layer) =>

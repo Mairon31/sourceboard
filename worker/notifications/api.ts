@@ -45,8 +45,12 @@ async function requireViewerId(
   if (!getSessionToken(request)) {
     return failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
   }
-  const session = await createAuthService({ store: createD1AuthStore(db), env }).getSession(request);
-  return session?.user.id ?? failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.");
+  const session = await createAuthService({ store: createD1AuthStore(db), env }).getSession(
+    request,
+  );
+  return (
+    session?.user.id ?? failure(requestId, 401, "AUTHENTICATION_REQUIRED", "Sign in to continue.")
+  );
 }
 
 function mutationSecurity(request: Request): void {
@@ -105,9 +109,17 @@ export async function handleNotificationRequest(
     if (request.method === "POST" && url.pathname === "/api/notifications/read-batch") {
       const notificationIds = await readBatchIds(request);
       if (!notificationIds) {
-        return failure(requestId, 400, "INVALID_NOTIFICATION_BATCH", "The notification batch is invalid.");
+        return failure(
+          requestId,
+          400,
+          "INVALID_NOTIFICATION_BATCH",
+          "The notification batch is invalid.",
+        );
       }
-      return json(await markNotificationsReadBatch(db, viewer, notificationIds, Date.now()), requestId);
+      return json(
+        await markNotificationsReadBatch(db, viewer, notificationIds, Date.now()),
+        requestId,
+      );
     }
     const readMatch = url.pathname.match(/^\/api\/notifications\/([^/]+)\/read$/);
     if (request.method === "POST" && readMatch) {

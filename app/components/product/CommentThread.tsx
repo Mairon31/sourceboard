@@ -19,8 +19,10 @@ import {
   type SafeRichTextNode,
 } from "../../../shared/richtext/markdown";
 import type { CommentSort } from "../../../worker/comments/types";
+import { getMediaImagePolicy } from "../../../shared/media/policy";
 import { readCsrfToken } from "../../data/csrf";
 import { prepareImageForUpload } from "../../data/media-preparation";
+import { localizeApiError } from "../../data/user-facing-errors";
 import { useI18n } from "../../i18n/I18nProvider";
 import { AuthRequiredCard } from "./AuthRequiredCard";
 import { CosmeticIdentity } from "./CosmeticIdentity";
@@ -28,8 +30,8 @@ import { RichText } from "./RichText";
 import { ShareAction } from "./ShareAction";
 import { MediaPicker, type MediaPickerKind } from "./MediaPicker";
 import { LinkPreviewCard } from "./LinkPreviewCard";
+import { MediaLightbox } from "./MediaLightbox";
 import {
-  Avatar,
   Badge,
   Button,
   CheckIcon,
@@ -52,6 +54,8 @@ import {
   TrashIcon,
 } from "../ui";
 
+const COMMENT_IMAGE_MAX_BYTES = getMediaImagePolicy("COMMENT").maxBytes;
+
 function CommentAttachment({
   attachment,
   onRemove,
@@ -61,7 +65,10 @@ function CommentAttachment({
 }) {
   const { t } = useI18n();
   const imageUrl = attachment.url ?? attachment.preview;
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const imageTriggerRef = useRef<HTMLElement | null>(null);
   if (!imageUrl) return null;
+  const isImage = attachment.type === "IMAGE";
   const removeLabel = t(
     attachment.type === "IMAGE"
       ? "comments.composer.removeImage"
@@ -73,7 +80,21 @@ function CommentAttachment({
     <div
       className={`product-comment-attachment product-comment-attachment--${attachment.type.toLowerCase()}`}
     >
-      <img src={imageUrl} alt={attachment.label} loading="lazy" />
+      {isImage ? (
+        <button
+          type="button"
+          className="product-comment-attachment__image-button"
+          aria-label={t("comments.composer.openImage")}
+          onClick={(event) => {
+            imageTriggerRef.current = event.currentTarget;
+            setLightboxOpen(true);
+          }}
+        >
+          <img src={imageUrl} alt={attachment.label} loading="lazy" />
+        </button>
+      ) : (
+        <img src={imageUrl} alt={attachment.label} loading="lazy" />
+      )}
       {onRemove ? (
         <button
           type="button"
@@ -84,6 +105,15 @@ function CommentAttachment({
         >
           <CloseIcon width="16" height="16" />
         </button>
+      ) : null}
+      {isImage ? (
+        <MediaLightbox
+          open={lightboxOpen}
+          onOpenChange={setLightboxOpen}
+          src={imageUrl}
+          alt={attachment.label}
+          returnFocusRef={imageTriggerRef}
+        />
       ) : null}
     </div>
   );
@@ -354,7 +384,8 @@ function CommentItem({
   }
 
   async function saveEdit() {
-    if (!editBody.trim()) return;
+    if (!editBody.trim() && !comment.attachment && !comment.linkPreview && !editLinkUrl.trim())
+      return;
     setBusy(true);
     setStatus(undefined);
     try {
@@ -735,7 +766,7 @@ function CommentItem({
           ) : null}
           <ShareAction
             url={comment.commentHref ?? `#comment-${comment.id}`}
-            title="SourceBoard comment"
+            title={t("comments.share.title")}
             target={{ resourceType: "COMMENT", resourceId: comment.id }}
           />
           {comment.editedAt ? (
@@ -902,8 +933,6 @@ function countThread(comments: CommentView[]): { comments: number; replies: numb
   return { comments: total, replies };
 }
 
-const COMPOSER_FALLBACK_NAME = "SourceBoard member";
-
 export function CommentThread({
   postId,
   comments,
@@ -918,6 +947,7 @@ export function CommentThread({
   onAcceptSource,
   onUndoAcceptedSource,
   onCommentsChanged,
+  onCommentUpdated,
 }: {
   postId: string;
   comments: CommentView[];
@@ -932,6 +962,7 @@ export function CommentThread({
   onAcceptSource?: (commentId: string) => void;
   onUndoAcceptedSource?: (commentId: string, reason: string) => Promise<void>;
   onCommentsChanged?: () => void;
+  onCommentUpdated?: (comment: CommentView) => void;
 }) {
   const { t, tp } = useI18n();
   const submitInFlightRef = useRef(false);
@@ -1007,11 +1038,15 @@ export function CommentThread({
   async function uploadCommentImage(file: File | undefined) {
     if (!file) return;
     if (imageInputRef.current) imageInputRef.current.value = "";
+    if (file.size > COMMENT_IMAGE_MAX_BYTES) {
+      setStatus(t("comments.error.imageTooLarge"));
+      return;
+    }
     setImageUploading(true);
     setStatus(undefined);
     try {
       const form = new FormData();
-      const prepared = await prepareImageForUpload(file, { maxDimension: 3_000 });
+      const prepared = await prepareImageForUpload(file, { purpose: "COMMENT" });
       form.set("file", prepared, prepared.name);
       const response = await fetch("/api/comments/media", {
         method: "POST",
@@ -1022,10 +1057,13 @@ export function CommentThread({
         assetId?: string;
         label?: string;
         url?: string;
-        error?: { message?: string };
+        error?: { code?: string; message?: string };
       } | null;
       if (!response.ok || !payload?.assetId || !payload.url) {
-        throw new Error(payload?.error?.message ?? t("comments.error.imageUpload"));
+        setStatus(
+          localizeApiError(payload, t, "comments.error.imageUpload", { surface: "COMMENT" }),
+        );
+        return;
       }
       clearLinkPreview();
       setLinkOpen(false);
@@ -1037,7 +1075,16 @@ export function CommentThread({
         url: payload.url,
       });
     } catch (cause) {
-      setStatus(cause instanceof Error ? cause.message : t("comments.error.imageUpload"));
+      setStatus(
+        cause instanceof Error && cause.message === "IMAGE_DIMENSIONS_INVALID"
+          ? localizeApiError(
+              { error: { code: "MEDIA_DIMENSIONS_INVALID" } },
+              t,
+              "comments.error.imageUpload",
+              { surface: "COMMENT" },
+            )
+          : t("comments.error.imageUpload"),
+      );
     } finally {
       setImageUploading(false);
     }
@@ -1166,7 +1213,7 @@ export function CommentThread({
               nameAs="strong"
             />
           ) : (
-            <Avatar name={viewerIdentity?.displayName ?? COMPOSER_FALLBACK_NAME} size="sm" />
+            <CosmeticIdentity anonymous mode="compact" avatarSize="sm" nameAs="strong" />
           )}
           <div className="product-comment-composer__field">
             <Textarea
@@ -1185,8 +1232,8 @@ export function CommentThread({
                 <button
                   className={`product-comment-composer__media-action${mediaKind === "GIF" ? " is-active" : ""}`}
                   type="button"
-                  aria-label="GIF"
-                  title="GIF"
+                  aria-label={t("comments.composer.gif")}
+                  title={t("comments.composer.gif")}
                   aria-expanded={mediaKind === "GIF"}
                   onClick={() => changeMediaKind(mediaKind === "GIF" ? null : "GIF")}
                 >
@@ -1311,7 +1358,7 @@ export function CommentThread({
                   label={t("comments.composer.linkUrl")}
                   type="url"
                   inputMode="url"
-                  placeholder="https://example.com/source"
+                  placeholder={t("comments.composer.linkPlaceholder")}
                   value={linkUrl}
                   onChange={(event) => {
                     setLinkUrl(event.target.value);
@@ -1355,7 +1402,10 @@ export function CommentThread({
             canModerate={canModerateComments}
             onAcceptSource={onAcceptSource}
             onUndoAcceptedSource={onUndoAcceptedSource}
-            onUpdated={(next) => setItems((current) => replaceComment(current, next))}
+            onUpdated={(next) => {
+              setItems((current) => replaceComment(current, next));
+              onCommentUpdated?.(next);
+            }}
             onDeleted={(id) => setItems((current) => removeComment(current, id))}
             onChanged={() => onCommentsChanged?.()}
           />
