@@ -21,7 +21,11 @@ describe("admin route zero-flash guard", () => {
   it("requires the shared admin guard in every direct admin loader", () => {
     for (const route of DIRECT_ADMIN_ROUTES) {
       const source = read(route);
-      expect(source, route).toContain("requireAdminPageAccess");
+      expect(source, route).toContain(
+        route === "app/routes/admin-moderation.tsx"
+          ? "requireModerationPageAccess"
+          : "requireAdminPageAccess",
+      );
       expect(source, route).not.toContain("loadAdminAccess(request, context)");
     }
   });

@@ -7,7 +7,7 @@ import { AdminActionMenu } from "../components/admin/AdminActionMenu";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { useI18n } from "../i18n/I18nProvider";
 import { Button, Modal, OverlayActionRow, Textarea } from "../components/ui";
-import { requireAdminPageAccess } from "../data/admin-access";
+import { requireModerationPageAccess } from "../data/admin-access";
 import { readCsrfToken } from "../data/csrf";
 import type { ServerLoaderArgs } from "../data/server-request";
 
@@ -34,9 +34,18 @@ const TEMPORARY_ACTIONS = new Set<ModerationAction>([
 ]);
 
 export async function loader({ request, context }: ServerLoaderArgs) {
-  const { runtime } = await requireAdminPageAccess(request, context);
+  const { runtime } = await requireModerationPageAccess(request, context);
+  const searchParams = new URL(request.url).searchParams;
+  const target = searchParams.get("target");
+  const targetId = searchParams.get("targetId")?.trim();
   return {
     queue: await createModerationService(runtime.db).listQueue(),
+    focusTarget:
+      target === "POST" || target === "COMMENT" || target === "USER"
+        ? targetId
+          ? { targetType: target, targetId }
+          : null
+        : null,
   };
 }
 
@@ -87,12 +96,12 @@ function targetLabel(targetType: ActionTarget, translate: (key: MessageKey) => s
 }
 
 export default function AdminModerationRoute() {
-  const { queue } = useLoaderData<LoaderData>();
+  const { queue, focusTarget } = useLoaderData<LoaderData>();
   const { t, date } = useI18n();
   const revalidator = useRevalidator();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(focusTarget?.targetId ?? "");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [targetFilter, setTargetFilter] = useState("ALL");
+  const [targetFilter, setTargetFilter] = useState(focusTarget?.targetType ?? "ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [sortOrder, setSortOrder] = useState<"NEWEST" | "OLDEST">("OLDEST");
   const [selectedAction, setSelectedAction] = useState<SelectedAction | null>(null);

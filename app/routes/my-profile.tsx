@@ -12,6 +12,7 @@ import { loadAdminAccess } from "../data/admin-access";
 import { withServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { useI18n } from "../i18n/I18nProvider";
 import { PostCard } from "../components/product/PostCard";
+import { readPostActionPermissions, withPostActionPermissions } from "../data/post-actions";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
   const [profileResult, adminAccess] = await Promise.all([
@@ -38,11 +39,12 @@ export async function loader({ request, context }: ServerLoaderArgs) {
           postService.listRecentlyDeleted(userId, 20),
         ]);
         const profile = await profileService.getPublicProfile(mine.profile.username, userId);
+        const actionPermissions = await readPostActionPermissions(runtime.db, userId);
         return {
           authenticated: true as const,
           unavailable: false,
           profile,
-          deletedPosts,
+          deletedPosts: withPostActionPermissions(deletedPosts, actionPermissions),
         };
       },
     ),

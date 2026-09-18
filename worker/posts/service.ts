@@ -407,6 +407,10 @@ async function toPostSummary(
           restoreAvailable: true,
         }
       : {}),
+    permissions: {
+      canModerate: false,
+      canReport: Boolean(viewerId && viewerId !== post.post.authorId && !post.post.deletedAt),
+    },
     acceptedSource: post.acceptedSource
       ? {
           commentId: post.acceptedSource.commentId,

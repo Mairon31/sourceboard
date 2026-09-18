@@ -163,6 +163,7 @@ function toPostSummary(
   row: PostSearchRow,
   blurNsfw: boolean,
   cosmetics?: EquippedCosmetics,
+  canReport = false,
 ): PostSummary {
   const anonymous = row.author_mode === "ANONYMOUS";
   const profileVisible = !anonymous && row.author_profile_visible === 1;
@@ -204,6 +205,7 @@ function toPostSummary(
     imageUrl: `/api/media/post/${encodeURIComponent(row.media_id)}`,
     imageWidth: row.media_width ?? undefined,
     imageHeight: row.media_height ?? undefined,
+    permissions: { canModerate: false, canReport },
     acceptedSource: acceptedSource(row),
     verifiedSource: verifiedSource(row),
   };
@@ -500,7 +502,12 @@ export function createSearchService(dependencies: SearchServiceDependencies): Se
       const visiblePostRows = postHasNext ? postRows.results.slice(0, limit) : postRows.results;
       const lastPost = visiblePostRows.at(-1);
       result.posts = visiblePostRows.map((row) =>
-        toPostSummary(row, blurNsfw, cosmetics.get(row.author_id)),
+        toPostSummary(
+          row,
+          blurNsfw,
+          cosmetics.get(row.author_id),
+          Boolean(input.viewerId && input.viewerId !== row.author_id),
+        ),
       );
       result.nextPostCursor =
         input.filter !== "relevant" && postHasNext && lastPost

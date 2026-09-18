@@ -157,6 +157,40 @@ test.beforeAll(() => {
   seedAdminGapFixtures();
 });
 
+test("post context menu opens moderation for an admin on the post detail", async ({ page }) => {
+  await installAdminStoreFixture(page);
+  await page.goto("/posts/e2e-report-post/e2e-moderation-report-post");
+  await waitForUiReady(page);
+
+  const moreActions = page.getByRole("button", { name: "More post actions" });
+  await expect(moreActions).toBeVisible();
+  await moreActions.click();
+  await page.getByRole("menuitem", { name: "Moderate post" }).click();
+
+  await expect(page).toHaveURL(/\/admin\/moderation\?target=POST&targetId=e2e-report-post$/);
+  await expect(page.getByRole("heading", { name: "Moderation queue" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Search reports" })).toHaveValue(
+    "e2e-report-post",
+  );
+  await expect(
+    page.locator(".admin-desktop-table .admin-table__row").filter({ hasText: "e2e-report-post" }),
+  ).toBeVisible();
+});
+
+test("post context menu is present on homepage and public profile cards", async ({ page }) => {
+  await installAdminStoreFixture(page);
+
+  for (const path of ["/", "/u/e2e-report-author"]) {
+    await page.goto(path);
+    await waitForUiReady(page);
+    const postCard = page
+      .locator(".product-post")
+      .filter({ hasText: "E2E moderation report post" });
+    await expect(postCard).toBeVisible();
+    await expect(postCard.getByRole("button", { name: "More post actions" })).toBeVisible();
+  }
+});
+
 test("moderation reports expose View and contextual Details on desktop and mobile", async ({
   page,
 }) => {

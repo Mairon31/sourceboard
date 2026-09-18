@@ -16,6 +16,7 @@ import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { readViewerLikedPostIds } from "../data/viewer-post-likes";
+import { readPostActionPermissions, withPostActionPermissions } from "../data/post-actions";
 import { PostCard } from "../components/product/PostCard";
 import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
@@ -82,14 +83,18 @@ export async function loader({ request, context }: LoaderArgs) {
         userId,
         recent.posts.map((post) => post.id),
       );
+      const actionPermissions = await readPostActionPermissions(runtime.db, userId);
       return {
         unavailable: false,
         categorySlug,
         categories,
-        posts: recent.posts.map((post) => ({
-          ...post,
-          reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
-        })),
+        posts: withPostActionPermissions(
+          recent.posts.map((post) => ({
+            ...post,
+            reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
+          })),
+          actionPermissions,
+        ),
       };
     },
   );

@@ -4,6 +4,7 @@ import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
 import type { FeedKind } from "../../worker/posts/types";
 import { readViewerLikedPostIds } from "../data/viewer-post-likes";
+import { readPostActionPermissions, withPostActionPermissions } from "../data/post-actions";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 
 interface LoaderArgs extends ServerLoaderArgs {
@@ -51,12 +52,16 @@ export async function loader({ request, context, params }: LoaderArgs) {
         userId,
         feed.posts.map((post) => post.id),
       );
+      const actionPermissions = await readPostActionPermissions(runtime.db, userId);
       return {
         unavailable: false,
-        posts: feed.posts.map((post) => ({
-          ...post,
-          reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
-        })),
+        posts: withPostActionPermissions(
+          feed.posts.map((post) => ({
+            ...post,
+            reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
+          })),
+          actionPermissions,
+        ),
       };
     },
   );

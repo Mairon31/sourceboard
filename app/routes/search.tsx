@@ -18,6 +18,7 @@ import {
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import type { MessageKey } from "../i18n";
 import { useI18n } from "../i18n/I18nProvider";
+import { readPostActionPermissions, withPostActionPermissions } from "../data/post-actions";
 
 type LoaderArgs = ServerLoaderArgs;
 
@@ -64,10 +65,8 @@ export async function loader({ request, context }: LoaderArgs) {
       state,
       result: emptyResult(state),
     }),
-    async (runtime, userId) => ({
-      unavailable: false,
-      state,
-      result: await createSearchService({
+    async (runtime, userId) => {
+      const result = await createSearchService({
         db: runtime.db,
         profileStore: createD1ProfileStore(runtime.db),
       }).search({
@@ -79,8 +78,17 @@ export async function loader({ request, context }: LoaderArgs) {
         postCursor: url.searchParams.get("postCursor"),
         profileCursor: url.searchParams.get("profileCursor"),
         limit: 20,
-      }),
-    }),
+      });
+      const actionPermissions = await readPostActionPermissions(runtime.db, userId);
+      return {
+        unavailable: false,
+        state,
+        result: {
+          ...result,
+          posts: withPostActionPermissions(result.posts, actionPermissions),
+        },
+      };
+    },
   );
 }
 

@@ -159,6 +159,7 @@ export interface PostSummary {
   commentsClosed?: boolean;
   deletedAt?: string;
   restoreAvailable?: boolean;
+  permissions?: Partial<PostPermissionView>;
 }
 
 export interface PostPermissionView {

@@ -13,6 +13,7 @@ import { Card } from "../components/ui";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { useI18n } from "../i18n/I18nProvider";
 import { readViewerLikedPostIds } from "../data/viewer-post-likes";
+import { readPostActionPermissions, withPostActionPermissions } from "../data/post-actions";
 import { readSourceBoardRequestContext } from "../../shared/router-context";
 
 interface LoaderArgs extends ServerLoaderArgs {
@@ -68,13 +69,17 @@ export async function loader({ request, context, params }: LoaderArgs) {
         userId,
         feed.posts.map((post) => post.id),
       );
+      const actionPermissions = await readPostActionPermissions(runtime.db, userId);
       return {
         unavailable: false,
         category,
-        posts: feed.posts.map((post) => ({
-          ...post,
-          reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
-        })),
+        posts: withPostActionPermissions(
+          feed.posts.map((post) => ({
+            ...post,
+            reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
+          })),
+          actionPermissions,
+        ),
       };
     },
   );

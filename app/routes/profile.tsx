@@ -17,6 +17,7 @@ import { ProfileHero } from "../components/product/ProfileHero";
 import { AchievementIcon } from "../components/product/AchievementIcon";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { Badge, Card } from "../components/ui";
+import { readPostActionPermissions, withPostActionPermissions } from "../data/post-actions";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { username?: string };
@@ -50,10 +51,11 @@ export async function loader({ params, request, context }: LoaderArgs) {
         store: createD1PostStore(runtime.db),
         profileStore,
       }).listProfileActivity({ authorId: profile.id, viewerId: userId, limit: 24 });
+      const actionPermissions = await readPostActionPermissions(runtime.db, userId);
       return {
         profile,
-        activityPosts: activity.posts,
-        acceptedSourcePosts: activity.acceptedSources,
+        activityPosts: withPostActionPermissions(activity.posts, actionPermissions),
+        acceptedSourcePosts: withPostActionPermissions(activity.acceptedSources, actionPermissions),
         unavailable: false,
       };
     },

@@ -267,7 +267,10 @@ export function Dropdown({
                   item.destructive ? "sb-menu__item--destructive" : undefined,
                 )}
                 disabled={item.disabled}
-                onClick={item.onSelect}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  item.onSelect?.();
+                }}
               >
                 {item.icon ? <span className="sb-menu__item-icon">{item.icon}</span> : null}
                 <span>{item.label}</span>

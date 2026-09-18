@@ -1,5 +1,5 @@
 import { redirect } from "react-router";
-import { hasCapability, type AuthorizationSnapshot } from "../../worker/auth/rbac";
+import { hasCapability, type AuthorizationSnapshot, type Capability } from "../../worker/auth/rbac";
 import { createD1AuthStore } from "../../worker/auth/store";
 import { readSourceBoardRequestContext } from "../../shared/router-context";
 import {
@@ -30,6 +30,30 @@ export async function requireAdminPageAccess(
   request: Request,
   context: ServerLoaderArgs["context"],
 ): Promise<AuthorizedAdminPageRuntime> {
+  return requireCapabilityPageAccess(request, context, ["admin.access"]);
+}
+
+export async function requireModerationPageAccess(
+  request: Request,
+  context: ServerLoaderArgs["context"],
+): Promise<AuthorizedAdminPageRuntime> {
+  return requireCapabilityPageAccess(request, context, [
+    "report.review",
+    "post.moderate",
+    "comment.moderate",
+    "post.lock",
+    "post.hide",
+    "post.restore",
+    "user.suspend",
+    "user.ban",
+  ]);
+}
+
+async function requireCapabilityPageAccess(
+  request: Request,
+  context: ServerLoaderArgs["context"],
+  requiredCapabilities: readonly Capability[],
+): Promise<AuthorizedAdminPageRuntime> {
   const requestContext = readSourceBoardRequestContext(context);
   const env = requestContext?.env;
   const db = env?.DB;
@@ -42,7 +66,9 @@ export async function requireAdminPageAccess(
   }
 
   const authorization = await createD1AuthStore(db).getAuthorization(session.user.id);
-  if (!hasCapability(authorization, "admin.access")) throw new Response("", { status: 404 });
+  if (!requiredCapabilities.some((capability) => hasCapability(authorization, capability))) {
+    throw new Response("", { status: 404 });
+  }
 
   return {
     runtime: { env, db, authenticatedRequest: true },
