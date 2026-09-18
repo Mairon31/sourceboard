@@ -712,10 +712,20 @@ const settingsNavigation: ReadonlyArray<readonly [string, MessageKey]> = [
   ["settings-sessions", "settings.nav.sessions"],
 ];
 
+const signedOutSettingsNavigation = settingsNavigation.filter(([id]) =>
+  [
+    "settings-general",
+    "settings-appearance",
+    "settings-language",
+    "settings-accessibility",
+  ].includes(id),
+);
+
 export default function SettingsRoute() {
   const { t } = useI18n();
   const data = useLoaderData<SettingsData>();
   const preferences = usePreferenceController(data);
+  const navigation = data.authenticated ? settingsNavigation : signedOutSettingsNavigation;
 
   return (
     <ProductShell wide>
@@ -729,7 +739,7 @@ export default function SettingsRoute() {
       <div className="product-settings-layout">
         <nav className="product-settings-nav" aria-label={t("settings.nav.aria")}>
           <span className="product-settings-nav__label">{t("settings.nav.label")}</span>
-          {settingsNavigation.map(([id, labelKey]) => (
+          {navigation.map(([id, labelKey]) => (
             <a key={id} href={`#${id}`}>
               {t(labelKey)}
             </a>
@@ -748,27 +758,31 @@ export default function SettingsRoute() {
               description={t("settings.general.description")}
             />
 
-            <section id="settings-profile" className="product-settings-section-group">
-              <SettingsSectionHeader
-                eyebrow={t("settings.profile.eyebrow")}
-                title={t("settings.profile.title")}
-                description={t("settings.profile.description")}
-              />
-              <Card className="product-settings-section">
-                <div className="product-settings-link-row">
-                  <div>
-                    <strong>{t("settings.profile.editTitle")}</strong>
-                    <span>{t("settings.profile.editDescription")}</span>
-                  </div>
-                  <Link className="sb-button sb-button--secondary sb-button--sm" to="/profile">
-                    {t("settings.profile.open")}
-                  </Link>
-                </div>
-              </Card>
-            </section>
+            {data.authenticated ? (
+              <>
+                <section id="settings-profile" className="product-settings-section-group">
+                  <SettingsSectionHeader
+                    eyebrow={t("settings.profile.eyebrow")}
+                    title={t("settings.profile.title")}
+                    description={t("settings.profile.description")}
+                  />
+                  <Card className="product-settings-section">
+                    <div className="product-settings-link-row">
+                      <div>
+                        <strong>{t("settings.profile.editTitle")}</strong>
+                        <span>{t("settings.profile.editDescription")}</span>
+                      </div>
+                      <Link className="sb-button sb-button--secondary sb-button--sm" to="/profile">
+                        {t("settings.profile.open")}
+                      </Link>
+                    </div>
+                  </Card>
+                </section>
 
-            <ContentPreferences data={data} controller={preferences} />
-            <NotificationPreferences data={data} controller={preferences} />
+                <ContentPreferences data={data} controller={preferences} />
+                <NotificationPreferences data={data} controller={preferences} />
+              </>
+            ) : null}
 
             <section id="settings-appearance" className="product-settings-section-group">
               <SettingsSectionHeader
@@ -798,7 +812,9 @@ export default function SettingsRoute() {
               </Card>
             </section>
 
-            <PrivacyDataPreferences data={data} controller={preferences} />
+            {data.authenticated ? (
+              <PrivacyDataPreferences data={data} controller={preferences} />
+            ) : null}
 
             <section id="settings-accessibility" className="product-settings-section-group">
               <SettingsSectionHeader
@@ -814,27 +830,29 @@ export default function SettingsRoute() {
             </section>
           </div>
 
-          <section
-            id="settings-security"
-            className="product-settings-surface product-settings-section-group"
-            data-settings-surface="security"
-          >
-            <SettingsSectionHeader
-              eyebrow={t("settings.security.title")}
-              title={t("settings.security.heading")}
-              description={t("settings.security.description")}
-            />
-            <UsernamePanel data={data} />
-            <PasswordPanel authenticated={data.authenticated} />
-            <div id="settings-sessions">
+          {data.authenticated ? (
+            <section
+              id="settings-security"
+              className="product-settings-surface product-settings-section-group"
+              data-settings-surface="security"
+            >
               <SettingsSectionHeader
-                eyebrow={t("settings.sessions.eyebrow")}
-                title={t("security.sessions.title")}
-                description={t("settings.sessions.description")}
+                eyebrow={t("settings.security.title")}
+                title={t("settings.security.heading")}
+                description={t("settings.security.description")}
               />
-              <SessionSecurityPanel />
-            </div>
-          </section>
+              <UsernamePanel data={data} />
+              <PasswordPanel authenticated />
+              <div id="settings-sessions">
+                <SettingsSectionHeader
+                  eyebrow={t("settings.sessions.eyebrow")}
+                  title={t("security.sessions.title")}
+                  description={t("settings.sessions.description")}
+                />
+                <SessionSecurityPanel />
+              </div>
+            </section>
+          ) : null}
         </div>
       </div>
     </ProductShell>

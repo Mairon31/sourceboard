@@ -219,6 +219,28 @@ describe("Phase 4 post policy", () => {
     });
   });
 
+  it("keeps public NSFW posts in anonymous feeds as blurred previews", async () => {
+    const { profileStore, store, listFeed } = dependencies();
+    listFeed.mockResolvedValue({
+      posts: [
+        post({ id: "public-nsfw", isNsfw: true, visibility: "PUBLIC" }),
+        post({ id: "public-safe", isNsfw: false, visibility: "PUBLIC" }),
+      ],
+      nextCursor: null,
+    });
+    const service = createPostService({ store, profileStore, now: () => 2 });
+
+    const result = await service.listFeed({
+      viewerId: null,
+      kind: "recent",
+      cursor: null,
+      limit: 20,
+    });
+
+    expect(result.posts.map((item) => item.id)).toEqual(["public-nsfw", "public-safe"]);
+    expect(result.posts[0]?.nsfwPresentation).toBe("BLURRED");
+  });
+
   it("restores an owner's soft-deleted post inside the 24-hour retention window", async () => {
     const { profileStore, store, getPost } = dependencies();
     const restorePost = vi.fn(async () => true);
@@ -348,6 +370,27 @@ describe("Phase 4 post policy", () => {
       limit: 20,
     });
     expect(friend.posts.map((item) => item.id)).toEqual(["public", "friend-only"]);
+  });
+
+  it("keeps public NSFW posts visible on anonymous public profiles as blurred previews", async () => {
+    const { profileStore, store, listByAuthor } = dependencies();
+    listByAuthor.mockResolvedValue({
+      posts: [
+        post({ id: "public-nsfw", isNsfw: true, visibility: "PUBLIC" }),
+        post({ id: "public-safe", isNsfw: false, visibility: "PUBLIC" }),
+      ],
+      nextCursor: null,
+    });
+    const service = createPostService({ store, profileStore, now: () => 2 });
+
+    const result = await service.listProfileActivity({
+      authorId: "author-1",
+      viewerId: null,
+      limit: 20,
+    });
+
+    expect(result.posts.map((item) => item.id)).toEqual(["public-nsfw", "public-safe"]);
+    expect(result.posts[0]?.nsfwPresentation).toBe("BLURRED");
   });
 
   it("lets owners see their own non-hidden profile activity", async () => {

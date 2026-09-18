@@ -68,7 +68,7 @@ export default function MyProfileRoute() {
   }
 
   return (
-    <ProductShell wide>
+    <ProductShell wide profileTheme={data.profile.cosmetics?.profileTheme}>
       <ProfileEditor profile={data.profile} />
       <RecentlyDeletedPosts posts={data.deletedPosts} onChanged={() => revalidator.revalidate()} />
       <div className="product-profile-secondary">

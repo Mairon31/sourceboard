@@ -373,6 +373,7 @@ export default function PostDetailRoute() {
       : findComment(currentPost.comments, sourceCommentId);
   const canUndoAcceptedSource = Boolean(
     currentPost.acceptedSource &&
+    currentPost.permissions.canAcceptSource &&
     isAcceptedSourceUndoable(Date.parse(currentPost.acceptedSource.acceptedAt), Date.now()),
   );
 

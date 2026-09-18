@@ -38,13 +38,16 @@ test("notifications surface keeps private activity empty for signed-out visitors
   await expect(page.getByRole("link", { name: "Create account" })).toBeVisible();
 });
 
-test("settings surface includes NSFW and appearance preferences", async ({ page }) => {
+test("signed-out settings hide private account controls", async ({ page }) => {
   await page.goto("/settings");
   await waitForUiReady(page);
 
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
-  await expect(page.getByRole("switch", { name: "Hide NSFW posts" })).toBeVisible();
-  await expect(page.getByRole("switch", { name: "Blur NSFW media" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open profile", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Change username", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Change password", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("switch", { name: "Hide NSFW posts" })).toHaveCount(0);
+  await expect(page.getByRole("switch", { name: "Blur NSFW media" })).toHaveCount(0);
   await expect(
     page.getByRole("main").getByRole("heading", { name: "Theme", exact: true }),
   ).toBeVisible();

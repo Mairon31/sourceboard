@@ -466,6 +466,16 @@ test("accepted source metadata and undo action stay compact on mobile", async ({
   await page.screenshot({ path: "test-results/accepted-source-mobile.png", fullPage: true });
 });
 
+test("signed-out visitors cannot see accepted-source undo", async ({ page }) => {
+  await installAcceptedSourceEditFixture(page);
+  await page.context().clearCookies();
+  const response = await page.goto("/posts/e2e-accepted-edit-post/e2e-accepted-edit-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  await expect(page.locator(".product-comment__source-undo-trigger")).toHaveCount(0);
+});
+
 test("ordinary users neither receive comment moderation actions nor bypass the backend capability", async ({
   page,
 }) => {

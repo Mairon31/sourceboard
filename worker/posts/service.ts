@@ -191,6 +191,12 @@ export async function canViewPost(
   });
 }
 
+function isPublicAnonymousNsfwPreview(viewerId: string | null, post: PostRecord): boolean {
+  return (
+    !viewerId && post.visibility === "PUBLIC" && post.isNsfw && !post.deletedAt && !post.hiddenAt
+  );
+}
+
 async function canListPostOnProfile(
   viewerId: string | null,
   post: PostRecord,
@@ -200,7 +206,10 @@ async function canListPostOnProfile(
   if (!isOwner && (post.authorMode === "ANONYMOUS" || post.visibility === "UNLISTED")) {
     return false;
   }
-  return canViewPost(viewerId, post, dependencies);
+  return (
+    isPublicAnonymousNsfwPreview(viewerId, post) ||
+    (await canViewPost(viewerId, post, dependencies))
+  );
 }
 
 async function canListAcceptedSourceOnProfile(
@@ -210,7 +219,10 @@ async function canListAcceptedSourceOnProfile(
   dependencies: { profileStore: ProfileStore; store: PostStore; now: () => number },
 ): Promise<boolean> {
   if (viewerId !== profileOwnerId && post.visibility === "UNLISTED") return false;
-  return canViewPost(viewerId, post, dependencies);
+  return (
+    isPublicAnonymousNsfwPreview(viewerId, post) ||
+    (await canViewPost(viewerId, post, dependencies))
+  );
 }
 
 function hydratePostInline(
@@ -354,12 +366,7 @@ async function toPostSummary(
   const nsfwVisible = allowDeletedOwner
     ? true
     : await canViewPost(viewerId, post.post, dependencies);
-  const publicAnonymousPreview =
-    !viewerId &&
-    post.post.visibility === "PUBLIC" &&
-    post.post.isNsfw &&
-    !post.post.deletedAt &&
-    !post.post.hiddenAt;
+  const publicAnonymousPreview = isPublicAnonymousNsfwPreview(viewerId, post.post);
   const blurNsfw = viewerId
     ? Boolean(
         (
@@ -518,12 +525,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         post.post.deletedAt &&
         now() - post.post.deletedAt < SOFT_DELETE_RETENTION_MS,
       );
-      const publicAnonymousPreview =
-        !viewerId &&
-        post.post.visibility === "PUBLIC" &&
-        post.post.isNsfw &&
-        !post.post.deletedAt &&
-        !post.post.hiddenAt;
+      const publicAnonymousPreview = isPublicAnonymousNsfwPreview(viewerId, post.post);
       if (
         !restoreAvailable &&
         !publicAnonymousPreview &&
@@ -548,7 +550,10 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
           limit: safeLimit * 2,
         });
         for (const post of result.posts) {
-          if (await canViewPost(viewerId, post.post, policyDependencies)) {
+          if (
+            isPublicAnonymousNsfwPreview(viewerId, post.post) ||
+            (await canViewPost(viewerId, post.post, policyDependencies))
+          ) {
             visible.push(post);
             if (visible.length >= safeLimit) break;
           }
@@ -831,12 +836,7 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         post.post.deletedAt &&
         now() - post.post.deletedAt < SOFT_DELETE_RETENTION_MS,
       );
-      const publicAnonymousPreview =
-        !viewerId &&
-        post.post.visibility === "PUBLIC" &&
-        post.post.isNsfw &&
-        !post.post.deletedAt &&
-        !post.post.hiddenAt;
+      const publicAnonymousPreview = isPublicAnonymousNsfwPreview(viewerId, post.post);
       if (
         !ownerCanRestore &&
         !publicAnonymousPreview &&

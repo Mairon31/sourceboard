@@ -4,14 +4,22 @@ import { AppShell } from "../layout/AppShell";
 import { MobileProductNav, ProductContextRail, ProductNav } from "./ProductNav";
 import { markNavigationReady } from "../../data/performance-metrics";
 import { ProductFooter } from "./ProductFooter";
+import type { ProfileThemePreset } from "../../../shared/store/cosmetics";
+import "./profile-page.css";
 
 export interface ProductShellProps {
   children: ReactNode;
   rightRail?: ReactNode;
   wide?: boolean;
+  profileTheme?: ProfileThemePreset;
 }
 
-export function ProductShell({ children, rightRail, wide = false }: ProductShellProps) {
+export function ProductShell({
+  children,
+  rightRail,
+  wide = false,
+  profileTheme,
+}: ProductShellProps) {
   const location = useLocation();
 
   useEffect(() => {
@@ -24,7 +32,14 @@ export function ProductShell({ children, rightRail, wide = false }: ProductShell
         leftRail={<ProductNav />}
         rightRail={rightRail === null ? undefined : (rightRail ?? <ProductContextRail />)}
       >
-        <div className={wide ? "product-page product-page--wide" : "product-page"}>{children}</div>
+        <div
+          className={`product-page${wide ? " product-page--wide" : ""}${
+            profileTheme ? " product-page--profile" : ""
+          }`}
+          data-profile-theme={profileTheme}
+        >
+          {children}
+        </div>
       </AppShell>
       <MobileProductNav />
       <ProductFooter />

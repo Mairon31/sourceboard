@@ -1,0 +1,105 @@
+.product-page--profile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: clamp(18px, 2vw, 28px);
+  padding: clamp(10px, 1.8vw, 24px);
+  background:
+    radial-gradient(
+      circle at 8% 0%,
+      color-mix(in srgb, var(--accent) 18%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(145deg, #101522, #090c14 60%, #111528);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.product-page--profile::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background: radial-gradient(circle at 92% 18%, #ffffff12, transparent 32%);
+}
+
+.product-page--profile[data-profile-theme="nebula"],
+.product-page--profile[data-profile-theme="cosmic-dusk"],
+.product-page--profile[data-profile-theme="cosmic-dust"],
+.product-page--profile[data-profile-theme="starlit"] {
+  background:
+    radial-gradient(circle at 12% 8%, #765cff55, transparent 36%),
+    radial-gradient(circle at 88% 82%, #2f76ff35, transparent 38%),
+    linear-gradient(145deg, #17152f, #0b1022 64%, #1c1230);
+}
+
+.product-page--profile[data-profile-theme="aurora"],
+.product-page--profile[data-profile-theme="aurora-flow"],
+.product-page--profile[data-profile-theme="ocean-glass"] {
+  background:
+    radial-gradient(circle at 14% 12%, #4df1c050, transparent 34%),
+    radial-gradient(circle at 84% 78%, #42a7ff45, transparent 36%),
+    linear-gradient(145deg, #0b282c, #091622 62%, #102d3a);
+}
+
+.product-page--profile[data-profile-theme="ember"],
+.product-page--profile[data-profile-theme="golden-hour"],
+.product-page--profile[data-profile-theme="sunset-noir"],
+.product-page--profile[data-profile-theme="sunset-drift"] {
+  background:
+    radial-gradient(circle at 84% 8%, #ffad4d5c, transparent 34%),
+    radial-gradient(circle at 10% 86%, #f0525250, transparent 38%),
+    linear-gradient(145deg, #321719, #1c1018 62%, #351b14);
+}
+
+.product-page--profile[data-profile-theme="prism-grid"],
+.product-page--profile[data-profile-theme="terminal-grid"],
+.product-page--profile[data-profile-theme="cyber-grid"],
+.product-page--profile[data-profile-theme="holo-scan"] {
+  background:
+    linear-gradient(#8290ff18 1px, transparent 1px),
+    linear-gradient(90deg, #8290ff18 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, #6375ff45, transparent 42%),
+    linear-gradient(145deg, #111528, #090c17 65%, #182341);
+  background-size:
+    28px 28px,
+    28px 28px,
+    auto,
+    auto;
+}
+
+.product-page--profile[data-profile-theme="forest-ink"] {
+  background:
+    radial-gradient(circle at 18% 10%, #71dc8e55, transparent 34%),
+    linear-gradient(145deg, #10271e, #08140f 64%, #183b2a);
+}
+
+.product-page--profile[data-profile-theme="silver-wave"],
+.product-page--profile[data-profile-theme="mono-editorial"] {
+  background:
+    radial-gradient(ellipse at 18% 0%, #ffffff35, transparent 36%),
+    linear-gradient(145deg, #2a313d, #10151e 64%, #353d4b);
+}
+
+.product-page--profile[data-profile-theme="sakura-night"],
+.product-page--profile[data-profile-theme="candy-motion"] {
+  background:
+    radial-gradient(circle at 82% 10%, #ff8fc65a, transparent 35%),
+    radial-gradient(circle at 10% 88%, #9d6dff45, transparent 38%),
+    linear-gradient(145deg, #321b35, #160e1c 64%, #43203f);
+}
+
+.product-page--profile[data-profile-theme="plasma-wave"],
+.product-page--profile[data-profile-theme="neon-glass"] {
+  background:
+    radial-gradient(circle at 20% 10%, #51d9ff50, transparent 34%),
+    radial-gradient(circle at 84% 78%, #ff4fc550, transparent 36%),
+    linear-gradient(145deg, #0e1b35, #0a0e20 64%, #28143c);
+}
+
+@media (max-width: 760px) {
+  .product-page--profile {
+    border-radius: 14px;
+    padding: 8px;
+  }
+}

@@ -51,6 +51,38 @@ test("profile theme remains card-wide while uploaded banner stays independent", 
   await expect(photo).toHaveCSS("background-image", /\/api\/media\/profile\/e2e-cosmetics-banner/);
 });
 
+test("profile page theme and banner geometry remain visible on desktop and mobile", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/u/e2e-cosmetics");
+
+    const pageSurface = page.locator('.product-page--profile[data-profile-theme="nebula"]');
+    const cover = page.locator(".product-profile-cover");
+    await expect(pageSurface).toBeVisible();
+    await expect(cover).toBeVisible();
+
+    const geometry = await cover.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    });
+    expect(geometry.width / geometry.height).toBeGreaterThan(2.2);
+    expect(geometry.width / geometry.height).toBeLessThan(2.8);
+    expect(
+      await pageSurface.evaluate((element) => getComputedStyle(element).backgroundImage),
+    ).not.toBe("none");
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
+});
+
 test("legacy profile effect renders across the card and never inside the avatar", async ({
   page,
 }) => {

@@ -187,7 +187,7 @@ export default function ProfileRoute() {
   const { profile, activityPosts, acceptedSourcePosts } = useLoaderData<LoaderData>();
   if (!profile) return <ProfileServiceUnavailable />;
   return (
-    <ProductShell wide>
+    <ProductShell wide profileTheme={profile.cosmetics?.profileTheme}>
       <ProfileHero profile={profile} isOwnProfile={false} />
       <div className="product-profile-secondary">
         <ContributionHistory profile={profile} />

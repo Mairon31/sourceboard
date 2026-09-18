@@ -59,6 +59,7 @@ describe("post-merge production regressions", () => {
     expect(profileCard).toContain("product-profile-cover");
     expect(profileCard).toContain('import "./profile-cover.css"');
     expect(profileCoverCss).toContain(".product-profile-identity-card .product-profile-cover");
-    expect(profileCoverCss).toContain("min-height: 136px");
+    expect(profileCoverCss).toContain("aspect-ratio: 5 / 2");
+    expect(profileCoverCss).toContain("min-height: 150px");
   });
 });
