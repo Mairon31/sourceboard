@@ -310,6 +310,83 @@ test("new comment immediately shows the authenticated author's real identity", a
   await expect(comment.getByText("SourceBoard member", { exact: true })).toHaveCount(0);
 });
 
+test("comment image keeps a local preview and submits only its first-party asset reference", async ({
+  page,
+}) => {
+  await installNavigationUserSession(page, "comment-image-upload");
+  let submittedAttachment: unknown;
+
+  await page.route("**/api/comments/media", async (route) => {
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        assetId: "e2e-pending-comment-image",
+        label: "source.png",
+        url: "/api/media/comment/e2e-pending-comment-image",
+      }),
+    });
+  });
+  await page.route("**/api/posts/e2e-navigation-post/comments", async (route) => {
+    const request = route.request().postDataJSON() as { attachment?: unknown; markdown?: string };
+    submittedAttachment = request.attachment;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        comment: {
+          id: "e2e-created-comment-image",
+          author: {
+            mode: "IDENTIFIED",
+            displayName: "E2E Navigator",
+            username: "e2e-navigation-user",
+            profileUrl: "/u/e2e-navigation-user",
+          },
+          body: request.markdown ?? "Attached image",
+          richtext: [{ type: "text", text: request.markdown ?? "Attached image" }],
+          createdAt: new Date().toISOString(),
+          state: "VISIBLE",
+          reaction: { type: "LIKE", count: 0, viewerReacted: false },
+          attachment: {
+            type: "IMAGE",
+            id: "e2e-pending-comment-image",
+            label: "source.png",
+            url: "/api/media/comment/e2e-pending-comment-image",
+          },
+          replies: [],
+        },
+      }),
+    });
+  });
+
+  const response = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const comments = page.locator("#comments");
+  await page.locator('#comments input[type="file"]').setInputFiles({
+    name: "source.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9sAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+
+  await expect(comments.locator(".product-comment-composer__field img")).toHaveAttribute(
+    "src",
+    /^blob:/,
+  );
+  await page.getByLabel("Add a comment").fill("Image comment regression");
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
+  expect(submittedAttachment).toEqual({
+    type: "IMAGE",
+    id: "e2e-pending-comment-image",
+    label: "source.png",
+  });
+});
+
 test("anonymous post author stays anonymous when their new comment renders", async ({ page }) => {
   await installAnonymousAuthorPostFixture(page);
   const response = await page.goto("/posts/e2e-anonymous-comment-post/e2e-anonymous-comment-post");

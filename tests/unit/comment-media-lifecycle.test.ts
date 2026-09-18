@@ -93,6 +93,55 @@ function comment(updatedAt = 20) {
 }
 
 describe("comment image lifecycle", () => {
+  it("activates a pending image when a new comment is created", async () => {
+    const sqlite = new DatabaseSync(":memory:");
+    try {
+      createSchema(sqlite);
+      insertComment(sqlite);
+      sqlite
+        .prepare(
+          `INSERT INTO media_assets
+           VALUES ('new-comment-image', 'author-1', 'COMMENT_IMAGE', 'comments/new-comment-image',
+           'image/webp', 10, 100, 100, 'new-comment', 'PENDING', 20, NULL)`,
+        )
+        .run();
+      const store = createD1CommentStore(createD1(sqlite));
+
+      await expect(
+        store.createComment({
+          comment: {
+            id: "comment-2",
+            postId: "post-1",
+            authorId: "author-1",
+            parentCommentId: null,
+            richtext: [{ type: "text", text: "Photo context" }],
+            plaintext: "Photo context",
+            attachment: { type: "IMAGE", id: "new-comment-image", label: "Photo" },
+            state: "VISIBLE",
+            likeCount: 0,
+            createdAt: 20,
+            updatedAt: 20,
+            editDeadlineAt: 1020,
+            deletedAt: null,
+            hiddenAt: null,
+          },
+          richtextJson: '[{"type":"text","text":"Photo context"}]',
+          attachmentJson: '{"type":"IMAGE","id":"new-comment-image","label":"Photo"}',
+          commentImageAssetId: "new-comment-image",
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(sqlite.prepare("SELECT state FROM comments WHERE id = 'comment-2'").get()).toEqual({
+        state: "VISIBLE",
+      });
+      expect(
+        sqlite.prepare("SELECT status FROM media_assets WHERE id = 'new-comment-image'").get(),
+      ).toEqual({ status: "ACTIVE" });
+    } finally {
+      sqlite.close();
+    }
+  });
+
   it("marks the replaced image as deleted after the comment reference changes", async () => {
     const sqlite = new DatabaseSync(":memory:");
     try {

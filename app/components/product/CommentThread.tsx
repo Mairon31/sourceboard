@@ -21,6 +21,7 @@ import {
 import type { CommentSort } from "../../../worker/comments/types";
 import { getMediaImagePolicy } from "../../../shared/media/policy";
 import { readCsrfToken } from "../../data/csrf";
+import { serializeCommentAttachment } from "../../data/comment-attachment";
 import { prepareImageForUpload } from "../../data/media-preparation";
 import { localizeApiError } from "../../data/user-facing-errors";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -996,8 +997,25 @@ export function CommentThread({
   const [submitting, setSubmitting] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const localAttachmentPreviewRef = useRef<string | null>(null);
   const threadCount = countThread(items);
   useEffect(() => setItems(comments), [comments]);
+
+  function releaseLocalAttachmentPreview() {
+    const preview = localAttachmentPreviewRef.current;
+    if (!preview) return;
+    URL.revokeObjectURL(preview);
+    localAttachmentPreviewRef.current = null;
+  }
+
+  function clearAttachment() {
+    releaseLocalAttachmentPreview();
+    setAttachment(null);
+  }
+
+  useEffect(() => {
+    return () => releaseLocalAttachmentPreview();
+  }, []);
 
   function changeSort(nextSort: CommentSort) {
     if (nextSort === sort) return;
@@ -1080,11 +1098,14 @@ export function CommentThread({
       clearLinkPreview();
       setLinkOpen(false);
       setMediaKind(null);
+      releaseLocalAttachmentPreview();
+      const localPreview = URL.createObjectURL(prepared);
+      localAttachmentPreviewRef.current = localPreview;
       setAttachment({
         type: "IMAGE",
         id: payload.assetId,
         label: payload.label || file.name || t("comments.composer.image"),
-        url: payload.url,
+        preview: localPreview,
       });
     } catch (cause) {
       setStatus(
@@ -1126,7 +1147,7 @@ export function CommentThread({
       }
       setLinkPreview(payload.preview);
       setLinkUrl(payload.preview.canonicalUrl);
-      setAttachment(null);
+      clearAttachment();
       setMediaKind(null);
     } catch (cause) {
       setLinkPreview(null);
@@ -1153,7 +1174,7 @@ export function CommentThread({
         body: JSON.stringify({
           markdown: body,
           parentCommentId: replyTo,
-          attachment,
+          attachment: serializeCommentAttachment(attachment),
           linkPreviewUrl: linkCandidate || undefined,
         }),
       });
@@ -1166,7 +1187,7 @@ export function CommentThread({
       pendingFocusIdRef.current = created.id;
       setItems((current) => insertRootComment(current, created, sort));
       setBody("");
-      setAttachment(null);
+      clearAttachment();
       setMediaKind(null);
       setLinkOpen(false);
       setLinkUrl("");
@@ -1246,7 +1267,7 @@ export function CommentThread({
               placeholder={t("comments.composer.placeholder")}
             />
             {attachment ? (
-              <CommentAttachment attachment={attachment} onRemove={() => setAttachment(null)} />
+              <CommentAttachment attachment={attachment} onRemove={clearAttachment} />
             ) : null}
             <div className="product-comment-composer__toolbar">
               <div>
@@ -1359,6 +1380,7 @@ export function CommentThread({
                   } else {
                     clearLinkPreview();
                     setLinkOpen(false);
+                    releaseLocalAttachmentPreview();
                     setAttachment({
                       type: item.type,
                       id: item.id,

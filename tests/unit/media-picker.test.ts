@@ -73,7 +73,8 @@ describe("responsive GIF, sticker and emote picker", () => {
     expect(thread).toContain('attachment.type === "GIF"');
     expect(thread).toContain('"comments.composer.removeGif"');
     expect(thread).toContain('"comments.composer.removeSticker"');
-    expect(thread).toContain("onRemove={() => setAttachment(null)}");
+    expect(thread).toContain("onRemove={clearAttachment}");
+    expect(thread).toContain("URL.revokeObjectURL");
   });
 
   it("loads only entitled emote packs and keeps server entitlement enforcement", () => {
