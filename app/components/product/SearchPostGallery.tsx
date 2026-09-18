@@ -5,6 +5,7 @@ import { markNavigationStart } from "../../data/performance-metrics";
 import { useI18n } from "../../i18n/I18nProvider";
 import { HeartIcon, MessageIcon } from "../ui";
 import { postDetailHref, SearchPostMedia } from "./SearchPostMedia";
+import { PostModerationMenu } from "./PostModerationMenu";
 
 export function SearchPostGallery({
   posts,
@@ -46,6 +47,7 @@ export function SearchPostGallery({
                 mediaRestricted ? t("post.nsfw.hiddenTitle") : t("post.media.unavailable")
               }
             />
+            <PostModerationMenu post={post} className="product-search-gallery__moderation-menu" />
             <Link
               to={detailHref}
               className="product-search-gallery__overlay"
@@ -62,10 +64,12 @@ export function SearchPostGallery({
                 className="product-search-gallery__metrics"
                 aria-label={t("post.engagementAria")}
               >
-                <span>
-                  <HeartIcon width="15" height="15" aria-hidden="true" />
-                  {post.reaction.count}
-                </span>
+                {!post.likeCountHidden ? (
+                  <span>
+                    <HeartIcon width="15" height="15" aria-hidden="true" />
+                    {post.reaction.count}
+                  </span>
+                ) : null}
                 <span>
                   <MessageIcon width="15" height="15" aria-hidden="true" />
                   {post.commentCount}

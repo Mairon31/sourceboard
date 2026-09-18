@@ -70,6 +70,7 @@ interface PostSearchRow {
   status: string;
   comment_count: number;
   like_count: number;
+  hide_like_count: number;
   created_at: number;
   updated_at: number;
   media_id: string;
@@ -199,8 +200,13 @@ function toPostSummary(
     visibility: postVisibility(row.visibility),
     isNsfw: row.is_nsfw === 1,
     nsfwPresentation,
-    reaction: { type: "LIKE", count: row.like_count, viewerReacted: false },
+    reaction: {
+      type: "LIKE",
+      count: row.hide_like_count === 1 ? 0 : row.like_count,
+      viewerReacted: false,
+    },
     commentCount: row.comment_count,
+    likeCountHidden: row.hide_like_count === 1,
     imageAlt: row.title,
     imageUrl: `/api/media/post/${encodeURIComponent(row.media_id)}`,
     imageWidth: row.media_width ?? undefined,
@@ -312,6 +318,7 @@ function postSearchQuery(
       p.status,
       p.comment_count,
       p.like_count,
+      p.hide_like_count,
       p.created_at,
       p.updated_at,
       m.id AS media_id,

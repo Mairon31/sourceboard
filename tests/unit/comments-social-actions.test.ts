@@ -10,6 +10,10 @@ const postCardSource = readFileSync(
   new URL("../../app/components/product/PostCard.tsx", import.meta.url),
   "utf8",
 );
+const postActionsSource = readFileSync(
+  new URL("../../app/data/post-actions.ts", import.meta.url),
+  "utf8",
+);
 const iconsSource = readFileSync(
   new URL("../../app/components/ui/icons.tsx", import.meta.url),
   "utf8",
@@ -115,8 +119,8 @@ describe("comment social actions", () => {
     expect(postDetailSource).toContain('hasCapability(authorization, "comment.moderate")');
     expect(postDetailSource).toContain("canModerateComments");
     expect(threadSource).toContain('targetType: "COMMENT"');
-    expect(threadSource).toContain('action: comment.state === "HIDDEN" ? "RESTORE" : "HIDE"');
-    expect(threadSource).toContain('fetch("/api/admin/moderation/action"');
+    expect(threadSource).toContain("<ModerationActionDialog");
+    expect(threadSource).toContain('targetType: "COMMENT"');
   });
 
   it("revalidates post detail after editing an accepted comment", () => {
@@ -136,10 +140,9 @@ describe("comment social actions", () => {
     expect(postCardSource).toContain("permissions?.canReport");
     expect(postCardSource).toContain('targetType: "POST"');
     expect(postCardSource).toContain("to={`${detailHref}#comments`}");
-    expect(postCardSource).toContain("permissions?.canModerate");
-    expect(postDetailSource).toContain(
-      'canModerate: hasCapability(authorization, "post.moderate")',
-    );
+    expect(postCardSource).toContain("canOpenPostModeration(permissions)");
+    expect(postDetailSource).toContain("readPostActionPermissions");
+    expect(postActionsSource).toContain('canModerate: has("post.moderate")');
   });
 
   it("keeps the link preview composer endpoint authenticated and rate limited", () => {

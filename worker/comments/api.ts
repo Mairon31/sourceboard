@@ -553,6 +553,7 @@ export async function handleCommentApiRequest(
             ...(preview.siteName ? { siteName: preview.siteName } : {}),
             ...(preview.title ? { title: preview.title } : {}),
             ...(preview.description ? { description: preview.description } : {}),
+            ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
             metadataStatus: preview.metadataStatus,
           },
         },
@@ -661,6 +662,7 @@ export async function handleCommentApiRequest(
         markdown: input.markdown,
         attachment: input.attachment,
         linkPreviewUrl: input.linkPreviewUrl,
+        authorMode: input.authorMode,
       });
       if (env.EVENTS && recipient && recipient.userId !== authorId) {
         await env.EVENTS.send({

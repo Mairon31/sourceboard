@@ -316,25 +316,34 @@ export async function handleModerationRequest(
           "MODERATION_TARGET_REQUIRED",
           "A moderation target is required.",
         );
-      const capability: Capability =
-        targetType === "USER"
-          ? action === "BAN"
-            ? "user.ban"
-            : "user.suspend"
-          : targetType === "POST"
-            ? action === "LOCK" || action === "UNLOCK"
-              ? "post.lock"
-              : action === "HIDE" || action === "RESTORE"
-                ? "post.hide"
-                : action === "REVOKE_SOURCE_VERIFICATION"
-                  ? "source.revoke_verification"
-                  : action === "UNMARK_NSFW"
-                    ? "post.nsfw.unmark"
-                    : "post.nsfw.mark"
-            : "comment.moderate";
+      let capability: Capability;
+      if (targetType === "USER") {
+        capability = action === "BAN" ? "user.ban" : "user.suspend";
+      } else if (targetType === "COMMENT") {
+        capability = "comment.moderate";
+      } else if (targetType === "POST") {
+        if (action === "TIMEOUT_AUTHOR") capability = "user.suspend";
+        else if (action === "LOCK" || action === "UNLOCK") capability = "post.lock";
+        else if (action === "HIDE") capability = "post.hide";
+        else if (action === "RESTORE") capability = "post.restore";
+        else if (action === "REVOKE_SOURCE_VERIFICATION") capability = "source.revoke_verification";
+        else if (action === "MARK_NSFW") capability = "post.nsfw.mark";
+        else if (action === "UNMARK_NSFW") capability = "post.nsfw.unmark";
+        else capability = "post.moderate";
+      } else {
+        throw new ModerationError(400, "INVALID_MODERATION_TARGET", "Invalid moderation target.");
+      }
       const authorized = await requireCapability(request, requestId, env, capability);
       if (targetType === "USER") {
         await assertCanModerateUser(database(env), authorized.authorization, String(body.targetId));
+      }
+      if (targetType === "POST" && action === "TIMEOUT_AUTHOR") {
+        const author = await database(env)
+          .prepare("SELECT author_id AS userId FROM posts WHERE id = ?")
+          .bind(String(body.targetId))
+          .first<{ userId: string }>();
+        if (!author) throw new ModerationError(404, "POST_NOT_FOUND", "The post was not found.");
+        await assertCanModerateUser(database(env), authorized.authorization, author.userId);
       }
       const result = await service.apply({
         actorUserId: authorized.userId,
@@ -343,6 +352,7 @@ export async function handleModerationRequest(
         action,
         reason: assertReason(String(body.reason)),
         durationMs: typeof body.durationMs === "number" ? body.durationMs : null,
+        categorySlug: typeof body.categorySlug === "string" ? body.categorySlug : null,
         requestId,
         ipPrefixHash: authorized.security.ipPrefixHash,
       });

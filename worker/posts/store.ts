@@ -78,6 +78,7 @@ interface PostWithAuthorRow {
   status: string;
   comment_count: number;
   like_count: number;
+  hide_like_count: number;
   accepted_comment_id: string | null;
   verified_source_id: string | null;
   created_at: number;
@@ -140,7 +141,7 @@ const POST_COLUMNS = `
   p.title, p.slug, p.description, p.category_slug, p.image_asset_id, p.visibility, p.status,
   p.comment_count, p.like_count, p.accepted_comment_id, p.verified_source_id,
   p.created_at, p.updated_at, p.edit_deadline_at, p.archived_at, p.deleted_at,
-  p.hidden_at, p.locked_at, p.comments_closed, p.comments_closed_at,
+  p.hidden_at, p.locked_at, p.comments_closed, p.comments_closed_at, p.hide_like_count,
   u.username AS author_username, up.display_name AS author_display_name,
   up.avatar_asset_id AS author_avatar_asset_id,
   m.owner_user_id AS media_owner_user_id, m.purpose AS media_purpose,
@@ -186,6 +187,7 @@ function toPost(row: PostWithAuthorRow): PostWithAuthor {
       status: toStatus(row.status),
       commentCount: row.comment_count,
       likeCount: row.like_count,
+      hideLikeCount: row.hide_like_count === 1,
       acceptedCommentId: row.accepted_comment_id,
       verifiedSourceId: row.verified_source_id,
       createdAt: row.created_at,

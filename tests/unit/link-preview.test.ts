@@ -298,6 +298,7 @@ describe("link preview metadata fetcher", () => {
     const html = `<!doctype html><html><head>
       <link rel="canonical" href="https://www.instagram.com/">
       <meta property="og:title" content="Hannah (@itshannahowo)">
+      <meta property="og:image" content="https://scontent.cdninstagram.com/profile.jpg">
     </head></html>`;
     const service = createLinkPreviewService({
       fetchImpl: vi.fn(
@@ -309,6 +310,7 @@ describe("link preview metadata fetcher", () => {
     await expect(service.preview(submittedUrl)).resolves.toMatchObject({
       canonicalUrl: submittedUrl,
       title: "Hannah (@itshannahowo)",
+      imageUrl: "https://scontent.cdninstagram.com/profile.jpg",
     });
   });
 
@@ -637,13 +639,13 @@ describe("link preview API route", () => {
     expect(apiSource).toContain("resolveLinkPreviewHost");
   });
 
-  it("does not expose the remote metadata image in the advisory response", () => {
+  it("returns a validated remote metadata image for the composer card", () => {
     const handlerStart = apiSource.indexOf('url.pathname === "/api/comments/link-preview"');
     const handlerEnd = apiSource.indexOf("const commentService", handlerStart);
     const handler = apiSource.slice(handlerStart, handlerEnd);
     expect(handler).toContain("canonicalUrl");
     expect(handler).toContain("metadataStatus");
-    expect(handler).not.toContain("imageUrl: preview.imageUrl");
+    expect(handler).toContain("imageUrl: preview.imageUrl");
   });
 
   it("denies the persisted image proxy when the comment is not visible", () => {

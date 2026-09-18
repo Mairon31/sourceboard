@@ -21,6 +21,7 @@ export interface PostRecord {
   status: PostStatus;
   commentCount: number;
   likeCount: number;
+  hideLikeCount?: boolean;
   acceptedCommentId: string | null;
   verifiedSourceId: string | null;
   createdAt: number;

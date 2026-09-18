@@ -69,3 +69,10 @@ pair to `hide_nsfw = 0` and `blur_nsfw = 1`; intentional user choices are
 preserved. Migration `0039` adds the governed post-category catalog and its
 locale translations, seeds the existing and expanded categories, and keeps
 category flags separate from post visibility and post NSFW state.
+
+Migration `0040` adds the explicit comment author-identity mode and backfills
+comments written by the author of an anonymous post as `ANONYMOUS`; older
+comment stores continue to read safely while the migration rolls out.
+
+Migration `0041` adds the persisted post `hide_like_count` moderation control
+and its lookup index. It is additive and keeps existing reaction rows intact.

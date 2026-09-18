@@ -32,6 +32,7 @@ import { ShareAction } from "./ShareAction";
 import { MediaPicker, type MediaPickerKind } from "./MediaPicker";
 import { LinkPreviewCard } from "./LinkPreviewCard";
 import { MediaLightbox } from "./MediaLightbox";
+import { ModerationActionDialog } from "./ModerationActionDialog";
 import {
   Badge,
   Button,
@@ -48,7 +49,6 @@ import {
   LinkIcon,
   MessageIcon,
   MoreIcon,
-  Modal,
   SmileIcon,
   StickerIcon,
   Textarea,
@@ -301,10 +301,7 @@ function CommentItem({
   const [reporting, setReporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string>();
-  const [moderating, setModerating] = useState<"HIDE" | "RESTORE" | null>(null);
-  const [moderationReason, setModerationReason] = useState("");
-  const [moderationBusy, setModerationBusy] = useState(false);
-  const [moderationError, setModerationError] = useState<string>();
+  const [moderationOpen, setModerationOpen] = useState(false);
   const [undoingAcceptedSource, setUndoingAcceptedSource] = useState(false);
   const [undoReason, setUndoReason] = useState("");
   const [undoBusy, setUndoBusy] = useState(false);
@@ -441,36 +438,6 @@ function CommentItem({
     }
   }
 
-  async function moderateComment() {
-    if (!moderating || moderationReason.trim().length < 3 || moderationBusy) return;
-    setModerationBusy(true);
-    setModerationError(undefined);
-    try {
-      const response = await fetch("/api/admin/moderation/action", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
-        body: JSON.stringify({
-          targetType: "COMMENT",
-          targetId: comment.id,
-          action: comment.state === "HIDDEN" ? "RESTORE" : "HIDE",
-          reason: moderationReason.trim(),
-        }),
-      });
-      if (!response.ok) throw new Error(t("comments.moderation.error"));
-      const action = moderating;
-      setModerating(null);
-      setModerationReason("");
-      setStatus(
-        action === "RESTORE" ? t("comments.moderation.restored") : t("comments.moderation.hidden"),
-      );
-      onChanged?.();
-    } catch (cause) {
-      setModerationError(cause instanceof Error ? cause.message : t("comments.moderation.error"));
-    } finally {
-      setModerationBusy(false);
-    }
-  }
-
   async function undoAcceptedSource() {
     const trimmedReason = undoReason.trim();
     if (!trimmedReason || undoBusy || !onUndoAcceptedSource) return;
@@ -600,11 +567,7 @@ function CommentItem({
                           comment.state === "HIDDEN"
                             ? t("comments.actions.restore")
                             : t("comments.actions.hide"),
-                        onSelect: () => {
-                          setModerationError(undefined);
-                          setModerationReason("");
-                          setModerating(comment.state === "HIDDEN" ? "RESTORE" : "HIDE");
-                        },
+                        onSelect: () => setModerationOpen(true),
                       },
                     ]
                   : []),
@@ -811,46 +774,19 @@ function CommentItem({
             setDeleting(open);
           }}
         />
-        <Modal
-          title={t("comments.moderation.title")}
-          description={t("comments.moderation.description")}
-          open={Boolean(moderating)}
-          onOpenChange={(open) => {
-            if (!open && !moderationBusy) {
-              setModerating(null);
-              setModerationError(undefined);
-            }
+        <ModerationActionDialog
+          open={moderationOpen}
+          target={{ targetType: "COMMENT", comment }}
+          onOpenChange={setModerationOpen}
+          onApplied={(action) => {
+            setStatus(
+              action === "RESTORE"
+                ? t("comments.moderation.restored")
+                : t("comments.moderation.hidden"),
+            );
+            onChanged?.();
           }}
-        >
-          <Textarea
-            label={t("comments.moderation.reason")}
-            value={moderationReason}
-            maxLength={2000}
-            disabled={moderationBusy}
-            onChange={(event) => setModerationReason(event.target.value)}
-          />
-          <div className="product-chip-row">
-            <Button
-              size="sm"
-              loading={moderationBusy}
-              disabled={moderationReason.trim().length < 3}
-              onClick={() => void moderateComment()}
-            >
-              {moderating === "RESTORE"
-                ? t("comments.actions.restore")
-                : t("comments.actions.hide")}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={moderationBusy}
-              onClick={() => setModerating(null)}
-            >
-              {t("common.cancel")}
-            </Button>
-          </div>
-          {moderationError ? <small role="alert">{moderationError}</small> : null}
-        </Modal>
+        />
         {status ? <small role="status">{status}</small> : null}
         {comment.replies.length ? (
           <>
@@ -955,6 +891,7 @@ export function CommentThread({
   sort,
   authenticated = true,
   viewerIdentity,
+  canChooseCommentIdentity = false,
   commentsClosed = false,
   postArchived = false,
   canAcceptSource,
@@ -971,6 +908,7 @@ export function CommentThread({
   sort: CommentSort;
   authenticated?: boolean;
   viewerIdentity?: PublicPostAuthor | null;
+  canChooseCommentIdentity?: boolean;
   commentsClosed?: boolean;
   postArchived?: boolean;
   canAcceptSource?: boolean;
@@ -1000,11 +938,17 @@ export function CommentThread({
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkStatus, setLinkStatus] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const [commentAuthorMode, setCommentAuthorMode] = useState<"IDENTIFIED" | "ANONYMOUS">(
+    canChooseCommentIdentity ? "ANONYMOUS" : "IDENTIFIED",
+  );
   const [imageUploading, setImageUploading] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const localAttachmentPreviewRef = useRef<string | null>(null);
   const threadCount = countThread(items);
   useEffect(() => setItems(comments), [comments]);
+  useEffect(() => {
+    setCommentAuthorMode(canChooseCommentIdentity ? "ANONYMOUS" : "IDENTIFIED");
+  }, [canChooseCommentIdentity]);
 
   function releaseLocalAttachmentPreview() {
     const preview = localAttachmentPreviewRef.current;
@@ -1181,6 +1125,7 @@ export function CommentThread({
           parentCommentId: replyTo,
           attachment: serializeCommentAttachment(attachment),
           linkPreviewUrl: linkCandidate || undefined,
+          authorMode: canChooseCommentIdentity ? commentAuthorMode : undefined,
         }),
       });
       const payload = (await response.json().catch(() => null)) as { comment?: CommentView } | null;
@@ -1247,7 +1192,24 @@ export function CommentThread({
         </div>
       ) : (
         <div className="product-comment-composer glass-panel">
-          {viewerIdentity?.mode === "IDENTIFIED" ? (
+          {canChooseCommentIdentity ? (
+            <label className="product-comment-composer__identity-picker">
+              <span>{t("comments.composer.identity.label")}</span>
+              <select
+                aria-label={t("comments.composer.identity.label")}
+                value={commentAuthorMode}
+                onChange={(event) =>
+                  setCommentAuthorMode(event.target.value as "IDENTIFIED" | "ANONYMOUS")
+                }
+              >
+                <option value="ANONYMOUS">{t("comments.composer.identity.anonymous")}</option>
+                <option value="IDENTIFIED">{t("comments.composer.identity.profile")}</option>
+              </select>
+            </label>
+          ) : null}
+          {commentAuthorMode === "ANONYMOUS" && canChooseCommentIdentity ? (
+            <CosmeticIdentity anonymous mode="compact" avatarSize="sm" nameAs="strong" />
+          ) : viewerIdentity?.mode === "IDENTIFIED" ? (
             <CosmeticIdentity
               displayName={viewerIdentity.displayName}
               avatarUrl={viewerIdentity.avatarUrl}

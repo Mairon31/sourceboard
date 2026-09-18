@@ -5,6 +5,7 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { Badge, HeartIcon, MessageIcon } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
+import { PostModerationMenu } from "./PostModerationMenu";
 import { postDetailHref, SearchPostMedia } from "./SearchPostMedia";
 
 export function SearchPostGrid({
@@ -40,26 +41,32 @@ export function SearchPostGrid({
               }
             />
             <div className="product-search-grid-card__body">
-              <div className="product-search-grid-card__author">
-                {post.author.mode === "ANONYMOUS" ? (
-                  <strong>{t("post.badges.anonymous")}</strong>
-                ) : (
-                  <Link
-                    to={post.author.profileUrl ?? `/u/${post.author.username ?? "member"}`}
-                    onClick={() => markNavigationStart("/u/:username")}
-                  >
-                    <CosmeticIdentity
-                      displayName={post.author.displayName}
-                      avatarUrl={post.author.avatarUrl}
-                      avatarFrame={post.author.avatarFrame}
-                      nameFont={post.author.nameFont}
-                      nameEffect={post.author.nameEffect}
-                      visuals={post.author.visuals}
-                      mode="compact"
-                      nameAs="strong"
-                    />
-                  </Link>
-                )}
+              <div className="product-search-grid-card__header">
+                <div className="product-search-grid-card__author">
+                  {post.author.mode === "ANONYMOUS" ? (
+                    <strong>{t("post.badges.anonymous")}</strong>
+                  ) : (
+                    <Link
+                      to={post.author.profileUrl ?? `/u/${post.author.username ?? "member"}`}
+                      onClick={() => markNavigationStart("/u/:username")}
+                    >
+                      <CosmeticIdentity
+                        displayName={post.author.displayName}
+                        avatarUrl={post.author.avatarUrl}
+                        avatarFrame={post.author.avatarFrame}
+                        nameFont={post.author.nameFont}
+                        nameEffect={post.author.nameEffect}
+                        visuals={post.author.visuals}
+                        mode="compact"
+                        nameAs="strong"
+                      />
+                    </Link>
+                  )}
+                </div>
+                <PostModerationMenu
+                  post={post}
+                  className="product-search-grid-card__moderation-menu"
+                />
               </div>
               <Link
                 to={detailHref}
@@ -80,10 +87,12 @@ export function SearchPostGrid({
                 className="product-search-grid-card__metrics"
                 aria-label={t("post.engagementAria")}
               >
-                <span>
-                  <HeartIcon width="16" height="16" aria-hidden="true" />
-                  {tp("metrics.likes", post.reaction.count)}
-                </span>
+                {!post.likeCountHidden ? (
+                  <span>
+                    <HeartIcon width="16" height="16" aria-hidden="true" />
+                    {tp("metrics.likes", post.reaction.count)}
+                  </span>
+                ) : null}
                 {post.status === "ARCHIVED" ? (
                   <button
                     type="button"

@@ -157,7 +157,9 @@ test.beforeAll(() => {
   seedAdminGapFixtures();
 });
 
-test("post context menu opens moderation for an admin on the post detail", async ({ page }) => {
+test("post context menu opens contextual moderation for an admin on the post detail", async ({
+  page,
+}) => {
   await installAdminStoreFixture(page);
   await page.goto("/posts/e2e-report-post/e2e-moderation-report-post");
   await waitForUiReady(page);
@@ -167,14 +169,14 @@ test("post context menu opens moderation for an admin on the post detail", async
   await moreActions.click();
   await page.getByRole("menuitem", { name: "Moderate post" }).click();
 
-  await expect(page).toHaveURL(/\/admin\/moderation\?target=POST&targetId=e2e-report-post$/);
-  await expect(page.getByRole("heading", { name: "Moderation queue" })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Search reports" })).toHaveValue(
-    "e2e-report-post",
-  );
-  await expect(
-    page.locator(".admin-desktop-table .admin-table__row").filter({ hasText: "e2e-report-post" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/posts\/e2e-report-post\/e2e-moderation-report-post$/);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Moderate content");
+  await expect(dialog.getByRole("button", { name: "Delete post" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Change category" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Hide like count" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Timeout author" })).toBeVisible();
 });
 
 test("post context menu is present on homepage and public profile cards", async ({ page }) => {

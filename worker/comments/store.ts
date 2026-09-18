@@ -111,6 +111,7 @@ interface CommentRow {
   id: string;
   post_id: string;
   author_id: string;
+  comment_author_mode: string | null;
   parent_comment_id: string | null;
   body_richtext_json: string;
   body_plaintext: string;
@@ -173,7 +174,7 @@ function toCommentImageAsset(row: CommentImageAssetRow): CommentImageAsset | nul
 }
 
 const COMMENT_COLUMNS = `
-  c.id, c.post_id, c.author_id, c.parent_comment_id, c.body_richtext_json,
+  c.id, c.post_id, c.author_id, c.author_mode AS comment_author_mode, c.parent_comment_id, c.body_richtext_json,
   c.body_plaintext, c.attachment_json, c.state, c.like_count, c.created_at,
   c.updated_at, c.edit_deadline_at, c.deleted_at, c.hidden_at,
   lp.canonical_url AS link_preview_canonical_url, lp.site_name AS link_preview_site_name,
@@ -187,7 +188,7 @@ const COMMENT_COLUMNS = `
   p.deleted_at AS post_deleted_at, p.hidden_at AS post_hidden_at`;
 
 const LEGACY_COMMENT_COLUMNS = `
-  c.id, c.post_id, c.author_id, c.parent_comment_id, c.body_richtext_json,
+  c.id, c.post_id, c.author_id, NULL AS comment_author_mode, c.parent_comment_id, c.body_richtext_json,
   c.body_plaintext, c.attachment_json, c.state, c.like_count, c.created_at,
   c.updated_at, c.edit_deadline_at, c.deleted_at, c.hidden_at,
   NULL AS link_preview_canonical_url, NULL AS link_preview_site_name,
@@ -205,12 +206,20 @@ function isMissingCommentLinkPreviewTable(error: unknown): boolean {
   return /no such table[^\n]*comment_link_previews/i.test(message);
 }
 
-function query(where: string, legacyLinkPreview = false): string {
+function isMissingCommentAuthorModeColumn(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /no such column[^\n]*(?:comments\.)?author_mode/i.test(message);
+}
+
+function query(where: string, legacyLinkPreview = false, legacyCommentAuthorMode = false): string {
   const columns = legacyLinkPreview ? LEGACY_COMMENT_COLUMNS : COMMENT_COLUMNS;
+  const selectedColumns = legacyCommentAuthorMode
+    ? columns.replace("c.author_mode AS comment_author_mode,", "NULL AS comment_author_mode,")
+    : columns;
   const linkPreviewJoin = legacyLinkPreview
     ? ""
     : "LEFT JOIN comment_link_previews lp ON lp.comment_id = c.id";
-  return `SELECT ${columns}
+  return `SELECT ${selectedColumns}
     FROM comments c
     JOIN users u ON u.id = c.author_id
     LEFT JOIN user_profiles up ON up.user_id = c.author_id
@@ -230,6 +239,9 @@ function toRecord(row: CommentRow): CommentWithAuthor {
     id: row.id,
     postId: row.post_id,
     authorId: row.author_id,
+    ...(row.comment_author_mode === "ANONYMOUS" || row.comment_author_mode === "IDENTIFIED"
+      ? { authorMode: row.comment_author_mode }
+      : {}),
     parentCommentId: row.parent_comment_id,
     richtext: body.richtext,
     plaintext: row.body_plaintext,
@@ -333,44 +345,83 @@ function nextCursor(sort: CommentSort, row: CommentRow): string {
 
 export function createD1CommentStore(db: D1Database): CommentStore {
   let linkPreviewSchemaAvailable: boolean | null = null;
+  let commentAuthorModeSchemaAvailable: boolean | null = null;
 
-  async function allWithPreviewFallback<T>(
-    buildSql: (legacyLinkPreview: boolean) => string,
+  async function allWithSchemaFallback<T>(
+    buildSql: (legacyLinkPreview: boolean, legacyCommentAuthorMode: boolean) => string,
     bindings: unknown[],
   ): Promise<D1Result<T>> {
-    const legacy = linkPreviewSchemaAvailable === false;
-    try {
-      return await db
-        .prepare(buildSql(legacy))
-        .bind(...bindings)
-        .all<T>();
-    } catch (error) {
-      if (legacy || !isMissingCommentLinkPreviewTable(error)) throw error;
-      linkPreviewSchemaAvailable = false;
-      return db
-        .prepare(buildSql(true))
-        .bind(...bindings)
-        .all<T>();
+    let legacyLinkPreview = linkPreviewSchemaAvailable === false;
+    let legacyCommentAuthorMode = commentAuthorModeSchemaAvailable === false;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await db
+          .prepare(buildSql(legacyLinkPreview, legacyCommentAuthorMode))
+          .bind(...bindings)
+          .all<T>();
+      } catch (error) {
+        if (!legacyLinkPreview && isMissingCommentLinkPreviewTable(error)) {
+          linkPreviewSchemaAvailable = false;
+          legacyLinkPreview = true;
+          continue;
+        }
+        if (!legacyCommentAuthorMode && isMissingCommentAuthorModeColumn(error)) {
+          commentAuthorModeSchemaAvailable = false;
+          legacyCommentAuthorMode = true;
+          continue;
+        }
+        throw error;
+      }
     }
+    throw new Error("Comment schema fallback exhausted");
   }
 
-  async function firstWithPreviewFallback<T>(
-    buildSql: (legacyLinkPreview: boolean) => string,
+  async function firstWithSchemaFallback<T>(
+    buildSql: (legacyLinkPreview: boolean, legacyCommentAuthorMode: boolean) => string,
     bindings: unknown[],
   ): Promise<T | null> {
-    const legacy = linkPreviewSchemaAvailable === false;
+    let legacyLinkPreview = linkPreviewSchemaAvailable === false;
+    let legacyCommentAuthorMode = commentAuthorModeSchemaAvailable === false;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await db
+          .prepare(buildSql(legacyLinkPreview, legacyCommentAuthorMode))
+          .bind(...bindings)
+          .first<T>();
+      } catch (error) {
+        if (!legacyLinkPreview && isMissingCommentLinkPreviewTable(error)) {
+          linkPreviewSchemaAvailable = false;
+          legacyLinkPreview = true;
+          continue;
+        }
+        if (!legacyCommentAuthorMode && isMissingCommentAuthorModeColumn(error)) {
+          commentAuthorModeSchemaAvailable = false;
+          legacyCommentAuthorMode = true;
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error("Comment schema fallback exhausted");
+  }
+
+  async function probeOptionalSchema(
+    sql: string,
+    isMissing: (error: unknown) => boolean,
+  ): Promise<boolean | null> {
     try {
-      return await db
-        .prepare(buildSql(legacy))
-        .bind(...bindings)
-        .first<T>();
+      const statement = db.prepare(sql);
+      if (typeof statement.run === "function") {
+        await statement.run();
+      } else if (typeof statement.first === "function") {
+        await statement.first();
+      } else {
+        return null;
+      }
+      return true;
     } catch (error) {
-      if (legacy || !isMissingCommentLinkPreviewTable(error)) throw error;
-      linkPreviewSchemaAvailable = false;
-      return db
-        .prepare(buildSql(true))
-        .bind(...bindings)
-        .first<T>();
+      if (isMissing(error)) return false;
+      throw error;
     }
   }
 
@@ -420,9 +471,9 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       const conditions = ["c.post_id = ?", "c.deleted_at IS NULL", "c.parent_comment_id IS NULL"];
       const bindings: unknown[] = [postId];
       addRootCursor(conditions, bindings, cursor, sort);
-      const rootResult = await allWithPreviewFallback<CommentRow>(
-        (legacyLinkPreview) =>
-          `${query(conditions.join(" AND "), legacyLinkPreview)} ORDER BY ${rootOrder(sort)} LIMIT ?`,
+      const rootResult = await allWithSchemaFallback<CommentRow>(
+        (legacyLinkPreview, legacyCommentAuthorMode) =>
+          `${query(conditions.join(" AND "), legacyLinkPreview, legacyCommentAuthorMode)} ORDER BY ${rootOrder(sort)} LIMIT ?`,
         [...bindings, limit + 1],
       );
       const hasNext = rootResult.results.length > limit;
@@ -431,8 +482,8 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       let replyRows: CommentRow[] = [];
       if (rootIds.length) {
         const placeholders = rootIds.map(() => "?").join(", ");
-        const descendants = await allWithPreviewFallback<CommentRow>(
-          (legacyLinkPreview) => `WITH RECURSIVE thread_ids(id) AS (
+        const descendants = await allWithSchemaFallback<CommentRow>(
+          (legacyLinkPreview, legacyCommentAuthorMode) => `WITH RECURSIVE thread_ids(id) AS (
                SELECT id FROM comments WHERE id IN (${placeholders}) AND deleted_at IS NULL
                UNION ALL
                SELECT child.id
@@ -443,6 +494,7 @@ export function createD1CommentStore(db: D1Database): CommentStore {
              ${query(
                `c.id IN (SELECT id FROM thread_ids) AND c.id NOT IN (${placeholders})`,
                legacyLinkPreview,
+               legacyCommentAuthorMode,
              )}
              ORDER BY c.created_at ASC, c.id ASC`,
           [...rootIds, ...rootIds],
@@ -457,8 +509,9 @@ export function createD1CommentStore(db: D1Database): CommentStore {
     },
 
     async getComment(commentId) {
-      const row = await firstWithPreviewFallback<CommentRow>(
-        (legacyLinkPreview) => query("c.id = ?", legacyLinkPreview),
+      const row = await firstWithSchemaFallback<CommentRow>(
+        (legacyLinkPreview, legacyCommentAuthorMode) =>
+          query("c.id = ?", legacyLinkPreview, legacyCommentAuthorMode),
         [commentId],
       );
       return row ? toRecord(row) : null;
@@ -525,6 +578,18 @@ export function createD1CommentStore(db: D1Database): CommentStore {
       linkPreview,
       commentImageAssetId,
     }) {
+      if (commentAuthorModeSchemaAvailable === null) {
+        commentAuthorModeSchemaAvailable = await probeOptionalSchema(
+          "UPDATE comments SET author_mode = author_mode WHERE 0",
+          isMissingCommentAuthorModeColumn,
+        );
+      }
+      if (linkPreview && linkPreviewSchemaAvailable === null) {
+        linkPreviewSchemaAvailable = await probeOptionalSchema(
+          "UPDATE comment_link_previews SET comment_id = comment_id WHERE 0",
+          isMissingCommentLinkPreviewTable,
+        );
+      }
       const commentInsert = commentImageAssetId
         ? db
             .prepare(
@@ -609,41 +674,67 @@ export function createD1CommentStore(db: D1Database): CommentStore {
             )
             .bind(commentImageAssetId, comment.authorId, comment.id, comment.authorId)
         : null;
-      const statements = [...baseStatements, ...(imageActivation ? [imageActivation] : [])];
-      if (linkPreview && linkPreviewSchemaAvailable !== false) {
-        statements.push(
-          db
-            .prepare(
-              `INSERT INTO comment_link_previews
-                (comment_id, canonical_url, site_name, title, description, image_url, fetched_at,
-                 metadata_status)
-               SELECT ?, ?, ?, ?, ?, ?, ?, ?
-               WHERE EXISTS (SELECT 1 FROM comments WHERE id = ? AND author_id = ?)`,
-            )
-            .bind(
-              comment.id,
-              linkPreview.canonicalUrl,
-              linkPreview.siteName,
-              linkPreview.title,
-              linkPreview.description,
-              linkPreview.imageUrl,
-              linkPreview.fetchedAt,
-              linkPreview.metadataStatus,
-              comment.id,
-              comment.authorId,
-            ),
-        );
-      }
-      let results: D1Result<unknown>[];
-      try {
-        results = await db.batch(statements);
-      } catch (error) {
-        if (!linkPreview || !isMissingCommentLinkPreviewTable(error)) throw error;
-        linkPreviewSchemaAvailable = false;
-        results = await db.batch([
+      const buildStatements = (withAuthorMode: boolean, withLinkPreview: boolean) => {
+        const statements = [
           ...baseStatements,
+          ...(withAuthorMode
+            ? [
+                db
+                  .prepare(
+                    `UPDATE comments SET author_mode = ?
+                     WHERE id = ? AND author_id = ?`,
+                  )
+                  .bind(comment.authorMode ?? "IDENTIFIED", comment.id, comment.authorId),
+              ]
+            : []),
           ...(imageActivation ? [imageActivation] : []),
-        ]);
+        ];
+        if (withLinkPreview && linkPreview) {
+          statements.push(
+            db
+              .prepare(
+                `INSERT INTO comment_link_previews
+                  (comment_id, canonical_url, site_name, title, description, image_url, fetched_at,
+                   metadata_status)
+                 SELECT ?, ?, ?, ?, ?, ?, ?, ?
+                 WHERE EXISTS (SELECT 1 FROM comments WHERE id = ? AND author_id = ?)`,
+              )
+              .bind(
+                comment.id,
+                linkPreview.canonicalUrl,
+                linkPreview.siteName,
+                linkPreview.title,
+                linkPreview.description,
+                linkPreview.imageUrl,
+                linkPreview.fetchedAt,
+                linkPreview.metadataStatus,
+                comment.id,
+                comment.authorId,
+              ),
+          );
+        }
+        return statements;
+      };
+      let results: D1Result<unknown>[] = [];
+      let withAuthorMode = commentAuthorModeSchemaAvailable !== false;
+      let withLinkPreview = Boolean(linkPreview && linkPreviewSchemaAvailable !== false);
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          results = await db.batch(buildStatements(withAuthorMode, withLinkPreview));
+          break;
+        } catch (error) {
+          if (withAuthorMode && isMissingCommentAuthorModeColumn(error)) {
+            commentAuthorModeSchemaAvailable = false;
+            withAuthorMode = false;
+            continue;
+          }
+          if (withLinkPreview && isMissingCommentLinkPreviewTable(error)) {
+            linkPreviewSchemaAvailable = false;
+            withLinkPreview = false;
+            continue;
+          }
+          throw error;
+        }
       }
       if ((results[0]?.meta.changes ?? 0) < 1) {
         if (!commentImageAssetId) throw new CommentPostUnavailableError();

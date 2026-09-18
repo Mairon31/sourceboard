@@ -296,6 +296,16 @@
   outline-offset: 2px;
 }
 
+.product-search-gallery__moderation-menu {
+  position: absolute;
+  z-index: 4;
+  top: 7px;
+  right: 7px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 80%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+}
+
 .product-search-gallery__media,
 .product-search-gallery__media img,
 .product-search-gallery__placeholder,
@@ -484,6 +494,17 @@ a.product-search-grid-card__media-button {
   display: grid;
   gap: 10px;
   padding: 12px;
+}
+
+.product-search-grid-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.product-search-grid-card__moderation-menu {
+  flex: 0 0 auto;
 }
 
 .product-search-grid-card__author,

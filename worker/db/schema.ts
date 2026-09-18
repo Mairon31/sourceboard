@@ -434,6 +434,7 @@ export const posts = sqliteTable(
     status: text("status").notNull().default("OPEN"),
     commentCount: integer("comment_count", { mode: "number" }).notNull().default(0),
     likeCount: integer("like_count", { mode: "number" }).notNull().default(0),
+    hideLikeCount: integer("hide_like_count", { mode: "boolean" }).notNull().default(false),
     acceptedCommentId: text("accepted_comment_id"),
     verifiedSourceId: text("verified_source_id"),
     createdAt: integer("created_at", { mode: "number" }).notNull(),
@@ -790,6 +791,7 @@ export const comments = sqliteTable(
     authorId: text("author_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    authorMode: text("author_mode").notNull().default("IDENTIFIED"),
     parentCommentId: text("parent_comment_id"),
     bodyRichtextJson: text("body_richtext_json").notNull(),
     bodyPlaintext: text("body_plaintext").notNull(),
@@ -812,6 +814,7 @@ export const comments = sqliteTable(
     ),
     index("comments_author_created_index").on(table.authorId, table.createdAt),
     check("comments_state_check", sql`${table.state} IN ('VISIBLE', 'HIDDEN', 'DELETED')`),
+    check("comments_author_mode_check", sql`${table.authorMode} IN ('IDENTIFIED', 'ANONYMOUS')`),
   ],
 );
 

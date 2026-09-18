@@ -157,6 +157,7 @@ export interface PostSummary {
   acceptedSource?: AcceptedSourceView;
   verifiedSource?: VerifiedSourceView;
   commentsClosed?: boolean;
+  likeCountHidden?: boolean;
   deletedAt?: string;
   restoreAvailable?: boolean;
   permissions?: Partial<PostPermissionView>;
@@ -175,6 +176,18 @@ export interface PostPermissionView {
   canMarkNsfw: boolean;
   canCloseComments?: boolean;
   canReopenComments?: boolean;
+  canModerateDelete?: boolean;
+  canModerateArchive?: boolean;
+  canModerateCategory?: boolean;
+  canModerateComments?: boolean;
+  canModerateLikes?: boolean;
+  canModerateMarkNsfw?: boolean;
+  canModerateUnmarkNsfw?: boolean;
+  canModerateTimeout?: boolean;
+  canModerateHide?: boolean;
+  canModerateRestore?: boolean;
+  canModerateLock?: boolean;
+  canModerateSource?: boolean;
 }
 
 export interface PostDetail extends PostSummary {

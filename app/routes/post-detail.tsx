@@ -30,6 +30,7 @@ import { isAcceptedSourceUndoable } from "../../worker/source/policy";
 import { useI18n } from "../i18n/I18nProvider";
 import { buildPostSocialImageUrl } from "../../shared/seo/social-image";
 import { INDEXABLE_ROBOTS } from "../../shared/seo/robots";
+import { readPostActionPermissions } from "../data/post-actions";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { postId?: string; slug?: string };
@@ -47,6 +48,7 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
       unavailable,
       authenticated: false,
       viewerIdentity: null as PublicPostAuthor | null,
+      canChooseCommentIdentity: false,
       canModerateComments: false,
       commentSort,
       canonicalUrl: requested.toString(),
@@ -94,17 +96,29 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
           )
         : Promise.resolve(null);
       const moderationAccessPromise = userId
-        ? createD1AuthStore(runtime.db)
-            .getAuthorization(userId)
-            .then((authorization) => ({
-              canVerifySource: hasCapability(authorization, "source.verify"),
-              canModerate: hasCapability(authorization, "post.moderate"),
-              canModerateComments: hasCapability(authorization, "comment.moderate"),
-            }))
+        ? Promise.all([
+            createD1AuthStore(runtime.db).getAuthorization(userId),
+            readPostActionPermissions(runtime.db, userId),
+          ]).then(([authorization, postActions]) => ({
+            ...postActions,
+            canVerifySource: hasCapability(authorization, "source.verify"),
+            canModerateComments: hasCapability(authorization, "comment.moderate"),
+          }))
         : Promise.resolve({
             canVerifySource: false,
             canModerate: false,
             canModerateComments: false,
+            canModerateDelete: false,
+            canModerateArchive: false,
+            canModerateCategory: false,
+            canModerateLikes: false,
+            canModerateMarkNsfw: false,
+            canModerateUnmarkNsfw: false,
+            canModerateTimeout: false,
+            canModerateHide: false,
+            canModerateRestore: false,
+            canModerateLock: false,
+            canModerateSource: false,
           });
       const [post, commentsResult, viewerIdentity, moderationAccess] = await Promise.all([
         service.getPost(postId, userId),
@@ -122,6 +136,18 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
               ...post.permissions,
               canAcceptSource: post.permissions.canAcceptSource || moderationAccess.canVerifySource,
               canModerate: moderationAccess.canModerate,
+              canModerateDelete: moderationAccess.canModerateDelete,
+              canModerateArchive: moderationAccess.canModerateArchive,
+              canModerateCategory: moderationAccess.canModerateCategory,
+              canModerateComments: moderationAccess.canModerateComments,
+              canModerateLikes: moderationAccess.canModerateLikes,
+              canModerateMarkNsfw: moderationAccess.canModerateMarkNsfw,
+              canModerateUnmarkNsfw: moderationAccess.canModerateUnmarkNsfw,
+              canModerateTimeout: moderationAccess.canModerateTimeout,
+              canModerateHide: moderationAccess.canModerateHide,
+              canModerateRestore: moderationAccess.canModerateRestore,
+              canModerateLock: moderationAccess.canModerateLock,
+              canModerateSource: moderationAccess.canModerateSource,
             },
             reaction: {
               ...post.reaction,
@@ -141,6 +167,9 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
         unavailable: false,
         authenticated: Boolean(userId),
         viewerIdentity,
+        canChooseCommentIdentity: Boolean(
+          viewerPost?.author.mode === "ANONYMOUS" && viewerPost.permissions.canEdit,
+        ),
         canModerateComments: moderationAccess.canModerateComments,
         commentSort,
         canonicalUrl: requested.toString(),
@@ -359,8 +388,14 @@ function PostServiceUnavailable() {
 }
 
 export default function PostDetailRoute() {
-  const { post, authenticated, viewerIdentity, canModerateComments, commentSort } =
-    useLoaderData<LoaderData>();
+  const {
+    post,
+    authenticated,
+    viewerIdentity,
+    canChooseCommentIdentity,
+    canModerateComments,
+    commentSort,
+  } = useLoaderData<LoaderData>();
   const { t } = useI18n();
   const location = useLocation();
   const revalidator = useRevalidator();
@@ -441,6 +476,7 @@ export default function PostDetailRoute() {
         sort={commentSort}
         authenticated={authenticated}
         viewerIdentity={viewerIdentity}
+        canChooseCommentIdentity={canChooseCommentIdentity}
         commentsClosed={currentPost.commentsClosed}
         postArchived={currentPost.status === "ARCHIVED"}
         canAcceptSource={currentPost.permissions.canAcceptSource}

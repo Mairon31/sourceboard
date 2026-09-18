@@ -14,6 +14,8 @@ export interface CommentRecord {
   id: string;
   postId: string;
   authorId: string;
+  /** Optional for reads from a pre-0040 database; new writes always set it. */
+  authorMode?: "IDENTIFIED" | "ANONYMOUS";
   parentCommentId: string | null;
   richtext: RichTextNode[];
   plaintext: string;

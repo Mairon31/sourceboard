@@ -449,6 +449,13 @@ test("anonymous post author stays anonymous when their new comment renders", asy
   expect(response?.status()).toBe(200);
   await waitForUiReady(page);
 
+  const identity = page.getByLabel("Comment as");
+  const composer = page.locator(".product-comment-composer");
+  await expect(identity).toHaveValue("ANONYMOUS");
+  await identity.selectOption("IDENTIFIED");
+  await expect(composer.locator("strong.cosmetic-identity__name")).toHaveText("E2E Navigator");
+  await identity.selectOption("ANONYMOUS");
+  await expect(composer.locator("strong.cosmetic-identity__name")).toHaveText("Anonymous Author");
   await page.getByLabel("Add a comment").fill("Anonymous identity remains private");
   await page.getByRole("button", { name: "Comment", exact: true }).click();
   await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
@@ -655,13 +662,15 @@ test("comment moderators hide and restore through the contextual menu with live 
   const comment = page.locator("#comment-e2e-comment-moderation-target");
   await comment.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Hide comment" }).click();
-  await page.getByLabel("Moderation reason").fill("E2E moderation regression");
+  const hideDialog = page.getByRole("dialog");
+  await hideDialog.getByRole("button", { name: "Hide comment", exact: true }).click();
+  await hideDialog.getByLabel("Moderation reason").fill("E2E moderation regression");
   const hideResponse = page.waitForResponse(
     (candidate) =>
       candidate.url().includes("/api/admin/moderation/action") &&
       candidate.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Hide comment", exact: true }).click();
+  await page.getByRole("button", { name: "Apply action", exact: true }).click();
   expect((await hideResponse).ok()).toBe(true);
   await expect(comment).toContainText("Comment hidden.", { timeout: 15_000 });
   await expect(comment.getByText("Moderated", { exact: true })).toBeVisible({
@@ -673,13 +682,15 @@ test("comment moderators hide and restore through the contextual menu with live 
     timeout: 15_000,
   });
   await page.getByRole("menuitem", { name: "Restore comment" }).click();
-  await page.getByLabel("Moderation reason").fill("Restore after E2E check");
+  const restoreDialog = page.getByRole("dialog");
+  await restoreDialog.getByRole("button", { name: "Restore comment", exact: true }).click();
+  await restoreDialog.getByLabel("Moderation reason").fill("Restore after E2E check");
   const restoreResponse = page.waitForResponse(
     (candidate) =>
       candidate.url().includes("/api/admin/moderation/action") &&
       candidate.request().method() === "POST",
   );
-  await page.getByRole("button", { name: "Restore comment", exact: true }).click();
+  await page.getByRole("button", { name: "Apply action", exact: true }).click();
   expect((await restoreResponse).ok()).toBe(true);
   await expect(comment.getByText("Moderated", { exact: true })).toHaveCount(0, {
     timeout: 15_000,

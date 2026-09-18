@@ -9,6 +9,7 @@ import { Link, useNavigate } from "react-router";
 import type { PostDetail, PostSummary } from "../../../shared/ui/contracts";
 import { readCsrfToken } from "../../data/csrf";
 import { markNavigationStart } from "../../data/performance-metrics";
+import { canOpenPostModeration } from "../../data/post-actions";
 import { useI18n } from "../../i18n/I18nProvider";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
@@ -16,6 +17,7 @@ import { ShareAction } from "./ShareAction";
 import { RichText } from "./RichText";
 import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
 import { MediaLightbox } from "./MediaLightbox";
+import { ModerationActionDialog } from "./ModerationActionDialog";
 import { handleMarkdownShortcut, MarkdownToolbar } from "./MarkdownToolbar";
 import {
   Badge,
@@ -104,6 +106,7 @@ export function PostCard({
   const [reportDetail, setReportDetail] = useState("");
   const [reportStatus, setReportStatus] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState(false);
+  const [moderationOpen, setModerationOpen] = useState(false);
   const [mediaFailed, setMediaFailed] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const mediaTriggerRef = useRef<HTMLElement | null>(null);
@@ -374,12 +377,11 @@ export function PostCard({
     ...(permissions?.canReport
       ? [{ label: t("post.menu.report"), onSelect: () => setReportOpen(true) }]
       : []),
-    ...(permissions?.canModerate
+    ...(canOpenPostModeration(permissions)
       ? [
           {
             label: t("post.menu.moderate"),
-            onSelect: () =>
-              navigate(`/admin/moderation?target=POST&targetId=${encodeURIComponent(post.id)}`),
+            onSelect: () => setModerationOpen(true),
           },
         ]
       : []),
@@ -697,7 +699,7 @@ export function PostCard({
             onClick={() => void toggleLike()}
           >
             <HeartIcon fill={liked ? "currentColor" : "none"} />
-            <span>{likes}</span>
+            {!post.likeCountHidden ? <span>{likes}</span> : null}
           </button>
           {archived ? (
             <button
@@ -743,6 +745,15 @@ export function PostCard({
           </small>
         ) : null}
       </div>
+      <ModerationActionDialog
+        open={moderationOpen}
+        target={{ targetType: "POST", post }}
+        onOpenChange={setModerationOpen}
+        onApplied={() => {
+          setManageStatus(t("post.statusMessage.updated"));
+          onChanged?.();
+        }}
+      />
       <ConfirmDialog
         title={t("post.dialog.archiveTitle")}
         description={t("post.dialog.archiveDescription")}

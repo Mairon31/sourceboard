@@ -26,8 +26,17 @@ export type ModerationAction =
   | "WARN"
   | "HIDE"
   | "RESTORE"
+  | "DELETE"
+  | "ARCHIVE"
+  | "UNARCHIVE"
   | "LOCK"
   | "UNLOCK"
+  | "CLOSE_COMMENTS"
+  | "REOPEN_COMMENTS"
+  | "CHANGE_CATEGORY"
+  | "HIDE_LIKES"
+  | "SHOW_LIKES"
+  | "TIMEOUT_AUTHOR"
   | "POSTING_RESTRICTION"
   | "COMMENT_RESTRICTION"
   | "SUSPEND"
@@ -39,8 +48,17 @@ export const MODERATION_ACTIONS: readonly ModerationAction[] = [
   "WARN",
   "HIDE",
   "RESTORE",
+  "DELETE",
+  "ARCHIVE",
+  "UNARCHIVE",
   "LOCK",
   "UNLOCK",
+  "CLOSE_COMMENTS",
+  "REOPEN_COMMENTS",
+  "CHANGE_CATEGORY",
+  "HIDE_LIKES",
+  "SHOW_LIKES",
+  "TIMEOUT_AUTHOR",
   "POSTING_RESTRICTION",
   "COMMENT_RESTRICTION",
   "SUSPEND",
@@ -49,6 +67,13 @@ export const MODERATION_ACTIONS: readonly ModerationAction[] = [
   "MARK_NSFW",
   "UNMARK_NSFW",
 ];
+
+const POSTING_TIMEOUT_DURATIONS_MS = [
+  60 * 60 * 1000,
+  24 * 60 * 60 * 1000,
+  7 * 24 * 60 * 60 * 1000,
+  30 * 24 * 60 * 60 * 1000,
+] as const;
 
 const ROLE_RANK: Record<RoleSlug, number> = {
   owner: 100,
@@ -413,13 +438,30 @@ export function createModerationService(db: D1Database, options: { events?: Queu
     action: ModerationAction;
     reason: string;
     durationMs?: number | null;
+    categorySlug?: string | null;
     requestId: string;
     ipPrefixHash?: string | null;
     now?: number;
   }) {
     const now = input.now ?? Date.now();
     const reason = assertReason(input.reason);
-    const expiresAt = input.durationMs ? now + Math.max(1, Math.floor(input.durationMs)) : null;
+    if (
+      input.action === "TIMEOUT_AUTHOR" &&
+      (!Number.isSafeInteger(input.durationMs) ||
+        !POSTING_TIMEOUT_DURATIONS_MS.includes(
+          input.durationMs as (typeof POSTING_TIMEOUT_DURATIONS_MS)[number],
+        ))
+    ) {
+      throw new ModerationError(
+        400,
+        "INVALID_TIMEOUT_DURATION",
+        "Choose one of the supported posting timeout durations.",
+      );
+    }
+    const expiresAt =
+      input.durationMs && Number.isSafeInteger(input.durationMs)
+        ? now + Math.max(1, Math.floor(input.durationMs))
+        : null;
     const moderationActionId = createIdentifier();
     const recipientUserId =
       input.targetType === "USER"
@@ -454,6 +496,80 @@ export function createModerationService(db: D1Database, options: { events?: Queu
         ),
     ];
     if (input.targetType === "POST") {
+      if (input.action === "CHANGE_CATEGORY") {
+        const categorySlug = input.categorySlug?.trim() ?? "";
+        if (!categorySlug) {
+          throw new ModerationError(400, "CATEGORY_REQUIRED", "A category is required.");
+        }
+        const category = await db
+          .prepare("SELECT slug FROM post_categories WHERE slug = ? AND is_archived = 0 LIMIT 1")
+          .bind(categorySlug)
+          .first<{ slug: string }>();
+        if (!category) {
+          throw new ModerationError(
+            400,
+            "CATEGORY_INVALID",
+            "The selected category is unavailable.",
+          );
+        }
+        statements.push(
+          db
+            .prepare("UPDATE posts SET category_slug = ?, updated_at = ? WHERE id = ?")
+            .bind(category.slug, now, input.targetId),
+        );
+      }
+      if (input.action === "DELETE")
+        statements.push(
+          db
+            .prepare(
+              "UPDATE posts SET deleted_previous_status = status, deleted_at = ?, status = 'ARCHIVED', updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+            )
+            .bind(now, now, input.targetId),
+        );
+      if (input.action === "ARCHIVE")
+        statements.push(
+          db
+            .prepare(
+              "UPDATE posts SET status = 'ARCHIVED', archived_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+            )
+            .bind(now, now, input.targetId),
+        );
+      if (input.action === "UNARCHIVE")
+        statements.push(
+          db
+            .prepare(
+              "UPDATE posts SET status = 'OPEN', archived_at = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NULL AND status = 'ARCHIVED'",
+            )
+            .bind(now, input.targetId),
+        );
+      if (input.action === "CLOSE_COMMENTS")
+        statements.push(
+          db
+            .prepare(
+              "UPDATE posts SET comments_closed = 1, comments_closed_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+            )
+            .bind(now, now, input.targetId),
+        );
+      if (input.action === "REOPEN_COMMENTS")
+        statements.push(
+          db
+            .prepare(
+              "UPDATE posts SET comments_closed = 0, comments_closed_at = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+            )
+            .bind(now, input.targetId),
+        );
+      if (input.action === "HIDE_LIKES")
+        statements.push(
+          db
+            .prepare("UPDATE posts SET hide_like_count = 1, updated_at = ? WHERE id = ?")
+            .bind(now, input.targetId),
+        );
+      if (input.action === "SHOW_LIKES")
+        statements.push(
+          db
+            .prepare("UPDATE posts SET hide_like_count = 0, updated_at = ? WHERE id = ?")
+            .bind(now, input.targetId),
+        );
       if (input.action === "HIDE")
         statements.push(
           db.prepare("UPDATE posts SET hidden_at = ? WHERE id = ?").bind(now, input.targetId),
@@ -513,6 +629,20 @@ export function createModerationService(db: D1Database, options: { events?: Queu
             .bind(now, input.targetId),
         );
       }
+      if (input.action === "TIMEOUT_AUTHOR") {
+        const author = await db
+          .prepare("SELECT author_id AS userId FROM posts WHERE id = ?")
+          .bind(input.targetId)
+          .first<{ userId: string }>();
+        if (!author) throw new ModerationError(404, "POST_NOT_FOUND", "The post was not found.");
+        statements.push(
+          db
+            .prepare(
+              "INSERT INTO user_sanctions (id, user_id, actor_user_id, kind, reason, expires_at, created_at) VALUES (?, ?, ?, 'POSTING', ?, ?, ?)",
+            )
+            .bind(createIdentifier(), author.userId, input.actorUserId, reason, expiresAt, now),
+        );
+      }
     }
     if (input.targetType === "COMMENT") {
       if (input.action === "HIDE")
@@ -522,6 +652,14 @@ export function createModerationService(db: D1Database, options: { events?: Queu
       if (input.action === "RESTORE")
         statements.push(
           db.prepare("UPDATE comments SET hidden_at = NULL WHERE id = ?").bind(input.targetId),
+        );
+      if (input.action === "DELETE")
+        statements.push(
+          db
+            .prepare(
+              "UPDATE comments SET deleted_at = ?, state = 'DELETED', updated_at = ? WHERE id = ?",
+            )
+            .bind(now, now, input.targetId),
         );
     }
     if (

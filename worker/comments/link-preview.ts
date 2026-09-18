@@ -685,9 +685,11 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
           let imageUrl: string | null = null;
           if (metadata.image) {
             try {
-              imageUrl = normalizeLinkPreviewUrl(
+              const candidate = normalizeLinkPreviewUrl(
                 new URL(metadata.image, current).toString(),
-              ).toString();
+              );
+              await assertPublicTarget(candidate, dependencies.resolveHost);
+              imageUrl = candidate.toString();
             } catch {
               imageUrl = null;
             }

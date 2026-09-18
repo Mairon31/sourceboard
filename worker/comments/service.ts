@@ -29,6 +29,8 @@ export interface CommentServiceDependencies {
   now?: () => number;
 }
 
+type CommentAuthorMode = "IDENTIFIED" | "ANONYMOUS";
+
 export interface CommentService {
   listForPost(
     postId: string,
@@ -50,6 +52,7 @@ export interface CommentService {
     markdown?: unknown;
     attachment?: unknown;
     linkPreviewUrl?: unknown;
+    authorMode?: unknown;
   }): Promise<CommentView>;
   update(
     commentId: string,
@@ -77,10 +80,12 @@ function publicAuthor(
   profileVisible: boolean,
   cosmetics?: Awaited<ReturnType<ProfileStore["getEquippedCosmetics"]>>,
 ): PublicPostAuthor {
-  if (
-    comment.post.authorMode === "ANONYMOUS" &&
-    comment.comment.authorId === comment.post.authorId
-  ) {
+  const authorMode: CommentAuthorMode =
+    comment.comment.authorMode ??
+    (comment.post.authorMode === "ANONYMOUS" && comment.comment.authorId === comment.post.authorId
+      ? "ANONYMOUS"
+      : "IDENTIFIED");
+  if (authorMode === "ANONYMOUS") {
     return { mode: "ANONYMOUS", displayName: "Anonymous Author" };
   }
   if (!profileVisible) return { mode: "IDENTIFIED", displayName: "SourceBoard member" };
@@ -108,8 +113,13 @@ async function toView(
   viewerReacted = false,
   emoteAssets: Map<string, CommentEmoteAsset> = new Map(),
 ): Promise<CommentView> {
+  const commentAuthorMode: CommentAuthorMode =
+    record.comment.authorMode ??
+    (record.post.authorMode === "ANONYMOUS" && record.comment.authorId === record.post.authorId
+      ? "ANONYMOUS"
+      : "IDENTIFIED");
   const profileVisible =
-    record.post.authorMode !== "ANONYMOUS" || record.comment.authorId !== record.post.authorId
+    commentAuthorMode !== "ANONYMOUS"
       ? await canViewUser(viewerId, record.comment.authorId, { store: profileStore, now })
       : false;
   const cosmetics = profileVisible
@@ -312,6 +322,11 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
 
     async create(input) {
       const post = await requireVisiblePost(input.postId, input.authorId);
+      const resolvedAuthorMode = resolveCommentAuthorMode(
+        input.authorMode,
+        post.post,
+        input.authorId,
+      );
       if (
         post.post.status === "LOCKED" ||
         post.post.status === "ARCHIVED" ||
@@ -355,6 +370,7 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
         id: createIdentifier(),
         postId: input.postId,
         authorId: input.authorId,
+        authorMode: resolvedAuthorMode,
         parentCommentId: input.parentCommentId ?? null,
         richtext: body.richtext,
         plaintext: body.plaintext,
@@ -540,4 +556,29 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
       return dependencies.store.setLike({ userId, targetType, targetId, liked, now: now() });
     },
   };
+}
+
+function resolveCommentAuthorMode(
+  requested: unknown,
+  post: CommentWithAuthor["post"],
+  authorId: string,
+): CommentAuthorMode {
+  const defaultMode: CommentAuthorMode =
+    post.authorMode === "ANONYMOUS" && post.authorId === authorId ? "ANONYMOUS" : "IDENTIFIED";
+  if (requested === undefined) return defaultMode;
+  if (requested !== "IDENTIFIED" && requested !== "ANONYMOUS") {
+    throw new PostError(
+      400,
+      "INVALID_COMMENT_AUTHOR_MODE",
+      "The comment author identity is invalid.",
+    );
+  }
+  if (requested === "ANONYMOUS" && defaultMode !== "ANONYMOUS") {
+    throw new PostError(
+      403,
+      "COMMENT_ANONYMOUS_IDENTITY_UNAVAILABLE",
+      "Anonymous comments are only available to the author of an anonymous post.",
+    );
+  }
+  return requested;
 }

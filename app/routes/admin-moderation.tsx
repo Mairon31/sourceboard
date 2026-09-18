@@ -66,7 +66,7 @@ function actionsForTarget(targetType: string): readonly ModerationAction[] {
   return [];
 }
 
-const ACTION_LABEL_KEYS: Record<ModerationAction, MessageKey> = {
+const ACTION_LABEL_KEYS: Partial<Record<ModerationAction, MessageKey>> = {
   WARN: "admin.moderation.actionWarn",
   HIDE: "admin.moderation.actionHide",
   RESTORE: "admin.moderation.actionRestore",
@@ -82,7 +82,8 @@ const ACTION_LABEL_KEYS: Record<ModerationAction, MessageKey> = {
 };
 
 function actionLabel(action: ModerationAction, translate: (key: MessageKey) => string): string {
-  return translate(ACTION_LABEL_KEYS[action]);
+  const key = ACTION_LABEL_KEYS[action];
+  return key ? translate(key) : action;
 }
 
 function targetLabel(targetType: ActionTarget, translate: (key: MessageKey) => string): string {
