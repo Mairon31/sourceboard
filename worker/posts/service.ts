@@ -354,19 +354,29 @@ async function toPostSummary(
   const nsfwVisible = allowDeletedOwner
     ? true
     : await canViewPost(viewerId, post.post, dependencies);
+  const publicAnonymousPreview =
+    !viewerId &&
+    post.post.visibility === "PUBLIC" &&
+    post.post.isNsfw &&
+    !post.post.deletedAt &&
+    !post.post.hiddenAt;
+  const blurNsfw = viewerId
+    ? Boolean(
+        (
+          await dependencies.profileStore
+            .getPreferences(viewerId, dependencies.now())
+            .catch(() => null)
+        )?.blurNsfw,
+      )
+    : true;
   const nsfwPresentation = !post.post.isNsfw
     ? "VISIBLE"
-    : !nsfwVisible
+    : !nsfwVisible && !publicAnonymousPreview
       ? "HIDDEN"
-      : (
-            await dependencies.profileStore
-              .getPreferences(viewerId ?? "", dependencies.now())
-              .catch(() => null)
-          )?.blurNsfw
+      : blurNsfw
         ? "BLURRED"
         : "VISIBLE";
-  const isMediaVisible =
-    (allowDeletedOwner || nsfwPresentation !== "HIDDEN") && post.media.status === "ACTIVE";
+  const isMediaVisible = post.media.status === "ACTIVE";
   const descriptionRichtext = post.post.description
     ? parsePostRichtext(post.post.description, emoteAssets)
     : undefined;
@@ -504,7 +514,17 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         post.post.deletedAt &&
         now() - post.post.deletedAt < SOFT_DELETE_RETENTION_MS,
       );
-      if (!restoreAvailable && !(await canViewPost(viewerId, post.post, policyDependencies))) {
+      const publicAnonymousPreview =
+        !viewerId &&
+        post.post.visibility === "PUBLIC" &&
+        post.post.isNsfw &&
+        !post.post.deletedAt &&
+        !post.post.hiddenAt;
+      if (
+        !restoreAvailable &&
+        !publicAnonymousPreview &&
+        !(await canViewPost(viewerId, post.post, policyDependencies))
+      ) {
         return null;
       }
       return toPostDetail(post, viewerId, policyDependencies, restoreAvailable);
@@ -807,7 +827,17 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
         post.post.deletedAt &&
         now() - post.post.deletedAt < SOFT_DELETE_RETENTION_MS,
       );
-      if (!ownerCanRestore && !(await canViewPost(viewerId, post.post, policyDependencies))) {
+      const publicAnonymousPreview =
+        !viewerId &&
+        post.post.visibility === "PUBLIC" &&
+        post.post.isNsfw &&
+        !post.post.deletedAt &&
+        !post.post.hiddenAt;
+      if (
+        !ownerCanRestore &&
+        !publicAnonymousPreview &&
+        !(await canViewPost(viewerId, post.post, policyDependencies))
+      ) {
         return null;
       }
       return { post, media: post.media };

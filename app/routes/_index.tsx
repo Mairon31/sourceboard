@@ -3,8 +3,14 @@ import { Link, useLoaderData, useSearchParams } from "react-router";
 import {
   POST_CATEGORIES,
   parsePostCategorySlug,
+  parsePostCategoryValue,
+  type PostCategory,
   type PostCategorySlug,
 } from "../../shared/posts/categories";
+import {
+  createCategoryService,
+  isMissingCategorySchemaError,
+} from "../../worker/categories/service";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
@@ -15,6 +21,7 @@ import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
 import { useI18n } from "../i18n/I18nProvider";
 import type { MessageKey } from "../i18n";
+import { readSourceBoardRequestContext } from "../../shared/router-context";
 
 type LoaderArgs = ServerLoaderArgs;
 type FeedMode = "recent" | "friends" | "answered" | "verified";
@@ -33,12 +40,31 @@ function feedCacheKey(feed: FeedMode, categorySlug: PostCategorySlug | null) {
 export async function loader({ request, context }: LoaderArgs) {
   const url = new URL(request.url);
   const rawCategory = url.searchParams.get("category");
-  const categorySlug = rawCategory ? parsePostCategorySlug(rawCategory) : null;
+  let categories: PostCategory[] = [...POST_CATEGORIES];
+  const db = readSourceBoardRequestContext(context)?.env.DB;
+  if (db) {
+    try {
+      categories = (await createCategoryService(db).list()).map((category) => ({
+        slug: category.slug,
+        label: category.name,
+        description: category.description,
+        aliases: category.aliases,
+        isNsfw: category.isNsfw,
+        isArchived: category.isArchived,
+        noindex: category.noindex,
+      }));
+    } catch (error) {
+      if (!isMissingCategorySchemaError(error)) throw error;
+    }
+  }
+  const categorySlug = rawCategory
+    ? (parsePostCategorySlug(rawCategory) ?? parsePostCategoryValue(rawCategory))
+    : null;
 
   return withOptionalServerSession(
     request,
     context,
-    (unavailable) => ({ unavailable, categorySlug, posts: [] }),
+    (unavailable) => ({ unavailable, categorySlug, categories, posts: [] }),
     async (runtime, userId) => {
       const service = createPostService({
         store: createD1PostStore(runtime.db),
@@ -59,6 +85,7 @@ export async function loader({ request, context }: LoaderArgs) {
       return {
         unavailable: false,
         categorySlug,
+        categories,
         posts: recent.posts.map((post) => ({
           ...post,
           reaction: { ...post.reaction, viewerReacted: likedIds.has(post.id) },
@@ -134,7 +161,7 @@ export default function HomeRoute() {
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const rawCategory = searchParams.get("category");
-  const categorySlug = rawCategory ? parsePostCategorySlug(rawCategory) : null;
+  const categorySlug = rawCategory ? parsePostCategoryValue(rawCategory) : null;
   const initialKey = feedCacheKey("recent", data.categorySlug);
   const [feedCache, setFeedCache] = useState<Record<string, FeedPosts>>({
     [initialKey]: data.posts,
@@ -213,7 +240,7 @@ export default function HomeRoute() {
   }
 
   function selectCategory(value: string) {
-    const nextCategory = value ? parsePostCategorySlug(value) : null;
+    const nextCategory = value ? parsePostCategoryValue(value) : null;
     const next = new URLSearchParams(searchParams);
     if (nextCategory) next.set("category", nextCategory);
     else next.delete("category");
@@ -265,7 +292,7 @@ export default function HomeRoute() {
               onChange={(event) => selectCategory(event.currentTarget.value)}
             >
               <option value="">{t("home.feed.allCategories")}</option>
-              {POST_CATEGORIES.map((category) => (
+              {data.categories.map((category) => (
                 <option key={category.slug} value={category.slug}>
                   {category.label}
                 </option>

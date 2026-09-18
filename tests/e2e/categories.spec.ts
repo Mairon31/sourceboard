@@ -103,3 +103,18 @@ test("Home keeps the canonical category while switching feed modes", async ({ pa
   await expect(page).toHaveURL(/\?category=anime$/);
   await expect(page.getByText("E2E Anime category post", { exact: true })).toBeVisible();
 });
+
+test("admin category governance is usable on mobile", async ({ page }) => {
+  await installAdminStoreFixture(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin/categories");
+  await waitForUiReady(page);
+
+  await expect(page.getByRole("heading", { name: "Post categories" })).toBeVisible();
+  await expect(page.getByText("Anime", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "New category" })).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});

@@ -22,11 +22,13 @@ const legacyCategoryBackfillSource = readSource(
 );
 
 describe("post categories", () => {
-  it("ships the approved 24-category catalog", () => {
-    expect(POST_CATEGORIES).toHaveLength(24);
+  it("ships the approved catalog plus the expanded public categories", () => {
+    expect(POST_CATEGORIES.length).toBeGreaterThanOrEqual(24);
     expect(POST_CATEGORIES.map((item) => item.slug)).toContain("anime");
     expect(POST_CATEGORIES.map((item) => item.slug)).toContain("lost-media");
     expect(POST_CATEGORIES.map((item) => item.slug)).toContain("cars-vehicles");
+    expect(POST_CATEGORIES.map((item) => item.slug)).toContain("food-drinks");
+    expect(POST_CATEGORIES.map((item) => item.slug)).toContain("science");
     expect(POST_CATEGORIES.at(-1)?.slug).toBe("other");
   });
 

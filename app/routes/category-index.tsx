@@ -1,22 +1,57 @@
 import { Form, Link, redirect, useLoaderData } from "react-router";
-import { findPostCategory, POST_CATEGORIES } from "../../shared/posts/categories";
+import {
+  findPostCategory,
+  POST_CATEGORIES,
+  type PostCategory,
+} from "../../shared/posts/categories";
+import {
+  createCategoryService,
+  isMissingCategorySchemaError,
+} from "../../worker/categories/service";
+import { readSourceBoardRequestContext } from "../../shared/router-context";
+import type { ServerLoaderArgs } from "../data/server-request";
 import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
 
-export function loader({ request }: { request: Request }) {
+export async function loader({ request, context }: ServerLoaderArgs) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim() ?? "";
-  const category = query ? findPostCategory(query) : null;
+  let categories: PostCategory[] = [...POST_CATEGORIES];
+  const db = readSourceBoardRequestContext(context)?.env.DB;
+  if (db) {
+    try {
+      categories = (await createCategoryService(db).list()).map((category) => ({
+        slug: category.slug,
+        label: category.name,
+        description: category.description,
+        aliases: category.aliases,
+        isNsfw: category.isNsfw,
+        isArchived: category.isArchived,
+        noindex: category.noindex,
+      }));
+    } catch (error) {
+      if (!isMissingCategorySchemaError(error)) throw error;
+    }
+  }
+  const normalizedQuery = query.normalize("NFKC").toLowerCase();
+  const category =
+    (query ? findPostCategory(query) : null) ??
+    categories.find((candidate) =>
+      [candidate.slug, candidate.label, ...candidate.aliases].some(
+        (value) => value.normalize("NFKC").toLowerCase() === normalizedQuery,
+      ),
+    ) ??
+    null;
 
   if (category) {
     return redirect(`/category/${category.slug}`);
   }
 
-  return { query };
+  return { query, categories };
 }
 
 export default function CategoryIndexRoute() {
-  const data = useLoaderData<typeof loader>() as { query: string };
+  const data = useLoaderData<typeof loader>();
 
   return (
     <ProductShell wide>
@@ -59,7 +94,7 @@ export default function CategoryIndexRoute() {
           </div>
         </div>
         <div className="product-category-directory">
-          {POST_CATEGORIES.map((category) => (
+          {data.categories.map((category) => (
             <Link
               key={category.slug}
               to={`/category/${category.slug}`}

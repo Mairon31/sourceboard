@@ -1,5 +1,9 @@
-import { Link, useLoaderData } from "react-router";
+import { Link, useLoaderData, type MetaFunction } from "react-router";
 import { getPostCategory, parsePostCategorySlug } from "../../shared/posts/categories";
+import {
+  createCategoryService,
+  isMissingCategorySchemaError,
+} from "../../worker/categories/service";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
@@ -9,17 +13,38 @@ import { Card } from "../components/ui";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { useI18n } from "../i18n/I18nProvider";
 import { readViewerLikedPostIds } from "../data/viewer-post-likes";
+import { readSourceBoardRequestContext } from "../../shared/router-context";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { categorySlug?: string };
 }
 
 export async function loader({ request, context, params }: LoaderArgs) {
-  const categorySlug = parsePostCategorySlug(params.categorySlug);
-  if (!categorySlug) {
+  const rawSlug = params.categorySlug?.trim() ?? "";
+  const staticSlug = parsePostCategorySlug(rawSlug);
+  let category = staticSlug ? getPostCategory(staticSlug) : null;
+  const db = readSourceBoardRequestContext(context)?.env.DB;
+  if (!category && db && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(rawSlug)) {
+    try {
+      const dynamic = await createCategoryService(db).get(rawSlug);
+      category = dynamic
+        ? {
+            slug: dynamic.slug,
+            label: dynamic.name,
+            description: dynamic.description,
+            aliases: dynamic.aliases,
+            isNsfw: dynamic.isNsfw,
+            isArchived: dynamic.isArchived,
+            noindex: dynamic.noindex,
+          }
+        : null;
+    } catch (error) {
+      if (!isMissingCategorySchemaError(error)) throw error;
+    }
+  }
+  if (!category) {
     throw new Response("Category not found", { status: 404 });
   }
-  const category = getPostCategory(categorySlug);
   const url = new URL(request.url);
 
   return withOptionalServerSession(
@@ -56,6 +81,9 @@ export async function loader({ request, context, params }: LoaderArgs) {
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
+
+export const meta: MetaFunction<typeof loader> = ({ loaderData: data }) =>
+  data?.category?.noindex ? [{ name: "robots", content: "noindex, follow" }] : [];
 
 export default function CategoryRoute() {
   const { t } = useI18n();

@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from "react";
 import {
   POST_CATEGORIES,
   getPostCategory,
+  type PostCategory,
   type PostCategorySlug,
 } from "../../../shared/posts/categories";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -11,28 +12,36 @@ interface CategoryPickerProps {
   value: PostCategorySlug | null;
   onChange: (value: PostCategorySlug) => void;
   disabled?: boolean;
+  categories?: readonly PostCategory[];
 }
 
 function normalizeSearch(value: string): string {
   return value.normalize("NFKC").toLowerCase().trim().replace(/\s+/g, " ");
 }
 
-export function CategoryPicker({ value, onChange, disabled = false }: CategoryPickerProps) {
+export function CategoryPicker({
+  value,
+  onChange,
+  disabled = false,
+  categories = POST_CATEGORIES,
+}: CategoryPickerProps) {
   const { t } = useI18n();
   const listboxId = useId();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const selected = value ? getPostCategory(value) : null;
+  const selected = value
+    ? (categories.find((category) => category.slug === value) ?? getPostCategory(value))
+    : null;
   const filtered = useMemo(() => {
     const normalized = normalizeSearch(query);
-    if (!normalized) return POST_CATEGORIES;
-    return POST_CATEGORIES.filter((category) =>
+    if (!normalized) return categories;
+    return categories.filter((category) =>
       [category.label, category.slug, ...category.aliases].some((candidate) =>
         normalizeSearch(candidate).includes(normalized),
       ),
     );
-  }, [query]);
+  }, [categories, query]);
   const activeIndex = filtered.length ? Math.min(highlightedIndex, filtered.length - 1) : -1;
   const activeOption = activeIndex >= 0 ? filtered[activeIndex] : undefined;
 

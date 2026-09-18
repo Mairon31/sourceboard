@@ -43,11 +43,14 @@ describe("post media cache policy", () => {
     { visibility: "UNLISTED" as const },
     { visibility: "FRIENDS_ONLY" as const },
     { visibility: "PRIVATE" as const },
-    { isNsfw: true },
     { deletedAt: 10 },
     { hiddenAt: 10 },
   ])("does not cache restricted post media publicly (%o)", (overrides) => {
     expect(postMediaCacheControl(post(overrides))).toBe("private, no-store");
+  });
+
+  it("allows public caching for NSFW media so crawlers can fetch the declared image", () => {
+    expect(postMediaCacheControl(post({ isNsfw: true }))).toBe("public, max-age=3600");
   });
 
   it("keeps public archived post media readable and cacheable", () => {

@@ -118,6 +118,7 @@ export function PostCard({
   editingRef.current = editing;
   const detailHref = postDetailHref(post);
   const archived = post.status === "ARCHIVED";
+  const blurredNsfw = post.isNsfw && post.nsfwPresentation === "BLURRED" && !showNsfw;
   const statusLabel = {
     OPEN: t("post.status.open"),
     ANSWERED: t("post.status.answered"),
@@ -583,29 +584,16 @@ export function PostCard({
         )}
       </div>
 
-      {post.isNsfw && (post.nsfwPresentation === "HIDDEN" || !showNsfw) ? (
+      {post.isNsfw && post.nsfwPresentation === "HIDDEN" ? (
         <div className="product-nsfw-gate">
           <div>
             <Badge tone="danger">NSFW</Badge>
-            <strong>
-              {post.nsfwPresentation === "HIDDEN"
-                ? t("post.nsfw.hiddenTitle")
-                : t("post.nsfw.blurredTitle")}
-            </strong>
-            <p>
-              {post.nsfwPresentation === "HIDDEN"
-                ? t("post.nsfw.hiddenDescription")
-                : t("post.nsfw.blurredDescription")}
-            </p>
+            <strong>{t("post.nsfw.hiddenTitle")}</strong>
+            <p>{t("post.nsfw.hiddenDescription")}</p>
           </div>
-          {post.nsfwPresentation === "BLURRED" ? (
-            <Button variant="secondary" size="sm" onClick={() => setShowNsfw(true)}>
-              {t("post.nsfw.showOnce")}
-            </Button>
-          ) : null}
         </div>
       ) : (
-        <div className={mediaClass}>
+        <div className={`${mediaClass}${blurredNsfw ? " product-post__media--nsfw-blurred" : ""}`}>
           <Link
             to={detailHref}
             className="product-post__media-link"
@@ -648,7 +636,7 @@ export function PostCard({
               </div>
             )}
           </Link>
-          {post.imageUrl && !mediaFailed ? (
+          {post.imageUrl && !mediaFailed && !blurredNsfw ? (
             <button
               type="button"
               className="product-post__media-expand"
@@ -666,6 +654,16 @@ export function PostCard({
             >
               <GalleryIcon width="18" height="18" />
             </button>
+          ) : null}
+          {blurredNsfw ? (
+            <div className="product-nsfw-media-overlay">
+              <Badge tone="danger">NSFW</Badge>
+              <strong>{t("post.nsfw.blurredTitle")}</strong>
+              <p>{t("post.nsfw.blurredDescription")}</p>
+              <Button variant="secondary" size="sm" onClick={() => setShowNsfw(true)}>
+                {t("post.nsfw.showOnce")}
+              </Button>
+            </div>
           ) : null}
         </div>
       )}

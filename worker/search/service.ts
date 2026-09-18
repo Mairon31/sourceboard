@@ -427,9 +427,10 @@ export function createSearchService(dependencies: SearchServiceDependencies): Se
       const preferences = input.viewerId
         ? await dependencies.profileStore.getPreferences(input.viewerId, now())
         : null;
-      const hideNsfw =
-        !input.viewerId || Boolean(preferences?.hideNsfw && !preferences.allowNsfwDirectOverride);
-      const blurNsfw = Boolean(preferences?.blurNsfw);
+      const hideNsfw = input.viewerId
+        ? Boolean(preferences?.hideNsfw && !preferences.allowNsfwDirectOverride)
+        : false;
+      const blurNsfw = input.viewerId ? Boolean(preferences?.blurNsfw) : true;
 
       const postQuery = postSearchQuery(
         fts,

@@ -3,6 +3,7 @@ import { POST_CATEGORIES } from "../../shared/posts/categories";
 import { absoluteSourceBoardUrl } from "../../shared/seo/urls";
 import type { SourceBoardEnvironment } from "../environment";
 import { createD1SitemapStore, SITEMAP_PAGE_SIZE, type SitemapPageEntry } from "./sitemap-store";
+import { createCategoryService, isMissingCategorySchemaError } from "../categories/service";
 
 const CACHE_CONTROL = "public, max-age=300, s-maxage=300";
 const CACHE_NAMESPACE = "seo:v3:";
@@ -92,10 +93,25 @@ async function writeCache(
   await env.CACHE.put(`${CACHE_NAMESPACE}${pathname}`, body, { expirationTtl: 300 });
 }
 
-function categorySitemapEntries(): SitemapPageEntry[] {
+async function categorySitemapEntries(db?: D1Database): Promise<SitemapPageEntry[]> {
+  let categories = POST_CATEGORIES;
+  if (db) {
+    try {
+      categories = (await createCategoryService(db).list())
+        .filter((category) => !category.noindex)
+        .map((category) => ({
+          slug: category.slug,
+          label: category.name,
+          description: category.description,
+          aliases: category.aliases,
+        }));
+    } catch (error) {
+      if (!isMissingCategorySchemaError(error)) throw error;
+    }
+  }
   return SUPPORTED_LOCALES.flatMap((locale) => [
     { loc: absoluteSourceBoardUrl(`/${locale}/category`) },
-    ...POST_CATEGORIES.map((category) => ({
+    ...categories.map((category) => ({
       loc: absoluteSourceBoardUrl(`/${locale}/category/${encodeURIComponent(category.slug)}`),
     })),
   ]);
@@ -210,7 +226,7 @@ export async function handlePublicSeoRequest(
   }
 
   if (pathname === "/sitemaps/categories.xml") {
-    const body = renderUrlSet(categorySitemapEntries());
+    const body = renderUrlSet(await categorySitemapEntries(env.DB));
     await writeCache(env, pathname, body);
     return request.method === "HEAD" ? xmlResponse("") : xmlResponse(body);
   }

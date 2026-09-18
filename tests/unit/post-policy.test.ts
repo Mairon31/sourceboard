@@ -202,6 +202,23 @@ describe("Phase 4 post policy", () => {
     expect(result.posts[0]?.imageUrl).toBe("/api/media/post/asset-1");
   });
 
+  it("keeps public NSFW post shells and media available to anonymous crawlers with blur presentation", async () => {
+    const { profileStore, store, getPost, getPostForMedia } = dependencies();
+    const sensitive = post({ isNsfw: true });
+    getPost.mockResolvedValue(sensitive);
+    getPostForMedia.mockResolvedValue(sensitive);
+    const service = createPostService({ store, profileStore, now: () => 2 });
+
+    await expect(service.getPost("post-1", null)).resolves.toMatchObject({
+      isNsfw: true,
+      nsfwPresentation: "BLURRED",
+      imageUrl: "/api/media/post/asset-1",
+    });
+    await expect(service.getVisibleMedia("asset-1", null)).resolves.toMatchObject({
+      media: { id: "asset-1" },
+    });
+  });
+
   it("restores an owner's soft-deleted post inside the 24-hour retention window", async () => {
     const { profileStore, store, getPost } = dependencies();
     const restorePost = vi.fn(async () => true);

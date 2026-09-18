@@ -323,7 +323,7 @@ export const userPreferences = sqliteTable("user_preferences", {
   userId: text("user_id")
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
-  hideNsfw: integer("hide_nsfw", { mode: "boolean" }).notNull().default(true),
+  hideNsfw: integer("hide_nsfw", { mode: "boolean" }).notNull().default(false),
   blurNsfw: integer("blur_nsfw", { mode: "boolean" }).notNull().default(true),
   allowNsfwDirectOverride: integer("allow_nsfw_direct_override", { mode: "boolean" })
     .notNull()
@@ -463,6 +463,40 @@ export const posts = sqliteTable(
       "posts_status_check",
       sql`${table.status} IN ('OPEN', 'ANSWERED', 'VERIFIED', 'ARCHIVED', 'LOCKED')`,
     ),
+  ],
+);
+
+export const postCategories = sqliteTable(
+  "post_categories",
+  {
+    slug: text("slug").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    aliasesJson: text("aliases_json").notNull().default("[]"),
+    isNsfw: integer("is_nsfw", { mode: "boolean" }).notNull().default(false),
+    isArchived: integer("is_archived", { mode: "boolean" }).notNull().default(false),
+    noindex: integer("noindex", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("created_at", { mode: "number" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("post_categories_visibility_idx").on(table.isArchived, table.noindex, table.slug),
+  ],
+);
+
+export const postCategoryTranslations = sqliteTable(
+  "post_category_translations",
+  {
+    categorySlug: text("category_slug")
+      .notNull()
+      .references(() => postCategories.slug, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+  },
+  (table) => [
+    primaryKey({ columns: [table.categorySlug, table.locale] }),
+    index("post_category_translations_locale_idx").on(table.locale, table.categorySlug),
   ],
 );
 

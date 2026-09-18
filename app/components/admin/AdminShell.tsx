@@ -13,6 +13,7 @@ import {
   UserIcon,
 } from "../ui";
 import { useI18n } from "../../i18n/I18nProvider";
+import type { MessageKey } from "../../i18n/messages/types";
 
 const adminLinks = [
   { href: "/admin", label: "Overview", end: true, icon: HomeIcon },
@@ -33,6 +34,13 @@ const adminLinks = [
   { href: "/admin/reputation", label: "Reputation", end: false, icon: CheckIcon },
   { href: "/admin/store", label: "Store", end: false, icon: StoreIcon },
   { href: "/admin/content", label: "Content", end: false, icon: InfoIcon },
+  {
+    href: "/admin/categories",
+    label: "Categories",
+    labelKey: "admin.categories.nav" as const,
+    end: false,
+    icon: InfoIcon,
+  },
   { href: "/admin/audit", label: "Audit", end: false, icon: SearchIcon },
 ] as const;
 
@@ -65,7 +73,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <small>Control center</small>
             </div>
           </a>
-          <span className="admin-mobile-current">{activeItem.label}</span>
+          <span className="admin-mobile-current">
+            {"labelKey" in activeItem ? t(activeItem.labelKey as MessageKey) : activeItem.label}
+          </span>
           <button
             type="button"
             className="admin-mobile-toggle"
@@ -104,7 +114,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 onClick={() => setMobileNavigationOpen(false)}
               >
                 <Icon width="18" height="18" />
-                <span>{item.label}</span>
+                <span>{"labelKey" in item ? t(item.labelKey as MessageKey) : item.label}</span>
               </NavLink>
             );
           })}

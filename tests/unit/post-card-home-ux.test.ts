@@ -50,6 +50,6 @@ describe("home post card experience", () => {
     expect(postCardSource).toContain("isInteractivePostTarget");
     expect(postCardSource).toContain('className="product-post__title"');
     expect(postCardSource).toContain("to={detailHref}");
-    expect(postCardSource).toContain("className={mediaClass}");
+    expect(postCardSource).toContain("className={`${mediaClass}");
   });
 });

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import type { PostCategorySlug } from "../../../shared/posts/categories";
+import type { PostCategory, PostCategorySlug } from "../../../shared/posts/categories";
 import { readCsrfToken } from "../../data/csrf";
 import { localizeApiError } from "../../data/user-facing-errors";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -32,9 +32,10 @@ type PostVisibility = "PUBLIC" | "FRIENDS_ONLY" | "UNLISTED" | "PRIVATE";
 interface PostComposerProps {
   identity: PostComposerIdentity | null;
   unavailable?: boolean;
+  categories?: readonly PostCategory[];
 }
 
-export function PostComposer({ identity, unavailable = false }: PostComposerProps) {
+export function PostComposer({ identity, unavailable = false, categories }: PostComposerProps) {
   const navigate = useNavigate();
   const { t } = useI18n();
   const [authorMode, setAuthorMode] = useState<"IDENTIFIED" | "ANONYMOUS">("IDENTIFIED");
@@ -217,7 +218,12 @@ export function PostComposer({ identity, unavailable = false }: PostComposerProp
             </div>
             <p>{t("composer.category.description")}</p>
           </div>
-          <CategoryPicker value={category} onChange={setCategory} disabled={unavailable || busy} />
+          <CategoryPicker
+            value={category}
+            onChange={setCategory}
+            disabled={unavailable || busy}
+            categories={categories}
+          />
         </section>
 
         <section className="product-post-composer__section" aria-labelledby="post-audience-heading">

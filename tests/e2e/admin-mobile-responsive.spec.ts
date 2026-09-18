@@ -27,7 +27,7 @@ test.describe("admin mobile workspace", () => {
         .locator(".admin-sidebar__footer > a")
         .evaluate((element) => element.getBoundingClientRect().height),
     ).toBeGreaterThanOrEqual(44);
-    await expect(page.locator("#admin-navigation").getByRole("link")).toHaveCount(9);
+    await expect(page.locator("#admin-navigation").getByRole("link")).toHaveCount(10);
 
     const geometry = await page.locator("#admin-navigation").evaluate((element) => {
       const bounds = element.getBoundingClientRect();
@@ -162,6 +162,7 @@ test.describe("admin mobile workspace", () => {
       "/admin/reputation",
       "/admin/store",
       "/admin/content",
+      "/admin/categories",
       "/admin/audit",
     ];
 

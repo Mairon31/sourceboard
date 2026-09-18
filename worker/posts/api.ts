@@ -13,6 +13,7 @@ import type { SourceBoardEnvironment } from "../environment";
 import { createErrorEnvelope } from "../../shared/http/error-envelope";
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
 import { parsePostCategorySlug, type PostCategorySlug } from "../../shared/posts/categories";
+import { createCategoryService } from "../categories/service";
 import { createD1ProfileStore } from "../profile/store";
 import { createMediaService } from "../media/r2";
 import { MediaUploadError, uploadMediaAsset } from "../media/upload";
@@ -186,11 +187,30 @@ function parseAuthorMode(value: unknown): PostAuthorMode {
   throw new PostError(400, "INVALID_AUTHOR_MODE", "The post author mode is invalid.");
 }
 
-function parseCreatePostCategory(value: FormDataEntryValue | null): PostCategorySlug {
+async function parseCreatePostCategory(
+  value: FormDataEntryValue | null,
+  db: D1Database,
+): Promise<PostCategorySlug> {
   if (value === null) return "other";
   const categorySlug = parsePostCategorySlug(String(value));
-  if (categorySlug) return categorySlug;
-  throw new PostError(400, "INVALID_POST_CATEGORY", "Choose a valid post category.");
+  if (!categorySlug) {
+    const dynamicSlug = String(value).trim().toLowerCase();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(dynamicSlug)) {
+      throw new PostError(400, "INVALID_POST_CATEGORY", "Choose a valid post category.");
+    }
+    try {
+      await createCategoryService(db).requireActive(dynamicSlug);
+      return dynamicSlug;
+    } catch {
+      throw new PostError(400, "INVALID_POST_CATEGORY", "Choose a valid post category.");
+    }
+  }
+  try {
+    await createCategoryService(db).requireActive(categorySlug);
+    return categorySlug;
+  } catch {
+    throw new PostError(400, "INVALID_POST_CATEGORY", "Choose a valid post category.");
+  }
 }
 
 function requireContentRateLimit(
@@ -269,7 +289,7 @@ async function createPostFromForm(
       bytes,
       declaredContentType: fileEntry.type,
       createdAt,
-      persist: (image) =>
+      persist: async (image) =>
         createService(env).createPost({
           id: postId,
           authorId: viewerId,
@@ -277,7 +297,7 @@ async function createPostFromForm(
           isNsfw: parseBoolean(form.get("isNsfw")),
           title: String(form.get("title") ?? ""),
           description: String(form.get("description") ?? ""),
-          categorySlug: parseCreatePostCategory(form.get("category")),
+          categorySlug: await parseCreatePostCategory(form.get("category"), requireDatabase(env)),
           visibility: parsePostVisibility(String(form.get("visibility") ?? "PUBLIC")),
           image: {
             id: image.id,
@@ -504,8 +524,7 @@ async function getViewerForMedia(
 export function postMediaCacheControl(
   post: Pick<PostRecord, "visibility" | "isNsfw" | "status" | "deletedAt" | "hiddenAt">,
 ): string {
-  const publicMedia =
-    post.visibility === "PUBLIC" && !post.isNsfw && !post.deletedAt && !post.hiddenAt;
+  const publicMedia = post.visibility === "PUBLIC" && !post.deletedAt && !post.hiddenAt;
   return publicMedia ? "public, max-age=3600" : "private, no-store";
 }
 

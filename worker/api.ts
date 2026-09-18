@@ -17,6 +17,7 @@ import { enforceCommunityCosmeticPublicationGate } from "./store/publication-gat
 import { handleModerationRequest } from "./moderation/api";
 import { handleSearchRequest } from "./search/api";
 import { handleCmsRequest } from "./cms/api";
+import { handleCategoryRequest } from "./categories/api";
 
 export interface HealthPayload {
   status: "ok";
@@ -94,6 +95,11 @@ export async function handleApiRequest(
   const cmsResponse = await handleCmsRequest(request, requestId, runtime);
   if (cmsResponse) {
     return cmsResponse;
+  }
+
+  const categoryResponse = await handleCategoryRequest(request, requestId, runtime);
+  if (categoryResponse) {
+    return categoryResponse;
   }
 
   const cosmeticResponse = await handleCommunityCosmeticRequest(request, requestId, runtime);

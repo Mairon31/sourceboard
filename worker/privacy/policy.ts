@@ -72,6 +72,8 @@ export async function canViewNsfwPost(
   const post = await dependencies.readPost(postId);
   if (!post) return false;
   if (!post.isNsfw) return true;
+  // Anonymous access remains restricted here. Public SEO/media callers opt
+  // into the separate blurred-preview path without weakening user privacy.
   if (!viewerId) return false;
   const preferences = await dependencies.readPreferences(viewerId);
   return !preferences.hideNsfw || preferences.allowNsfwDirectOverride;

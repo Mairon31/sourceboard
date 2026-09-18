@@ -56,7 +56,7 @@ function createInitialPreferenceValues(data: SettingsData): PreferenceUpdate {
   const preferences = data.preferences;
   if (!preferences) {
     return {
-      hideNsfw: true,
+      hideNsfw: false,
       blurNsfw: true,
       allowFriendRequests: true,
       notifyActivity: true,

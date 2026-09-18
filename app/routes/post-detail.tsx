@@ -217,13 +217,7 @@ function sourceResolutionJsonLd(post: LoadedPost, pageUrl: string) {
 
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const post = loaderData?.post;
-  if (
-    !post ||
-    loaderData.unavailable ||
-    post.isNsfw ||
-    post.visibility !== "PUBLIC" ||
-    post.nsfwPresentation === "HIDDEN"
-  ) {
+  if (!post || loaderData.unavailable || post.visibility !== "PUBLIC") {
     return [
       { title: post ? `${post.title} · SourceBoard` : "Post unavailable · SourceBoard" },
       { name: "robots", content: "noindex, nofollow" },
@@ -242,6 +236,7 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
     ? new URL(post.imageUrl, loaderData.canonicalUrl).toString()
     : undefined;
   const sourceResolution = sourceResolutionJsonLd(post, loaderData.canonicalUrl);
+  const sensitive = post.isNsfw;
   const image = imageUrl
     ? {
         "@type": "ImageObject",
@@ -255,10 +250,13 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
     { title: `${post.title} · SourceBoard` },
     { name: "description", content: description.slice(0, 180) },
     { name: "robots", content: "index, follow" },
+    { name: "rating", content: sensitive ? "adult" : "general" },
+    { name: "content-rating", content: sensitive ? "adult" : "general" },
     { tagName: "link", rel: "canonical", href: loaderData.canonicalUrl },
     { property: "og:type", content: "article" },
     { property: "og:title", content: post.title },
     { property: "og:description", content: description.slice(0, 180) },
+    { property: "og:image:alt", content: post.imageAlt },
     ...(imageUrl ? [{ property: "og:image", content: imageUrl }] : []),
     { name: "twitter:card", content: imageUrl ? "summary_large_image" : "summary" },
     {
@@ -269,6 +267,8 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
         articleBody: description,
         datePublished: post.createdAt,
         dateModified: post.updatedAt,
+        contentRating: sensitive ? "adult" : "general",
+        isFamilyFriendly: !sensitive,
         mainEntityOfPage: loaderData.canonicalUrl,
         author,
         ...(image ? { image } : {}),
@@ -279,6 +279,15 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
             name: "SourceBoard request status",
             value: post.status,
           },
+          ...(sensitive
+            ? [
+                {
+                  "@type": "PropertyValue",
+                  name: "Content classification",
+                  value: "NSFW / adult-sensitive media",
+                },
+              ]
+            : []),
           ...(post.acceptedSource
             ? [
                 {

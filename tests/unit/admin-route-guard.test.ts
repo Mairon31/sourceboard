@@ -12,6 +12,7 @@ const DIRECT_ADMIN_ROUTES = [
   "app/routes/admin-store.tsx",
   "app/routes/admin-content.tsx",
   "app/routes/admin-content-page.tsx",
+  "app/routes/admin-categories.tsx",
   "app/routes/admin-audit.tsx",
   "app/routes/admin-anonymous.tsx",
 ] as const;

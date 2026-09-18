@@ -78,13 +78,13 @@ describe("public SEO resources", () => {
     expect(store).not.toMatch(/\bOFFSET\b/i);
   });
 
-  it("excludes every non-public or sensitive post state from sitemap SQL", () => {
+  it("excludes non-public post states while keeping public sensitive posts discoverable", () => {
     const store = read("worker/seo/sitemap-store.ts");
     expect(store).toContain("p.visibility = 'PUBLIC'");
     expect(store).toContain("p.deleted_at IS NULL");
     expect(store).toContain("p.hidden_at IS NULL");
     expect(store).not.toContain("p.archived_at IS NULL");
-    expect(store).toContain("p.is_nsfw = 0");
+    expect(store).not.toContain("p.is_nsfw = 0");
   });
 
   it("indexes only public active profiles and never selects private identity fields", () => {
@@ -103,9 +103,12 @@ describe("public SEO resources", () => {
     expect(seo).not.toContain("DRAFT");
   });
 
-  it("marks NSFW post metadata noindex until site policy explicitly enables indexing", () => {
+  it("keeps public NSFW posts indexable while exposing their sensitive classification", () => {
     const route = read("app/routes/post-detail.tsx");
-    expect(route).toContain("post.isNsfw ||");
+    expect(route).not.toContain("post.isNsfw ||");
+    expect(route).toContain('name: "content-rating"');
+    expect(route).toContain('contentRating: sensitive ? "adult" : "general"');
+    expect(route).toContain('{ property: "og:image"');
   });
 
   it("exposes post modification time to SSR and JSON-LD", () => {

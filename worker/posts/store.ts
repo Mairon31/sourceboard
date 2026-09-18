@@ -706,7 +706,7 @@ export function createD1PostStore(db: D1Database): PostStore {
         .prepare(
           `SELECT id, slug, updated_at FROM posts
            WHERE visibility = 'PUBLIC'
-             AND deleted_at IS NULL AND hidden_at IS NULL AND is_nsfw = 0
+             AND deleted_at IS NULL AND hidden_at IS NULL
            ORDER BY updated_at DESC, id DESC LIMIT 5000`,
         )
         .all<{ id: string; slug: string; updated_at: number }>();

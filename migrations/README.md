@@ -63,3 +63,9 @@ Migration `0037` is a forward-only public-search correction. It rebuilds the
 post FTS projection and replaces the post/comment synchronization triggers so
 public archived posts remain discoverable while deleted, hidden and private
 posts remain excluded. The original `0013` migration is not modified.
+
+Migration `0038` changes only rows that still carry the previous default NSFW
+pair to `hide_nsfw = 0` and `blur_nsfw = 1`; intentional user choices are
+preserved. Migration `0039` adds the governed post-category catalog and its
+locale translations, seeds the existing and expanded categories, and keeps
+category flags separate from post visibility and post NSFW state.

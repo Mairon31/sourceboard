@@ -531,6 +531,110 @@
   outline-offset: 2px;
 }
 
+.admin-categories-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.admin-category-editor,
+.admin-category-list {
+  min-width: 0;
+}
+
+.admin-category-editor {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-category-editor .admin-section-header {
+  margin: 0;
+}
+
+.admin-category-flags {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.admin-category-check {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.admin-category-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.admin-category-translations-title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.admin-category-translations,
+.admin-category-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.admin-category-translation {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--bg-app-secondary);
+}
+
+.admin-category-translation > strong {
+  color: var(--accent);
+  font-size: var(--text-sm);
+}
+
+.admin-category-row {
+  display: flex;
+  min-width: 0;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.admin-category-row > div {
+  min-width: 0;
+}
+
+.admin-category-row__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-category-row code {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.admin-category-row p {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.admin-form-status {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
 .admin-content-editor__preview {
   display: grid;
   min-width: 0;
@@ -998,6 +1102,10 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .admin-categories-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .admin-content-form-grid__wide {
     grid-column: auto;
   }
@@ -1009,6 +1117,14 @@
   .admin-content-editor > .admin-store-card-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-category-row {
+    display: grid;
+  }
+
+  .admin-category-row .sb-button {
+    width: 100%;
   }
 }
 

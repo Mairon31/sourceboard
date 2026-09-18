@@ -437,7 +437,7 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
         .prepare(
           `INSERT OR IGNORE INTO user_preferences
              (user_id, hide_nsfw, blur_nsfw, allow_nsfw_direct_override, allow_friend_requests, notify_activity, notify_friendships, created_at, updated_at)
-           VALUES (?, 1, 1, 0, 1, 1, 1, ?, ?)`,
+           VALUES (?, 0, 1, 0, 1, 1, 1, ?, ?)`,
         )
         .bind(userId, now, now),
     ]);

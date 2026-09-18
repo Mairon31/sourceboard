@@ -1,4 +1,4 @@
-import { parsePostCategorySlug } from "../../shared/posts/categories";
+import { parsePostCategorySlug, parsePostCategoryValue } from "../../shared/posts/categories";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
 import { createPostService } from "../../worker/posts/service";
@@ -23,7 +23,9 @@ export async function loader({ request, context, params }: LoaderArgs) {
   }
   const url = new URL(request.url);
   const rawCategory = url.searchParams.get("category");
-  const categorySlug = rawCategory ? parsePostCategorySlug(rawCategory) : null;
+  const categorySlug = rawCategory
+    ? (parsePostCategorySlug(rawCategory) ?? parsePostCategoryValue(rawCategory))
+    : null;
   if (rawCategory && !categorySlug) {
     return Response.json({ error: "Invalid category." }, { status: 400 });
   }

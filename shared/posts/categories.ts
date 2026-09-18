@@ -1,4 +1,14 @@
-export const POST_CATEGORIES = [
+export interface PostCategory {
+  slug: string;
+  label: string;
+  description: string;
+  aliases: readonly string[];
+  isNsfw?: boolean;
+  isArchived?: boolean;
+  noindex?: boolean;
+}
+
+export const POST_CATEGORIES: readonly PostCategory[] = [
   {
     slug: "anime",
     label: "Anime",
@@ -138,6 +148,54 @@ export const POST_CATEGORIES = [
     aliases: ["products", "product", "brands", "brand"],
   },
   {
+    slug: "food-drinks",
+    label: "Food & Drinks",
+    description: "Recipes, dishes, restaurants, beverages and food-related sources.",
+    aliases: ["food", "cooking", "recipes", "drinks"],
+  },
+  {
+    slug: "sports",
+    label: "Sports",
+    description: "Sports, athletes, matches, teams and sporting events.",
+    aliases: ["sport", "athletics", "teams"],
+  },
+  {
+    slug: "science",
+    label: "Science",
+    description: "Science, research, experiments, discoveries and educational references.",
+    aliases: ["research", "biology", "physics", "chemistry"],
+  },
+  {
+    slug: "architecture",
+    label: "Architecture",
+    description: "Buildings, interiors, urban design and architectural references.",
+    aliases: ["buildings", "interior design", "urbanism"],
+  },
+  {
+    slug: "crafts-diy",
+    label: "Crafts & DIY",
+    description: "Crafts, making, restoration and do-it-yourself projects.",
+    aliases: ["diy", "craft", "handmade", "maker"],
+  },
+  {
+    slug: "education",
+    label: "Education",
+    description: "Learning resources, classrooms, tutorials and educational media.",
+    aliases: ["learning", "school", "tutorials"],
+  },
+  {
+    slug: "health-wellness",
+    label: "Health & Wellness",
+    description: "Health, fitness, wellbeing and medical reference imagery.",
+    aliases: ["health", "fitness", "wellness"],
+  },
+  {
+    slug: "design",
+    label: "Design",
+    description: "Graphic, product, interface and visual communication design.",
+    aliases: ["graphic design", "ui", "ux"],
+  },
+  {
     slug: "other",
     label: "Other",
     description: "Source requests that do not fit another category.",
@@ -145,8 +203,7 @@ export const POST_CATEGORIES = [
   },
 ] as const;
 
-export type PostCategory = (typeof POST_CATEGORIES)[number];
-export type PostCategorySlug = PostCategory["slug"];
+export type PostCategorySlug = string;
 
 function normalizeCategoryValue(value: string): string {
   return value.normalize("NFKC").toLowerCase().trim().replace(/\s+/g, " ");
@@ -173,5 +230,24 @@ export function findPostCategory(value: unknown): PostCategory | null {
 }
 
 export function getPostCategory(slug: PostCategorySlug): PostCategory {
-  return POST_CATEGORIES.find((category) => category.slug === slug)!;
+  return (
+    POST_CATEGORIES.find((category) => category.slug === slug) ?? {
+      slug,
+      label: slug,
+      description: "",
+      aliases: [],
+    }
+  );
+}
+
+export function isPostCategorySlug(value: unknown): value is PostCategorySlug {
+  return (
+    typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length <= 64
+  );
+}
+
+export function parsePostCategoryValue(value: unknown): PostCategorySlug | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.normalize("NFKC").trim().toLowerCase();
+  return parsePostCategorySlug(normalized) ?? (isPostCategorySlug(normalized) ? normalized : null);
 }

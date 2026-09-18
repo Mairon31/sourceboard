@@ -1,5 +1,10 @@
 import { useLoaderData } from "react-router";
 import { createD1ProfileStore } from "../../worker/profile/store";
+import {
+  createCategoryService,
+  isMissingCategorySchemaError,
+} from "../../worker/categories/service";
+import { POST_CATEGORIES, type PostCategory } from "../../shared/posts/categories";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { AuthRequiredCard } from "../components/product/AuthRequiredCard";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
@@ -9,11 +14,30 @@ export async function loader({ request, context }: ServerLoaderArgs) {
   return withOptionalServerSession(
     request,
     context,
-    (unavailable) => ({ authenticated: false, unavailable, identity: null }),
+    (unavailable) => ({
+      authenticated: false,
+      unavailable,
+      identity: null,
+      categories: POST_CATEGORIES,
+    }),
     async (runtime, userId) => {
       if (!userId) return { authenticated: false, unavailable: false, identity: null };
       const profileStore = createD1ProfileStore(runtime.db);
       const now = Date.now();
+      let categories: PostCategory[] = [...POST_CATEGORIES];
+      try {
+        categories = (await createCategoryService(runtime.db).list()).map((category) => ({
+          slug: category.slug,
+          label: category.name,
+          description: category.description,
+          aliases: category.aliases,
+          isNsfw: category.isNsfw,
+          isArchived: category.isArchived,
+          noindex: category.noindex,
+        }));
+      } catch (error) {
+        if (!isMissingCategorySchemaError(error)) throw error;
+      }
       const [profile, cosmetics] = await Promise.all([
         profileStore.getProfileByUserId(userId, now),
         profileStore.getEquippedCosmetics(userId),
@@ -21,6 +45,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
       return {
         authenticated: true,
         unavailable: false,
+        categories,
         identity: profile
           ? {
               displayName: profile.displayName,
@@ -42,7 +67,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
 export default function NewPostRoute() {
-  const { authenticated, unavailable, identity } = useLoaderData<LoaderData>();
+  const { authenticated, unavailable, identity, categories } = useLoaderData<LoaderData>();
 
   return (
     <ProductShell>
@@ -60,7 +85,9 @@ export default function NewPostRoute() {
         />
       ) : null}
 
-      {authenticated ? <PostComposer identity={identity} unavailable={unavailable} /> : null}
+      {authenticated ? (
+        <PostComposer identity={identity} unavailable={unavailable} categories={categories} />
+      ) : null}
     </ProductShell>
   );
 }

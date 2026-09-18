@@ -33,8 +33,7 @@ interface ProfileSitemapRow {
 
 const POST_PUBLIC_PREDICATE = `p.visibility = 'PUBLIC'
   AND p.deleted_at IS NULL
-  AND p.hidden_at IS NULL
-  AND p.is_nsfw = 0`;
+  AND p.hidden_at IS NULL`;
 
 const PROFILE_PUBLIC_PREDICATE = `up.profile_visibility = 'PUBLIC'
   AND u.status = 'ACTIVE'`;

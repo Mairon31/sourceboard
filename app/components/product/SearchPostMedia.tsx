@@ -29,7 +29,8 @@ export function SearchPostMedia({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const detailHref = postDetailHref(post);
-  const imageUrl = post.imageUrl && !mediaRestricted ? post.imageUrl : null;
+  const blurred = post.isNsfw && post.nsfwPresentation === "BLURRED";
+  const imageUrl = post.imageUrl && (!mediaRestricted || blurred) ? post.imageUrl : null;
   const imagePreviewLabel = t("post.media.previewTitle");
 
   return (
@@ -38,10 +39,13 @@ export function SearchPostMedia({
         {imageUrl ? (
           <button
             type="button"
-            className={mediaButtonClassName}
-            aria-label={imagePreviewLabel}
+            className={`${mediaButtonClassName}${blurred ? " product-search-media--nsfw-blurred" : ""}`}
+            aria-label={blurred ? t("post.nsfw.blurredTitle") : imagePreviewLabel}
+            disabled={blurred}
             ref={triggerRef}
-            onClick={() => setLightboxOpen(true)}
+            onClick={() => {
+              if (!blurred) setLightboxOpen(true);
+            }}
           >
             <img
               src={imageUrl}
@@ -68,7 +72,7 @@ export function SearchPostMedia({
           </Link>
         )}
       </div>
-      {imageUrl ? (
+      {imageUrl && !blurred ? (
         <MediaLightbox
           open={lightboxOpen}
           onOpenChange={setLightboxOpen}
