@@ -8,26 +8,14 @@ import { PostCategoryBadge } from "./PostCategoryBadge";
 import { PostModerationMenu } from "./PostModerationMenu";
 import { postDetailHref, SearchPostMedia } from "./SearchPostMedia";
 
-export function SearchPostGrid({
-  posts,
-  sourceMode,
-}: {
-  posts: PostSummary[];
-  sourceMode: boolean;
-}) {
+export function SearchPostGrid({ posts }: { posts: PostSummary[] }) {
   const { t, tp } = useI18n();
   return (
     <div className="product-search-detailed-grid" data-search-view="grid">
       {posts.map((post) => {
         const detailHref = postDetailHref(post);
         const mediaRestricted = post.isNsfw && post.nsfwPresentation !== "VISIBLE";
-        const statusLabel = {
-          OPEN: t("post.status.open"),
-          ANSWERED: t("post.status.answered"),
-          VERIFIED: t("post.status.verified"),
-          ARCHIVED: t("post.status.archived"),
-          LOCKED: t("post.status.locked"),
-        }[post.status];
+        const showOpenStatus = !post.acceptedSource && !post.verifiedSource;
         return (
           <article className="product-search-grid-card" key={post.id} data-search-post-id={post.id}>
             <SearchPostMedia
@@ -80,36 +68,42 @@ export function SearchPostGrid({
                   slug={post.categorySlug}
                   linked={post.visibility === "PUBLIC" && post.status !== "ARCHIVED"}
                 />
-                <Badge>{statusLabel}</Badge>
-                {sourceMode ? <Badge tone="accent">{t("post.meta.acceptedSource")}</Badge> : null}
+                {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
               </div>
-              <div
-                className="product-search-grid-card__metrics"
-                aria-label={t("post.engagementAria")}
-              >
-                {!post.likeCountHidden ? (
-                  <span>
-                    <HeartIcon width="16" height="16" aria-hidden="true" />
-                    {tp("metrics.likes", post.reaction.count)}
-                  </span>
+              <div className="product-search-grid-card__footer">
+                {showOpenStatus ? (
+                  <Badge className="product-search-grid-card__status">
+                    {t("post.status.open")}
+                  </Badge>
                 ) : null}
-                {post.status === "ARCHIVED" ? (
-                  <button
-                    type="button"
-                    className="product-search-grid-card__comment-disabled"
-                    aria-label={t("post.actions.commentDisabled")}
-                    title={t("post.actions.commentDisabled")}
-                    disabled
-                  >
-                    <MessageIcon width="16" height="16" aria-hidden="true" />
-                    {tp("comments.summary", post.commentCount)}
-                  </button>
-                ) : (
-                  <span>
-                    <MessageIcon width="16" height="16" aria-hidden="true" />
-                    {tp("comments.summary", post.commentCount)}
-                  </span>
-                )}
+                <div
+                  className="product-search-grid-card__metrics"
+                  aria-label={t("post.engagementAria")}
+                >
+                  {!post.likeCountHidden ? (
+                    <span>
+                      <HeartIcon width="16" height="16" aria-hidden="true" />
+                      {tp("metrics.likes", post.reaction.count)}
+                    </span>
+                  ) : null}
+                  {post.status === "ARCHIVED" ? (
+                    <button
+                      type="button"
+                      className="product-search-grid-card__comment-disabled"
+                      aria-label={t("post.actions.commentDisabled")}
+                      title={t("post.actions.commentDisabled")}
+                      disabled
+                    >
+                      <MessageIcon width="16" height="16" aria-hidden="true" />
+                      {tp("comments.summary", post.commentCount)}
+                    </button>
+                  ) : (
+                    <span>
+                      <MessageIcon width="16" height="16" aria-hidden="true" />
+                      {tp("comments.summary", post.commentCount)}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </article>

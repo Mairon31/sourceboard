@@ -952,6 +952,11 @@
   font-weight: 720;
 }
 
+.product-meta-open {
+  color: var(--text-secondary);
+  font-weight: 720;
+}
+
 .product-post__actions {
   padding-block: var(--space-3);
 }

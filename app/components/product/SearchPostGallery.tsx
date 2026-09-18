@@ -7,13 +7,7 @@ import { HeartIcon, MessageIcon } from "../ui";
 import { postDetailHref, SearchPostMedia } from "./SearchPostMedia";
 import { PostModerationMenu } from "./PostModerationMenu";
 
-export function SearchPostGallery({
-  posts,
-  sourceMode,
-}: {
-  posts: PostSummary[];
-  sourceMode: boolean;
-}) {
+export function SearchPostGallery({ posts }: { posts: PostSummary[] }) {
   const { t } = useI18n();
   return (
     <div className="product-search-gallery" data-search-view="gallery">
@@ -21,13 +15,7 @@ export function SearchPostGallery({
         const category = getPostCategory(post.categorySlug);
         const detailHref = postDetailHref(post);
         const mediaRestricted = post.isNsfw && post.nsfwPresentation !== "VISIBLE";
-        const statusLabel = {
-          OPEN: t("post.status.open"),
-          ANSWERED: t("post.status.answered"),
-          VERIFIED: t("post.status.verified"),
-          ARCHIVED: t("post.status.archived"),
-          LOCKED: t("post.status.locked"),
-        }[post.status];
+        const showOpenStatus = !post.acceptedSource && !post.verifiedSource;
         return (
           <article
             key={post.id}
@@ -56,24 +44,30 @@ export function SearchPostGallery({
             >
               <div className="product-search-gallery__labels">
                 <span>{category.label}</span>
-                <span>{statusLabel}</span>
-                {sourceMode ? <span>{t("post.meta.acceptedSource")}</span> : null}
+                {post.isNsfw ? (
+                  <span className="product-search-gallery__label--nsfw">NSFW</span>
+                ) : null}
               </div>
               <strong>{post.title}</strong>
-              <div
-                className="product-search-gallery__metrics"
-                aria-label={t("post.engagementAria")}
-              >
-                {!post.likeCountHidden ? (
-                  <span>
-                    <HeartIcon width="15" height="15" aria-hidden="true" />
-                    {post.reaction.count}
-                  </span>
+              <div className="product-search-gallery__footer">
+                {showOpenStatus ? (
+                  <span className="product-search-gallery__status">{t("post.status.open")}</span>
                 ) : null}
-                <span>
-                  <MessageIcon width="15" height="15" aria-hidden="true" />
-                  {post.commentCount}
-                </span>
+                <div
+                  className="product-search-gallery__metrics"
+                  aria-label={t("post.engagementAria")}
+                >
+                  {!post.likeCountHidden ? (
+                    <span>
+                      <HeartIcon width="15" height="15" aria-hidden="true" />
+                      {post.reaction.count}
+                    </span>
+                  ) : null}
+                  <span>
+                    <MessageIcon width="15" height="15" aria-hidden="true" />
+                    {post.commentCount}
+                  </span>
+                </div>
               </div>
             </Link>
           </article>

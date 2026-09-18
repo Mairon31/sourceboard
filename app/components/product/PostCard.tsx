@@ -69,11 +69,13 @@ function postDetailHref(post: PostSummary): string {
 export function PostCard({
   post,
   compact = false,
+  detail = false,
   manage = false,
   onChanged,
 }: {
   post: PostSummary | PostDetail;
   compact?: boolean;
+  detail?: boolean;
   manage?: boolean;
   onChanged?: () => void;
 }) {
@@ -122,6 +124,7 @@ export function PostCard({
   const detailHref = postDetailHref(post);
   const archived = post.status === "ARCHIVED";
   const blurredNsfw = post.isNsfw && post.nsfwPresentation === "BLURRED" && !showNsfw;
+  const showOpenStatus = !post.acceptedSource && !post.verifiedSource;
   const statusLabel = {
     OPEN: t("post.status.open"),
     ANSWERED: t("post.status.answered"),
@@ -480,13 +483,15 @@ export function PostCard({
           </span>
         </div>
         <div className="product-post__badges">
-          {post.author.mode === "ANONYMOUS" ? <Badge>{t("post.badges.anonymous")}</Badge> : null}
-          {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
+          {detail && post.author.mode === "ANONYMOUS" ? (
+            <Badge>{t("post.badges.anonymous")}</Badge>
+          ) : null}
           <PostCategoryBadge
             slug={post.categorySlug}
             linked={post.visibility === "PUBLIC" && post.status !== "ARCHIVED"}
           />
-          <Badge tone={statusTone(post.status)}>{statusLabel}</Badge>
+          {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
+          {detail && <Badge tone={statusTone(post.status)}>{statusLabel}</Badge>}
           {menuItems.length ? (
             <Dropdown
               label={t("post.actions.more")}
@@ -679,12 +684,15 @@ export function PostCard({
           >
             {tp("comments.summary", post.commentCount)}
           </Link>
-          {post.verifiedSource || post.acceptedSource ? (
+          {detail && (post.verifiedSource || post.acceptedSource) ? (
             <span className="product-meta-success">
               {post.verifiedSource ? t("post.meta.verified") : t("post.meta.acceptedSource")}
             </span>
           ) : null}
-          {commentsClosed ? (
+          {!detail && showOpenStatus ? (
+            <span className="product-meta-open">{t("post.status.open")}</span>
+          ) : null}
+          {detail && commentsClosed ? (
             <span className="product-meta-success">{t("post.meta.commentsClosed")}</span>
           ) : null}
         </div>

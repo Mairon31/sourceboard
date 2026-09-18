@@ -464,7 +464,7 @@ export default function PostDetailRoute() {
 
   return (
     <ProductShell>
-      <PostCard post={currentPost} manage onChanged={() => revalidator.revalidate()} />
+      <PostCard post={currentPost} detail manage onChanged={() => revalidator.revalidate()} />
       <SourceResolution
         accepted={currentPost.acceptedSource}
         acceptedComment={acceptedComment}

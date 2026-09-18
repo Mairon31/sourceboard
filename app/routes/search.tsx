@@ -173,7 +173,7 @@ function PostResultsSection({ result, state }: { result: SearchResult; state: Se
         </div>
         <span className="product-search-count">{tp("search.results", result.posts.length)}</span>
       </div>
-      <SearchPostResults posts={result.posts} view={state.view} sourceMode={sourceMode} />
+      <SearchPostResults posts={result.posts} view={state.view} />
       {result.nextPostCursor ? (
         <Link
           className="product-text-action"

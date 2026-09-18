@@ -4,21 +4,13 @@ import { PostCard } from "./PostCard";
 import { SearchPostGallery } from "./SearchPostGallery";
 import { SearchPostGrid } from "./SearchPostGrid";
 
-export function SearchPostResults({
-  posts,
-  view,
-  sourceMode,
-}: {
-  posts: PostSummary[];
-  view: SearchView;
-  sourceMode: boolean;
-}) {
+export function SearchPostResults({ posts, view }: { posts: PostSummary[]; view: SearchView }) {
   if (view === "gallery") {
-    return <SearchPostGallery posts={posts} sourceMode={sourceMode} />;
+    return <SearchPostGallery posts={posts} />;
   }
 
   if (view === "grid") {
-    return <SearchPostGrid posts={posts} sourceMode={sourceMode} />;
+    return <SearchPostGrid posts={posts} />;
   }
 
   return (
