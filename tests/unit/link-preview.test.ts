@@ -293,6 +293,58 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
+  it("preserves a submitted profile path when upstream canonical metadata collapses to the host root", async () => {
+    const submittedUrl = "https://www.instagram.com/itshannahowo";
+    const html = `<!doctype html><html><head>
+      <link rel="canonical" href="https://www.instagram.com/">
+      <meta property="og:title" content="Hannah (@itshannahowo)">
+    </head></html>`;
+    const service = createLinkPreviewService({
+      fetchImpl: vi.fn(
+        async () => new Response(html, { headers: { "content-type": "text/html" } }),
+      ) as unknown as typeof fetch,
+      resolveHost: publicResolver(),
+    });
+
+    await expect(service.preview(submittedUrl)).resolves.toMatchObject({
+      canonicalUrl: submittedUrl,
+      title: "Hannah (@itshannahowo)",
+    });
+  });
+
+  it("does not reuse a cached preview whose canonical URL already lost the submitted path", async () => {
+    const submittedUrl = "https://www.instagram.com/itshannahowo";
+    const cache = {
+      get: vi.fn(async () => ({
+        canonicalUrl: "https://www.instagram.com/",
+        siteName: "Instagram",
+        title: "Hannah (@itshannahowo)",
+        description: null,
+        imageUrl: null,
+        fetchedAt: 1,
+        metadataStatus: "COMPLETE" as const,
+      })),
+      put: vi.fn(async () => undefined),
+    };
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response("<title>Hannah (@itshannahowo)</title>", {
+          headers: { "content-type": "text/html" },
+        }),
+    ) as unknown as typeof fetch;
+    const service = createLinkPreviewService({
+      fetchImpl,
+      resolveHost: publicResolver(),
+      cache,
+    });
+
+    await expect(service.preview(submittedUrl)).resolves.toMatchObject({
+      canonicalUrl: submittedUrl,
+    });
+    expect(cache.get).toHaveBeenCalledWith(submittedUrl);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
   it("falls back when a higher-priority metadata tag is blank after cleaning", async () => {
     const html = `<!doctype html><html><head>
       <meta property="og:title" content="   ">

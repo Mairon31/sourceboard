@@ -355,6 +355,31 @@ function metadataValues(html: string): {
   };
 }
 
+function comparablePath(pathname: string): string {
+  if (pathname === "/") return pathname;
+  return pathname.replace(/\/+$/, "");
+}
+
+function canonicalDropsSubmittedPath(submitted: URL, candidate: URL): boolean {
+  if (submitted.origin !== candidate.origin) return false;
+  const submittedPath = comparablePath(submitted.pathname);
+  const candidatePath = comparablePath(candidate.pathname);
+  if (submittedPath === "/") return false;
+  if (candidatePath === "/") return true;
+  return (
+    candidatePath.length < submittedPath.length && submittedPath.startsWith(`${candidatePath}/`)
+  );
+}
+
+function canReuseCachedPreview(submitted: URL, snapshot: LinkPreviewSnapshot): boolean {
+  try {
+    const cachedCanonical = normalizeLinkPreviewUrl(snapshot.canonicalUrl);
+    return !canonicalDropsSubmittedPath(submitted, cachedCanonical);
+  } catch {
+    return false;
+  }
+}
+
 async function readBoundedText(response: Response, maximumBytes: number): Promise<string> {
   if (!response.body) return "";
   const reader = response.body.getReader();
@@ -495,7 +520,13 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
       const cacheKey = initial.toString();
       try {
         const cached = await dependencies.cache?.get(cacheKey);
-        if (cached && cached.metadataStatus !== "URL_ONLY") return cached;
+        if (
+          cached &&
+          cached.metadataStatus !== "URL_ONLY" &&
+          canReuseCachedPreview(initial, cached)
+        ) {
+          return cached;
+        }
       } catch {
         // Cache failure must not make preview generation unavailable.
       }
@@ -602,7 +633,9 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
                 new URL(metadata.canonical, current).toString(),
               );
               await assertPublicTarget(candidate, dependencies.resolveHost);
-              canonicalUrl = candidate.toString();
+              if (!canonicalDropsSubmittedPath(current, candidate)) {
+                canonicalUrl = candidate.toString();
+              }
             } catch {
               // Canonical metadata is advisory. Unsafe or invalid targets are ignored.
             }
