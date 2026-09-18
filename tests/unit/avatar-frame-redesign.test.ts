@@ -68,7 +68,7 @@ describe("avatar frame recolor and preset catalog", () => {
 
   it("seeds the new frame rows without changing existing ownership data", () => {
     const catalog = read("../../worker/store/builtin-catalog.ts");
-    expect(catalog).toContain('const BUILTIN_STORE_VERSION = "2026-09-17-cosmetics-v5"');
+    expect(catalog).toContain('const BUILTIN_STORE_VERSION = "2026-09-18-font-catalog-v6"');
     expect(catalog).not.toContain("UPDATE user_inventory");
     expect(catalog).not.toContain("UPDATE user_cosmetics");
     for (const [preset, price] of PDF_INSPIRED_FRAMES) {

@@ -1,4 +1,4 @@
-const BUILTIN_STORE_VERSION = "2026-09-17-cosmetics-v5";
+const BUILTIN_STORE_VERSION = "2026-09-18-font-catalog-v6";
 const BUILTIN_STORE_VERSION_KEY = "store.catalog.version";
 
 const STORE_SEED_SQL = `
@@ -66,6 +66,13 @@ VALUES
 ('store-font-lavender', 'NAME_FONT', 'Lavanda Soft', 'A curated display-name typography style.', 550, '{"family":"system-ui"}', 1, 410, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-font-royal', 'NAME_FONT', 'Royal Blue', 'A curated display-name typography style.', 800, '{"family":"AtkinsonHyperlegible"}', 1, 420, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-font-terminal', 'NAME_FONT', 'Terminal Glitch', 'A curated display-name typography style.', 1100, '{"family":"Courier New"}', 1, 430, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-font-pixel-arcade', 'NAME_FONT', 'Pixel Arcade', 'Pixel-inspired lettering for retro game profiles.', 450, '{"family":"Press Start 2P"}', 1, 440, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-font-playful-bubble', 'NAME_FONT', 'Bubble Pop', 'A rounded, playful display font with a friendly bounce.', 350, '{"family":"Fredoka"}', 1, 450, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-font-playful-sketch', 'NAME_FONT', 'Sketchbook', 'A casual handwritten style for expressive profiles.', 300, '{"family":"Caveat"}', 1, 460, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-font-future-orbit', 'NAME_FONT', 'Future Orbit', 'A geometric futuristic font with a digital-space feel.', 550, '{"family":"Orbitron"}', 1, 470, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-font-future-space', 'NAME_FONT', 'Space Deck', 'A clean techno-grotesk style for modern profiles.', 450, '{"family":"Space Grotesk"}', 1, 480, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-font-future-condensed', 'NAME_FONT', 'Neo Condensed', 'A bold condensed display style for strong names.', 350, '{"family":"Bebas Neue"}', 1, 490, unixepoch('now') * 1000, unixepoch('now') * 1000),
+('store-font-funny-bungee', 'NAME_FONT', 'Funny Bungee', 'A chunky, cheerful display style with comic energy.', 400, '{"family":"Bungee"}', 1, 500, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-banner-nebula', 'PROFILE_BANNER', 'Nebula Drift', 'Deep-space violet clouds with a bright focal glow.', 1800, '{"preset":"nebula"}', 1, 540, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-banner-aurora', 'PROFILE_BANNER', 'Aurora Ribbon', 'Cool aurora ribbons for a luminous profile header.', 2200, '{"preset":"aurora"}', 1, 550, unixepoch('now') * 1000, unixepoch('now') * 1000),
 ('store-banner-ember', 'PROFILE_BANNER', 'Ember Field', 'A warm ember gradient with restrained contrast.', 2200, '{"preset":"ember"}', 1, 560, unixepoch('now') * 1000, unixepoch('now') * 1000),

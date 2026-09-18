@@ -2,6 +2,7 @@ import type { StoreItemType, StoreItemView } from "../../../shared/ui/contracts"
 import type { MessageKey } from "../../i18n";
 import { useI18n } from "../../i18n/I18nProvider";
 import { Card } from "../ui";
+import { FontResources } from "./FontResources";
 import { ProfileCosmeticPreview } from "./ProfileCosmeticPreview";
 import "./community-cosmetics.css";
 
@@ -85,10 +86,13 @@ export function StorePreview({
   }
   if (item.type === "NAME_FONT") {
     return (
-      <div className="product-store-preview product-store-preview--font">
-        <strong style={config.family ? { fontFamily: config.family } : undefined}>{name}</strong>
-        <span>{config.family ?? "SourceBoard"}</span>
-      </div>
+      <>
+        {config.family ? <FontResources families={[config.family]} /> : null}
+        <div className="product-store-preview product-store-preview--font">
+          <strong style={config.family ? { fontFamily: config.family } : undefined}>{name}</strong>
+          <span>{config.family ?? "SourceBoard"}</span>
+        </div>
+      </>
     );
   }
   return (

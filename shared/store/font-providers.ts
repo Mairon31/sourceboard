@@ -19,6 +19,15 @@ export const GOOGLE_FONT_REGISTRY = [
     fallback: "system-ui",
   },
   {
+    id: "fredoka",
+    label: "Fredoka",
+    provider: "google",
+    family: "Fredoka",
+    weights: [400, 500, 600, 700],
+    category: "playful",
+    fallback: "system-ui",
+  },
+  {
     id: "orbitron",
     label: "Orbitron",
     provider: "google",

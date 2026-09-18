@@ -42,8 +42,8 @@ const NEW_AVATAR_FRAMES = [
 ] as const;
 
 describe("Cosmetic built-in catalog", () => {
-  it("uses the approved cosmetics v5 seed version", () => {
-    expect(catalog).toContain('const BUILTIN_STORE_VERSION = "2026-09-17-cosmetics-v5"');
+  it("uses the approved cosmetics v6 seed version", () => {
+    expect(catalog).toContain('const BUILTIN_STORE_VERSION = "2026-09-18-font-catalog-v6"');
     expect(catalog).toContain("INSERT OR IGNORE INTO store_items");
   });
 
