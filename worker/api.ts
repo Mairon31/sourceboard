@@ -18,6 +18,7 @@ import { handleModerationRequest } from "./moderation/api";
 import { handleSearchRequest } from "./search/api";
 import { handleCmsRequest } from "./cms/api";
 import { handleCategoryRequest } from "./categories/api";
+import { handleShareImageRequest } from "./share-image/api";
 
 export interface HealthPayload {
   status: "ok";
@@ -46,6 +47,9 @@ export async function handleApiRequest(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   const runtime = env ?? {};
+
+  const shareImageResponse = await handleShareImageRequest(request, requestId, runtime);
+  if (shareImageResponse) return shareImageResponse;
 
   const authResponse = await handleAuthRequest(request, requestId, runtime);
   if (authResponse) {

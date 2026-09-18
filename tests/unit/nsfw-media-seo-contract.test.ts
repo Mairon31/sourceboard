@@ -29,7 +29,7 @@ describe("NSFW media and SEO contract", () => {
     expect(read("worker/profile/store-core.ts")).toContain("VALUES (?, 0, 1, 0, 1, 1, 1, ?, ?)");
   });
 
-  it("indexes public NSFW posts with sensitive-content metadata and their image", () => {
+  it("uses a versioned safe share-image URL for public NSFW posts", () => {
     const post = {
       id: "post-nsfw",
       title: "Sensitive source request",
@@ -60,14 +60,75 @@ describe("NSFW media and SEO contract", () => {
     } as never) ?? []) as Array<Record<string, unknown>>;
     const robots = entries.find((entry) => entry.name === "robots");
     const ogImage = entries.find((entry) => entry.property === "og:image");
+    const twitterImage = entries.find((entry) => entry.name === "twitter:image");
     const jsonLd = entries.find((entry) => "script:ld+json" in entry)?.["script:ld+json"] as Record<
       string,
       unknown
     >;
+    const metadata = JSON.stringify(entries);
 
     expect(robots?.content).toBe("index, follow");
-    expect(ogImage?.content).toContain("/api/media/post/asset-nsfw");
+    expect(ogImage?.content).toContain("/api/share-image/post-nsfw?v=");
+    expect(twitterImage?.content).toBe(ogImage?.content);
+    expect(metadata).not.toContain("/api/media/post/asset-nsfw");
     expect(jsonLd.contentRating).toBe("adult");
     expect(jsonLd.isFamilyFriendly).toBe(false);
+  });
+
+  it("keeps normal images direct and provides a safe fallback when a post has no image", () => {
+    const base = {
+      id: "post-normal",
+      title: "Normal source request",
+      description: "Description",
+      categorySlug: "other",
+      author: { mode: "ANONYMOUS", displayName: "Anonymous Author" },
+      createdAt: new Date(1).toISOString(),
+      updatedAt: new Date(2).toISOString(),
+      status: "OPEN",
+      visibility: "PUBLIC",
+      isNsfw: false,
+      nsfwPresentation: "VISIBLE",
+      reaction: { type: "LIKE", count: 0, viewerReacted: false },
+      commentCount: 0,
+      imageAlt: "Normal source request",
+      comments: [],
+      permissions: {},
+    };
+    const withImage = (meta({
+      loaderData: {
+        post: { ...base, imageUrl: "/api/media/post/asset-normal" },
+        unavailable: false,
+        canonicalUrl: "https://srcboard.me/posts/post-normal/normal-source-request",
+      },
+    } as never) ?? []) as Array<Record<string, unknown>>;
+    const withoutImage = (meta({
+      loaderData: {
+        post: base,
+        unavailable: false,
+        canonicalUrl: "https://srcboard.me/posts/post-normal/normal-source-request",
+      },
+    } as never) ?? []) as Array<Record<string, unknown>>;
+
+    expect(withImage.find((entry) => entry.property === "og:image")?.content).toBe(
+      "https://srcboard.me/api/media/post/asset-normal",
+    );
+    expect(withImage.find((entry) => entry.name === "twitter:image")?.content).toBe(
+      "https://srcboard.me/api/media/post/asset-normal",
+    );
+    expect(withoutImage.find((entry) => entry.property === "og:image")?.content).toBe(
+      "https://srcboard.me/sourceboard-og.png",
+    );
+
+    const invalidImage = (meta({
+      loaderData: {
+        post: { ...base, isNsfw: true, imageUrl: "https://attacker.test/original.jpg" },
+        unavailable: false,
+        canonicalUrl: "https://srcboard.me/posts/post-normal/normal-source-request",
+      },
+    } as never) ?? []) as Array<Record<string, unknown>>;
+    expect(invalidImage.find((entry) => entry.property === "og:image")?.content).toBe(
+      "https://srcboard.me/sourceboard-og.png",
+    );
+    expect(JSON.stringify(invalidImage)).not.toContain("attacker.test");
   });
 });

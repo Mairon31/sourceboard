@@ -9,6 +9,7 @@ import { createPostService } from "../../worker/posts/service";
 import { createD1CommentStore } from "../../worker/comments/store";
 import { NotFoundPage } from "../components/product/NotFoundPage";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
+import { buildPostSocialImageUrl } from "../../shared/seo/social-image";
 
 const SHARE_LOCALES = ["en", "es", "pt", "fr", "ru", "de"] as const;
 type ShareLocale = (typeof SHARE_LOCALES)[number];
@@ -19,6 +20,7 @@ export interface ShareResolverData {
   title: string;
   description: string;
   imageUrl?: string;
+  isNsfw: boolean;
   resourceType: "POST" | "COMMENT";
   locale: ShareLocale;
 }
@@ -29,6 +31,8 @@ interface ResolverPost {
   title: string;
   description?: string;
   imageUrl?: string;
+  isNsfw: boolean;
+  updatedAt: string;
 }
 
 interface ResolverComment {
@@ -98,9 +102,14 @@ export async function resolveShareTarget(
         post.description,
         "Find the original source of this image with SourceBoard.",
       ),
-      imageUrl: post.imageUrl
-        ? new URL(post.imageUrl, input.requestUrl.origin).toString()
-        : undefined,
+      isNsfw: post.isNsfw,
+      imageUrl: buildPostSocialImageUrl({
+        postId: post.id,
+        pageUrl: canonical.toString(),
+        imageUrl: post.imageUrl,
+        isNsfw: post.isNsfw,
+        updatedAt: post.updatedAt,
+      }),
       resourceType: "POST",
       locale,
     };
@@ -126,9 +135,14 @@ export async function resolveShareTarget(
     canonicalUrl: canonical.toString(),
     title: `Comment on ${post.title}`,
     description: boundedDescription(comment.plaintext, "View this SourceBoard comment."),
-    imageUrl: post.imageUrl
-      ? new URL(post.imageUrl, input.requestUrl.origin).toString()
-      : undefined,
+    isNsfw: post.isNsfw,
+    imageUrl: buildPostSocialImageUrl({
+      postId: post.id,
+      pageUrl: canonical.toString(),
+      imageUrl: post.imageUrl,
+      isNsfw: post.isNsfw,
+      updatedAt: post.updatedAt,
+    }),
     resourceType: "COMMENT",
     locale,
   };
@@ -145,6 +159,8 @@ export function buildShareResolverMeta(data?: ShareResolverData) {
     { title: `${data.title} · SourceBoard` },
     { name: "description", content: data.description },
     { name: "robots", content: "noindex, follow" },
+    { name: "rating", content: data.isNsfw ? "adult" : "general" },
+    { name: "content-rating", content: data.isNsfw ? "adult" : "general" },
     { tagName: "link", rel: "canonical", href: data.canonicalUrl },
     { property: "og:type", content: "article" },
     { property: "og:title", content: data.title },
@@ -154,6 +170,7 @@ export function buildShareResolverMeta(data?: ShareResolverData) {
       name: "twitter:card",
       content: data.imageUrl ? "summary_large_image" : "summary",
     },
+    ...(data.imageUrl ? [{ name: "twitter:image", content: data.imageUrl }] : []),
   ];
 }
 
@@ -177,6 +194,8 @@ function createResolverDependencies(db: D1Database): ShareResolverDependencies {
         title: post.title,
         description: post.description,
         imageUrl: post.imageUrl,
+        isNsfw: post.isNsfw,
+        updatedAt: post.updatedAt,
       };
     },
     async loadComment(commentId) {

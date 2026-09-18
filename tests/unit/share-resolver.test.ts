@@ -33,6 +33,8 @@ function dependencies(
             title: "Original image source",
             description: "Help identify the original image source.",
             imageUrl: "/api/media/post/media-1",
+            isNsfw: false,
+            updatedAt: "2026-09-17T00:00:00.000Z",
           }
         : null,
     loadComment: async (commentId) =>
@@ -106,6 +108,38 @@ describe("share resolver", () => {
     expect(data.title).toBe("Comment on Original image source");
     expect(data.description.length).toBeLessThanOrEqual(180);
     expect(data.description).toContain("useful source context");
+  });
+
+  it("uses the censored image endpoint for NSFW short links", async () => {
+    const data = await resolveShareTarget(
+      {
+        shortId: "PostShare01",
+        requestUrl: new URL("https://srcboard.me/sh/PostShare01"),
+      },
+      dependencies({
+        loadPublicPost: async () => ({
+          id: "post-1",
+          slug: "original-image",
+          title: "Sensitive image source",
+          description: "Sensitive description",
+          imageUrl: "/api/media/post/media-1",
+          isNsfw: true,
+          updatedAt: "2026-09-17T00:00:00.000Z",
+        }),
+      }),
+    );
+
+    expect(data.imageUrl).toContain("/api/share-image/post-1?v=");
+    expect(data.imageUrl).not.toContain("/api/media/post/media-1");
+    expect(buildShareResolverMeta(data)).toContainEqual({
+      name: "twitter:image",
+      content: data.imageUrl,
+    });
+    expect(buildShareResolverMeta(data)).toContainEqual({ name: "rating", content: "adult" });
+    expect(buildShareResolverMeta(data)).toContainEqual({
+      name: "content-rating",
+      content: "adult",
+    });
   });
 
   it("throws the same 404 for missing/private posts and deleted comments", async () => {
