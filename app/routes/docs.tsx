@@ -1,5 +1,5 @@
 import { Link, useLoaderData, type MetaFunction } from "react-router";
-import { absoluteSourceBoardUrl } from "../../shared/seo/urls";
+import { localizedPageMeta } from "../../shared/seo/official-pages";
 import { DocsShell, type DocsNavigationGroup } from "../components/product/DocsShell";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
 import { listPublicCmsNavigation } from "../data/cms-public.server";
@@ -13,15 +13,13 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const locale = loaderData?.locale ?? "en";
-  return [
-    { title: "Docs and Help · SourceBoard" },
-    {
-      name: "description",
-      content:
-        "SourceBoard help, source-finding guides, account documentation and product policies.",
-    },
-    { tagName: "link", rel: "canonical", href: absoluteSourceBoardUrl(`/${locale}/docs`) },
-  ];
+  return localizedPageMeta({
+    locale,
+    path: "/docs",
+    title: "Docs and Help · SourceBoard",
+    description:
+      "SourceBoard help, source-finding guides, account documentation and product policies.",
+  });
 };
 
 function cmsGroups(items: Awaited<ReturnType<typeof loader>>["items"]): DocsNavigationGroup[] {
@@ -41,7 +39,11 @@ export default function DocsRoute() {
   const cmsActive = navigation.length > 0;
   return (
     <ProductShell wide>
-      <DocsShell navigation={cmsActive ? navigation : undefined} homeHref={`/${data.locale}/docs`}>
+      <DocsShell
+        navigation={cmsActive ? navigation : undefined}
+        homeHref={`/${data.locale}/docs`}
+        locale={data.locale}
+      >
         <div className="product-docs-index">
           <PageHeader
             eyebrow="SourceBoard Docs"
@@ -71,7 +73,7 @@ export default function DocsRoute() {
                     <h2>{group}</h2>
                     <div className="product-docs-index__links">
                       {docsByGroup(group).map((article) => (
-                        <Link key={article.slug} to={`/docs/${article.slug}`}>
+                        <Link key={article.slug} to={`/${data.locale}/docs/${article.slug}`}>
                           <span>
                             <strong>{article.title}</strong>
                             <small>{article.summary}</small>

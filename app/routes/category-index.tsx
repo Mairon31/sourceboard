@@ -1,4 +1,4 @@
-import { Form, Link, redirect, useLoaderData } from "react-router";
+import { Form, Link, redirect, useLoaderData, type MetaFunction } from "react-router";
 import {
   findPostCategory,
   POST_CATEGORIES,
@@ -12,9 +12,13 @@ import { readSourceBoardRequestContext } from "../../shared/router-context";
 import type { ServerLoaderArgs } from "../data/server-request";
 import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
+import { requestedLocale } from "../data/locale.server";
+import { translate } from "../i18n";
+import { localizedPageMeta } from "../../shared/seo/official-pages";
 
 export async function loader({ request, context }: ServerLoaderArgs) {
   const url = new URL(request.url);
+  const locale = requestedLocale(request);
   const query = url.searchParams.get("q")?.trim() ?? "";
   let categories: PostCategory[] = [...POST_CATEGORIES];
   const db = readSourceBoardRequestContext(context)?.env.DB;
@@ -44,11 +48,22 @@ export async function loader({ request, context }: ServerLoaderArgs) {
     null;
 
   if (category) {
-    return redirect(`/category/${category.slug}`);
+    return redirect(`/${locale}/category/${category.slug}`, 301);
   }
 
-  return { query, categories };
+  return { locale, query, categories };
 }
+
+export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
+  const locale = loaderData?.locale ?? "en";
+  return localizedPageMeta({
+    locale,
+    path: "/category",
+    title: `${translate(locale, "category.eyebrow")} · SourceBoard`,
+    description: translate(locale, "category.recentRequests"),
+    indexable: !loaderData?.query,
+  });
+};
 
 export default function CategoryIndexRoute() {
   const data = useLoaderData<typeof loader>();
@@ -97,7 +112,7 @@ export default function CategoryIndexRoute() {
           {data.categories.map((category) => (
             <Link
               key={category.slug}
-              to={`/category/${category.slug}`}
+              to={`/${data.locale}/category/${category.slug}`}
               className="product-list-row"
             >
               <div>

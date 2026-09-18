@@ -31,7 +31,7 @@ describe("category routing", () => {
 
   it("canonicalizes recognized category queries without mapping unknown values to Other", () => {
     expect(categoryIndexSource).toContain("findPostCategory");
-    expect(categoryIndexSource).toContain("redirect(`/category/${category.slug}`)");
+    expect(categoryIndexSource).toContain("redirect(`/${locale}/category/${category.slug}`, 301)");
     expect(categoryIndexSource).toContain("Category not found");
     expect(categoryIndexSource).not.toContain('redirect("/category/other")');
   });
@@ -49,5 +49,8 @@ describe("category routing", () => {
     expect(homeSource).toContain("feedCacheKey(feed, nextCategory)");
     expect(feedResourceSource).toContain("parsePostCategorySlug");
     expect(feedResourceSource).toContain("categorySlug");
+    expect(readSource("../../app/components/product/PostCategoryBadge.tsx")).toContain(
+      "to={`/${locale}/category/${category.slug}`}",
+    );
   });
 });

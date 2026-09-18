@@ -54,7 +54,7 @@ describe("post categories", () => {
 
   it("renders post categories as linked badges with a non-linked mode", () => {
     expect(postCardSource).toContain("<PostCategoryBadge");
-    expect(categoryBadgeSource).toContain("to={`/category/${category.slug}`}");
+    expect(categoryBadgeSource).toContain("to={`/${locale}/category/${category.slug}`}");
     expect(categoryBadgeSource).toContain("linked");
     expect(categoryBadgeSource).toContain("<span");
   });

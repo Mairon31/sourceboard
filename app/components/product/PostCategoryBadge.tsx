@@ -9,7 +9,7 @@ type PostCategoryBadgeProps =
   | { categorySlug?: never; slug: PostCategorySlug; linked?: boolean };
 
 export function PostCategoryBadge({ categorySlug, slug, linked = true }: PostCategoryBadgeProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const category = getPostCategory(categorySlug ?? slug);
   const badge = <Badge>{category.label}</Badge>;
 
@@ -19,7 +19,7 @@ export function PostCategoryBadge({ categorySlug, slug, linked = true }: PostCat
 
   return (
     <Link
-      to={`/category/${category.slug}`}
+      to={`/${locale}/category/${category.slug}`}
       className="product-post-category-badge"
       aria-label={t("category.browsePosts", { category: category.label })}
     >

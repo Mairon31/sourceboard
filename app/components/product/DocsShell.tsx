@@ -1,19 +1,20 @@
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { DOCS_GROUPS, docsByGroup, type DocsArticle } from "../../data/docs-content";
+import type { Locale } from "../../../shared/i18n/locales";
 
 export interface DocsNavigationGroup {
   group: string;
   items: Array<{ id: string; label: string; href: string }>;
 }
 
-function staticNavigation(): DocsNavigationGroup[] {
+function staticNavigation(locale: Locale): DocsNavigationGroup[] {
   return DOCS_GROUPS.map((group) => ({
     group,
     items: docsByGroup(group).map((item) => ({
       id: item.slug,
       label: item.title,
-      href: `/docs/${item.slug}`,
+      href: `/${locale}/docs/${item.slug}`,
     })),
   }));
 }
@@ -23,13 +24,15 @@ export function DocsShell({
   children,
   navigation,
   homeHref = "/docs",
+  locale = "en",
 }: {
   article?: DocsArticle;
   children: ReactNode;
   navigation?: DocsNavigationGroup[];
   homeHref?: string;
+  locale?: Locale;
 }) {
-  const groups = navigation?.length ? navigation : staticNavigation();
+  const groups = navigation?.length ? navigation : staticNavigation(locale);
   return (
     <div className="product-docs-shell">
       <aside className="product-docs-sidebar" aria-label="Documentation navigation">

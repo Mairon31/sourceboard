@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Link, useLoaderData, useSearchParams } from "react-router";
+import { Link, useLoaderData, useSearchParams, type MetaFunction } from "react-router";
 import {
   POST_CATEGORIES,
   parsePostCategorySlug,
@@ -21,8 +21,10 @@ import { PostCard } from "../components/product/PostCard";
 import { ProductShell } from "../components/product/ProductShell";
 import { Card } from "../components/ui";
 import { useI18n } from "../i18n/I18nProvider";
-import type { MessageKey } from "../i18n";
+import { translate, type MessageKey } from "../i18n";
 import { readSourceBoardRequestContext } from "../../shared/router-context";
+import { requestedLocale } from "../data/locale.server";
+import { localizedPageMeta } from "../../shared/seo/official-pages";
 
 type LoaderArgs = ServerLoaderArgs;
 type FeedMode = "recent" | "friends" | "answered" | "verified";
@@ -40,6 +42,7 @@ function feedCacheKey(feed: FeedMode, categorySlug: PostCategorySlug | null) {
 
 export async function loader({ request, context }: LoaderArgs) {
   const url = new URL(request.url);
+  const locale = requestedLocale(request);
   const rawCategory = url.searchParams.get("category");
   let categories: PostCategory[] = [...POST_CATEGORIES];
   const db = readSourceBoardRequestContext(context)?.env.DB;
@@ -65,7 +68,7 @@ export async function loader({ request, context }: LoaderArgs) {
   return withOptionalServerSession(
     request,
     context,
-    (unavailable) => ({ unavailable, categorySlug, categories, posts: [] }),
+    (unavailable) => ({ locale, unavailable, categorySlug, categories, posts: [] }),
     async (runtime, userId) => {
       const service = createPostService({
         store: createD1PostStore(runtime.db),
@@ -85,6 +88,7 @@ export async function loader({ request, context }: LoaderArgs) {
       );
       const actionPermissions = await readPostActionPermissions(runtime.db, userId);
       return {
+        locale,
         unavailable: false,
         categorySlug,
         categories,
@@ -102,6 +106,16 @@ export async function loader({ request, context }: LoaderArgs) {
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 type FeedPosts = LoaderData["posts"];
+
+export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
+  const locale = loaderData?.locale ?? "en";
+  return localizedPageMeta({
+    locale,
+    path: "",
+    title: `${translate(locale, "home.hero.title")} · SourceBoard`,
+    description: translate(locale, "home.hero.description"),
+  });
+};
 
 type FeedResourceResponse = {
   unavailable: boolean;

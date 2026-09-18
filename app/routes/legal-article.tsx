@@ -49,11 +49,20 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   }
   const article = loaderData.article;
   if (!article) return [{ title: "Policy not found · SourceBoard" }];
-  return [
-    { title: `${article.title} · SourceBoard` },
-    { name: "description", content: article.summary },
-    { tagName: "link", rel: "canonical", href: `https://srcboard.me/docs/${article.slug}` },
-  ];
+  return officialPageMeta({
+    locale: loaderData.locale,
+    page: {
+      pageId: `static-legal-${article.slug}`,
+      variants: [
+        {
+          locale: "en",
+          path: `/en/legal/${encodeURIComponent(article.slug)}`,
+          title: `${article.title} · SourceBoard`,
+          description: article.summary,
+        },
+      ],
+    },
+  });
 };
 
 export default function LegalArticleRoute() {
@@ -92,7 +101,7 @@ export default function LegalArticleRoute() {
     <ProductShell wide>
       <article className="product-docs-article">
         <nav className="product-docs-breadcrumbs" aria-label="Breadcrumb">
-          <Link to="/legal">Policies</Link>
+          <Link to={`/${data.locale}/legal`}>Policies</Link>
           <span aria-hidden="true">/</span>
           <span>{article.title}</span>
         </nav>

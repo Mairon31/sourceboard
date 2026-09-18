@@ -15,6 +15,8 @@ import { useI18n } from "../i18n/I18nProvider";
 import { readViewerLikedPostIds } from "../data/viewer-post-likes";
 import { readPostActionPermissions, withPostActionPermissions } from "../data/post-actions";
 import { readSourceBoardRequestContext } from "../../shared/router-context";
+import { requestedLocale } from "../data/locale.server";
+import { localizedPageMeta } from "../../shared/seo/official-pages";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { categorySlug?: string };
@@ -22,6 +24,7 @@ interface LoaderArgs extends ServerLoaderArgs {
 
 export async function loader({ request, context, params }: LoaderArgs) {
   const rawSlug = params.categorySlug?.trim() ?? "";
+  const locale = requestedLocale(request);
   const staticSlug = parsePostCategorySlug(rawSlug);
   let category = staticSlug ? getPostCategory(staticSlug) : null;
   const db = readSourceBoardRequestContext(context)?.env.DB;
@@ -51,7 +54,7 @@ export async function loader({ request, context, params }: LoaderArgs) {
   return withOptionalServerSession(
     request,
     context,
-    (unavailable) => ({ unavailable, category, posts: [] }),
+    (unavailable) => ({ locale, unavailable, category, posts: [] }),
     async (runtime, userId) => {
       const service = createPostService({
         store: createD1PostStore(runtime.db),
@@ -71,6 +74,7 @@ export async function loader({ request, context, params }: LoaderArgs) {
       );
       const actionPermissions = await readPostActionPermissions(runtime.db, userId);
       return {
+        locale,
         unavailable: false,
         category,
         posts: withPostActionPermissions(
@@ -87,8 +91,16 @@ export async function loader({ request, context, params }: LoaderArgs) {
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
 
-export const meta: MetaFunction<typeof loader> = ({ loaderData: data }) =>
-  data?.category?.noindex ? [{ name: "robots", content: "noindex, follow" }] : [];
+export const meta: MetaFunction<typeof loader> = ({ loaderData: data }) => {
+  if (!data?.category) return [{ name: "robots", content: "noindex, nofollow" }];
+  return localizedPageMeta({
+    locale: data.locale,
+    path: `/category/${encodeURIComponent(data.category.slug)}`,
+    title: `${data.category.label} · SourceBoard`,
+    description: data.category.description || data.category.label,
+    indexable: !data.category.noindex,
+  });
+};
 
 export default function CategoryRoute() {
   const { t } = useI18n();
@@ -102,7 +114,11 @@ export default function CategoryRoute() {
           <h1>{data.category.label}</h1>
           <p>{data.category.description}</p>
         </div>
-        <Link className="product-nav__create product-home-create" to="/" prefetch="intent">
+        <Link
+          className="product-nav__create product-home-create"
+          to={`/${data.locale}`}
+          prefetch="intent"
+        >
           {t("category.allPosts")}
         </Link>
       </section>

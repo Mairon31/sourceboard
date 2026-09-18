@@ -28,6 +28,33 @@ test.describe("platform overhaul SEO/CMS matrix", () => {
     }
   });
 
+  test("sitemap-backed localized pages publish self-canonicals and indexable SSR signals", async ({
+    page,
+  }) => {
+    for (const path of ["/en", "/en/category/anime", "/en/docs", "/en/legal"]) {
+      const response = await page.goto(path);
+      expect(response?.status(), path).toBe(200);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        `https://srcboard.me${path}`,
+      );
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /index, follow/);
+    }
+  });
+
+  test("static documentation and policy links resolve directly to their canonical namespace", async ({
+    page,
+  }) => {
+    for (const path of ["/en/docs/getting-started", "/en/legal/privacy"]) {
+      const response = await page.goto(path);
+      expect(response?.status(), path).toBe(200);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        `https://srcboard.me${path}`,
+      );
+    }
+  });
+
   test("share aliases are noindex and never become sitemap identity", async ({ page }) => {
     const response = await page.goto("/sh/platform-overhaul-no-such-share");
     expect(response?.status()).toBe(404);

@@ -74,11 +74,20 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   }
   const article = loaderData.article;
   if (!article) return [{ title: "Documentation not found · SourceBoard" }];
-  return [
-    { title: `${article.title} · SourceBoard Docs` },
-    { name: "description", content: article.summary },
-    { tagName: "link", rel: "canonical", href: `https://srcboard.me/docs/${article.slug}` },
-  ];
+  return officialPageMeta({
+    locale: loaderData.locale,
+    page: {
+      pageId: `static-docs-${article.slug}`,
+      variants: [
+        {
+          locale: "en",
+          path: `/en/docs/${encodeURIComponent(article.slug)}`,
+          title: `${article.title} · SourceBoard Docs`,
+          description: article.summary,
+        },
+      ],
+    },
+  });
 };
 
 export default function DocsArticleRoute() {
@@ -92,6 +101,7 @@ export default function DocsArticleRoute() {
         <DocsShell
           navigation={navigation.length ? navigation : undefined}
           homeHref={`/${data.locale}/docs`}
+          locale={data.locale}
         >
           <article className="product-docs-article">
             <nav className="product-docs-breadcrumbs" aria-label="Breadcrumb">
@@ -122,10 +132,10 @@ export default function DocsArticleRoute() {
   const article = data.article!;
   return (
     <ProductShell wide>
-      <DocsShell article={article}>
+      <DocsShell article={article} locale={data.locale} homeHref={`/${data.locale}/docs`}>
         <article className="product-docs-article">
           <nav className="product-docs-breadcrumbs" aria-label="Breadcrumb">
-            <Link to="/docs">Docs</Link>
+            <Link to={`/${data.locale}/docs`}>Docs</Link>
             <span aria-hidden="true">/</span>
             <span>{article.group}</span>
           </nav>

@@ -1,5 +1,5 @@
 import { Link, useLoaderData, type MetaFunction } from "react-router";
-import { absoluteSourceBoardUrl } from "../../shared/seo/urls";
+import { localizedPageMeta } from "../../shared/seo/official-pages";
 import { PageHeader, ProductShell } from "../components/product/ProductShell";
 import { listPublicCmsNavigation } from "../data/cms-public.server";
 import { docsByGroup } from "../data/docs-content";
@@ -12,15 +12,13 @@ export async function loader({ request, context }: ServerLoaderArgs) {
 
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const locale = loaderData?.locale ?? "en";
-  return [
-    { title: "Policies · SourceBoard" },
-    {
-      name: "description",
-      content:
-        "SourceBoard terms, privacy, community, attribution, data and public-content policies.",
-    },
-    { tagName: "link", rel: "canonical", href: absoluteSourceBoardUrl(`/${locale}/legal`) },
-  ];
+  return localizedPageMeta({
+    locale,
+    path: "/legal",
+    title: "Policies · SourceBoard",
+    description:
+      "SourceBoard terms, privacy, community, attribution, data and public-content policies.",
+  });
 };
 
 export default function LegalRoute() {
@@ -50,7 +48,7 @@ export default function LegalRoute() {
                   : [],
               )
             : staticPolicies.map((policy) => (
-                <Link key={policy.slug} to={`/docs/${policy.slug}`}>
+                <Link key={policy.slug} to={`/${data.locale}/legal/${policy.slug}`}>
                   <span>
                     <strong>{policy.title}</strong>
                     <small>{policy.summary}</small>
