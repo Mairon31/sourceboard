@@ -29,6 +29,7 @@ import { SourceResolution } from "../components/product/SourceResolution";
 import { isAcceptedSourceUndoable } from "../../worker/source/policy";
 import { useI18n } from "../i18n/I18nProvider";
 import { buildPostSocialImageUrl } from "../../shared/seo/social-image";
+import { INDEXABLE_ROBOTS } from "../../shared/seo/robots";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { postId?: string; slug?: string };
@@ -255,26 +256,46 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
     isNsfw: post.isNsfw,
     updatedAt: post.updatedAt,
   });
+  const previewDimensions = post.imageUrl
+    ? sensitive
+      ? { width: 1200, height: 630 }
+      : {
+          ...(post.imageWidth ? { width: post.imageWidth } : {}),
+          ...(post.imageHeight ? { height: post.imageHeight } : {}),
+        }
+    : undefined;
   const image = {
     "@type": "ImageObject",
     contentUrl: previewImageUrl,
     caption: post.imageAlt,
-    ...(post.imageWidth ? { width: post.imageWidth } : {}),
-    ...(post.imageHeight ? { height: post.imageHeight } : {}),
+    ...previewDimensions,
   };
   return [
     { title: `${post.title} · SourceBoard` },
     { name: "description", content: description.slice(0, 180) },
-    { name: "robots", content: "index, follow" },
+    { name: "robots", content: INDEXABLE_ROBOTS },
     { name: "rating", content: sensitive ? "adult" : "general" },
     { name: "content-rating", content: sensitive ? "adult" : "general" },
     { tagName: "link", rel: "canonical", href: loaderData.canonicalUrl },
     { property: "og:type", content: "article" },
+    { property: "og:site_name", content: "SourceBoard" },
+    { property: "og:url", content: loaderData.canonicalUrl },
     { property: "og:title", content: post.title },
     { property: "og:description", content: description.slice(0, 180) },
     { property: "og:image:alt", content: post.imageAlt },
     { property: "og:image", content: previewImageUrl },
+    ...(previewDimensions?.width
+      ? [{ property: "og:image:width", content: String(previewDimensions.width) }]
+      : []),
+    ...(previewDimensions?.height
+      ? [{ property: "og:image:height", content: String(previewDimensions.height) }]
+      : []),
+    { property: "article:published_time", content: post.createdAt },
+    { property: "article:modified_time", content: post.updatedAt },
+    { property: "article:section", content: post.categorySlug },
     { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: post.title },
+    { name: "twitter:description", content: description.slice(0, 180) },
     { name: "twitter:image", content: previewImageUrl },
     { name: "twitter:image:alt", content: post.imageAlt },
     {

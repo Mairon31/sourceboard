@@ -154,13 +154,18 @@ describe("Cosmetic presentation overhaul", () => {
     const pageCss = read("../../app/components/product/profile-page.css");
 
     expect(cardCss).toContain(
-      "background: color-mix(in srgb, var(--surface-solid) 46%, transparent);",
+      "background: color-mix(in srgb, var(--surface-solid) 32%, transparent);",
     );
     expect(cardCss).toContain("backdrop-filter: blur(10px) saturate(135%);");
-    expect(pageCss).toContain(
-      "/* Keep the page backdrop quiet; the card owns the theme emphasis. */",
+    expect(cardCss).toContain(
+      "border: 1px solid color-mix(in srgb, var(--accent) 52%, var(--border-strong));",
     );
-    expect(pageCss).toContain("#765cff2a");
+    expect(cardCss).toContain("border-radius: clamp(20px, 2.4vw, 30px);");
+    expect(pageCss).toContain(
+      "/* Keep the page backdrop supportive; the card owns the strongest theme emphasis. */",
+    );
+    expect(pageCss).toContain("#765cff46");
+    expect(pageCss).toContain("#ffad4d46");
     expect(pageCss).toContain("var(--bg-app);");
   });
 

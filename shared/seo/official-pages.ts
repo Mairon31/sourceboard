@@ -1,5 +1,6 @@
 import type { Locale } from "../i18n/locales";
 import { hreflangLinks } from "./hreflang";
+import { INDEXABLE_ROBOTS } from "./robots";
 import { absoluteSourceBoardUrl } from "./urls";
 
 export interface PublishedLocaleVariant {
@@ -35,10 +36,14 @@ export function officialPageMeta({
   return [
     { title: selected.title },
     { name: "description", content: selected.description },
+    { name: "robots", content: INDEXABLE_ROBOTS },
     { tagName: "link", rel: "canonical", href: canonical },
+    { property: "og:type", content: "website" },
+    { property: "og:site_name", content: "SourceBoard" },
     { property: "og:title", content: selected.title },
     { property: "og:description", content: selected.description },
     { property: "og:url", content: canonical },
+    { property: "og:image", content: absoluteSourceBoardUrl("/sourceboard-og.png") },
     ...hreflangLinks(
       alternates,
       page.variants.find((variant) => variant.locale === "en")

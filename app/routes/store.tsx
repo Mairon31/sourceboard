@@ -14,6 +14,7 @@ import { requestedLocale } from "../data/locale.server";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { translate, type MessageKey } from "../i18n";
 import { useI18n } from "../i18n/I18nProvider";
+import { INDEXABLE_ROBOTS } from "../../shared/seo/robots";
 
 const STORE_FILTERS = [
   { key: "ALL", label: "store.filter.all" },
@@ -131,7 +132,7 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   return [
     { title: `${translate(locale, "store.title")} · SourceBoard` },
     { name: "description", content: description },
-    { name: "robots", content: "index, follow" },
+    { name: "robots", content: INDEXABLE_ROBOTS },
     { tagName: "link", rel: "canonical", href: canonical },
     { property: "og:type", content: "website" },
     { property: "og:title", content: `${translate(locale, "store.title")} · SourceBoard` },

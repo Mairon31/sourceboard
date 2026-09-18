@@ -199,6 +199,7 @@ function robots(): string {
     "Disallow: /store/create",
     "Disallow: /resources/",
     "Sitemap: https://srcboard.me/sitemap.xml",
+    "Host: srcboard.me",
     "",
   ].join("\n");
 }

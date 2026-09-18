@@ -67,9 +67,13 @@ describe("NSFW media and SEO contract", () => {
     >;
     const metadata = JSON.stringify(entries);
 
-    expect(robots?.content).toBe("index, follow");
+    expect(robots?.content).toBe(
+      "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+    );
     expect(ogImage?.content).toContain("/api/share-image/post-nsfw?v=");
     expect(twitterImage?.content).toBe(ogImage?.content);
+    expect(entries.find((entry) => entry.property === "og:image:width")?.content).toBe("1200");
+    expect(entries.find((entry) => entry.property === "og:image:height")?.content).toBe("630");
     expect(metadata).not.toContain("/api/media/post/asset-nsfw");
     expect(jsonLd.contentRating).toBe("adult");
     expect(jsonLd.isFamilyFriendly).toBe(false);
@@ -130,5 +134,19 @@ describe("NSFW media and SEO contract", () => {
       "https://srcboard.me/sourceboard-og.png",
     );
     expect(JSON.stringify(invalidImage)).not.toContain("attacker.test");
+  });
+
+  it("publishes crawler-compatible public image metadata and a canonical Yandex host", () => {
+    const profileRoute = read("app/routes/profile.tsx");
+    const storeRoute = read("app/routes/store.tsx");
+    const officialSeo = read("shared/seo/official-pages.ts");
+    const publicSeo = read("worker/seo/public.ts");
+
+    expect(profileRoute).toContain('name: "twitter:image"');
+    expect(profileRoute).toContain('property: "og:image:alt"');
+    expect(storeRoute).toContain('name: "robots"');
+    expect(officialSeo).toContain('name: "robots"');
+    expect(publicSeo).toContain("Host: srcboard.me");
+    expect(publicSeo).toContain("User-agent: *");
   });
 });

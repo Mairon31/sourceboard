@@ -18,6 +18,7 @@ import { AchievementIcon } from "../components/product/AchievementIcon";
 import { ProductShell, PageHeader } from "../components/product/ProductShell";
 import { Badge, Card } from "../components/ui";
 import { readPostActionPermissions, withPostActionPermissions } from "../data/post-actions";
+import { INDEXABLE_ROBOTS } from "../../shared/seo/robots";
 
 interface LoaderArgs extends ServerLoaderArgs {
   params: { username?: string };
@@ -90,13 +91,23 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   return [
     { title: `${profile.displayName} (@${profile.username}) · SourceBoard` },
     { name: "description", content: description.slice(0, 180) },
-    { name: "robots", content: "index, follow" },
+    { name: "robots", content: INDEXABLE_ROBOTS },
     { tagName: "link", rel: "canonical", href: canonicalUrl },
     { property: "og:type", content: "profile" },
+    { property: "og:site_name", content: "SourceBoard" },
+    { property: "og:url", content: canonicalUrl },
     { property: "og:title", content: `${profile.displayName} on SourceBoard` },
     { property: "og:description", content: description.slice(0, 180) },
-    ...(imageUrl ? [{ property: "og:image", content: imageUrl }] : []),
+    ...(imageUrl
+      ? [
+          { property: "og:image", content: imageUrl },
+          { property: "og:image:alt", content: `${profile.displayName}'s profile avatar` },
+        ]
+      : []),
     { name: "twitter:card", content: imageUrl ? "summary_large_image" : "summary" },
+    { name: "twitter:title", content: `${profile.displayName} on SourceBoard` },
+    { name: "twitter:description", content: description.slice(0, 180) },
+    ...(imageUrl ? [{ name: "twitter:image", content: imageUrl }] : []),
     {
       "script:ld+json": {
         "@context": "https://schema.org",

@@ -7,7 +7,7 @@
   background:
     radial-gradient(
       circle at 8% 0%,
-      color-mix(in srgb, var(--accent) 8%, transparent),
+      color-mix(in srgb, var(--accent) 14%, transparent),
       transparent 34%
     ),
     var(--bg-app);
@@ -28,16 +28,16 @@
 .product-page--profile[data-profile-theme="cosmic-dust"],
 .product-page--profile[data-profile-theme="starlit"] {
   background:
-    radial-gradient(circle at 12% 8%, #765cff2a, transparent 36%),
-    radial-gradient(circle at 88% 82%, #2f76ff18, transparent 38%), var(--bg-app);
+    radial-gradient(circle at 12% 8%, #765cff46, transparent 36%),
+    radial-gradient(circle at 88% 82%, #2f76ff2e, transparent 38%), var(--bg-app);
 }
 
 .product-page--profile[data-profile-theme="aurora"],
 .product-page--profile[data-profile-theme="aurora-flow"],
 .product-page--profile[data-profile-theme="ocean-glass"] {
   background:
-    radial-gradient(circle at 14% 12%, #4df1c028, transparent 34%),
-    radial-gradient(circle at 84% 78%, #42a7ff20, transparent 36%), var(--bg-app);
+    radial-gradient(circle at 14% 12%, #4df1c046, transparent 34%),
+    radial-gradient(circle at 84% 78%, #42a7ff34, transparent 36%), var(--bg-app);
 }
 
 .product-page--profile[data-profile-theme="ember"],
@@ -45,8 +45,8 @@
 .product-page--profile[data-profile-theme="sunset-noir"],
 .product-page--profile[data-profile-theme="sunset-drift"] {
   background:
-    radial-gradient(circle at 84% 8%, #ffad4d2f, transparent 34%),
-    radial-gradient(circle at 10% 86%, #f0525228, transparent 38%), var(--bg-app);
+    radial-gradient(circle at 84% 8%, #ffad4d46, transparent 34%),
+    radial-gradient(circle at 10% 86%, #f052523a, transparent 38%), var(--bg-app);
 }
 
 .product-page--profile[data-profile-theme="prism-grid"],
@@ -54,9 +54,9 @@
 .product-page--profile[data-profile-theme="cyber-grid"],
 .product-page--profile[data-profile-theme="holo-scan"] {
   background:
-    linear-gradient(#8290ff0d 1px, transparent 1px),
-    linear-gradient(90deg, #8290ff0d 1px, transparent 1px),
-    radial-gradient(circle at 50% 0%, #6375ff20, transparent 42%), var(--bg-app);
+    linear-gradient(#8290ff18 1px, transparent 1px),
+    linear-gradient(90deg, #8290ff18 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, #6375ff3a, transparent 42%), var(--bg-app);
   background-size:
     28px 28px,
     28px 28px,
@@ -65,29 +65,29 @@
 }
 
 .product-page--profile[data-profile-theme="forest-ink"] {
-  background: radial-gradient(circle at 18% 10%, #71dc8e2a, transparent 34%), var(--bg-app);
+  background: radial-gradient(circle at 18% 10%, #71dc8e46, transparent 34%), var(--bg-app);
 }
 
 .product-page--profile[data-profile-theme="silver-wave"],
 .product-page--profile[data-profile-theme="mono-editorial"] {
-  background: radial-gradient(ellipse at 18% 0%, #ffffff1a, transparent 36%), var(--bg-app);
+  background: radial-gradient(ellipse at 18% 0%, #ffffff28, transparent 36%), var(--bg-app);
 }
 
 .product-page--profile[data-profile-theme="sakura-night"],
 .product-page--profile[data-profile-theme="candy-motion"] {
   background:
-    radial-gradient(circle at 82% 10%, #ff8fc62e, transparent 35%),
-    radial-gradient(circle at 10% 88%, #9d6dff24, transparent 38%), var(--bg-app);
+    radial-gradient(circle at 82% 10%, #ff8fc646, transparent 35%),
+    radial-gradient(circle at 10% 88%, #9d6dff38, transparent 38%), var(--bg-app);
 }
 
 .product-page--profile[data-profile-theme="plasma-wave"],
 .product-page--profile[data-profile-theme="neon-glass"] {
   background:
-    radial-gradient(circle at 20% 10%, #51d9ff28, transparent 34%),
-    radial-gradient(circle at 84% 78%, #ff4fc528, transparent 36%), var(--bg-app);
+    radial-gradient(circle at 20% 10%, #51d9ff46, transparent 34%),
+    radial-gradient(circle at 84% 78%, #ff4fc542, transparent 36%), var(--bg-app);
 }
 
-/* Keep the page backdrop quiet; the card owns the theme emphasis. */
+/* Keep the page backdrop supportive; the card owns the strongest theme emphasis. */
 
 @media (max-width: 760px) {
   .product-page--profile {
