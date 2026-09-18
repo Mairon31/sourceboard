@@ -142,8 +142,8 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
 };
 
 export const links = () => [
-  { rel: "icon", type: "image/jpeg", href: SOURCEBOARD_BRAND_ASSETS.mark },
-  { rel: "apple-touch-icon", type: "image/jpeg", href: SOURCEBOARD_BRAND_ASSETS.mark },
+  { rel: "icon", type: "image/png", href: SOURCEBOARD_BRAND_ASSETS.mark },
+  { rel: "apple-touch-icon", type: "image/png", href: SOURCEBOARD_BRAND_ASSETS.mark },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

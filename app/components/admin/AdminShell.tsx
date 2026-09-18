@@ -67,7 +67,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <a href="/" className="admin-brand">
             <span aria-hidden="true">
               <img
-                src="/sourceboard-brand-mark.jpg"
+                src="/sourceboard-brand-mark.png"
                 alt=""
                 width="34"
                 height="34"

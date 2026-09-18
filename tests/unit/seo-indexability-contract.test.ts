@@ -53,9 +53,11 @@ describe("public indexability contract", () => {
   });
 
   it("uses only the current brand assets for institutional metadata and fallbacks", () => {
-    expect(existsSync("public/sourceboard-brand-mark.jpg")).toBe(true);
-    expect(existsSync("public/sourceboard-brand-lockup.jpg")).toBe(true);
+    expect(existsSync("public/sourceboard-brand-mark.png")).toBe(true);
+    expect(existsSync("public/sourceboard-brand-lockup.png")).toBe(true);
     expect(existsSync("public/sourceboard-brand-banner.jpg")).toBe(true);
+    expect(existsSync("public/sourceboard-brand-mark.jpg")).toBe(false);
+    expect(existsSync("public/sourceboard-brand-lockup.jpg")).toBe(false);
     const legacyOpenGraphAsset = ["sourceboard", "og"].join("-");
     const legacyLogoAsset = ["sourceboard", "logo"].join("-");
     for (const source of [
