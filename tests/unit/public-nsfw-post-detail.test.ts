@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { shouldSuppressCommentsForPublicNsfwPreview } from "../../app/routes/post-detail";
 import { isPublicAnonymousNsfwPreview } from "../../worker/posts/service";
+
+const postDetailRoute = readFileSync("app/routes/post-detail.tsx", "utf8");
 
 describe("public anonymous NSFW post detail", () => {
   it("recognizes the safe blurred preview contract", () => {
@@ -27,18 +29,9 @@ describe("public anonymous NSFW post detail", () => {
     expect(isPublicAnonymousNsfwPreview(null, { ...base, isNsfw: false })).toBe(false);
   });
 
-  it("suppresses comments in the blurred anonymous detail without suppressing the post shell", () => {
-    expect(
-      shouldSuppressCommentsForPublicNsfwPreview(null, {
-        visibility: "PUBLIC",
-        isNsfw: true,
-      }),
-    ).toBe(true);
-    expect(
-      shouldSuppressCommentsForPublicNsfwPreview("viewer-1", {
-        visibility: "PUBLIC",
-        isNsfw: true,
-      }),
-    ).toBe(false);
+  it("keeps public anonymous NSFW comments on the normal read path", () => {
+    expect(postDetailRoute).toContain("listForPost(postId, userId, null, 50, commentSort)");
+    expect(postDetailRoute).not.toContain("shouldSuppressCommentsForPublicNsfwPreview");
+    expect(postDetailRoute).not.toContain("anonymousNsfwPreview");
   });
 });

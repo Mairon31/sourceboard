@@ -106,6 +106,34 @@ async function installAnonymousAuthorPostFixture(page: Page) {
   `);
 }
 
+function installPublicNsfwCommentFixture() {
+  const now = Date.now();
+  const deadline = now + 24 * 60 * 60 * 1000;
+  executeLocalSql(`
+    DELETE FROM comments WHERE post_id = 'e2e-public-nsfw-comments-post';
+    DELETE FROM posts WHERE id = 'e2e-public-nsfw-comments-post';
+    INSERT INTO posts
+      (id, author_id, author_mode, is_nsfw, nsfw_marked_by, nsfw_marked_at,
+       title, slug, description, image_asset_id, visibility, status, comment_count, like_count,
+       accepted_comment_id, verified_source_id, created_at, updated_at, edit_deadline_at,
+       archived_at, deleted_at, hidden_at, locked_at)
+    VALUES
+      ('e2e-public-nsfw-comments-post', 'e2e-navigation-user', 'IDENTIFIED', 1,
+       'e2e-navigation-user', ${now}, 'Public NSFW comments', 'e2e-public-nsfw-comments-post',
+       'Anonymous readers can inspect this discussion.', 'e2e-navigation-media', 'PUBLIC', 'OPEN',
+       1, 0, NULL, NULL, ${now}, ${now}, ${deadline}, NULL, NULL, NULL, NULL);
+    INSERT INTO comments
+      (id, post_id, author_id, parent_comment_id, body_richtext_json, body_plaintext,
+       attachment_json, state, like_count, created_at, updated_at, edit_deadline_at,
+       deleted_at, hidden_at)
+    VALUES
+      ('e2e-public-nsfw-comment', 'e2e-public-nsfw-comments-post', 'e2e-navigation-user', NULL,
+       '[{"type":"text","text":"Public NSFW discussion remains readable."}]',
+       'Public NSFW discussion remains readable.', NULL, 'VISIBLE', 2, ${now}, ${now}, ${deadline},
+       NULL, NULL);
+  `);
+}
+
 function installCommentSortingFixture() {
   const now = Date.now();
   const oldest = now - 30_000;
@@ -276,6 +304,34 @@ test("legacy Markdown plus emote renders without address or page errors", async 
 
   expect(mediaRequestFailures).toEqual([]);
   expect(pageErrors).toEqual([]);
+});
+
+test("signed-out readers can read normal and NSFW comments but cannot like or reply", async ({
+  page,
+}) => {
+  const normalResponse = await page.goto("/posts/e2e-navigation-post/e2e-navigation-post");
+  expect(normalResponse?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const normalComment = page.locator("#comment-e2e-comment-media-regression");
+  await expect(normalComment).toBeVisible();
+  await expect(normalComment.getByRole("button", { name: "Like" })).toBeDisabled();
+  await expect(normalComment.getByRole("button", { name: "Reply" })).toBeDisabled();
+  await expect(page.getByRole("region", { name: "Account access" })).toBeVisible();
+
+  installPublicNsfwCommentFixture();
+  const nsfwResponse = await page.goto(
+    "/posts/e2e-public-nsfw-comments-post/e2e-public-nsfw-comments-post",
+  );
+  expect(nsfwResponse?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const nsfwComment = page.locator("#comment-e2e-public-nsfw-comment");
+  await expect(nsfwComment).toBeVisible();
+  await expect(nsfwComment).toContainText("Public NSFW discussion remains readable.");
+  await expect(nsfwComment.getByRole("button", { name: "Like" })).toBeDisabled();
+  await expect(nsfwComment.getByRole("button", { name: "Reply" })).toBeDisabled();
+  await expect(page.getByRole("region", { name: "Account access" })).toBeVisible();
 });
 
 test("comment owner keeps Delete after the edit window expires", async ({ page }) => {

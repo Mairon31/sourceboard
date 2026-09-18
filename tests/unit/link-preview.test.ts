@@ -312,6 +312,31 @@ describe("link preview metadata fetcher", () => {
     });
   });
 
+  it("preserves the submitted URL when a social site redirects crawlers to its login boundary", async () => {
+    const submittedUrl = "https://www.instagram.com/itshannahowo";
+    const loginUrl =
+      "https://www.instagram.com/accounts/login/?next=https%3A%2F%2Fwww.instagram.com%2Fitshannahowo&is_from_rle";
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === submittedUrl) {
+        return new Response(null, {
+          status: 302,
+          headers: { location: loginUrl },
+        });
+      }
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    }) as unknown as typeof fetch;
+    const service = createLinkPreviewService({
+      fetchImpl,
+      resolveHost: publicResolver(),
+    });
+
+    await expect(service.preview(submittedUrl)).resolves.toMatchObject({
+      canonicalUrl: submittedUrl,
+      metadataStatus: "URL_ONLY",
+    });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
   it("does not reuse a cached preview whose canonical URL already lost the submitted path", async () => {
     const submittedUrl = "https://www.instagram.com/itshannahowo";
     const cache = {
@@ -342,6 +367,40 @@ describe("link preview metadata fetcher", () => {
       canonicalUrl: submittedUrl,
     });
     expect(cache.get).toHaveBeenCalledWith(submittedUrl);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("does not reuse a cached preview that contains a social login redirect", async () => {
+    const submittedUrl = "https://www.instagram.com/itshannahowo";
+    const cache = {
+      get: vi.fn(async () => ({
+        canonicalUrl:
+          "https://www.instagram.com/accounts/login/?next=https%3A%2F%2Fwww.instagram.com%2Fitshannahowo",
+        siteName: "Instagram",
+        title: "Log in",
+        description: null,
+        imageUrl: null,
+        fetchedAt: 1,
+        metadataStatus: "COMPLETE" as const,
+      })),
+      put: vi.fn(async () => undefined),
+    };
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response("<title>Hannah</title>", {
+          headers: { "content-type": "text/html" },
+        }),
+    ) as unknown as typeof fetch;
+    const service = createLinkPreviewService({
+      fetchImpl,
+      resolveHost: publicResolver(),
+      cache,
+    });
+
+    await expect(service.preview(submittedUrl)).resolves.toMatchObject({
+      canonicalUrl: submittedUrl,
+      title: "Hannah",
+    });
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
 

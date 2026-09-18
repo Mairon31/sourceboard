@@ -133,6 +133,18 @@
   color: var(--text-primary);
 }
 
+.product-comment__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.product-comment__action:disabled:hover,
+.product-comment__action:disabled:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  color: inherit;
+}
+
 .product-comment__action:active,
 .product-comment__actions .product-share-action .sb-button:active {
   transform: translateY(1px);

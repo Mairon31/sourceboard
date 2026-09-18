@@ -374,10 +374,46 @@ function canonicalDropsSubmittedPath(submitted: URL, candidate: URL): boolean {
 function canReuseCachedPreview(submitted: URL, snapshot: LinkPreviewSnapshot): boolean {
   try {
     const cachedCanonical = normalizeLinkPreviewUrl(snapshot.canonicalUrl);
+    if (isAuthenticationRedirect(submitted, cachedCanonical, submitted)) return false;
     return !canonicalDropsSubmittedPath(submitted, cachedCanonical);
   } catch {
     return false;
   }
+}
+
+const AUTHENTICATION_RETURN_PARAMETERS = [
+  "next",
+  "continue",
+  "redirect",
+  "redirect_uri",
+  "return",
+  "return_to",
+] as const;
+
+function isSameSubmittedTarget(value: string, submitted: URL): boolean {
+  try {
+    const candidate = normalizeLinkPreviewUrl(value);
+    return (
+      candidate.origin === submitted.origin &&
+      comparablePath(candidate.pathname) === comparablePath(submitted.pathname) &&
+      candidate.search === submitted.search
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isAuthenticationRedirect(source: URL, target: URL, submitted: URL): boolean {
+  const pathLooksLikeAuthentication =
+    /(?:^|\/)(?:accounts\/login|login|signin|sign-in)(?:\/|$)/i.test(target.pathname);
+  if (!pathLooksLikeAuthentication) return false;
+
+  for (const parameter of AUTHENTICATION_RETURN_PARAMETERS) {
+    const returnTarget = target.searchParams.get(parameter);
+    if (returnTarget && isSameSubmittedTarget(returnTarget, submitted)) return true;
+  }
+
+  return source.origin === target.origin && target.origin === submitted.origin;
 }
 
 async function readBoundedText(response: Response, maximumBytes: number): Promise<string> {
@@ -572,6 +608,9 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
                 "The link redirects to an invalid address.",
               );
             }
+            if (isAuthenticationRedirect(current, redirected, initial)) {
+              return urlOnly(initial, now());
+            }
             current = redirected;
             continue;
           }
@@ -633,7 +672,10 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
                 new URL(metadata.canonical, current).toString(),
               );
               await assertPublicTarget(candidate, dependencies.resolveHost);
-              if (!canonicalDropsSubmittedPath(current, candidate)) {
+              if (
+                !isAuthenticationRedirect(current, candidate, initial) &&
+                !canonicalDropsSubmittedPath(current, candidate)
+              ) {
                 canonicalUrl = candidate.toString();
               }
             } catch {

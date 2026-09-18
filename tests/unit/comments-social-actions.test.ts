@@ -159,6 +159,14 @@ describe("comment social actions", () => {
     expect(threadSource).not.toContain("linkPreview: linkPreview");
   });
 
+  it("disables comment likes and replies for signed-out readers", () => {
+    expect(threadSource).toContain("authenticated?: boolean;");
+    expect(threadSource).toContain("disabled={!authenticated || likeBusy}");
+    expect(threadSource).toContain("disabled={!authenticated || readOnly}");
+    expect(threadSource).toContain("if (!authenticated || readOnly || likeInFlightRef.current)");
+    expect(threadSource).toContain("authenticated={authenticated}");
+  });
+
   it("keeps the moderation service importable for report audit coverage", () => {
     expect(createModerationService).toBeTypeOf("function");
   });

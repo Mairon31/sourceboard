@@ -89,4 +89,33 @@ describe("historical URL_ONLY comment previews", () => {
       expect.objectContaining({ metadataStatus: "URL_ONLY", fetchedAt: NOW }),
     );
   });
+
+  it("lists text comments for anonymous readers of a public NSFW post", async () => {
+    const record = staleUrlOnlyComment();
+    const service = createCommentService({
+      store: {
+        listForPost: vi.fn(async () => ({ comments: [record], nextCursor: null })),
+      } as never,
+      postStore: {
+        getPost: vi.fn(async () => ({
+          post: {
+            id: "post-1",
+            authorId: "author-1",
+            authorMode: "ANONYMOUS",
+            visibility: "PUBLIC",
+            status: "OPEN",
+            deletedAt: null,
+            hiddenAt: null,
+            isNsfw: true,
+            commentsClosed: false,
+          },
+        })),
+      } as never,
+      profileStore: {} as never,
+    });
+
+    await expect(service.listForPost("post-1", null, null, 50, "recent")).resolves.toMatchObject({
+      comments: [{ id: "comment-1" }],
+    });
+  });
 });

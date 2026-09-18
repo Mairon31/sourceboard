@@ -29,7 +29,7 @@ describe("stale mutation UI contract", () => {
 
   it("serializes comment likes while retaining prop-driven reaction synchronization", () => {
     expect(commentThread).toContain("likeInFlightRef.current");
-    expect(commentThread).toContain("disabled={likeBusy}");
+    expect(commentThread).toContain("disabled={!authenticated || likeBusy}");
     expect(commentThread).toContain("setLiked(comment.reaction.viewerReacted)");
     expect(commentThread).toContain("setLikes(comment.reaction.count)");
   });

@@ -253,6 +253,7 @@ function CommentItem({
   comment,
   depth = 0,
   onReply,
+  authenticated,
   readOnly = false,
   canAcceptSource,
   acceptedSourceCommentId,
@@ -267,6 +268,7 @@ function CommentItem({
   comment: CommentView;
   depth?: number;
   onReply: (commentId: string) => void;
+  authenticated: boolean;
   readOnly?: boolean;
   canAcceptSource?: boolean;
   acceptedSourceCommentId?: string;
@@ -353,7 +355,7 @@ function CommentItem({
   }, [comment, editing]);
 
   async function toggleLike() {
-    if (likeInFlightRef.current) return;
+    if (!authenticated || readOnly || likeInFlightRef.current) return;
     likeInFlightRef.current = true;
     setLikeBusy(true);
     const versionAtStart = likeReactionVersionRef.current;
@@ -697,22 +699,24 @@ function CommentItem({
             type="button"
             aria-pressed={liked}
             aria-label={liked ? t("comments.actions.unlike") : t("comments.actions.like")}
-            disabled={likeBusy}
+            disabled={!authenticated || likeBusy}
             onClick={() => void toggleLike()}
           >
             <HeartIcon width="15" height="15" fill={liked ? "currentColor" : "none"} />
             <span className="product-comment__action-count">{likes}</span>
           </button>
-          {!readOnly ? (
-            <button
-              className="product-comment__action"
-              type="button"
-              onClick={() => onReply(comment.id)}
-            >
-              <MessageIcon width="15" height="15" />
-              <span>{t("comments.actions.reply")}</span>
-            </button>
-          ) : null}
+          <button
+            className="product-comment__action"
+            type="button"
+            disabled={!authenticated || readOnly}
+            onClick={() => {
+              if (!authenticated || readOnly) return;
+              onReply(comment.id);
+            }}
+          >
+            <MessageIcon width="15" height="15" />
+            <span>{t("comments.actions.reply")}</span>
+          </button>
           {acceptedSourceCommentId === comment.id && canUndoAcceptedSource ? (
             <div
               className={`product-comment__source-undo${undoingAcceptedSource ? " is-open" : ""}`}
@@ -870,6 +874,7 @@ function CommentItem({
                     comment={reply}
                     depth={Math.min(depth + 1, 2)}
                     onReply={onReply}
+                    authenticated={authenticated}
                     readOnly={readOnly}
                     canAcceptSource={canAcceptSource}
                     acceptedSourceCommentId={acceptedSourceCommentId}
@@ -1439,6 +1444,7 @@ export function CommentThread({
             key={comment.id}
             comment={comment}
             onReply={setReplyTo}
+            authenticated={authenticated}
             readOnly={postArchived}
             canAcceptSource={canAcceptSource}
             acceptedSourceCommentId={acceptedSourceCommentId}

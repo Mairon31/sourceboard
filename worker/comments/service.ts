@@ -1,6 +1,6 @@
 import { createIdentifier } from "../auth/crypto";
 import { canViewUser } from "../privacy/policy";
-import { canViewPost } from "../posts/service";
+import { canViewPost, isPublicAnonymousNsfwPreview } from "../posts/service";
 import type { ProfileStore } from "../profile/store";
 import type { PostStore } from "../posts/store";
 import { PostError } from "../posts/errors";
@@ -204,7 +204,10 @@ export function createCommentService(dependencies: CommentServiceDependencies): 
 
   async function requireVisiblePost(postId: string, viewerId: string | null) {
     const post = await dependencies.postStore.getPost(postId);
-    if (!post || !(await canViewPost(viewerId, post.post, policy))) {
+    const canReadPublicComments = Boolean(
+      post && isPublicAnonymousNsfwPreview(viewerId, post.post),
+    );
+    if (!post || (!canReadPublicComments && !(await canViewPost(viewerId, post.post, policy)))) {
       throw new PostError(404, "POST_NOT_FOUND", "The post was not found.");
     }
     return post;
