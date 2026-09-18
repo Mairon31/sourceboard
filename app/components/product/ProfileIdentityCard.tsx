@@ -72,13 +72,13 @@ export function ProfileIdentityCard({
             style={{ backgroundImage: `url("${bannerUrl}")` }}
           />
         ) : null}
+        <ProfileEffectLayer
+          preset={profileEffect}
+          visual={visuals?.profileEffect}
+          creatorPro={creatorPro?.profileEffect}
+          mode={mode}
+        />
       </div>
-      <ProfileEffectLayer
-        preset={profileEffect}
-        visual={visuals?.profileEffect}
-        creatorPro={creatorPro?.profileEffect}
-        mode={mode}
-      />
       <div className="product-profile-card-surface profile-card">{children}</div>
     </Card>
   );

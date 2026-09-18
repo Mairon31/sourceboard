@@ -752,10 +752,13 @@
 }
 
 .product-media-lightbox__viewport {
-  display: grid;
-  min-height: min(62vh, 620px);
-  max-height: 74vh;
-  place-items: center;
+  display: flex;
+  width: 100%;
+  height: min(62dvh, 620px);
+  min-height: 220px;
+  max-height: min(74dvh, 720px);
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -782,6 +785,8 @@
 
 .product-media-lightbox__image {
   display: block;
+  width: auto;
+  height: auto;
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
@@ -1084,8 +1089,48 @@
 }
 
 .product-comment-composer__field {
+  grid-column: 1 / -1;
   display: grid;
+  width: 100%;
+  min-width: 0;
   gap: var(--space-3);
+}
+
+.product-comment-composer__identity-picker,
+.product-comment-composer > .cosmetic-identity {
+  grid-column: 1 / -1;
+}
+
+.product-comment-composer__reply-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  grid-column: 1 / -1;
+  padding: 9px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: color-mix(in srgb, var(--accent-soft) 48%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.product-comment-composer__reply-context span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-comment-composer__reply-context button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
 }
 
 .product-comment-composer__toolbar {
@@ -1130,7 +1175,7 @@
 }
 
 .product-comment--reply {
-  margin-top: var(--space-3);
+  margin-top: 0;
 }
 
 .product-comment__body {
@@ -1324,9 +1369,9 @@
 .product-comment__replies {
   display: grid;
   gap: var(--space-3);
-  margin-left: 4px;
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--border-medium);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3) 0 0 var(--space-4);
+  border-left: 2px solid color-mix(in srgb, var(--accent) 28%, var(--border-medium));
 }
 
 .product-form-card,
@@ -2268,6 +2313,16 @@
 
   .product-source-card {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-comment-composer__reply-context {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .product-comment__replies {
+    padding-left: 10px;
   }
 }
 .product-footer {

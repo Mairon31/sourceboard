@@ -196,6 +196,7 @@ export const ptProductMessages = {
   "profile.action.block": "Bloquear",
   "profile.action.blockAccount": "Bloquear conta",
   "profile.action.blockError": "Não foi possível bloquear esta conta.",
+  "profile.action.viewProfile": "Ver perfil",
   "profile.ownEyebrow": "Seu perfil",
   "profile.publicEyebrow": "Perfil público",
   "profile.summaryAria": "Resumo do perfil",

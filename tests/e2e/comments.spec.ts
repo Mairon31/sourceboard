@@ -468,6 +468,43 @@ test("anonymous post author stays anonymous when their new comment renders", asy
   await expect(comment.getByText("E2E Navigator", { exact: true })).toHaveCount(0);
 });
 
+test("identified comments on anonymous posts do not receive the anonymous author badge", async ({
+  page,
+}) => {
+  await installAnonymousAuthorPostFixture(page);
+  const response = await page.goto("/posts/e2e-anonymous-comment-post/e2e-anonymous-comment-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  await page.getByLabel("Comment as").selectOption("IDENTIFIED");
+  await page.getByLabel("Add a comment").fill("Public identity on anonymous post");
+  await page.getByRole("button", { name: "Comment", exact: true }).click();
+  await expect(page.getByText("Comment posted.", { exact: true })).toBeVisible();
+
+  const comment = page
+    .locator("article.product-comment")
+    .filter({ hasText: "Public identity on anonymous post" });
+  await expect(comment).toContainText("E2E Navigator");
+  await expect(comment.getByText("Author", { exact: true })).toHaveCount(0);
+});
+
+test("replying from a nested comment focuses the composer and shows the target", async ({
+  page,
+}) => {
+  installCommentSortingFixture();
+  await installNavigationUserSession(page, "reply-context");
+  const response = await page.goto("/posts/e2e-comment-sort-post/e2e-comment-sort-post");
+  expect(response?.status()).toBe(200);
+  await waitForUiReady(page);
+
+  const target = page.locator("#comment-e2e-sort-popular");
+  await target.locator(".product-comment__actions > button", { hasText: "Reply" }).first().click();
+  await expect(page.locator(".product-comment-composer__reply-context")).toContainText(
+    "Replying to",
+  );
+  await expect(page.getByLabel("Add a reply")).toBeFocused();
+});
+
 test("comment sort control changes URL and server root order while keeping replies grouped", async ({
   page,
 }) => {

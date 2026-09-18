@@ -378,7 +378,7 @@ export const ptAdminMessages = {
   "admin.presetLab.filter.emotes": "Emotes",
   "admin.presetLab.type.avatarFrame": "Moldura de avatar",
   "admin.presetLab.type.profileBanner": "Banner de perfil",
-  "admin.presetLab.type.profileEffect": "Efeito de perfil",
+  "admin.presetLab.type.profileEffect": "Efeito de banner",
   "admin.presetLab.type.nameEffect": "Efeito de nome",
   "admin.presetLab.type.nameFont": "Fonte de nome",
   "admin.presetLab.type.stickerPack": "Pack de stickers",
@@ -400,7 +400,7 @@ export const ptAdminMessages = {
   "admin.cosmeticGuide.glowRule":
     "O desfoque do brilho é limitado a 32px e a opacidade do brilho a 1.",
   "admin.cosmeticGuide.paletteDescription":
-    "Os temas de perfil controlam a superfície do cartão, o fundo e a linguagem geral de cores. Os efeitos de perfil adicionam movimento ambiente ou partículas sobre essa superfície; não devem substituir o tema nem ocultar o conteúdo.",
+    "Os temas de perfil controlam a superfície do cartão, o fundo e a linguagem geral de cores. Os efeitos de banner adicionam movimento ambiente ou partículas dentro do banner; não devem substituir o tema nem ocultar o conteúdo.",
   "admin.cosmeticGuide.motionTitle": "Movimento e partículas",
   "admin.cosmeticGuide.durationRule": "Duração da animação: mínimo de 300ms e máximo de 60000ms.",
   "admin.cosmeticGuide.delayRule":

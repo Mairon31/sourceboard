@@ -9,7 +9,7 @@ test("store presents the refreshed catalog and category filters", async ({ page 
     "All",
     "Profile Themes",
     "Avatar Frames",
-    "Profile Effects",
+    "Banner Effects",
     "Name Effects",
     "Fonts",
     "Emotes",

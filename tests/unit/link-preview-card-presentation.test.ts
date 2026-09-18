@@ -18,6 +18,9 @@ describe("LinkPreviewCard presentation contract", () => {
     expect(css).toContain('.product-link-preview-card[data-metadata-status="MINIMAL"]');
     expect(css).toContain('.product-link-preview-card[data-metadata-status="URL_ONLY"]');
     expect(css).toContain("border-left");
+    expect(css).toMatch(
+      /\.product-link-preview-card\s*\{[^}]*border-left:\s*3px solid var\(--link-preview-accent, var\(--accent\)\);/s,
+    );
   });
 
   it("clamps descriptions and keeps preview content inside narrow layouts", () => {

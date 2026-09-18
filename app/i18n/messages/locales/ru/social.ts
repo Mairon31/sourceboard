@@ -159,6 +159,7 @@ export const ruSocialMessages = {
   "comments.closed.description":
     "Автор принял источник и закрыл обсуждение. Существующие комментарии остаются видимыми.",
   "comments.composer.addReply": "Добавить ответ",
+  "comments.composer.replyingTo": "Ответ пользователю {name}",
   "comments.composer.addComment": "Добавить комментарий",
   "comments.composer.placeholder":
     "Добавьте контекст, ссылку на источник или объясните, как вы его проверили…",

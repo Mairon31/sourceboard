@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 import type { PublicProfileDto, Relationship } from "../../../worker/profile/types";
+import { buttonClassName } from "../../../shared/design/component-variants";
 import {
   canonicalSocialPlatform,
   SOCIAL_PLATFORM_CATALOG,
@@ -8,7 +10,7 @@ import {
 import { readCsrfToken } from "../../data/csrf";
 import type { MessageKey } from "../../i18n";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Badge } from "../ui";
+import { Badge, ExternalLinkIcon } from "../ui";
 import { ConfirmAction } from "./ConfirmAction";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { ProfileIdentityCard } from "./ProfileIdentityCard";
@@ -231,6 +233,15 @@ export function ProfileHero({ profile, isOwnProfile, editControl }: ProfileHeroP
               onRelationshipChange={setRelationship}
             />
             {editControl}
+            {isOwnProfile ? (
+              <Link
+                className={buttonClassName("secondary", "sm", "product-profile-view-link")}
+                to={`/u/${encodeURIComponent(profile.username)}`}
+              >
+                <ExternalLinkIcon width="16" height="16" />
+                <span>{t("profile.action.viewProfile")}</span>
+              </Link>
+            ) : null}
             <ShareAction
               url={`/u/${encodeURIComponent(profile.username)}`}
               title={t("profile.shareTitle", { name: profile.displayName })}

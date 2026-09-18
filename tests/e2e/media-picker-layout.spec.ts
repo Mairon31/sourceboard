@@ -487,6 +487,12 @@ for (const viewport of [
     const stickerButtons = stickerSurface.locator(
       ".product-comment-media-picker__results--sticker button",
     );
+    const stickerPackBar = page.locator(".product-comment-media-picker__packbar");
+    await expect(stickerPackBar).toBeVisible();
+    await expect(stickerPackBar.locator("button").first()).toHaveAttribute(
+      "data-pack-tab-id",
+      "klipy",
+    );
     await expect(stickerButtons.first()).toBeVisible();
     await expectPickerWithinViewport(page, viewport.height);
     await expectSquareNonOverlapping(
@@ -632,10 +638,9 @@ test("GIF and sticker pages one through four keep stable proportions and rows", 
   await page.getByRole("button", { name: "Sticker", exact: true }).click();
   const stickers = page.locator('[data-media-kind="sticker"]');
   const stickerButtons = stickers.locator(".product-comment-media-picker__results--sticker button");
-  const stickerResults = stickers.locator(".product-comment-media-picker__results--sticker");
   for (let attempt = 0; attempt < 6; attempt += 1) {
     if (requests.filter((request) => request.startsWith("STICKER:")).length >= 4) break;
-    await stickerResults.evaluate((element) => {
+    await stickers.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
       element.dispatchEvent(new Event("scroll"));
     });
@@ -667,6 +672,16 @@ test("sticker pagination keeps one scroll surface when owned stickers are presen
   const stickerSurface = page.locator('[data-media-kind="sticker"]');
   await expect(stickerSurface).toBeVisible();
   const stickerResults = stickerSurface.locator(".product-comment-media-picker__results--sticker");
+  await expect(
+    stickerSurface.locator(
+      'section[data-pack-id="klipy"] .product-comment-media-picker__results--sticker button',
+    ),
+  ).toHaveCount(16);
+  await expect(
+    stickerSurface.locator(
+      'section[data-pack-id="sourceboard:e2e-owned-pack"] .product-comment-media-picker__results--sticker button',
+    ),
+  ).toHaveCount(8);
   await expect(stickerResults.locator("button").first()).toBeVisible();
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -681,12 +696,7 @@ test("sticker pagination keeps one scroll surface when owned stickers are presen
   await expect
     .poll(() => requests.filter((request) => request.startsWith("STICKER:")).length)
     .toBe(4);
-  await expect(
-    stickerSurface
-      .locator(".product-comment-media-picker__results--sticker")
-      .last()
-      .locator("button"),
-  ).toHaveCount(16);
+  await expect(stickerResults).toHaveCount(2);
   await expectSquareNonOverlapping(
     page,
     '[data-media-kind="sticker"] .product-comment-media-picker__results--sticker button',

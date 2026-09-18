@@ -97,6 +97,7 @@ export const esEditingMessages = {
   "mediaPicker.searchStickers": "Buscar stickers",
   "mediaPicker.searchEmotes": "Buscar emotes",
   "mediaPicker.emotePacks": "Packs de emotes",
+  "mediaPicker.stickerPacks": "Packs de stickers",
   "mediaPicker.addItem": "Añadir {name}",
   "mediaPicker.gifResults": "Resultados de GIF",
   "mediaPicker.stickerResults": "Resultados de stickers",

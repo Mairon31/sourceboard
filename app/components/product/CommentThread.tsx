@@ -855,6 +855,15 @@ function appendComment(comments: CommentView[], next: CommentView): CommentView[
   );
 }
 
+function findComment(comments: CommentView[], id: string): CommentView | null {
+  for (const comment of comments) {
+    if (comment.id === id) return comment;
+    const nested = findComment(comment.replies, id);
+    if (nested) return nested;
+  }
+  return null;
+}
+
 function insertRootComment(
   items: CommentView[],
   next: CommentView,
@@ -945,10 +954,27 @@ export function CommentThread({
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const localAttachmentPreviewRef = useRef<string | null>(null);
   const threadCount = countThread(items);
+  const replyTarget = replyTo ? findComment(items, replyTo) : null;
   useEffect(() => setItems(comments), [comments]);
   useEffect(() => {
     setCommentAuthorMode(canChooseCommentIdentity ? "ANONYMOUS" : "IDENTIFIED");
   }, [canChooseCommentIdentity]);
+
+  useEffect(() => {
+    if (!replyTo) return;
+    if (!replyTarget) {
+      setReplyTo(null);
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      const composer = composerRef.current;
+      if (!composer) return;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      composer.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      composer.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [replyTarget, replyTo]);
 
   function releaseLocalAttachmentPreview() {
     const preview = localAttachmentPreviewRef.current;
@@ -971,6 +997,11 @@ export function CommentThread({
     const params = new URLSearchParams(location.search);
     params.set("comments", nextSort);
     navigate(`${location.pathname}?${params.toString()}`);
+  }
+
+  function startReply(commentId: string) {
+    if (!authenticated || postArchived || commentsClosed) return;
+    setReplyTo(commentId);
   }
 
   useEffect(() => {
@@ -1192,6 +1223,16 @@ export function CommentThread({
         </div>
       ) : (
         <div className="product-comment-composer glass-panel">
+          {replyTarget ? (
+            <div className="product-comment-composer__reply-context" role="status">
+              <span>
+                {t("comments.composer.replyingTo", { name: replyTarget.author.displayName })}
+              </span>
+              <button type="button" onClick={() => setReplyTo(null)}>
+                {t("comments.composer.cancelReply")}
+              </button>
+            </div>
+          ) : null}
           {canChooseCommentIdentity ? (
             <label className="product-comment-composer__identity-picker">
               <span>{t("comments.composer.identity.label")}</span>
@@ -1405,9 +1446,9 @@ export function CommentThread({
           <CommentItem
             key={comment.id}
             comment={comment}
-            onReply={setReplyTo}
+            onReply={startReply}
             authenticated={authenticated}
-            readOnly={postArchived}
+            readOnly={postArchived || commentsClosed}
             canAcceptSource={canAcceptSource}
             acceptedSourceCommentId={acceptedSourceCommentId}
             canUndoAcceptedSource={canUndoAcceptedSource}

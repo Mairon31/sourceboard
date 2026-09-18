@@ -98,6 +98,7 @@ export const ptEditingMessages = {
   "mediaPicker.searchStickers": "Pesquisar stickers",
   "mediaPicker.searchEmotes": "Pesquisar emotes",
   "mediaPicker.emotePacks": "Packs de emotes",
+  "mediaPicker.stickerPacks": "Packs de stickers",
   "mediaPicker.addItem": "Adicionar {name}",
   "mediaPicker.gifResults": "Resultados de GIF",
   "mediaPicker.stickerResults": "Resultados de stickers",

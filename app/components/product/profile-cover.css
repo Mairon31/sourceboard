@@ -1,9 +1,10 @@
 .product-profile-identity-card .product-profile-cover {
   position: relative;
   z-index: 1;
+  width: 100%;
   aspect-ratio: 5 / 2;
   min-height: 150px;
-  max-height: 320px;
+  max-height: none;
   overflow: hidden;
   border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
   background: var(--bg-app-secondary);
@@ -22,6 +23,6 @@
 @media (max-width: 760px) {
   .product-profile-identity-card .product-profile-cover {
     min-height: 144px;
-    max-height: 220px;
+    max-height: none;
   }
 }

@@ -1490,7 +1490,10 @@ async function listStickerPacks(env: SourceBoardEnvironment, requestId: string):
             p.is_enabled AS isEnabled, p.is_global AS isGlobal, p.creator_user_id AS creatorUserId,
             p.moderation_state AS moderationState, p.created_at AS createdAt, p.updated_at AS updatedAt,
             s.id AS storeItemId, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState,
-            s.is_enabled AS storeEnabled, COUNT(st.id) AS stickerCount
+            s.is_enabled AS storeEnabled, s.is_featured AS isFeatured,
+            (SELECT preview.id FROM sticker_catalog preview WHERE preview.pack_id = p.id
+             ORDER BY preview.sort_order ASC, preview.created_at ASC LIMIT 1) AS previewStickerId,
+            COUNT(st.id) AS stickerCount
      FROM sticker_packs p
      LEFT JOIN store_items s ON s.type = 'STICKER_PACK' AND json_extract(s.config_json, '$.packId') = p.id
      LEFT JOIN sticker_catalog st ON st.pack_id = p.id
@@ -1516,7 +1519,7 @@ async function getStickerPackDetail(
             p.is_enabled AS isEnabled, p.is_global AS isGlobal, p.creator_user_id AS creatorUserId,
             p.moderation_state AS moderationState, p.created_at AS createdAt, p.updated_at AS updatedAt,
             s.id AS storeItemId, s.price_points AS pricePoints, s.lifecycle_state AS storeLifecycleState,
-            s.is_enabled AS storeEnabled
+            s.is_enabled AS storeEnabled, s.is_featured AS isFeatured
      FROM sticker_packs p LEFT JOIN store_items s ON s.type = 'STICKER_PACK'
        AND json_extract(s.config_json, '$.packId') = p.id WHERE p.id = ?`,
   )

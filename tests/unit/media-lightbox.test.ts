@@ -28,4 +28,15 @@ describe("shared media lightbox contract", () => {
     expect(read("../../app/components/product/PostCard.tsx")).toContain("<MediaLightbox");
     expect(read("../../app/components/product/CommentThread.tsx")).toContain("<MediaLightbox");
   });
+
+  it("keeps the media viewport centered and bounded on short mobile screens", () => {
+    const css = read("../../app/components/product/product.css");
+    const uiCss = read("../../app/components/ui/ui.css");
+    expect(css).toMatch(
+      /\.product-media-lightbox__viewport\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s,
+    );
+    expect(css).toContain("max-height: min(74dvh, 720px)");
+    expect(uiCss).toContain(".sb-modal--media");
+    expect(uiCss).toContain("max-height: calc(100dvh - 24px)");
+  });
 });

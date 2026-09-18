@@ -31,6 +31,17 @@ export interface CommentServiceDependencies {
 
 type CommentAuthorMode = "IDENTIFIED" | "ANONYMOUS";
 
+export function isPostAuthorIdentity(input: {
+  commentAuthorId: string;
+  postAuthorId: string;
+  postAuthorMode?: string | null;
+  commentAuthorMode: CommentAuthorMode;
+}): boolean {
+  const postAuthorMode: CommentAuthorMode =
+    input.postAuthorMode === "ANONYMOUS" ? "ANONYMOUS" : "IDENTIFIED";
+  return input.commentAuthorId === input.postAuthorId && input.commentAuthorMode === postAuthorMode;
+}
+
 export interface CommentService {
   listForPost(
     postId: string,
@@ -151,7 +162,12 @@ async function toView(
         : undefined,
     state: record.comment.state,
     reaction: { type: "LIKE", count: record.comment.likeCount, viewerReacted },
-    isPostAuthor: record.comment.authorId === record.post.authorId,
+    isPostAuthor: isPostAuthorIdentity({
+      commentAuthorId: record.comment.authorId,
+      postAuthorId: record.post.authorId,
+      postAuthorMode: record.post.authorMode,
+      commentAuthorMode,
+    }),
     canEdit:
       record.comment.authorId === viewerId &&
       record.comment.state === "VISIBLE" &&

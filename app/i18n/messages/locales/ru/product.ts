@@ -196,6 +196,7 @@ export const ruProductMessages = {
   "profile.action.block": "Заблокировать",
   "profile.action.blockAccount": "Заблокировать аккаунт",
   "profile.action.blockError": "Не удалось заблокировать этот аккаунт.",
+  "profile.action.viewProfile": "Открыть профиль",
   "profile.ownEyebrow": "Ваш профиль",
   "profile.publicEyebrow": "Публичный профиль",
   "profile.summaryAria": "Сводка профиля",

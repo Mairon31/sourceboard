@@ -453,6 +453,55 @@ function isAuthenticationRedirect(source: URL, target: URL, submitted: URL): boo
   return source.origin === target.origin && target.origin === submitted.origin;
 }
 
+async function recoverOriginMetadata(
+  submitted: URL,
+  requestDocument: (target: URL, userAgent: string) => Promise<Response>,
+  dependencies: Pick<LinkPreviewDependencies, "resolveHost">,
+): Promise<Pick<
+  LinkPreviewSnapshot,
+  "siteName" | "title" | "description" | "imageUrl" | "themeColor"
+> | null> {
+  const origin = new URL("/", submitted);
+  try {
+    await assertPublicTarget(origin, dependencies.resolveHost);
+    const response = await requestDocument(origin, BROWSER_COMPATIBLE_USER_AGENT);
+    if (isRedirect(response.status) || !response.ok) return null;
+    const contentType = response.headers
+      .get("content-type")
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase();
+    if (contentType !== "text/html" && contentType !== "application/xhtml+xml") return null;
+
+    const metadata = metadataValues(await readBoundedText(response, MAX_HTML_BYTES));
+    let imageUrl: string | null = null;
+    for (const candidateValue of [metadata.image, metadata.icon]) {
+      if (!candidateValue) continue;
+      try {
+        const candidate = normalizeLinkPreviewUrl(new URL(candidateValue, origin).toString());
+        await assertPublicTarget(candidate, dependencies.resolveHost);
+        imageUrl = candidate.toString();
+        break;
+      } catch {
+        // The origin fallback is optional; ignore unsafe or malformed asset hints.
+      }
+    }
+    const present = [metadata.title, metadata.description, metadata.siteName, imageUrl].filter(
+      Boolean,
+    ).length;
+    if (!present) return null;
+    return {
+      siteName: metadata.siteName,
+      title: metadata.title,
+      description: metadata.description,
+      imageUrl,
+      ...(metadata.themeColor ? { themeColor: metadata.themeColor } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function readBoundedText(response: Response, maximumBytes: number): Promise<string> {
   if (!response.body) return "";
   const reader = response.body.getReader();
@@ -609,8 +658,8 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
         for (let redirects = 0; ; redirects += 1) {
           const imdbTitle = imdbTitleId(current);
           await assertPublicTarget(current, dependencies.resolveHost);
-          const requestDocument = (userAgent: string) =>
-            invokeFetch(dependencies.fetchImpl, current.toString(), {
+          const requestDocument = (target: URL, userAgent: string) =>
+            invokeFetch(dependencies.fetchImpl, target.toString(), {
               redirect: "manual",
               signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
               headers: {
@@ -618,10 +667,10 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
                 "user-agent": userAgent,
               },
             });
-          let response = await requestDocument(PREVIEW_USER_AGENT);
+          let response = await requestDocument(current, PREVIEW_USER_AGENT);
           if (response.status === 403) {
             await assertPublicTarget(current, dependencies.resolveHost);
-            response = await requestDocument(BROWSER_COMPATIBLE_USER_AGENT);
+            response = await requestDocument(current, BROWSER_COMPATIBLE_USER_AGENT);
           }
           if (isRedirect(response.status)) {
             if (redirects >= MAX_REDIRECTS) {
@@ -646,6 +695,23 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
               );
             }
             if (isAuthenticationRedirect(current, redirected, initial)) {
+              const fallback = await recoverOriginMetadata(initial, requestDocument, dependencies);
+              if (fallback) {
+                const present = [
+                  fallback.title,
+                  fallback.description,
+                  fallback.siteName,
+                  fallback.imageUrl,
+                ].filter(Boolean).length;
+                const snapshot: LinkPreviewSnapshot = {
+                  canonicalUrl: initial.toString(),
+                  ...fallback,
+                  fetchedAt: now(),
+                  metadataStatus: present >= 2 ? "COMPLETE" : "MINIMAL",
+                };
+                await cacheSnapshot(cacheKey, snapshot);
+                return snapshot;
+              }
               return urlOnly(initial, now());
             }
             current = redirected;

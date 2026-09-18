@@ -32,6 +32,11 @@ const privateProfileRouteSource = readFileSync(
   "utf8",
 );
 const profileEditorSource = readOptionalSource("../../app/components/product/ProfileEditor.tsx");
+const profileHeroSource = readOptionalSource("../../app/components/product/ProfileHero.tsx");
+const profileAccountSource = readOptionalSource(
+  "../../app/components/product/ProfileAccountActions.tsx",
+);
+const profileCoverCss = readOptionalSource("../../app/components/product/profile-cover.css");
 
 describe("mobile product UX regressions", () => {
   it("lets real post media size itself from the image aspect ratio without letterboxing", () => {
@@ -97,5 +102,25 @@ describe("mobile product UX regressions", () => {
   it("loads public profiles and profile activity without requiring an authenticated session", () => {
     expect(publicProfileRouteSource).toContain("withOptionalServerSession");
     expect(publicProfileRouteSource).not.toContain("withServerSession(");
+  });
+
+  it("keeps the profile cover full width and uses real ordered account/action icons", () => {
+    expect(profileCoverCss).toContain("width: 100%");
+    expect(profileCoverCss).toContain("max-height: none");
+    expect(profileHeroSource).toContain('t("profile.action.viewProfile")');
+    expect(profileHeroSource).toContain("product-profile-view-link");
+    expect(profileAccountSource).not.toContain('aria-hidden="true">›');
+    expect(profileAccountSource).not.toContain('aria-hidden="true">↓');
+    expect(profileAccountSource).not.toContain('aria-hidden="true">↗');
+    for (const icon of [
+      "SettingsIcon",
+      "ShieldIcon",
+      "DownloadIcon",
+      "LogOutIcon",
+      "ChevronRightIcon",
+    ]) {
+      expect(iconSource).toContain(`export function ${icon}`);
+      expect(profileAccountSource).toContain(icon);
+    }
   });
 });

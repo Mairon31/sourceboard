@@ -158,6 +158,7 @@ export const deSocialMessages = {
   "comments.closed.description":
     "Der Autor hat eine Quelle akzeptiert und diese Diskussion geschlossen. Vorhandene Kommentare bleiben sichtbar.",
   "comments.composer.addReply": "Antwort hinzufügen",
+  "comments.composer.replyingTo": "Antwort an {name}",
   "comments.composer.addComment": "Kommentar hinzufügen",
   "comments.composer.placeholder":
     "Füge Kontext oder einen Quellenlink hinzu oder erkläre, wie du ihn überprüft hast…",

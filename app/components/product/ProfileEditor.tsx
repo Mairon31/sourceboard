@@ -17,7 +17,7 @@ import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
 import type { SafeInlineRichTextNode, SafeRichTextNode } from "../../../shared/richtext/markdown";
 import type { MessageKey } from "../../i18n";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Button, Card, Checkbox, Input, Textarea } from "../ui";
+import { Button, Card, Checkbox, EditIcon, Input, Textarea } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { BIO_MARKDOWN_ACTIONS, handleMarkdownShortcut, MarkdownToolbar } from "./MarkdownToolbar";
 import { ProfileHero } from "./ProfileHero";
@@ -586,6 +586,7 @@ export function ProfileEditor({
           isOwnProfile
           editControl={
             <Button variant="secondary" size="sm" onClick={beginEditing}>
+              <EditIcon width="16" height="16" />
               {t("profileEditor.edit")}
             </Button>
           }

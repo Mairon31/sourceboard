@@ -378,7 +378,7 @@ export const ruAdminMessages = {
   "admin.presetLab.filter.emotes": "Эмодзи",
   "admin.presetLab.type.avatarFrame": "Рамка аватара",
   "admin.presetLab.type.profileBanner": "Баннер профиля",
-  "admin.presetLab.type.profileEffect": "Эффект профиля",
+  "admin.presetLab.type.profileEffect": "Эффект баннера",
   "admin.presetLab.type.nameEffect": "Эффект имени",
   "admin.presetLab.type.nameFont": "Шрифт имени",
   "admin.presetLab.type.stickerPack": "Пак стикеров",
@@ -400,7 +400,7 @@ export const ruAdminMessages = {
   "admin.cosmeticGuide.opacityRule": "Прозрачность и интенсивность находятся между 0 и 1.",
   "admin.cosmeticGuide.glowRule": "Размытие свечения ограничено 32px, а его прозрачность — 1.",
   "admin.cosmeticGuide.paletteDescription":
-    "Темы профиля отвечают за поверхность карточки, фон и общий язык цветов. Эффекты профиля добавляют движение или частицы поверх неё; они не должны заменять тему или скрывать содержимое.",
+    "Темы профиля отвечают за поверхность карточки, фон и общий язык цветов. Эффекты баннера добавляют движение или частицы внутри баннера; они не должны заменять тему или скрывать содержимое.",
   "admin.cosmeticGuide.motionTitle": "Движение и частицы",
   "admin.cosmeticGuide.durationRule": "Длительность анимации: минимум 300ms и максимум 60000ms.",
   "admin.cosmeticGuide.delayRule":

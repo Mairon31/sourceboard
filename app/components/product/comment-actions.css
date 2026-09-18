@@ -446,6 +446,7 @@
   overflow: hidden;
   box-sizing: border-box;
   border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--link-preview-accent, var(--accent));
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
   color: inherit;

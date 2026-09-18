@@ -101,6 +101,7 @@ export const deEditingMessages = {
   "mediaPicker.searchStickers": "Sticker suchen",
   "mediaPicker.searchEmotes": "Emotes suchen",
   "mediaPicker.emotePacks": "Emote-Pakete",
+  "mediaPicker.stickerPacks": "Sticker-Pakete",
   "mediaPicker.addItem": "{name} hinzufügen",
   "mediaPicker.gifResults": "GIF-Ergebnisse",
   "mediaPicker.stickerResults": "Sticker-Ergebnisse",

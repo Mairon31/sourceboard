@@ -10,3 +10,28 @@
   min-height: 180px;
   align-content: end;
 }
+
+.product-canonical-cosmetic-preview__effect-label,
+.product-canonical-cosmetic-preview .product-cosmetic-preview__effect-label {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  width: min(100%, 360px);
+  padding: var(--space-4);
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.product-canonical-cosmetic-preview .product-cosmetic-preview__effect-label span {
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.product-canonical-cosmetic-preview .product-cosmetic-preview__effect-label strong {
+  font-size: clamp(1.1rem, 3vw, 1.45rem);
+  letter-spacing: -0.03em;
+}

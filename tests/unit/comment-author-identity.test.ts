@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { isPostAuthorIdentity } from "../../worker/comments/service";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const migration = read("../../migrations/0040_comment_author_identity.sql");
@@ -62,6 +63,33 @@ describe("comment author identity contract", () => {
     expect(service).toContain("COMMENT_ANONYMOUS_IDENTITY_UNAVAILABLE");
     expect(service).toContain("authorMode: resolvedAuthorMode");
     expect(service).toContain("record.comment.authorMode");
+  });
+
+  it("only marks a comment as authored by the post author when identity mode also matches", () => {
+    expect(
+      isPostAuthorIdentity({
+        commentAuthorId: "author-1",
+        postAuthorId: "author-1",
+        postAuthorMode: "ANONYMOUS",
+        commentAuthorMode: "IDENTIFIED",
+      }),
+    ).toBe(false);
+    expect(
+      isPostAuthorIdentity({
+        commentAuthorId: "author-1",
+        postAuthorId: "author-1",
+        postAuthorMode: "ANONYMOUS",
+        commentAuthorMode: "ANONYMOUS",
+      }),
+    ).toBe(true);
+    expect(
+      isPostAuthorIdentity({
+        commentAuthorId: "author-1",
+        postAuthorId: "author-1",
+        postAuthorMode: "IDENTIFIED",
+        commentAuthorMode: "IDENTIFIED",
+      }),
+    ).toBe(true);
   });
 
   it("defaults the anonymous post author to Anonymous Author and exposes a switch", () => {

@@ -94,6 +94,7 @@ export const ruEditingMessages = {
   "mediaPicker.searchStickers": "Поиск стикеров",
   "mediaPicker.searchEmotes": "Поиск эмоутов",
   "mediaPicker.emotePacks": "Наборы эмоутов",
+  "mediaPicker.stickerPacks": "Наборы стикеров",
   "mediaPicker.addItem": "Добавить {name}",
   "mediaPicker.gifResults": "Результаты GIF",
   "mediaPicker.stickerResults": "Результаты стикеров",

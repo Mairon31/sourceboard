@@ -33,7 +33,7 @@ type StateFilter = "ALL" | "DRAFT" | "PUBLISHED" | "ARCHIVED" | "DISABLED" | "FE
 
 const cosmeticFilters: Array<{ value: CosmeticType; label: string }> = [
   { value: "AVATAR_FRAME", label: "Avatar Frames" },
-  { value: "PROFILE_EFFECT", label: "Profile Effects" },
+  { value: "PROFILE_EFFECT", label: "Banner Effects" },
   { value: "NAME_EFFECT", label: "Name Effects" },
   { value: "NAME_FONT", label: "Name Fonts" },
   { value: "PROFILE_BANNER", label: "Profile Banners" },

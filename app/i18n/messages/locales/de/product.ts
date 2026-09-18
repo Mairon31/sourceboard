@@ -197,6 +197,7 @@ export const deProductMessages = {
   "profile.action.block": "Blockieren",
   "profile.action.blockAccount": "Konto blockieren",
   "profile.action.blockError": "Dieses Konto konnte nicht blockiert werden.",
+  "profile.action.viewProfile": "Profil ansehen",
   "profile.ownEyebrow": "Dein Profil",
   "profile.publicEyebrow": "Öffentliches Profil",
   "profile.summaryAria": "Profilübersicht",

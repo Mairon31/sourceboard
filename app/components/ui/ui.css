@@ -484,7 +484,7 @@
 
 .sb-modal--media {
   width: min(96vw, 1_100px);
-  max-height: 94vh;
+  max-height: calc(100dvh - 24px);
   padding: var(--space-4);
 }
 
@@ -708,6 +708,17 @@
 @media (max-width: 600px) {
   .sb-modal {
     padding: var(--space-5);
+  }
+
+  .sb-modal--media {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    padding: 12px;
+  }
+
+  .sb-modal--media .sb-overlay-content {
+    min-height: 0;
+    padding-top: 12px;
   }
 
   .sb-toast-viewport {

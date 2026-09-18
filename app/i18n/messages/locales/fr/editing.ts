@@ -102,6 +102,7 @@ export const frEditingMessages = {
   "mediaPicker.searchStickers": "Rechercher des stickers",
   "mediaPicker.searchEmotes": "Rechercher des emotes",
   "mediaPicker.emotePacks": "Packs d’emotes",
+  "mediaPicker.stickerPacks": "Packs de stickers",
   "mediaPicker.addItem": "Ajouter {name}",
   "mediaPicker.gifResults": "Résultats GIF",
   "mediaPicker.stickerResults": "Résultats stickers",

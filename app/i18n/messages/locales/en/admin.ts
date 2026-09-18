@@ -377,7 +377,7 @@ export const enAdminMessages = {
   "admin.presetLab.filter.emotes": "Emotes",
   "admin.presetLab.type.avatarFrame": "Avatar frame",
   "admin.presetLab.type.profileBanner": "Profile banner",
-  "admin.presetLab.type.profileEffect": "Profile effect",
+  "admin.presetLab.type.profileEffect": "Banner effect",
   "admin.presetLab.type.nameEffect": "Name effect",
   "admin.presetLab.type.nameFont": "Name font",
   "admin.presetLab.type.stickerPack": "Sticker pack",
@@ -398,7 +398,7 @@ export const enAdminMessages = {
   "admin.cosmeticGuide.opacityRule": "Opacity and intensity stay between 0 and 1.",
   "admin.cosmeticGuide.glowRule": "Glow blur is capped at 32px and glow opacity at 1.",
   "admin.cosmeticGuide.paletteDescription":
-    "Profile Themes own the card surface, background treatment and broad color language. Profile Effects add ambient motion or particles above that surface; they must not replace the Theme or hide profile content.",
+    "Profile Themes own the card surface, background treatment and broad color language. Banner Effects add ambient motion or particles inside the banner; they must not replace the Theme or hide profile content.",
   "admin.cosmeticGuide.motionTitle": "Motion and particles",
   "admin.cosmeticGuide.durationRule": "Animation duration: 300ms minimum and 60000ms maximum.",
   "admin.cosmeticGuide.delayRule":

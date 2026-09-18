@@ -406,7 +406,43 @@ describe("link preview metadata fetcher", () => {
       canonicalUrl: submittedUrl,
       metadataStatus: "URL_ONLY",
     });
-    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers the origin icon and theme when a profile URL redirects to login", async () => {
+    const submittedUrl = "https://www.instagram.com/itshannahowo";
+    const loginUrl =
+      "https://www.instagram.com/accounts/login/?next=https%3A%2F%2Fwww.instagram.com%2Fitshannahowo&is_from_rle";
+    const originHtml = `<!doctype html><html><head>
+      <meta property="og:site_name" content="Instagram">
+      <meta property="og:title" content="Instagram">
+      <meta property="og:image" content="https://static.cdninstagram.com/brand.png">
+      <link rel="apple-touch-icon" href="https://static.cdninstagram.com/icon.png">
+      <meta name="theme-color" content="#123456">
+    </head></html>`;
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === submittedUrl) {
+        return new Response(null, { status: 302, headers: { location: loginUrl } });
+      }
+      if (String(input) === "https://www.instagram.com/") {
+        return new Response(originHtml, { headers: { "content-type": "text/html" } });
+      }
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    }) as unknown as typeof fetch;
+    const service = createLinkPreviewService({
+      fetchImpl,
+      resolveHost: publicResolver(),
+    });
+
+    await expect(service.preview(submittedUrl)).resolves.toMatchObject({
+      canonicalUrl: submittedUrl,
+      siteName: "Instagram",
+      title: "Instagram",
+      imageUrl: "https://static.cdninstagram.com/brand.png",
+      themeColor: "#123456",
+      metadataStatus: "COMPLETE",
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("does not reuse a cached preview whose canonical URL already lost the submitted path", async () => {

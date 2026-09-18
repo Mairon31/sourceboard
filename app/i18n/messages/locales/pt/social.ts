@@ -158,6 +158,7 @@ export const ptSocialMessages = {
   "comments.closed.description":
     "O autor aceitou uma fonte e encerrou esta discussão. Os comentários existentes continuam visíveis.",
   "comments.composer.addReply": "Adicionar uma resposta",
+  "comments.composer.replyingTo": "Respondendo a {name}",
   "comments.composer.addComment": "Adicionar um comentário",
   "comments.composer.placeholder":
     "Adicione contexto, um link da fonte ou explique como você a verificou…",

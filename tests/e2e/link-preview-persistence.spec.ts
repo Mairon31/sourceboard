@@ -47,18 +47,18 @@ function seedPersistedPreview() {
        NULL, 'VISIBLE', 0, ${now}, ${now}, ${editDeadline}, NULL, NULL);
 
     INSERT INTO comment_link_previews
-      (comment_id, canonical_url, site_name, title, description, image_url, fetched_at,
-       metadata_status)
+      (comment_id, canonical_url, site_name, title, description, image_url, theme_color,
+       fetched_at, metadata_status)
     VALUES
       ('e2e-link-preview-comment', 'https://example.com/source', 'Example Site',
        'Persisted source preview', 'Persisted metadata survives ordinary comment reads.',
-       'https://example.com/preview.png', ${now}, 'COMPLETE'),
+       'https://example.com/preview.png', '#123456', ${now}, 'COMPLETE'),
       ('e2e-link-preview-partial', 'https://example.com/partial', 'Example Site',
-       'Partial source preview', 'Useful but incomplete metadata.', NULL, ${now}, 'PARTIAL'),
+       'Partial source preview', 'Useful but incomplete metadata.', NULL, NULL, ${now}, 'PARTIAL'),
       ('e2e-link-preview-minimal', 'https://example.com/minimal', NULL,
-       'Minimal source preview', NULL, NULL, ${now}, 'MINIMAL'),
+       'Minimal source preview', NULL, NULL, NULL, ${now}, 'MINIMAL'),
       ('e2e-link-preview-url-only', 'https://example.com/url-only', NULL,
-       NULL, NULL, NULL, ${now}, 'URL_ONLY');
+       NULL, NULL, NULL, NULL, ${now}, 'URL_ONLY');
 
     UPDATE posts
     SET comment_count = (
@@ -84,6 +84,7 @@ test("persisted link preview survives an ordinary comment API reload", async ({ 
         title?: string;
         description?: string;
         imageUrl?: string;
+        themeColor?: string;
         metadataStatus: string;
       };
     }>;
@@ -95,6 +96,7 @@ test("persisted link preview survives an ordinary comment API reload", async ({ 
     title: "Persisted source preview",
     description: "Persisted metadata survives ordinary comment reads.",
     imageUrl: "/api/comments/e2e-link-preview-comment/link-preview-image",
+    themeColor: "#123456",
     metadataStatus: "COMPLETE",
   });
 });
@@ -129,6 +131,7 @@ test("all persisted preview states render in the shared card without mobile over
       await expect(card).toHaveAttribute("data-metadata-status", status);
       if (status === "COMPLETE") {
         await expect(card.locator("img")).toHaveCount(1);
+        await expect(card).toHaveCSS("border-left-width", "3px");
       } else {
         await expect(card.locator("img")).toHaveCount(0);
       }

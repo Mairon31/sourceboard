@@ -51,6 +51,10 @@ interface StickerPack {
   stickers: SourceBoardStickerItem[];
 }
 
+function stickerPackTabId(packId: string): string {
+  return `sourceboard:${packId}`;
+}
+
 export type MediaPickerSelection = KlipyMediaItem | EmotePickerItem | SourceBoardStickerItem;
 
 interface MediaCacheEntry {
@@ -96,6 +100,7 @@ export function MediaPicker({
   const [packs, setPacks] = useState<EmotePack[]>([]);
   const [stickerPacks, setStickerPacks] = useState<StickerPack[]>([]);
   const [activePackId, setActivePackId] = useState<string>();
+  const [activeStickerPackId, setActiveStickerPackId] = useState("klipy");
   const [status, setStatus] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [nextPos, setNextPos] = useState<string | null>(null);
@@ -108,8 +113,11 @@ export function MediaPicker({
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const emoteScrollRef = useRef<HTMLDivElement | null>(null);
+  const stickerScrollRef = useRef<HTMLDivElement | null>(null);
   const packBarRef = useRef<HTMLElement | null>(null);
+  const stickerPackBarRef = useRef<HTMLElement | null>(null);
   const packObserverRef = useRef<IntersectionObserver | null>(null);
+  const stickerPackObserverRef = useRef<IntersectionObserver | null>(null);
   const emotePackCacheRef = useRef<EmotePack[] | null>(null);
 
   const searchLabel =
@@ -127,6 +135,7 @@ export function MediaPicker({
   useEffect(() => {
     setQuery("");
     setStatus(undefined);
+    if (kind === "STICKER") setActiveStickerPackId("klipy");
   }, [kind]);
 
   useEffect(() => {
@@ -138,7 +147,9 @@ export function MediaPicker({
           packs?: StickerPack[];
         } | null;
         if (!response.ok) throw new Error(t("mediaPicker.stickersUnavailable"));
-        setStickerPacks(Array.isArray(payload?.packs) ? payload.packs : []);
+        const next = Array.isArray(payload?.packs) ? payload.packs : [];
+        setStickerPacks(next);
+        setActiveStickerPackId("klipy");
       })
       .catch((cause: unknown) => {
         if (cause instanceof DOMException && cause.name === "AbortError") return;
@@ -301,7 +312,7 @@ export function MediaPicker({
   }, [busy, kind, loadingMore, nextPos, query, t]);
 
   useEffect(() => {
-    const root = resultsRef.current;
+    const root = kind === "STICKER" ? stickerScrollRef.current : resultsRef.current;
     const sentinel = sentinelRef.current;
     if (!root || !sentinel || !nextPos || kind === "EMOTE") return;
     const observer = new IntersectionObserver(
@@ -379,6 +390,41 @@ export function MediaPicker({
   }, [filteredPacks, kind]);
 
   useEffect(() => {
+    stickerPackObserverRef.current?.disconnect();
+    if (kind !== "STICKER" || !stickerScrollRef.current) return;
+    const root = stickerScrollRef.current;
+    const ratios = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const section = entry.target as HTMLElement;
+          const id = section.dataset.packId;
+          if (id) ratios.set(id, entry.isIntersecting ? entry.intersectionRatio : 0);
+        }
+        const lastPack = [...root.querySelectorAll<HTMLElement>("[data-pack-id]")].at(-1);
+        if (
+          lastPack?.dataset.packId &&
+          root.scrollTop + root.clientHeight >= root.scrollHeight - 1
+        ) {
+          setActiveStickerPackId(lastPack.dataset.packId);
+          return;
+        }
+        const best = [...ratios.entries()].sort((left, right) => right[1] - left[1])[0];
+        if (best && best[1] > 0) setActiveStickerPackId(best[0]);
+      },
+      { root, threshold: [0.1, 0.35, 0.65], rootMargin: "0px 0px -45% 0px" },
+    );
+    stickerPackObserverRef.current = observer;
+    for (const section of root.querySelectorAll<HTMLElement>("[data-pack-id]")) {
+      observer.observe(section);
+    }
+    return () => {
+      observer.disconnect();
+      if (stickerPackObserverRef.current === observer) stickerPackObserverRef.current = null;
+    };
+  }, [items, kind, stickerPacks]);
+
+  useEffect(() => {
     if (!activePackId || !packBarRef.current) return;
     const packBar = packBarRef.current;
     const activeButton = Array.from(
@@ -394,9 +440,42 @@ export function MediaPicker({
     });
   }, [activePackId]);
 
+  useEffect(() => {
+    if (!activeStickerPackId || !stickerPackBarRef.current) return;
+    const packBar = stickerPackBarRef.current;
+    const activeButton = Array.from(
+      packBar.querySelectorAll<HTMLButtonElement>("[data-pack-tab-id]"),
+    ).find((button) => button.dataset.packTabId === activeStickerPackId);
+    if (!activeButton) return;
+    packBar.scrollTo({
+      left: Math.max(
+        0,
+        activeButton.offsetLeft - (packBar.clientWidth - activeButton.offsetWidth) / 2,
+      ),
+      behavior: "auto",
+    });
+  }, [activeStickerPackId]);
+
   function jumpToPack(packId: string) {
     setActivePackId(packId);
     const root = emoteScrollRef.current;
+    if (!root) return;
+    const section = Array.from(root.querySelectorAll<HTMLElement>("[data-pack-id]")).find(
+      (candidate) => candidate.dataset.packId === packId,
+    );
+    if (!section) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const top =
+      section.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop;
+    root.scrollTo({
+      top: Math.max(0, top),
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }
+
+  function jumpToStickerPack(packId: string) {
+    setActiveStickerPackId(packId);
+    const root = stickerScrollRef.current;
     if (!root) return;
     const section = Array.from(root.querySelectorAll<HTMLElement>("[data-pack-id]")).find(
       (candidate) => candidate.dataset.packId === packId,
@@ -545,59 +624,106 @@ export function MediaPicker({
           />
         </div>
       ) : (
-        <div
-          ref={resultsRef}
-          className="product-comment-media-picker__sticker-scroll"
-          data-media-kind="sticker"
-        >
-          {stickerPacks.length ? (
-            <div className="product-comment-media-picker__sourceboard-stickers">
-              {stickerPacks.map((pack) => (
-                <section key={pack.id}>
-                  <h3>{pack.label}</h3>
-                  <div
-                    className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
-                    aria-label={t("mediaPicker.packStickers", { name: pack.label })}
-                  >
-                    {pack.stickers.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="is-sticker"
-                        aria-label={t("mediaPicker.addItem", { name: item.label })}
-                        onClick={() => onSelect(item)}
-                      >
-                        <img src={item.url} alt={item.label} loading="lazy" />
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              ))}
-              <h3>{t("mediaPicker.klipy")}</h3>
-            </div>
-          ) : null}
-          <div
-            className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
-            aria-label={t("mediaPicker.stickerResults")}
+        <>
+          <nav
+            ref={stickerPackBarRef}
+            className="product-comment-media-picker__packbar"
+            aria-label={t("mediaPicker.stickerPacks")}
           >
-            {items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="is-sticker"
-                aria-label={t("mediaPicker.addItem", { name: item.title })}
-                onClick={() => onSelect(item)}
-              >
-                <img src={item.url || item.preview} alt={item.title} loading="lazy" />
-              </button>
-            ))}
-            <div
-              ref={sentinelRef}
-              className="product-comment-media-picker__sentinel"
-              aria-hidden="true"
-            />
+            <button
+              type="button"
+              data-pack-tab-id="klipy"
+              className={activeStickerPackId === "klipy" ? "is-active" : undefined}
+              aria-label={t("mediaPicker.klipy")}
+              title={t("mediaPicker.klipy")}
+              onClick={() => jumpToStickerPack("klipy")}
+            >
+              <span className="product-comment-media-picker__packicon product-comment-media-picker__packicon--label">
+                K
+              </span>
+            </button>
+            {stickerPacks.map((pack) => {
+              const tabId = stickerPackTabId(pack.id);
+              return (
+                <button
+                  key={pack.id}
+                  type="button"
+                  data-pack-tab-id={tabId}
+                  className={activeStickerPackId === tabId ? "is-active" : undefined}
+                  aria-label={pack.label}
+                  title={pack.label}
+                  onClick={() => jumpToStickerPack(tabId)}
+                >
+                  <span className="product-comment-media-picker__packicon">
+                    {pack.stickers.slice(0, 4).map((item) => (
+                      <img key={item.id} src={item.url} alt="" loading="lazy" />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+          <div
+            ref={stickerScrollRef}
+            className="product-comment-media-picker__sticker-scroll"
+            data-media-kind="sticker"
+          >
+            <div className="product-comment-media-picker__sourceboard-stickers">
+              <section id="comment-sticker-pack-klipy" data-pack-id="klipy">
+                <h3>{t("mediaPicker.klipy")}</h3>
+                <div
+                  className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
+                  aria-label={t("mediaPicker.stickerResults")}
+                >
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="is-sticker"
+                      aria-label={t("mediaPicker.addItem", { name: item.title })}
+                      onClick={() => onSelect(item)}
+                    >
+                      <img src={item.url || item.preview} alt={item.title} loading="lazy" />
+                    </button>
+                  ))}
+                  <div
+                    ref={sentinelRef}
+                    className="product-comment-media-picker__sentinel"
+                    aria-hidden="true"
+                  />
+                </div>
+              </section>
+              {stickerPacks.map((pack) => {
+                const tabId = stickerPackTabId(pack.id);
+                return (
+                  <section
+                    key={pack.id}
+                    id={`comment-sticker-pack-${encodeURIComponent(pack.id)}`}
+                    data-pack-id={tabId}
+                  >
+                    <h3>{pack.label}</h3>
+                    <div
+                      className="product-comment-media-picker__results product-comment-media-picker__results--sticker"
+                      aria-label={t("mediaPicker.packStickers", { name: pack.label })}
+                    >
+                      {pack.stickers.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="is-sticker"
+                          aria-label={t("mediaPicker.addItem", { name: item.label })}
+                          onClick={() => onSelect(item)}
+                        >
+                          <img src={item.url} alt={item.label} loading="lazy" />
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </>
       )}
       {busy ? <small role="status">{t("mediaPicker.loading")}</small> : null}
       {!busy && loadingMore ? <small role="status">{t("mediaPicker.loadingMore")}</small> : null}

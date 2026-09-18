@@ -192,6 +192,7 @@ export const enProductMessages = {
   "profile.action.block": "Block",
   "profile.action.blockAccount": "Block account",
   "profile.action.blockError": "Could not block this account.",
+  "profile.action.viewProfile": "View profile",
   "profile.ownEyebrow": "Your profile",
   "profile.publicEyebrow": "Public profile",
   "profile.summaryAria": "Profile summary",

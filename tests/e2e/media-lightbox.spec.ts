@@ -42,6 +42,17 @@ test("post image opens the shared accessible lightbox and restores focus", async
   const viewport = dialog.locator(".product-media-lightbox__viewport");
   await expect(viewport).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Zoom in" })).toBeVisible();
+  const viewportBox = await viewport.boundingBox();
+  const imageBox = await dialog.locator(".product-media-lightbox__image").boundingBox();
+  expect(viewportBox).not.toBeNull();
+  expect(imageBox).not.toBeNull();
+  expect(
+    Math.abs(
+      (imageBox?.y ?? 0) +
+        (imageBox?.height ?? 0) / 2 -
+        ((viewportBox?.y ?? 0) + (viewportBox?.height ?? 0) / 2),
+    ),
+  ).toBeLessThan(24);
 
   await dialog.getByRole("button", { name: "Zoom in" }).click();
   await expect(dialog.locator("output")).toHaveText("150%");
@@ -76,6 +87,17 @@ test("comment image uses the same lightbox on mobile", async ({ page }) => {
     "alt",
     "Comment lightbox image",
   );
+  const mobileViewportBox = await dialog.locator(".product-media-lightbox__viewport").boundingBox();
+  const mobileImageBox = await dialog.locator(".product-media-lightbox__image").boundingBox();
+  expect(mobileViewportBox).not.toBeNull();
+  expect(mobileImageBox).not.toBeNull();
+  expect(
+    Math.abs(
+      (mobileImageBox?.y ?? 0) +
+        (mobileImageBox?.height ?? 0) / 2 -
+        ((mobileViewportBox?.y ?? 0) + (mobileViewportBox?.height ?? 0) / 2),
+    ),
+  ).toBeLessThan(24);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();

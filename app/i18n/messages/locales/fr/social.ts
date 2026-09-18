@@ -158,6 +158,7 @@ export const frSocialMessages = {
   "comments.closed.description":
     "L’auteur a accepté une source et fermé cette discussion. Les commentaires existants restent visibles.",
   "comments.composer.addReply": "Ajouter une réponse",
+  "comments.composer.replyingTo": "Réponse à {name}",
   "comments.composer.addComment": "Ajouter un commentaire",
   "comments.composer.placeholder":
     "Ajoutez du contexte, un lien source ou expliquez comment vous l’avez vérifié…",

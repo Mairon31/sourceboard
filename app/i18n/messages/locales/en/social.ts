@@ -155,6 +155,7 @@ export const enSocialMessages = {
   "comments.closed.description":
     "The author accepted a source and closed this discussion. Existing comments remain visible.",
   "comments.composer.addReply": "Add a reply",
+  "comments.composer.replyingTo": "Replying to {name}",
   "comments.composer.addComment": "Add a comment",
   "comments.composer.placeholder": "Add context, a source link, or explain how you verified it…",
   "comments.composer.identity.label": "Comment as",

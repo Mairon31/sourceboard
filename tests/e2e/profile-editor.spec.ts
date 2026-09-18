@@ -194,6 +194,46 @@ test("public profile never exposes private editing controls", async ({ page }) =
   await expect(page.getByRole("button", { name: "Edit profile" })).toBeVisible();
 });
 
+test("private profile exposes edit, view and share actions in a stable order", async ({ page }) => {
+  await installProfileEditorFixture(page);
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/profile");
+    await waitForUiReady(page);
+
+    const actions = page.locator(".product-profile-actions");
+    await expect(actions.getByRole("button", { name: "Edit profile" })).toBeVisible();
+    await expect(actions.getByRole("link", { name: "View profile" })).toHaveAttribute(
+      "href",
+      `/u/${ORIGINAL_USERNAME}`,
+    );
+    await expect(actions.getByRole("button", { name: "Share" })).toBeVisible();
+
+    const actionLabels = await actions
+      .locator("button, a")
+      .evaluateAll((elements) =>
+        elements.map((element) => element.textContent?.replace(/\s+/g, " ").trim()),
+      );
+    expect(actionLabels).toEqual(["Edit profile", "View profile", "Share"]);
+    await expect(page.locator(".product-profile-account__action-icon svg")).toHaveCount(4);
+    expect(
+      await page
+        .locator(".product-profile-account__action")
+        .evaluateAll((elements) =>
+          elements.some((element) => /[›↓↗]/u.test(element.textContent ?? "")),
+        ),
+    ).toBe(false);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1);
+  }
+});
+
 test("profile editor saves safe bio Markdown and public profile renders it without raw HTML", async ({
   page,
 }) => {

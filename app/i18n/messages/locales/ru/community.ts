@@ -10,7 +10,7 @@ export const ruCommunityMessages = {
   "community.type": "Тип косметики",
   "community.type.avatarFrame": "Рамка аватара",
   "community.type.profileBanner": "Тема профиля",
-  "community.type.profileEffect": "Эффект профиля",
+  "community.type.profileEffect": "Эффект баннера",
   "community.type.nameEffect": "Эффект имени",
   "community.type.nameFont": "Шрифт",
   "community.baseFont": "Базовый шрифт",

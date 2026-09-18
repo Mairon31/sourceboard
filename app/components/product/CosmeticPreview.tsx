@@ -126,7 +126,14 @@ export function CosmeticPreview({
       communityStyles={communityStyles}
       mode={compact ? "compact" : "preview"}
     >
-      <CosmeticIdentity displayName={name} avatarUrl={avatarUrl} mode="preview" nameAs="strong" />
+      {cosmetic.type === "PROFILE_EFFECT" ? (
+        <div className="product-cosmetic-preview__effect-label">
+          <span>BANNER EFFECT</span>
+          <strong>{name}</strong>
+        </div>
+      ) : (
+        <CosmeticIdentity displayName={name} avatarUrl={avatarUrl} mode="preview" nameAs="strong" />
+      )}
     </ProfileIdentityCard>
   );
 }

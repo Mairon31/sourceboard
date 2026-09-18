@@ -104,6 +104,17 @@ describe("comment social actions", () => {
     expect(postDetailSource).toContain("sort={commentSort}");
   });
 
+  it("makes reply context visible and brings the shared composer into view", () => {
+    expect(threadSource).toContain("function findComment");
+    expect(threadSource).toContain("const replyTarget");
+    expect(threadSource).toContain("product-comment-composer__reply-context");
+    expect(threadSource).toContain("replyTarget.author.displayName");
+    expect(threadSource).toContain("scrollIntoView");
+    expect(threadSource).toContain("function startReply");
+    expect(threadSource).toContain("onReply={startReply}");
+    expect(threadSource).toContain("readOnly={postArchived || commentsClosed}");
+  });
+
   it("keeps comment and post overflow triggers icon-only", () => {
     expect(threadSource).toContain('triggerIcon={<MoreIcon width="18" height="18" />}');
     expect(threadSource).toContain("iconOnly");

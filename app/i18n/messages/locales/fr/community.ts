@@ -9,7 +9,7 @@ export const frCommunityMessages = {
   "community.type": "Type de cosmétique",
   "community.type.avatarFrame": "Cadre d’avatar",
   "community.type.profileBanner": "Thème du profil",
-  "community.type.profileEffect": "Effet de profil",
+  "community.type.profileEffect": "Effet de bannière",
   "community.type.nameEffect": "Effet de nom",
   "community.type.nameFont": "Police",
   "community.baseFont": "Police de base",

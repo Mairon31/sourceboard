@@ -8,7 +8,7 @@ export const enCommunityMessages = {
   "community.type": "Cosmetic type",
   "community.type.avatarFrame": "Avatar Frame",
   "community.type.profileBanner": "Profile Theme",
-  "community.type.profileEffect": "Profile Effect",
+  "community.type.profileEffect": "Banner Effect",
   "community.type.nameEffect": "Name Effect",
   "community.type.nameFont": "Font",
   "community.baseFont": "Base font",

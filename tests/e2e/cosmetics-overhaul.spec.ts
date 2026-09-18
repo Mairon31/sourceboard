@@ -33,12 +33,16 @@ test("profile theme remains card-wide while uploaded banner stays independent", 
     card.boundingBox(),
     theme.boundingBox(),
     cover.boundingBox(),
+    photo.boundingBox(),
   ]);
   expect(geometry[0]).not.toBeNull();
   expect(geometry[1]).not.toBeNull();
   expect(geometry[2]).not.toBeNull();
+  expect(geometry[3]).not.toBeNull();
   expect(Math.abs((geometry[1]?.width ?? 0) - (geometry[0]?.width ?? 0))).toBeLessThanOrEqual(2);
   expect(Math.abs((geometry[1]?.height ?? 0) - (geometry[0]?.height ?? 0))).toBeLessThanOrEqual(2);
+  expect(Math.abs((geometry[3]?.width ?? 0) - (geometry[2]?.width ?? 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((geometry[3]?.height ?? 0) - (geometry[2]?.height ?? 0))).toBeLessThanOrEqual(1);
   expect((geometry[2]?.height ?? 0) < (geometry[0]?.height ?? 0)).toBe(true);
 
   const layers = await Promise.all([
@@ -83,22 +87,22 @@ test("profile page theme and banner geometry remain visible on desktop and mobil
   }
 });
 
-test("legacy profile effect renders across the card and never inside the avatar", async ({
-  page,
-}) => {
+test("banner effect renders inside the banner and never inside the avatar", async ({ page }) => {
   await page.goto("/u/e2e-cosmetics");
 
   const card = page.locator(".product-profile-identity-card");
-  const effect = card.locator(':scope > [data-profile-effect="rgb-glitch"]');
+  const cover = card.locator(":scope > .product-profile-cover");
+  const effect = cover.locator(':scope > [data-profile-effect="rgb-glitch"]');
 
   await expect(effect).toHaveCount(1);
+  await expect(effect).toHaveAttribute("data-effect-surface", "banner");
   await expect(effect.locator(".product-profile-effect-layer__node")).toHaveCount(6);
   await expect(
     page.locator('.product-avatar-stage [data-profile-effect="rgb-glitch"]'),
   ).toHaveCount(0);
   expect(await effect.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
 
-  const geometry = await Promise.all([card.boundingBox(), effect.boundingBox()]);
+  const geometry = await Promise.all([cover.boundingBox(), effect.boundingBox()]);
   expect(geometry[0]).not.toBeNull();
   expect(geometry[1]).not.toBeNull();
   expect(Math.abs((geometry[1]?.width ?? 0) - (geometry[0]?.width ?? 0))).toBeLessThanOrEqual(2);
@@ -288,21 +292,24 @@ test("profile cosmetic layers stay contained and actions remain clickable", asyn
     await page.goto("/u/e2e-cosmetics");
 
     const card = page.locator(".product-profile-identity-card");
-    const effect = card.locator(':scope > [data-profile-effect="rgb-glitch"]');
+    const cover = card.locator(":scope > .product-profile-cover");
+    const effect = cover.locator(':scope > [data-profile-effect="rgb-glitch"]');
     const share = page.getByRole("button", { name: "Share" }).first();
     await expect(card).toBeVisible();
+    await expect(cover).toBeVisible();
     await expect(effect).toBeVisible();
+    await expect(effect).toHaveAttribute("data-effect-surface", "banner");
     await expect(share).toBeVisible();
     await share.click({ trial: true });
 
-    const [cardBox, effectBox] = await Promise.all([card.boundingBox(), effect.boundingBox()]);
-    expect(cardBox).not.toBeNull();
+    const [coverBox, effectBox] = await Promise.all([cover.boundingBox(), effect.boundingBox()]);
+    expect(coverBox).not.toBeNull();
     expect(effectBox).not.toBeNull();
-    if (cardBox && effectBox) {
-      expect(effectBox.x).toBeGreaterThanOrEqual(cardBox.x - 1);
-      expect(effectBox.y).toBeGreaterThanOrEqual(cardBox.y - 1);
-      expect(effectBox.x + effectBox.width).toBeLessThanOrEqual(cardBox.x + cardBox.width + 1);
-      expect(effectBox.y + effectBox.height).toBeLessThanOrEqual(cardBox.y + cardBox.height + 1);
+    if (coverBox && effectBox) {
+      expect(effectBox.x).toBeGreaterThanOrEqual(coverBox.x - 1);
+      expect(effectBox.y).toBeGreaterThanOrEqual(coverBox.y - 1);
+      expect(effectBox.x + effectBox.width).toBeLessThanOrEqual(coverBox.x + coverBox.width + 1);
+      expect(effectBox.y + effectBox.height).toBeLessThanOrEqual(coverBox.y + coverBox.height + 1);
     }
 
     const overflow = await page.evaluate(

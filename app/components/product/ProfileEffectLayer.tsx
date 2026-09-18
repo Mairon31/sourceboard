@@ -45,6 +45,7 @@ export function ProfileEffectLayer({
       }}
       data-profile-effect={preset ?? "custom"}
       data-effect-mechanism={mechanism}
+      data-effect-surface="banner"
       data-creator-pro={creatorPro ? "true" : undefined}
       data-creator-particle-path={creatorPro?.particles?.path}
       aria-hidden="true"

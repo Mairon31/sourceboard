@@ -382,7 +382,7 @@ export const frAdminMessages = {
   "admin.presetLab.filter.emotes": "Emotes",
   "admin.presetLab.type.avatarFrame": "Cadre d’avatar",
   "admin.presetLab.type.profileBanner": "Bannière de profil",
-  "admin.presetLab.type.profileEffect": "Effet de profil",
+  "admin.presetLab.type.profileEffect": "Effet de bannière",
   "admin.presetLab.type.nameEffect": "Effet de nom",
   "admin.presetLab.type.nameFont": "Police du nom",
   "admin.presetLab.type.stickerPack": "Pack de stickers",
@@ -403,7 +403,7 @@ export const frAdminMessages = {
   "admin.cosmeticGuide.opacityRule": "L’opacité et l’intensité restent entre 0 et 1.",
   "admin.cosmeticGuide.glowRule": "Le flou de halo est limité à 32px et son opacité à 1.",
   "admin.cosmeticGuide.paletteDescription":
-    "Les thèmes de profil contrôlent la surface de la carte, le fond et le langage général des couleurs. Les effets de profil ajoutent un mouvement ambiant ou des particules au-dessus ; ils ne doivent ni remplacer le thème ni masquer le contenu.",
+    "Les thèmes de profil contrôlent la surface de la carte, le fond et le langage général des couleurs. Les effets de bannière ajoutent un mouvement ambiant ou des particules dans la bannière ; ils ne doivent ni remplacer le thème ni masquer le contenu.",
   "admin.cosmeticGuide.motionTitle": "Mouvement et particules",
   "admin.cosmeticGuide.durationRule": "Durée d’animation : minimum 300ms et maximum 60000ms.",
   "admin.cosmeticGuide.delayRule":

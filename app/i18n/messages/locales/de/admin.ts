@@ -383,7 +383,7 @@ export const deAdminMessages = {
   "admin.presetLab.filter.emotes": "Emotes",
   "admin.presetLab.type.avatarFrame": "Avatarrahmen",
   "admin.presetLab.type.profileBanner": "Profilbanner",
-  "admin.presetLab.type.profileEffect": "Profileffekt",
+  "admin.presetLab.type.profileEffect": "Banner-Effekt",
   "admin.presetLab.type.nameEffect": "Namenseffekt",
   "admin.presetLab.type.nameFont": "Namensschrift",
   "admin.presetLab.type.stickerPack": "Sticker-Pack",
@@ -405,7 +405,7 @@ export const deAdminMessages = {
   "admin.cosmeticGuide.glowRule":
     "Der Leuchteffekt ist auf 32px Unschärfe und Deckkraft 1 begrenzt.",
   "admin.cosmeticGuide.paletteDescription":
-    "Profilthemen besitzen die Kartenoberfläche, den Hintergrund und die allgemeine Farbsprache. Profileffekte ergänzen darüber Bewegungen oder Partikel; sie dürfen das Thema nicht ersetzen oder Profilinhalte verbergen.",
+    "Profilthemen besitzen die Kartenoberfläche, den Hintergrund und die allgemeine Farbsprache. Banner-Effekte ergänzen innerhalb des Banners Bewegungen oder Partikel; sie dürfen das Thema nicht ersetzen oder Profilinhalte verbergen.",
   "admin.cosmeticGuide.motionTitle": "Bewegung und Partikel",
   "admin.cosmeticGuide.durationRule": "Animationsdauer: mindestens 300ms und höchstens 60000ms.",
   "admin.cosmeticGuide.delayRule":

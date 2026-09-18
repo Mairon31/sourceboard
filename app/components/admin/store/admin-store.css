@@ -494,7 +494,8 @@
 }
 
 .admin-store-pack-header,
-.admin-store-add-emote {
+.admin-store-add-emote,
+.admin-store-add-sticker {
   display: grid;
   min-width: 0;
   gap: var(--space-4);
@@ -502,6 +503,13 @@
 }
 
 .admin-store-add-emote__form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.admin-store-add-sticker__form {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   align-items: end;
@@ -553,6 +561,87 @@
   overflow-wrap: anywhere;
 }
 
+.admin-store-sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.admin-store-sticker-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 130px minmax(0, 1fr);
+  overflow: visible;
+}
+
+.admin-store-sticker-card__preview {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+  overflow: hidden;
+  border-right: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  background: var(--bg-app-secondary);
+}
+
+.admin-store-sticker-card__preview img {
+  width: min(108px, 84%);
+  height: min(108px, 84%);
+  object-fit: contain;
+}
+
+.admin-store-sticker-card__body {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.admin-store-sticker-card__heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-store-sticker-card__heading > div:first-child {
+  min-width: 0;
+}
+
+.admin-store-sticker-card__heading code {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.admin-store-sticker-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-store-sticker-meta > span {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 0 9px;
+  background: var(--bg-app-secondary);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-store-sticker-editor {
+  display: grid;
+  gap: var(--space-3);
+}
+
 .admin-store-emote-meta {
   display: flex;
   flex-wrap: wrap;
@@ -583,11 +672,13 @@
 
 @media (max-width: 1100px) {
   .admin-store-cosmetic-grid,
-  .admin-store-emote-grid {
+  .admin-store-emote-grid,
+  .admin-store-sticker-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .admin-store-add-emote__form {
+  .admin-store-add-emote__form,
+  .admin-store-add-sticker__form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -622,18 +713,21 @@
   .admin-store-section-heading,
   .admin-store-cosmetic-card__title,
   .admin-store-emote-card__heading,
+  .admin-store-sticker-card__heading,
   .admin-store-pack-header__main {
     display: grid;
     align-items: start;
   }
 
   .admin-store-cosmetic-card,
-  .admin-store-emote-card {
+  .admin-store-emote-card,
+  .admin-store-sticker-card {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .admin-store-cosmetic-preview,
-  .admin-store-emote-card__preview {
+  .admin-store-emote-card__preview,
+  .admin-store-sticker-card__preview {
     min-height: 150px;
     border-right: 0;
     border-bottom: 1px solid var(--border-subtle);
@@ -641,6 +735,7 @@
   }
 
   .admin-store-add-emote__form,
+  .admin-store-add-sticker__form,
   .admin-store-editor__grid {
     grid-template-columns: minmax(0, 1fr);
   }

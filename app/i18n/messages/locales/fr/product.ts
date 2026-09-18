@@ -198,6 +198,7 @@ export const frProductMessages = {
   "profile.action.block": "Bloquer",
   "profile.action.blockAccount": "Bloquer le compte",
   "profile.action.blockError": "Impossible de bloquer ce compte.",
+  "profile.action.viewProfile": "Voir le profil",
   "profile.ownEyebrow": "Votre profil",
   "profile.publicEyebrow": "Profil public",
   "profile.summaryAria": "Résumé du profil",

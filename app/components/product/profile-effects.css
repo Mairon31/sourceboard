@@ -494,6 +494,80 @@
   animation-delay: var(--fx-delay);
 }
 
+/* Banner effects use the banner as their canvas; circular avatar auras are not
+   meaningful here, so the legacy orb treatments become edge-led bands. */
+.product-profile-effect-layer[data-effect-surface="banner"][data-effect-mechanism="glow"]::before {
+  background:
+    radial-gradient(ellipse at 8% 100%, #b9d7ff38, transparent 42%),
+    radial-gradient(ellipse at 92% 0%, #8ca5ff30, transparent 46%);
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"][data-effect-mechanism="energy"]::before,
+.product-profile-effect-layer[data-effect-surface="banner"][data-effect-mechanism="arc"]::before {
+  background:
+    linear-gradient(112deg, transparent 18%, #72e5ff4a 29%, transparent 40%),
+    linear-gradient(292deg, transparent 58%, #9f77ff3c 70%, transparent 82%);
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"][data-effect-mechanism="smoke"]::before,
+.product-profile-effect-layer[data-effect-surface="banner"][data-effect-mechanism="mist"]::before {
+  background:
+    radial-gradient(ellipse at 8% 88%, #a78ac438, transparent 42%),
+    radial-gradient(ellipse at 92% 12%, #7c8bb52e, transparent 44%);
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"].product-profile-effect-layer--soft-glow {
+  background:
+    linear-gradient(112deg, #ffffff18, transparent 34% 66%, #8ca5ff22),
+    radial-gradient(ellipse at 2% 100%, #ffffff24, transparent 34%),
+    radial-gradient(ellipse at 98% 0%, #8ca5ff2a, transparent 38%);
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"].product-profile-effect-layer--soft-glow
+  .product-profile-effect-layer__node {
+  width: 48%;
+  height: 18%;
+  border-radius: 42% 58% 38% 62%;
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"].product-profile-effect-layer--dark-smoke
+  .product-profile-effect-layer__node,
+.product-profile-effect-layer[data-effect-surface="banner"].product-profile-effect-layer--moon-mist
+  .product-profile-effect-layer__node {
+  width: 42%;
+  height: 20%;
+  border-radius: 44% 56% 48% 52%;
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"].product-profile-effect-layer--holy-glow {
+  background:
+    linear-gradient(90deg, #fff5c218, transparent 20% 80%, #fff5c218),
+    radial-gradient(ellipse at 10% 100%, #fff7d22c, transparent 38%),
+    radial-gradient(ellipse at 90% 0%, #fff7d222, transparent 38%);
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"].product-profile-effect-layer--energy-arcs {
+  background:
+    linear-gradient(118deg, transparent 23%, #6fdcff2c 32%, transparent 41%),
+    linear-gradient(298deg, transparent 57%, #9f77ff26 67%, transparent 77%);
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"].product-profile-effect-layer--energy-arcs
+  .product-profile-effect-layer__node {
+  width: 42%;
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #72e9ffbb, #9f77ff99, transparent);
+  filter: drop-shadow(0 0 5px #68dcff88);
+}
+
+.product-profile-effect-layer[data-effect-surface="banner"].product-profile-effect-layer--cosmic-rift {
+  background:
+    linear-gradient(118deg, transparent 20%, #6adfff28 34%, transparent 47%),
+    linear-gradient(298deg, transparent 53%, #c160ff2b 66%, transparent 80%);
+}
+
 @keyframes profile-fx-breathe {
   0%,
   100% {

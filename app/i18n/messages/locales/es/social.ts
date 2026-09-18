@@ -158,6 +158,7 @@ export const esSocialMessages = {
   "comments.closed.description":
     "El autor aceptó una fuente y cerró esta conversación. Los comentarios existentes siguen visibles.",
   "comments.composer.addReply": "Añadir una respuesta",
+  "comments.composer.replyingTo": "Respondiendo a {name}",
   "comments.composer.addComment": "Añadir un comentario",
   "comments.composer.placeholder":
     "Añade contexto, un enlace a la fuente o explica cómo la verificaste…",
