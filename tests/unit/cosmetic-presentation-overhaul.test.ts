@@ -149,6 +149,21 @@ describe("Cosmetic presentation overhaul", () => {
     expect(cardCss).not.toContain('data-profile-theme="');
   });
 
+  it("makes the profile card the strong theme layer and the page backdrop subtle", () => {
+    const cardCss = read("../../app/components/product/profile-identity-card.css");
+    const pageCss = read("../../app/components/product/profile-page.css");
+
+    expect(cardCss).toContain(
+      "background: color-mix(in srgb, var(--surface-solid) 46%, transparent);",
+    );
+    expect(cardCss).toContain("backdrop-filter: blur(10px) saturate(135%);");
+    expect(pageCss).toContain(
+      "/* Keep the page backdrop quiet; the card owns the theme emphasis. */",
+    );
+    expect(pageCss).toContain("#765cff2a");
+    expect(pageCss).toContain("var(--bg-app);");
+  });
+
   it("renders every legacy effect through the dedicated card effect stylesheet", () => {
     const effectPath = resolve(
       import.meta.dirname,

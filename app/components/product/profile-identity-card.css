@@ -18,7 +18,9 @@
   position: relative;
   z-index: 3;
   min-width: 0;
-  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-solid) 46%, transparent);
+  backdrop-filter: blur(10px) saturate(135%);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
 }
 
 .product-profile-identity-card .product-profile-content {
