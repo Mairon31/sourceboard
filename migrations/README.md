@@ -76,3 +76,6 @@ comment stores continue to read safely while the migration rolls out.
 
 Migration `0041` adds the persisted post `hide_like_count` moderation control
 and its lookup index. It is additive and keeps existing reaction rows intact.
+
+Migration `0042` adds the nullable `theme_color` metadata captured from public
+link previews. Existing preview snapshots and their image URLs are preserved.

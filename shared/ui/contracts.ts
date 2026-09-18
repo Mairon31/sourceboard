@@ -111,6 +111,7 @@ export interface CommentLinkPreviewView {
   title?: string;
   description?: string;
   imageUrl?: string;
+  themeColor?: string;
   metadataStatus: "COMPLETE" | "PARTIAL" | "MINIMAL" | "URL_ONLY";
 }
 

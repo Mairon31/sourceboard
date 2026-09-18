@@ -199,6 +199,37 @@ describe("link preview metadata fetcher", () => {
     ).toEqual([titleUrl, "https://v2.sg.media-imdb.com/suggestion/x/tt0245429.json"]);
   });
 
+  it("recovers metadata for localized IMDb title paths", async () => {
+    const titleUrl = "https://www.imdb.com/es/title/tt1865718/";
+    const imageUrl =
+      "https://m.media-amazon.com/images/M/MV5BMTEzNDc3MDQ2NzNeQTJeQWpwZ15BbWU4MDYzMzUwMDIx._V1_.jpg";
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === titleUrl) {
+        return new Response(
+          '<html><script>window.gokuProps={};</script><div id="challenge-container"></div></html>',
+          { status: 202, headers: { "content-type": "text/html; charset=UTF-8" } },
+        );
+      }
+      if (url === "https://v2.sg.media-imdb.com/suggestion/x/tt1865718.json") {
+        return new Response(
+          JSON.stringify({ d: [{ id: "tt1865718", l: "Gravity Falls", i: { imageUrl } }] }),
+          { headers: { "content-type": "application/json; charset=utf-8" } },
+        );
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    }) as unknown as typeof fetch;
+    const service = createLinkPreviewService({ fetchImpl, resolveHost: publicResolver() });
+
+    await expect(service.preview(titleUrl)).resolves.toMatchObject({
+      canonicalUrl: titleUrl,
+      siteName: "IMDb",
+      title: "Gravity Falls",
+      imageUrl,
+      metadataStatus: "COMPLETE",
+    });
+  });
+
   it("recognizes challenge markers even when the upstream returns HTTP 200", async () => {
     const titleUrl = "https://www.imdb.com/title/tt0245429/";
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
@@ -290,6 +321,45 @@ describe("link preview metadata fetcher", () => {
       imageUrl: "https://example.com/preview.webp",
       fetchedAt: 2000,
       metadataStatus: "COMPLETE",
+    });
+  });
+
+  it("uses the apple touch icon when social image metadata is unavailable", async () => {
+    const html = `<!doctype html><html><head>
+      <title>Fallback source</title>
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+      <meta name="theme-color" content="#1a2b3c">
+    </head></html>`;
+    const service = createLinkPreviewService({
+      fetchImpl: vi.fn(
+        async () => new Response(html, { headers: { "content-type": "text/html" } }),
+      ) as unknown as typeof fetch,
+      resolveHost: publicResolver(),
+    });
+
+    await expect(service.preview("https://example.com/fallback-icon")).resolves.toMatchObject({
+      title: "Fallback source",
+      imageUrl: "https://example.com/apple-touch-icon.png",
+      themeColor: "#1a2b3c",
+      metadataStatus: "COMPLETE",
+    });
+  });
+
+  it("prefers og:image over the apple touch icon fallback", async () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:title" content="Social image source">
+      <meta property="og:image" content="/social-image.png">
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    </head></html>`;
+    const service = createLinkPreviewService({
+      fetchImpl: vi.fn(
+        async () => new Response(html, { headers: { "content-type": "text/html" } }),
+      ) as unknown as typeof fetch,
+      resolveHost: publicResolver(),
+    });
+
+    await expect(service.preview("https://example.com/social-image")).resolves.toMatchObject({
+      imageUrl: "https://example.com/social-image.png",
     });
   });
 

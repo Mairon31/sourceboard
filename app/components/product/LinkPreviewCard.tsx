@@ -1,5 +1,5 @@
 import type { CommentLinkPreviewView } from "../../../shared/ui/contracts";
-import { useState } from "react";
+import { type CSSProperties, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 
 function previewLabel(preview: CommentLinkPreviewView, fallback: string): string {
@@ -23,9 +23,15 @@ export function LinkPreviewCard({
   const hasImage = Boolean(preview.imageUrl && !imageFailed);
   const hasMetadata = Boolean(preview.title || preview.description || hasImage);
   const showCanonicalUrl = !hasMetadata;
+  const themeColor =
+    preview.themeColor && /^#[0-9a-f]{6}$/i.test(preview.themeColor)
+      ? preview.themeColor
+      : undefined;
+  const style = themeColor ? ({ "--link-preview-accent": themeColor } as CSSProperties) : undefined;
   return (
     <a
       className={`product-link-preview-card${compact ? " product-link-preview-card--compact" : ""}`}
+      style={style}
       href={preview.canonicalUrl}
       target="_blank"
       rel="noopener noreferrer"

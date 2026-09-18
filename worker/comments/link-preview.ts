@@ -33,7 +33,7 @@ const PREVIEW_USER_AGENT = "SourceBoard-LinkPreview/1.0";
 const BROWSER_COMPATIBLE_USER_AGENT =
   "Mozilla/5.0 (compatible; SourceBoard-LinkPreview/1.0; +https://srcboard.me)";
 const IMDB_SUGGESTION_HOST = "v2.sg.media-imdb.com";
-const IMDB_TITLE_PATH = /^\/title\/(tt\d+)(?:\/|$)/i;
+const IMDB_TITLE_PATH = /^\/(?:[a-z]{2,3}(?:-[a-z]{2})?\/)?title\/(tt\d+)(?:\/|$)/i;
 
 function linkError(status: number, code: string, message: string): PostError {
   return new PostError(status, code, message);
@@ -296,6 +296,30 @@ function firstCleanMetadata(values: Array<string | null | undefined>, max: numbe
   return null;
 }
 
+function normalizeHexColor(value: string | null): string | null {
+  const cleaned = value?.trim().toLowerCase() ?? "";
+  if (/^#[0-9a-f]{6}$/.test(cleaned)) return cleaned;
+  if (/^#[0-9a-f]{3}$/.test(cleaned)) {
+    return `#${cleaned
+      .slice(1)
+      .split("")
+      .map((part) => `${part}${part}`)
+      .join("")}`;
+  }
+  return null;
+}
+
+function isColorMetadataKey(value: string): boolean {
+  return (
+    value === "theme-color" ||
+    value === "msapplication-tilecolor" ||
+    value === "og:theme-color" ||
+    value === "color" ||
+    value.endsWith("-color") ||
+    value.endsWith(":color")
+  );
+}
+
 function parseAttributes(tag: string): Record<string, string> {
   const attributes: Record<string, string> = {};
   const pattern = /([^\s=/>]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g;
@@ -312,6 +336,8 @@ function metadataValues(html: string): {
   description: string | null;
   siteName: string | null;
   image: string | null;
+  icon: string | null;
+  themeColor: string | null;
   canonical: string | null;
 } {
   let ogTitle: string | null = null;
@@ -322,6 +348,7 @@ function metadataValues(html: string): {
   let siteName: string | null = null;
   let ogImage: string | null = null;
   let twitterImage: string | null = null;
+  let themeColor: string | null = null;
   let canonical: string | null = null;
   for (const match of html.matchAll(/<meta\b[^>]*>/gi)) {
     const attributes = parseAttributes(match[0]);
@@ -336,13 +363,21 @@ function metadataValues(html: string): {
     else if (key === "og:site_name" && !siteName) siteName = content;
     else if (key === "og:image" && !ogImage) ogImage = content;
     else if (key === "twitter:image" && !twitterImage) twitterImage = content;
+    else if (!themeColor && isColorMetadataKey(key)) themeColor = normalizeHexColor(content);
   }
+  let icon: string | null = null;
   for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
     const attributes = parseAttributes(match[0]);
     const rel = (attributes.rel ?? "").toLowerCase().split(/\s+/);
-    if (rel.includes("canonical") && attributes.href) {
+    if (
+      !icon &&
+      (rel.includes("apple-touch-icon") || rel.includes("apple-touch-icon-precomposed")) &&
+      attributes.href
+    ) {
+      icon = attributes.href;
+    }
+    if (!canonical && rel.includes("canonical") && attributes.href) {
       canonical = attributes.href;
-      break;
     }
   }
   const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
@@ -351,6 +386,8 @@ function metadataValues(html: string): {
     description: firstCleanMetadata([ogDescription, twitterDescription, description], 320),
     siteName: cleanMetadata(siteName, 80),
     image: firstCleanMetadata([ogImage, twitterImage], MAX_URL_LENGTH),
+    icon: cleanMetadata(icon, MAX_URL_LENGTH),
+    themeColor,
     canonical: cleanMetadata(canonical, MAX_URL_LENGTH),
   };
 }
@@ -683,15 +720,17 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             }
           }
           let imageUrl: string | null = null;
-          if (metadata.image) {
+          for (const candidateValue of [metadata.image, metadata.icon]) {
+            if (!candidateValue) continue;
             try {
               const candidate = normalizeLinkPreviewUrl(
-                new URL(metadata.image, current).toString(),
+                new URL(candidateValue, current).toString(),
               );
               await assertPublicTarget(candidate, dependencies.resolveHost);
               imageUrl = candidate.toString();
+              break;
             } catch {
-              imageUrl = null;
+              // Try the apple touch icon when the social image is invalid or unavailable.
             }
           }
           const present = [
@@ -706,6 +745,7 @@ export function createLinkPreviewService(dependencies: LinkPreviewDependencies) 
             title: metadata.title,
             description: metadata.description,
             imageUrl,
+            ...(metadata.themeColor ? { themeColor: metadata.themeColor } : {}),
             fetchedAt,
             metadataStatus:
               present === 0

@@ -554,6 +554,7 @@ export async function handleCommentApiRequest(
             ...(preview.title ? { title: preview.title } : {}),
             ...(preview.description ? { description: preview.description } : {}),
             ...(preview.imageUrl ? { imageUrl: preview.imageUrl } : {}),
+            ...(preview.themeColor ? { themeColor: preview.themeColor } : {}),
             metadataStatus: preview.metadataStatus,
           },
         },

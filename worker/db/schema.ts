@@ -829,6 +829,7 @@ export const commentLinkPreviews = sqliteTable(
     title: text("title"),
     description: text("description"),
     imageUrl: text("image_url"),
+    themeColor: text("theme_color"),
     fetchedAt: integer("fetched_at", { mode: "number" }).notNull(),
     metadataStatus: text("metadata_status").notNull(),
   },

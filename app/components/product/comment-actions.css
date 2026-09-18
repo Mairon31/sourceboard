@@ -428,6 +428,7 @@
   gap: 10px;
   padding: 12px;
   border: 1px solid var(--glass-border);
+  border-left: 3px solid var(--link-preview-accent, var(--accent));
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
 }
@@ -505,7 +506,7 @@
 
 .product-link-preview-card__site {
   overflow: hidden;
-  color: var(--accent);
+  color: var(--link-preview-accent, var(--accent));
   font-size: var(--text-xs);
   font-weight: 750;
   letter-spacing: 0.02em;

@@ -176,6 +176,7 @@ async function toView(
                   imageUrl: `/api/comments/${encodeURIComponent(record.comment.id)}/link-preview-image`,
                 }
               : {}),
+            ...(record.linkPreview.themeColor ? { themeColor: record.linkPreview.themeColor } : {}),
             metadataStatus: record.linkPreview.metadataStatus,
           }
         : undefined,

@@ -6,6 +6,7 @@ export interface CommentLinkPreviewSnapshot {
   title: string | null;
   description: string | null;
   imageUrl: string | null;
+  themeColor?: string | null;
   fetchedAt: number;
   metadataStatus: "COMPLETE" | "PARTIAL" | "MINIMAL" | "URL_ONLY";
 }

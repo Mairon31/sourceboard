@@ -14,6 +14,7 @@ describe("persisted comment link previews", () => {
   it("loads persisted preview snapshots with ordinary comments", () => {
     expect(storeSource).toContain("LEFT JOIN comment_link_previews lp ON lp.comment_id = c.id");
     expect(storeSource).toContain("lp.canonical_url AS link_preview_canonical_url");
+    expect(storeSource).toContain("lp.theme_color AS link_preview_theme_color");
     expect(storeSource).toContain("linkPreview:");
   });
 
@@ -30,6 +31,7 @@ describe("persisted comment link previews", () => {
     expect(serviceSource).toContain("linkPreviewUrl?: unknown");
     expect(serviceSource).toContain("previewLink");
     expect(serviceSource).toContain("linkPreviewUrl");
+    expect(serviceSource).toContain("themeColor");
     expect(serviceSource).toContain("LINK_PREVIEW_ATTACHMENT_CONFLICT");
   });
 

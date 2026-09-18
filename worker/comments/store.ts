@@ -128,6 +128,7 @@ interface CommentRow {
   link_preview_title: string | null;
   link_preview_description: string | null;
   link_preview_image_url: string | null;
+  link_preview_theme_color: string | null;
   link_preview_fetched_at: number | null;
   link_preview_metadata_status: string | null;
   author_username: string;
@@ -179,7 +180,8 @@ const COMMENT_COLUMNS = `
   c.updated_at, c.edit_deadline_at, c.deleted_at, c.hidden_at,
   lp.canonical_url AS link_preview_canonical_url, lp.site_name AS link_preview_site_name,
   lp.title AS link_preview_title, lp.description AS link_preview_description,
-  lp.image_url AS link_preview_image_url, lp.fetched_at AS link_preview_fetched_at,
+  lp.image_url AS link_preview_image_url, lp.theme_color AS link_preview_theme_color,
+  lp.fetched_at AS link_preview_fetched_at,
   lp.metadata_status AS link_preview_metadata_status,
   u.username AS author_username, up.display_name AS author_display_name,
   up.avatar_asset_id AS author_avatar_asset_id,
@@ -193,7 +195,8 @@ const LEGACY_COMMENT_COLUMNS = `
   c.updated_at, c.edit_deadline_at, c.deleted_at, c.hidden_at,
   NULL AS link_preview_canonical_url, NULL AS link_preview_site_name,
   NULL AS link_preview_title, NULL AS link_preview_description,
-  NULL AS link_preview_image_url, NULL AS link_preview_fetched_at,
+  NULL AS link_preview_image_url, NULL AS link_preview_theme_color,
+  NULL AS link_preview_fetched_at,
   NULL AS link_preview_metadata_status,
   u.username AS author_username, up.display_name AS author_display_name,
   up.avatar_asset_id AS author_avatar_asset_id,
@@ -266,6 +269,7 @@ function toRecord(row: CommentRow): CommentWithAuthor {
         title: row.link_preview_title,
         description: row.link_preview_description,
         imageUrl: row.link_preview_image_url,
+        themeColor: row.link_preview_theme_color,
         fetchedAt: row.link_preview_fetched_at ?? row.created_at,
         metadataStatus:
           row.link_preview_metadata_status === "COMPLETE" ||
@@ -694,9 +698,9 @@ export function createD1CommentStore(db: D1Database): CommentStore {
             db
               .prepare(
                 `INSERT INTO comment_link_previews
-                  (comment_id, canonical_url, site_name, title, description, image_url, fetched_at,
-                   metadata_status)
-                 SELECT ?, ?, ?, ?, ?, ?, ?, ?
+                  (comment_id, canonical_url, site_name, title, description, image_url, theme_color,
+                   fetched_at, metadata_status)
+                 SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
                  WHERE EXISTS (SELECT 1 FROM comments WHERE id = ? AND author_id = ?)`,
               )
               .bind(
@@ -706,6 +710,7 @@ export function createD1CommentStore(db: D1Database): CommentStore {
                 linkPreview.title,
                 linkPreview.description,
                 linkPreview.imageUrl,
+                linkPreview.themeColor ?? null,
                 linkPreview.fetchedAt,
                 linkPreview.metadataStatus,
                 comment.id,
@@ -749,7 +754,7 @@ export function createD1CommentStore(db: D1Database): CommentStore {
           .prepare(
             `UPDATE comment_link_previews
              SET canonical_url = ?, site_name = ?, title = ?, description = ?, image_url = ?,
-                 fetched_at = ?, metadata_status = ?
+                 theme_color = ?, fetched_at = ?, metadata_status = ?
              WHERE comment_id = ?`,
           )
           .bind(
@@ -758,6 +763,7 @@ export function createD1CommentStore(db: D1Database): CommentStore {
             linkPreview.title,
             linkPreview.description,
             linkPreview.imageUrl,
+            linkPreview.themeColor ?? null,
             linkPreview.fetchedAt,
             linkPreview.metadataStatus,
             commentId,
@@ -865,9 +871,9 @@ export function createD1CommentStore(db: D1Database): CommentStore {
           db
             .prepare(
               `INSERT INTO comment_link_previews
-                (comment_id, canonical_url, site_name, title, description, image_url, fetched_at,
-                 metadata_status)
-               SELECT ?, ?, ?, ?, ?, ?, ?, ?
+                (comment_id, canonical_url, site_name, title, description, image_url, theme_color,
+                 fetched_at, metadata_status)
+               SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
                WHERE EXISTS (
                  SELECT 1 FROM comments
                  WHERE id = ? AND author_id = ? AND updated_at = ?
@@ -875,10 +881,11 @@ export function createD1CommentStore(db: D1Database): CommentStore {
                ON CONFLICT(comment_id) DO UPDATE SET
                  canonical_url = excluded.canonical_url,
                  site_name = excluded.site_name,
-                 title = excluded.title,
-                 description = excluded.description,
-                 image_url = excluded.image_url,
-                 fetched_at = excluded.fetched_at,
+                  title = excluded.title,
+                  description = excluded.description,
+                  image_url = excluded.image_url,
+                  theme_color = excluded.theme_color,
+                  fetched_at = excluded.fetched_at,
                  metadata_status = excluded.metadata_status`,
             )
             .bind(
@@ -888,6 +895,7 @@ export function createD1CommentStore(db: D1Database): CommentStore {
               linkPreview.title,
               linkPreview.description,
               linkPreview.imageUrl,
+              linkPreview.themeColor ?? null,
               linkPreview.fetchedAt,
               linkPreview.metadataStatus,
               comment.id,
