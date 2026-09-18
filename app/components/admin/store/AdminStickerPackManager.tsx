@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Badge, Button, Card, Input, Textarea } from "../../ui";
 import { readCsrfToken } from "../../../data/csrf";
+import { ConfirmAction } from "../../product/ConfirmAction";
 
 type StoreLifecycleState = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 type ModerationState = "CLEAR" | "FLAGGED" | "HIDDEN" | "REMOVED";
@@ -81,10 +82,12 @@ function StickerCard({
   sticker,
   busy,
   onPatch,
+  onDelete,
 }: {
   sticker: Sticker;
   busy: boolean;
   onPatch: (id: string, change: Record<string, unknown>, message: string) => Promise<void>;
+  onDelete: (id: string, label: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(sticker.label);
@@ -114,7 +117,7 @@ function StickerCard({
     <Card className="admin-store-sticker-card">
       <div className="admin-store-sticker-card__preview">
         <img
-          src={`/api/media/catalog/sticker/${encodeURIComponent(sticker.id)}`}
+          src={`/api/admin/catalog/stickers/${encodeURIComponent(sticker.id)}/media`}
           alt={sticker.label}
           loading="lazy"
         />
@@ -271,6 +274,15 @@ function StickerCard({
                 Archive
               </Button>
             ) : null}
+            <ConfirmAction
+              title={`Delete ${sticker.label}?`}
+              description="This permanently removes the sticker from its pack and deletes its catalog media. Existing comments that reference it will no longer be able to load the sticker."
+              confirmLabel="Delete sticker"
+              cancelLabel="Keep sticker"
+              destructive
+              triggerLabel="Delete"
+              onConfirm={() => onDelete(sticker.id, sticker.label)}
+            />
           </div>
         ) : null}
       </div>
@@ -509,6 +521,31 @@ export function AdminStickerPackManager({
     }
   }
 
+  async function deleteSticker(id: string, label: string) {
+    if (!selectedPackId) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/admin/catalog/stickers/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "x-csrf-token": readCsrfToken() },
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = errorMessage(payload, "Could not delete this sticker.");
+        onStatus(message);
+        throw new Error(message);
+      }
+      onStatus(`${label} deleted.`);
+      await Promise.all([loadDetail(), loadPacks()]);
+    } catch (error) {
+      if (error instanceof Error) onStatus(error.message);
+      else onStatus("Could not delete this sticker. Check your connection and try again.");
+      throw error;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateStoreOffering() {
     if (!detail?.storeItemId) return;
     setBusy(true);
@@ -607,7 +644,7 @@ export function AdminStickerPackManager({
                 <span className="admin-store-pack-list__preview" aria-hidden="true">
                   {pack.previewStickerId ? (
                     <img
-                      src={`/api/media/catalog/sticker/${encodeURIComponent(pack.previewStickerId)}`}
+                      src={`/api/admin/catalog/stickers/${encodeURIComponent(pack.previewStickerId)}/media`}
                       alt=""
                       loading="lazy"
                     />
@@ -871,6 +908,7 @@ export function AdminStickerPackManager({
                     sticker={sticker}
                     busy={busy}
                     onPatch={patchSticker}
+                    onDelete={deleteSticker}
                   />
                 ))}
               </div>

@@ -39,6 +39,14 @@ describe("banner effects and sticker workspace presentation", () => {
     expect(manager).toContain("multiple");
     expect(manager).toContain("admin-store-bulk-status");
     expect(manager).toContain("admin-store-sticker-grid");
+    expect(manager).toContain(
+      "/api/admin/catalog/stickers/${encodeURIComponent(sticker.id)}/media",
+    );
+    expect(manager).toContain(
+      "/api/admin/catalog/stickers/${encodeURIComponent(pack.previewStickerId)}/media",
+    );
+    expect(manager).toContain('method: "DELETE"');
+    expect(manager).toContain("Delete sticker");
   });
 
   it("keeps the desktop comment composer and media picker full width", () => {

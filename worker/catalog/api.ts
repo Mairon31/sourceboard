@@ -626,6 +626,50 @@ async function handleStickerStatus(
   );
 }
 
+async function handleStickerDelete(
+  id: string,
+  actorUserId: string,
+  request: Request,
+  requestId: string,
+  env: SourceBoardEnvironment,
+): Promise<Response> {
+  if (!env.DB || !env.MEDIA)
+    return failure(
+      "CATALOG_UNAVAILABLE",
+      "Catalog media is temporarily unavailable.",
+      requestId,
+      503,
+    );
+  assertSameOrigin(request);
+  assertCsrfToken(request);
+  const current = await env.DB.prepare(
+    `SELECT id, slug, label, asset_key AS assetKey, pack_id AS packId
+       FROM sticker_catalog WHERE id = ?`,
+  )
+    .bind(id)
+    .first<{ id: string; slug: string; label: string; assetKey: string; packId: string | null }>();
+  if (!current) return failure("NOT_FOUND", "Catalog item not found.", requestId, 404);
+
+  const result = await env.DB.prepare("DELETE FROM sticker_catalog WHERE id = ? AND asset_key = ?")
+    .bind(id, current.assetKey)
+    .run();
+  if (Number(result.meta.changes ?? 0) !== 1)
+    return failure(
+      "CATALOG_CONFLICT",
+      "The sticker changed while it was being deleted. Reload and try again.",
+      requestId,
+      409,
+    );
+
+  await deleteCatalogAssetBestEffort(env.MEDIA, current.assetKey, "catalog_sticker_delete_cleanup");
+  await audit(env.DB, actorUserId, requestId, "STICKER_DELETED", "STICKER", id, null, {
+    slug: current.slug,
+    packId: current.packId,
+    assetKey: current.assetKey,
+  });
+  return response({ sticker: { id, deleted: true } }, requestId);
+}
+
 async function listEmotePacks(env: SourceBoardEnvironment, requestId: string): Promise<Response> {
   if (!env.DB)
     return failure(
@@ -1767,7 +1811,8 @@ async function updateStickerPack(
   );
 }
 
-async function handleAdminEmoteAsset(
+async function handleAdminCatalogAsset(
+  kind: CatalogKind,
   id: string,
   env: SourceBoardEnvironment,
   requestId: string,
@@ -1779,7 +1824,8 @@ async function handleAdminEmoteAsset(
       requestId,
       503,
     );
-  const row = await env.DB.prepare("SELECT asset_key AS assetKey FROM emote_catalog WHERE id = ?")
+  const table = kind === "emote" ? "emote_catalog" : "sticker_catalog";
+  const row = await env.DB.prepare(`SELECT asset_key AS assetKey FROM ${table} WHERE id = ?`)
     .bind(id)
     .first<{ assetKey: string }>();
   if (!row) return failure("NOT_FOUND", "Catalog media not found.", requestId, 404);
@@ -2015,13 +2061,15 @@ export async function handleCatalogRequest(
     }
 
     const actorUserId = await requireCapability(request, requestId, env, CAPABILITIES[kind]);
-    const adminEmoteMediaMatch =
+    const adminMediaMatch = url.pathname.match(
       kind === "emote"
-        ? url.pathname.match(/^\/api\/admin\/catalog\/emotes\/([^/]+)\/media$/)
-        : null;
-    if (request.method === "GET" && adminEmoteMediaMatch)
-      return await handleAdminEmoteAsset(
-        decodeURIComponent(adminEmoteMediaMatch[1] ?? ""),
+        ? /^\/api\/admin\/catalog\/emotes\/([^/]+)\/media$/
+        : /^\/api\/admin\/catalog\/stickers\/([^/]+)\/media$/,
+    );
+    if (request.method === "GET" && adminMediaMatch)
+      return await handleAdminCatalogAsset(
+        kind,
+        decodeURIComponent(adminMediaMatch[1] ?? ""),
         env,
         requestId,
       );
@@ -2063,6 +2111,14 @@ export async function handleCatalogRequest(
       if (request.method === "PATCH" && stickerMatch)
         return await handleStickerStatus(
           decodeURIComponent(stickerMatch[1] ?? ""),
+          request,
+          requestId,
+          env,
+        );
+      if (request.method === "DELETE" && stickerMatch)
+        return await handleStickerDelete(
+          decodeURIComponent(stickerMatch[1] ?? ""),
+          actorUserId,
           request,
           requestId,
           env,

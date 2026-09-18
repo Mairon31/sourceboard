@@ -7,6 +7,7 @@ const storeService = read("../../worker/store/service.ts");
 const storeAdmin = read("../../worker/store/admin.ts");
 const catalogApi = read("../../worker/catalog/api.ts");
 const adminEmotePacks = read("../../app/components/admin/store/AdminEmotePackManager.tsx");
+const adminStickerPacks = read("../../app/components/admin/store/AdminStickerPackManager.tsx");
 
 describe("Store schema rollout compatibility", () => {
   it("limits lifecycle fallback to missing-column schema errors", () => {
@@ -40,8 +41,22 @@ describe("Store schema rollout compatibility", () => {
     expect(adminEmotePacks).not.toContain(
       "/api/media/catalog/emote/${encodeURIComponent(emote.id)}",
     );
-    expect(catalogApi).toContain("handleAdminEmoteAsset");
+    expect(catalogApi).toContain("handleAdminCatalogAsset");
     expect(catalogApi).toContain('"cache-control": "no-store"');
+  });
+
+  it("serves authenticated Admin sticker previews even while a pack is draft or disabled", () => {
+    expect(adminStickerPacks).toContain(
+      "/api/admin/catalog/stickers/${encodeURIComponent(sticker.id)}/media",
+    );
+    expect(adminStickerPacks).not.toContain(
+      "/api/media/catalog/sticker/${encodeURIComponent(sticker.id)}",
+    );
+    expect(adminStickerPacks).toContain('method: "DELETE"');
+    expect(catalogApi).toContain("sticker_catalog");
+    expect(catalogApi).toContain("stickers\\/([^/]+)\\/media");
+    expect(catalogApi).toContain("DELETE FROM sticker_catalog");
+    expect(catalogApi).toContain("STICKER_DELETED");
   });
 
   it("keeps emote pack Publish and Enable mutations working before migration 0015", () => {
