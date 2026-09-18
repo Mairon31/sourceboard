@@ -1,5 +1,5 @@
 import { normalizeUsername } from "../auth/crypto";
-import { canInteractWithUser, canViewUser } from "../privacy/policy";
+import { canInteractWithUser, canViewProfile } from "../privacy/policy";
 import {
   normalizeEmoteShortcode,
   parseMarkdown,
@@ -290,7 +290,9 @@ async function findVisibleProfile(
   const normalized = normalizeUsername(username);
   if (!normalized || normalized.length > 32) return null;
   const profile = await store.getProfileByUsernameNormalized(normalized, now());
-  if (!profile || !(await canViewUser(viewerId, profile.userId, { store, now }))) return null;
+  if (!profile || !(await canViewProfile(viewerId, profile.userId, profile, { store, now }))) {
+    return null;
+  }
   return profile;
 }
 

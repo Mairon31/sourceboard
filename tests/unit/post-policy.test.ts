@@ -372,6 +372,47 @@ describe("Phase 4 post policy", () => {
     expect(friend.posts.map((item) => item.id)).toEqual(["public", "friend-only"]);
   });
 
+  it("reuses request-scoped profile reads while presenting profile activity", async () => {
+    const { profileStore, store, listByAuthor } = dependencies();
+    const getProfileByUserId = vi.fn(async () => ({
+      userId: "author-1",
+      username: "aurora",
+      usernameNormalized: "aurora",
+      displayName: "Aurora Vale",
+      bio: "",
+      avatarAssetId: null,
+      bannerAssetId: null,
+      profileVisibility: "PUBLIC" as const,
+      createdAt: 1,
+      updatedAt: 1,
+    }));
+    const getPreferences = vi.fn(async () => ({
+      userId: "viewer-1",
+      hideNsfw: false,
+      blurNsfw: true,
+      allowNsfwDirectOverride: false,
+      allowFriendRequests: true,
+      createdAt: 1,
+      updatedAt: 1,
+    }));
+    const getEquippedCosmetics = vi.fn(async () => ({}));
+    Object.assign(profileStore, { getProfileByUserId, getPreferences, getEquippedCosmetics });
+    listByAuthor.mockResolvedValue({
+      posts: [post({ id: "public-1" }), post({ id: "public-2" })],
+      nextCursor: null,
+    });
+
+    await createPostService({ store, profileStore, now: () => 2 }).listProfileActivity({
+      authorId: "author-1",
+      viewerId: "viewer-1",
+      limit: 20,
+    });
+
+    expect(getProfileByUserId).toHaveBeenCalledTimes(1);
+    expect(getPreferences).toHaveBeenCalledTimes(1);
+    expect(getEquippedCosmetics).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps public NSFW posts visible on anonymous public profiles as blurred previews", async () => {
     const { profileStore, store, listByAuthor } = dependencies();
     listByAuthor.mockResolvedValue({

@@ -1,20 +1,18 @@
 import type { ProfileStore } from "../profile/store";
+import type { ProfileRecord } from "../profile/types";
 
 export interface UserVisibilityDependencies {
   store: Pick<ProfileStore, "getProfileByUserId" | "getRelationship" | "getBlock">;
   now?: () => number;
 }
 
-export async function canViewUser(
+export async function canViewProfile(
   viewerId: string | null,
   targetId: string,
+  profile: ProfileRecord | null,
   dependencies: UserVisibilityDependencies,
 ): Promise<boolean> {
-  const profile = await dependencies.store.getProfileByUserId(
-    targetId,
-    dependencies.now?.() ?? Date.now(),
-  );
-  if (!profile) return false;
+  if (!profile || profile.userId !== targetId) return false;
   if (viewerId === targetId) return true;
   if (!viewerId) return profile.profileVisibility === "PUBLIC";
 
@@ -26,6 +24,18 @@ export async function canViewUser(
   if (profile.profileVisibility === "PUBLIC") return true;
   if (profile.profileVisibility === "PRIVATE") return false;
   return (await dependencies.store.getRelationship(viewerId, targetId)) === "FRIEND";
+}
+
+export async function canViewUser(
+  viewerId: string | null,
+  targetId: string,
+  dependencies: UserVisibilityDependencies,
+): Promise<boolean> {
+  const profile = await dependencies.store.getProfileByUserId(
+    targetId,
+    dependencies.now?.() ?? Date.now(),
+  );
+  return canViewProfile(viewerId, targetId, profile, dependencies);
 }
 
 export async function canInteractWithUser(

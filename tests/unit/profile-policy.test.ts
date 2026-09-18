@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { canInteractWithUser, canViewNsfwPost, canViewUser } from "../../worker/privacy/policy";
+import {
+  canInteractWithUser,
+  canViewNsfwPost,
+  canViewProfile,
+  canViewUser,
+} from "../../worker/privacy/policy";
 import type { ProfileStore } from "../../worker/profile/store";
 import type { ProfileRecord } from "../../worker/profile/types";
 
@@ -39,6 +44,16 @@ function visibilityStore(options: {
 }
 
 describe("Phase 3 privacy policy", () => {
+  it("evaluates a profile already loaded by username without fetching it again", async () => {
+    const store = visibilityStore({});
+    const knownProfile = profile();
+
+    await expect(canViewProfile(null, knownProfile.userId, knownProfile, { store })).resolves.toBe(
+      true,
+    );
+    expect(store.getProfileByUserId).not.toHaveBeenCalled();
+  });
+
   it("allows public profiles to anonymous viewers but hides friends-only profiles", async () => {
     await expect(canViewUser(null, "target", { store: visibilityStore({}) })).resolves.toBe(true);
     await expect(

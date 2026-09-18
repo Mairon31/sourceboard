@@ -10,12 +10,12 @@ import {
   useRouteError,
   type MetaFunction,
 } from "react-router";
-import type { CommentView, PublicPostAuthor } from "../../shared/ui/contracts";
+import type { CommentView, PostDetail, PublicPostAuthor } from "../../shared/ui/contracts";
 import { hasCapability } from "../../worker/auth/rbac";
 import { createD1AuthStore } from "../../worker/auth/store";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createD1PostStore } from "../../worker/posts/store";
-import { createPostService } from "../../worker/posts/service";
+import { createPostService, isPublicAnonymousNsfwPreview } from "../../worker/posts/service";
 import { createD1CommentStore } from "../../worker/comments/store";
 import { createCommentService } from "../../worker/comments/service";
 import { parseCommentSort } from "../../worker/comments/types";
@@ -33,6 +33,13 @@ import { buildPostSocialImageUrl } from "../../shared/seo/social-image";
 interface LoaderArgs extends ServerLoaderArgs {
   params: { postId?: string; slug?: string };
   url: URL;
+}
+
+export function shouldSuppressCommentsForPublicNsfwPreview(
+  viewerId: string | null,
+  post: Pick<PostDetail, "visibility" | "isNsfw" | "deletedAt"> | null,
+): boolean {
+  return Boolean(post && isPublicAnonymousNsfwPreview(viewerId, post));
 }
 
 export async function loader({ params, request, context, url }: LoaderArgs) {
@@ -128,9 +135,12 @@ export async function loader({ params, request, context, url }: LoaderArgs) {
             },
           }
         : null;
-      if (post && !commentsResult.ok && !post.permissions.canRestore) throw commentsResult.error;
+      const anonymousNsfwPreview = shouldSuppressCommentsForPublicNsfwPreview(userId, post);
+      if (post && !commentsResult.ok && !post.permissions.canRestore && !anonymousNsfwPreview) {
+        throw commentsResult.error;
+      }
       const comments =
-        commentsResult.ok && !post?.permissions.canRestore
+        commentsResult.ok && !post?.permissions.canRestore && !anonymousNsfwPreview
           ? commentsResult.value
           : { comments: [], nextCursor: null };
       return {

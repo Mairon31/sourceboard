@@ -35,6 +35,53 @@ type PostEmoteAsset = {
   url: string;
 };
 
+function createRequestProfileStore(store: ProfileStore): ProfileStore {
+  const profileByUserId = new Map<string, ReturnType<ProfileStore["getProfileByUserId"]>>();
+  const preferences = new Map<string, ReturnType<ProfileStore["getPreferences"]>>();
+  const cosmetics = new Map<string, ReturnType<ProfileStore["getEquippedCosmetics"]>>();
+  const blocks = new Map<string, ReturnType<ProfileStore["getBlock"]>>();
+
+  const scoped = {
+    ...store,
+    getProfileByUserId(userId, now) {
+      let result = profileByUserId.get(userId);
+      if (!result) {
+        result = store.getProfileByUserId(userId, now);
+        profileByUserId.set(userId, result);
+      }
+      return result;
+    },
+    getPreferences(userId, now) {
+      let result = preferences.get(userId);
+      if (!result) {
+        result = store.getPreferences(userId, now);
+        preferences.set(userId, result);
+      }
+      return result;
+    },
+    getBlock(blockerId, blockedId) {
+      const key = `${blockerId}\u0000${blockedId}`;
+      let result = blocks.get(key);
+      if (!result) {
+        result = store.getBlock(blockerId, blockedId);
+        blocks.set(key, result);
+      }
+      return result;
+    },
+  } as ProfileStore;
+  if (typeof store.getEquippedCosmetics === "function") {
+    scoped.getEquippedCosmetics = (userId) => {
+      let result = cosmetics.get(userId);
+      if (!result) {
+        result = store.getEquippedCosmetics(userId);
+        cosmetics.set(userId, result);
+      }
+      return result;
+    };
+  }
+  return scoped;
+}
+
 export interface PostServiceDependencies {
   store: PostStore;
   profileStore: ProfileStore;
@@ -191,7 +238,15 @@ export async function canViewPost(
   });
 }
 
-function isPublicAnonymousNsfwPreview(viewerId: string | null, post: PostRecord): boolean {
+export function isPublicAnonymousNsfwPreview(
+  viewerId: string | null,
+  post: {
+    visibility: string;
+    isNsfw: boolean;
+    deletedAt?: number | string | null;
+    hiddenAt?: number | string | null;
+  },
+): boolean {
   return (
     !viewerId && post.visibility === "PUBLIC" && post.isNsfw && !post.deletedAt && !post.hiddenAt
   );
@@ -485,8 +540,9 @@ async function toPostDetail(
 
 export function createPostService(dependencies: PostServiceDependencies): PostService {
   const now = dependencies.now ?? (() => Date.now());
+  const profileStore = createRequestProfileStore(dependencies.profileStore);
   const policyDependencies = {
-    profileStore: dependencies.profileStore,
+    profileStore,
     store: dependencies.store,
     now,
   };
