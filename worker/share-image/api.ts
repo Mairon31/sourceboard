@@ -1,10 +1,11 @@
 import { REQUEST_ID_HEADER } from "../../shared/http/request-id";
+import { SOURCEBOARD_BRAND_ASSETS } from "../../shared/seo/brand-assets";
 import type { SourceBoardEnvironment } from "../environment";
 import { createD1PostStore } from "../posts/store";
 import type { PostWithAuthor } from "../posts/types";
 
 export const SHARE_IMAGE_PATH = "/api/share-image";
-const SAFE_FALLBACK_PATH = "/sourceboard-og.png";
+const SAFE_FALLBACK_PATH = SOURCEBOARD_BRAND_ASSETS.banner;
 const SHARE_IMAGE_CACHE_CONTROL = "public, max-age=300, s-maxage=900, stale-while-revalidate=60";
 const SENSITIVE_IMAGE_TRANSFORM = {
   width: 1200,

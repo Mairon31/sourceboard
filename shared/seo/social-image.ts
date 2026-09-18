@@ -1,3 +1,5 @@
+import { SOURCEBOARD_BRAND_ASSETS } from "./brand-assets";
+
 export interface PostSocialImageInput {
   postId: string;
   pageUrl: string;
@@ -28,5 +30,5 @@ export function buildPostSocialImageUrl(input: PostSocialImageInput): string {
     shareUrl.searchParams.set("v", input.updatedAt);
     return shareUrl.toString();
   }
-  return new URL("/sourceboard-og.png", input.pageUrl).toString();
+  return new URL(SOURCEBOARD_BRAND_ASSETS.banner, input.pageUrl).toString();
 }

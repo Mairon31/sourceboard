@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { localizedPageMeta } from "../../shared/seo/official-pages";
 
@@ -27,7 +27,7 @@ describe("public indexability contract", () => {
     });
     expect(entries).toContainEqual({
       name: "twitter:image",
-      content: "https://srcboard.me/sourceboard-og.png",
+      content: "https://srcboard.me/sourceboard-brand-banner.jpg",
     });
   });
 
@@ -50,5 +50,22 @@ describe("public indexability contract", () => {
       "href: `/${locale}/docs/${item.slug}`",
     );
     expect(read("app/routes/legal.tsx")).toContain("to={`/${data.locale}/legal/${policy.slug}`}");
+  });
+
+  it("uses only the current brand assets for institutional metadata and fallbacks", () => {
+    expect(existsSync("public/sourceboard-brand-mark.jpg")).toBe(true);
+    expect(existsSync("public/sourceboard-brand-lockup.jpg")).toBe(true);
+    expect(existsSync("public/sourceboard-brand-banner.jpg")).toBe(true);
+    const legacyOpenGraphAsset = ["sourceboard", "og"].join("-");
+    const legacyLogoAsset = ["sourceboard", "logo"].join("-");
+    for (const source of [
+      "app/root.tsx",
+      "shared/seo/official-pages.ts",
+      "shared/seo/social-image.ts",
+      "worker/share-image/api.ts",
+    ]) {
+      expect(read(source)).not.toContain(legacyOpenGraphAsset);
+      expect(read(source)).not.toContain(legacyLogoAsset);
+    }
   });
 });

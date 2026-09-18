@@ -10,6 +10,7 @@ import {
 } from "react-router";
 import { THEME_INIT_SCRIPT } from "../shared/design/theme";
 import { readSourceBoardRequestContext } from "../shared/router-context";
+import { SOURCEBOARD_BRAND_ASSETS } from "../shared/seo/brand-assets";
 import { createCmsNavigationService } from "../worker/cms/navigation";
 import { createD1ProfileStore } from "../worker/profile/store";
 import { requestedLocale } from "./data/locale.server";
@@ -112,7 +113,7 @@ export type RootLoaderData = Awaited<ReturnType<typeof loader>>;
 
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const origin = loaderData?.origin ?? "https://srcboard.me";
-  const logoUrl = new URL("/sourceboard-og.png", origin).toString();
+  const bannerUrl = new URL(SOURCEBOARD_BRAND_ASSETS.banner, origin).toString();
   return [
     { title: "SourceBoard" },
     {
@@ -127,16 +128,22 @@ export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
       content: "Find the original source of an image with evidence from the community.",
     },
     { property: "og:url", content: origin },
-    { property: "og:image", content: logoUrl },
+    { property: "og:image", content: bannerUrl },
+    { property: "og:image:secure_url", content: bannerUrl },
+    { property: "og:image:type", content: "image/jpeg" },
+    { property: "og:image:width", content: "1280" },
+    { property: "og:image:height", content: "672" },
+    { property: "og:image:alt", content: "SourceBoard — find, discuss, and verify sources" },
     { name: "twitter:card", content: "summary" },
     { name: "twitter:title", content: "SourceBoard" },
-    { name: "twitter:image", content: logoUrl },
+    { name: "twitter:image", content: bannerUrl },
+    { name: "twitter:image:alt", content: "SourceBoard — find, discuss, and verify sources" },
   ];
 };
 
 export const links = () => [
-  { rel: "icon", type: "image/svg+xml", href: "/sourceboard-logo.svg" },
-  { rel: "apple-touch-icon", href: "/sourceboard-og.png" },
+  { rel: "icon", type: "image/jpeg", href: SOURCEBOARD_BRAND_ASSETS.mark },
+  { rel: "apple-touch-icon", type: "image/jpeg", href: SOURCEBOARD_BRAND_ASSETS.mark },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

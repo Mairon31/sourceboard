@@ -14,23 +14,30 @@ test("robots exposes the canonical public sitemap and excludes private product r
   expect(body).not.toContain("Disallow: /api/");
 });
 
-test("home exposes the SourceBoard brand asset in the document and as a public image", async ({
+test("home exposes the current SourceBoard brand assets in metadata and as public images", async ({
   request,
 }) => {
-  const [pageResponse, logoResponse, ogResponse] = await Promise.all([
+  const [pageResponse, markResponse, lockupResponse, bannerResponse] = await Promise.all([
     request.get("/"),
-    request.get("/sourceboard-logo.svg"),
-    request.get("/sourceboard-og.png"),
+    request.get("/sourceboard-brand-mark.jpg"),
+    request.get("/sourceboard-brand-lockup.jpg"),
+    request.get("/sourceboard-brand-banner.jpg"),
   ]);
 
   expect(pageResponse.status()).toBe(200);
   const html = await pageResponse.text();
-  expect(html).toContain('property="og:image" content="https://srcboard.me/sourceboard-og.png"');
+  expect(html).toContain(
+    'property="og:image" content="https://srcboard.me/sourceboard-brand-banner.jpg"',
+  );
+  expect(html).toContain("sourceboard-brand-mark.jpg");
+  expect(html).toContain("sourceboard-brand-lockup.jpg");
   expect(html).toContain('rel="icon"');
-  expect(logoResponse.status()).toBe(200);
-  expect(logoResponse.headers()["content-type"]).toContain("image/svg+xml");
-  expect(ogResponse.status()).toBe(200);
-  expect(ogResponse.headers()["content-type"]).toContain("image/png");
+  expect(markResponse.status()).toBe(200);
+  expect(markResponse.headers()["content-type"]).toContain("image/jpeg");
+  expect(lockupResponse.status()).toBe(200);
+  expect(lockupResponse.headers()["content-type"]).toContain("image/jpeg");
+  expect(bannerResponse.status()).toBe(200);
+  expect(bannerResponse.headers()["content-type"]).toContain("image/jpeg");
 });
 
 test("post API does not allow unauthenticated mutations", async ({ request }) => {

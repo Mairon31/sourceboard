@@ -165,7 +165,7 @@ export function TopBar() {
       >
         <img
           className="sb-brand__mark"
-          src="/sourceboard-logo.svg"
+          src="/sourceboard-brand-mark.jpg"
           alt=""
           width="34"
           height="34"

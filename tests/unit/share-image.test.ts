@@ -121,7 +121,7 @@ describe("share image endpoint", () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("safe-placeholder");
-    expect(fetcher).toHaveBeenLastCalledWith("https://srcboard.me/sourceboard-og.png");
+    expect(fetcher).toHaveBeenLastCalledWith("https://srcboard.me/sourceboard-brand-banner.jpg");
   });
 
   it.each([
@@ -158,7 +158,7 @@ describe("share image endpoint", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(fetcher).toHaveBeenCalledWith("https://srcboard.me/sourceboard-og.png");
+    expect(fetcher).toHaveBeenCalledWith("https://srcboard.me/sourceboard-brand-banner.jpg");
   });
 
   it("only claims its exact public route and does not accept arbitrary proxy input", async () => {

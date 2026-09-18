@@ -3,7 +3,6 @@ import { useLoaderData, useNavigate, useRevalidator, type MetaFunction } from "r
 import { parseCreatorProStoreConfig } from "../../shared/store/creator-pro-config";
 import { extractCosmeticVisualDefinition } from "../../shared/store/custom-cosmetics";
 import type { StoreItemType, StoreItemView } from "../../shared/ui/contracts";
-import { localizedHref } from "../i18n/routes";
 import { createD1ProfileStore } from "../../worker/profile/store";
 import { createStoreService, isStoreAdmin } from "../../worker/store/service";
 import { PresentationNotice, ProductShell } from "../components/product/ProductShell";
@@ -14,7 +13,7 @@ import { requestedLocale } from "../data/locale.server";
 import { withOptionalServerSession, type ServerLoaderArgs } from "../data/server-request";
 import { translate, type MessageKey } from "../i18n";
 import { useI18n } from "../i18n/I18nProvider";
-import { INDEXABLE_ROBOTS } from "../../shared/seo/robots";
+import { localizedPageMeta } from "../../shared/seo/official-pages";
 
 const STORE_FILTERS = [
   { key: "ALL", label: "store.filter.all" },
@@ -128,18 +127,12 @@ type LoaderData = Awaited<ReturnType<typeof loader>>;
 export const meta: MetaFunction<typeof loader> = ({ loaderData }) => {
   const locale = loaderData?.locale ?? "en";
   const description = translate(locale, "store.metaDescription");
-  const canonical = `https://srcboard.me${localizedHref(locale, "store")}`;
-  return [
-    { title: `${translate(locale, "store.title")} · SourceBoard` },
-    { name: "description", content: description },
-    { name: "robots", content: INDEXABLE_ROBOTS },
-    { tagName: "link", rel: "canonical", href: canonical },
-    { property: "og:type", content: "website" },
-    { property: "og:title", content: `${translate(locale, "store.title")} · SourceBoard` },
-    { property: "og:description", content: description },
-    { property: "og:url", content: canonical },
-    { property: "og:image", content: "https://srcboard.me/sourceboard-og.png" },
-  ];
+  return localizedPageMeta({
+    locale,
+    path: "/store",
+    title: `${translate(locale, "store.title")} · SourceBoard`,
+    description,
+  });
 };
 
 function parseConfig(value: unknown): StoreItemView["preview"]["config"] {

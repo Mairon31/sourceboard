@@ -120,7 +120,7 @@ describe("NSFW media and SEO contract", () => {
       "https://srcboard.me/api/media/post/asset-normal",
     );
     expect(withoutImage.find((entry) => entry.property === "og:image")?.content).toBe(
-      "https://srcboard.me/sourceboard-og.png",
+      "https://srcboard.me/sourceboard-brand-banner.jpg",
     );
 
     const invalidImage = (meta({
@@ -131,7 +131,7 @@ describe("NSFW media and SEO contract", () => {
       },
     } as never) ?? []) as Array<Record<string, unknown>>;
     expect(invalidImage.find((entry) => entry.property === "og:image")?.content).toBe(
-      "https://srcboard.me/sourceboard-og.png",
+      "https://srcboard.me/sourceboard-brand-banner.jpg",
     );
     expect(JSON.stringify(invalidImage)).not.toContain("attacker.test");
   });
@@ -144,7 +144,7 @@ describe("NSFW media and SEO contract", () => {
 
     expect(profileRoute).toContain('name: "twitter:image"');
     expect(profileRoute).toContain('property: "og:image:alt"');
-    expect(storeRoute).toContain('name: "robots"');
+    expect(storeRoute).toContain("localizedPageMeta");
     expect(officialSeo).toContain('name: "robots"');
     expect(publicSeo).toContain("Host: srcboard.me");
     expect(publicSeo).toContain("User-agent: *");
