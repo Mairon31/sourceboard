@@ -110,6 +110,7 @@ interface PostWithAuthorRow {
   verified_comment_resolution_id: string | null;
   verified_resolution_url: string | null;
   verified_evidence_note: string | null;
+  verified_evidence_note_public: number | null;
   verified_resolution_at: number | null;
   verified_by_username: string | null;
 }
@@ -155,6 +156,7 @@ const POST_COLUMNS = `
   (SELECT sr.comment_id FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_comment_resolution_id,
   (SELECT sr.canonical_source_url FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_resolution_url,
   (SELECT sr.evidence_note FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_evidence_note,
+  (SELECT sr.evidence_note_public FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_evidence_note_public,
   (SELECT sr.created_at FROM source_resolutions sr WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_resolution_at,
   (SELECT u2.username FROM source_resolutions sr JOIN users u2 ON u2.id = sr.actor_user_id WHERE sr.post_id = p.id AND sr.resolution_type = 'VERIFIED' AND sr.state = 'ACTIVE' LIMIT 1) AS verified_by_username
 `;
@@ -230,12 +232,13 @@ function toPost(row: PostWithAuthorRow): PostWithAuthor {
     verifiedSource:
       row.verified_comment_resolution_id &&
       row.verified_resolution_url &&
-      row.verified_evidence_note &&
       row.verified_resolution_at
         ? {
             commentId: row.verified_comment_resolution_id,
             canonicalUrl: row.verified_resolution_url,
-            evidenceSummary: row.verified_evidence_note,
+            ...(row.verified_evidence_note_public === 1 && row.verified_evidence_note
+              ? { evidenceSummary: row.verified_evidence_note }
+              : {}),
             verifiedAt: row.verified_resolution_at,
             verifierLabel: row.verified_by_username ?? "Source verifier",
           }

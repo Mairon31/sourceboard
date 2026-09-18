@@ -513,6 +513,9 @@ export const sourceResolutions = sqliteTable(
     state: text("state").notNull().default("ACTIVE"),
     canonicalSourceUrl: text("canonical_source_url"),
     evidenceNote: text("evidence_note"),
+    evidenceNotePublic: integer("evidence_note_public", { mode: "boolean" })
+      .notNull()
+      .default(false),
     actorUserId: text("actor_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),

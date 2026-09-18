@@ -63,21 +63,24 @@ async function actor(
 }
 function postId(pathname: string): string | null {
   return (
-    pathname.match(/^\/api\/posts\/([^/]+)\/source\/(accept|revoke|verify|unverify)$/)?.[1] ?? null
+    pathname.match(
+      /^\/api\/posts\/([^/]+)\/source\/(accept|revoke|verify|unverify|update)$/,
+    )?.[1] ?? null
   );
 }
-type SourceAction = "accept" | "revoke" | "verify" | "unverify";
+type SourceAction = "accept" | "revoke" | "verify" | "unverify" | "update";
 
 function action(pathname: string): SourceAction | null {
   const matched =
-    pathname.match(/^\/api\/posts\/[^/]+\/source\/(accept|revoke|verify|unverify)$/)?.[1] ?? null;
+    pathname.match(/^\/api\/posts\/[^/]+\/source\/(accept|revoke|verify|unverify|update)$/)?.[1] ??
+    null;
   return matched as SourceAction | null;
 }
 
 export function requiredSourceCapability(
   kind: SourceAction,
 ): "source.verify" | "source.revoke_verification" | undefined {
-  if (kind === "verify") return "source.verify";
+  if (kind === "verify" || kind === "update") return "source.verify";
   if (kind === "unverify") return "source.revoke_verification";
   return undefined;
 }
@@ -382,13 +385,14 @@ export async function handleSourceRequest(
     if (kind === "verify") {
       const canonicalUrl = url(body.canonicalSourceUrl);
       const evidence = reason(body.evidenceNote);
+      const showEvidenceNote = body.showEvidenceNote === true;
       const verifiedAt = Date.now();
       const results = await database.batch([
         database
           .prepare(
             `INSERT INTO source_resolutions
-             (id, post_id, comment_id, resolution_type, state, canonical_source_url, evidence_note, actor_user_id, created_at)
-             SELECT ?, ?, ?, 'VERIFIED', 'ACTIVE', ?, ?, ?, ?
+             (id, post_id, comment_id, resolution_type, state, canonical_source_url, evidence_note, evidence_note_public, actor_user_id, created_at)
+             SELECT ?, ?, ?, 'VERIFIED', 'ACTIVE', ?, ?, ?, ?, ?
              WHERE EXISTS (
                SELECT 1 FROM posts WHERE id = ? AND verified_source_id IS NULL
              )
@@ -403,6 +407,7 @@ export async function handleSourceRequest(
             target.comment_id,
             canonicalUrl,
             evidence,
+            showEvidenceNote ? 1 : 0,
             current.id,
             verifiedAt,
             id,
@@ -428,6 +433,60 @@ export async function handleSourceRequest(
         );
       await emit(env, "source.verified", { postId: id, commentId: String(target.comment_id) });
       return json({ verified: true, canonicalSourceUrl: canonicalUrl }, requestId, 201);
+    }
+    if (kind === "update") {
+      const resolutionId =
+        typeof body.resolutionId === "string" && body.resolutionId.trim().length <= 200
+          ? body.resolutionId.trim()
+          : "";
+      if (!resolutionId)
+        throw new PostError(400, "INVALID_SOURCE_RESOLUTION", "A source resolution is required.");
+      const canonicalUrl = url(body.canonicalSourceUrl);
+      const evidence = reason(body.evidenceNote);
+      const showEvidenceNote = body.showEvidenceNote === true;
+      const updatedAt = Date.now();
+      const results = await database.batch([
+        database
+          .prepare(
+            `UPDATE source_resolutions
+             SET canonical_source_url = ?, evidence_note = ?, evidence_note_public = ?
+             WHERE id = ? AND post_id = ? AND comment_id = ?
+               AND resolution_type = 'VERIFIED' AND state = 'ACTIVE'`,
+          )
+          .bind(
+            canonicalUrl,
+            evidence,
+            showEvidenceNote ? 1 : 0,
+            resolutionId,
+            id,
+            String(target.comment_id),
+          ),
+        database
+          .prepare(
+            `UPDATE posts
+             SET updated_at = ?
+             WHERE id = ? AND EXISTS (
+               SELECT 1 FROM source_resolutions
+               WHERE id = ? AND post_id = ?
+                 AND resolution_type = 'VERIFIED' AND state = 'ACTIVE'
+             )`,
+          )
+          .bind(updatedAt, id, resolutionId, id),
+      ]);
+      if (!results[0]?.meta.changes || !results[1]?.meta.changes)
+        throw new PostError(
+          409,
+          "SOURCE_NOT_ACTIVE",
+          "That source is not the active verified source.",
+        );
+      return json(
+        {
+          updated: true,
+          canonicalSourceUrl: canonicalUrl,
+          evidenceNotePublic: showEvidenceNote,
+        },
+        requestId,
+      );
     }
     const revokeReason = reason(body.reason);
     const revokedAt = Date.now();

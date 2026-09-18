@@ -222,6 +222,20 @@ export const deAdminMessages = {
     "Bewahre die kanonische Quell-URL und die Belege für die Verifizierung.",
   "admin.source.integrity.canonicalUrl": "Kanonische Quell-URL",
   "admin.source.integrity.evidenceNote": "Belegnotiz",
+  "admin.source.integrity.showEvidenceNote": "Belegnotiz im öffentlichen Beitrag anzeigen",
+  "admin.source.integrity.showEvidenceNoteDescription":
+    "Der angenommene Kommentar bleibt öffentlich. Diese Option steuert nur die separate Belegnotiz des Prüfers.",
+  "admin.source.integrity.evidenceNoteVisible": "Belegnotiz öffentlich",
+  "admin.source.integrity.evidenceNoteHidden": "Belegnotiz verborgen",
+  "admin.source.integrity.editAction": "Verifizierung bearbeiten",
+  "admin.source.integrity.editTitle": "Verifizierte Quelle bearbeiten",
+  "admin.source.integrity.editDescription":
+    "Aktualisiere die kanonische URL, die Belegnotiz und ihre öffentliche Sichtbarkeit.",
+  "admin.source.integrity.updateAction": "Änderungen speichern",
+  "admin.source.integrity.cancelEdit": "Bearbeitung abbrechen",
+  "admin.source.integrity.updateFailed":
+    "Die verifizierte Quelle konnte nicht aktualisiert werden.",
+  "admin.source.integrity.updateSucceeded": "Verifizierte Quelle aktualisiert.",
   "admin.source.integrity.verifyAction": "Akzeptierte Quelle verifizieren",
   "admin.source.integrity.verifyFailed":
     "Die Quellenverifizierung konnte nicht gespeichert werden.",

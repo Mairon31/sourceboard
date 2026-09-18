@@ -26,6 +26,7 @@ interface VerifiedSource {
   authorLabel: string;
   canonicalSourceUrl: string;
   evidenceNote: string | null;
+  evidenceNotePublic: number;
   verifierLabel: string | null;
   verifiedAt: number;
 }
@@ -138,6 +139,7 @@ export async function loader({ request, context }: ServerLoaderArgs) {
                     source_author.username AS authorLabel,
                     sr.canonical_source_url AS canonicalSourceUrl,
                     sr.evidence_note AS evidenceNote,
+                    sr.evidence_note_public AS evidenceNotePublic,
                     verifier.username AS verifierLabel, sr.created_at AS verifiedAt
              FROM source_resolutions sr
              JOIN posts p ON p.id = sr.post_id

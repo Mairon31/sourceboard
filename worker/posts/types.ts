@@ -65,7 +65,7 @@ export interface PostWithAuthor {
   verifiedSource?: {
     commentId: string;
     canonicalUrl: string;
-    evidenceSummary: string;
+    evidenceSummary?: string;
     verifiedAt: number;
     verifierLabel: string;
   } | null;

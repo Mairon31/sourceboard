@@ -63,7 +63,7 @@ export interface AcceptedSourceView {
 export interface VerifiedSourceView {
   commentId: string;
   canonicalUrl: string;
-  evidenceSummary: string;
+  evidenceSummary?: string;
   verifiedAt: string;
   verifierLabel: string;
   label: "Verified Source";

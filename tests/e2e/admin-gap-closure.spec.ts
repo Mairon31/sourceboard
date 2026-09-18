@@ -256,8 +256,59 @@ test("Source Integrity exposes accepted, verified and dispute context with filte
 
   await page.goto("/admin/source-integrity?view=verified");
   await waitForUiReady(page);
-  await expect(page.getByText("E2E verified source")).toBeVisible();
-  await expect(page.getByText("@e2e-report-author", { exact: true })).toBeVisible();
+  const verifiedCard = page
+    .locator(".admin-integrity-card")
+    .filter({ hasText: "E2E verified source" });
+  await expect(verifiedCard).toBeVisible();
+  await expect(verifiedCard.getByText("@e2e-report-author", { exact: true })).toBeVisible();
+  await expect(verifiedCard.getByText("Evidence note hidden", { exact: true })).toBeVisible();
+
+  await verifiedCard.getByRole("button", { name: "Edit verification" }).click();
+  const editForm = verifiedCard.locator("form.admin-integrity-edit");
+  await expect(editForm.getByLabel("Canonical source URL")).toHaveValue(
+    "https://example.com/e2e-verified",
+  );
+  await expect(editForm.getByRole("checkbox")).not.toBeChecked();
+  await editForm
+    .getByLabel("Canonical source URL")
+    .fill("https://example.com/e2e-verified-updated");
+  await editForm
+    .getByRole("textbox", { name: "Evidence note", exact: true })
+    .fill("Updated verifier evidence note for the public source card.");
+  await editForm.getByRole("checkbox").check();
+  const updateResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/posts/e2e-integrity-verified/source/update") &&
+      response.request().method() === "POST",
+  );
+  await editForm.getByRole("button", { name: "Save changes" }).click();
+  expect((await updateResponse).status()).toBe(200);
+  await expect(verifiedCard.getByText("Evidence note public", { exact: true })).toBeVisible();
+
+  await page.goto("/posts/e2e-integrity-verified/e2e-integrity-verified");
+  await waitForUiReady(page);
+  await expect(
+    page.getByText("Updated verifier evidence note for the public source card.", { exact: true }),
+  ).toBeVisible();
+
+  await page.goto("/admin/source-integrity?view=verified");
+  await waitForUiReady(page);
+  const updatedVerifiedCard = page
+    .locator(".admin-integrity-card")
+    .filter({ hasText: "E2E verified source" });
+  await updatedVerifiedCard.getByRole("button", { name: "Edit verification" }).click();
+  const hideForm = updatedVerifiedCard.locator("form.admin-integrity-edit");
+  await hideForm.getByRole("checkbox").uncheck();
+  const hideResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/posts/e2e-integrity-verified/source/update") &&
+      response.request().method() === "POST",
+  );
+  await hideForm.getByRole("button", { name: "Save changes" }).click();
+  expect((await hideResponse).status()).toBe(200);
+  await expect(
+    updatedVerifiedCard.getByText("Evidence note hidden", { exact: true }),
+  ).toBeVisible();
 
   await page.goto("/admin/source-integrity?view=disputes");
   await waitForUiReady(page);

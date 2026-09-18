@@ -3,7 +3,7 @@ import { Link, useLoaderData, useRevalidator } from "react-router";
 import { AdminPageHeader, AdminShell } from "../components/admin/AdminShell";
 import { useI18n } from "../i18n/I18nProvider";
 import { SourceDisputeCard } from "../components/admin/SourceDisputeCard";
-import { Badge, Button, Card, Input, Textarea } from "../components/ui";
+import { Badge, Button, Card, Checkbox, Input, Textarea } from "../components/ui";
 import { readCsrfToken } from "../data/csrf";
 import type { loader as adminVerificationsLoader } from "./admin-verifications-gated";
 
@@ -29,6 +29,7 @@ interface VerifiedSource {
   authorLabel: string;
   canonicalSourceUrl: string;
   evidenceNote: string | null;
+  evidenceNotePublic: number;
   verifierLabel: string | null;
   verifiedAt: number;
 }
@@ -264,6 +265,7 @@ export default function AdminVerificationsRoute() {
                 <VerifiedSourceCard
                   key={source.resolutionId}
                   source={source}
+                  canEdit={access.authorized}
                   canRevoke={canRevoke}
                 />
               ))}
@@ -392,6 +394,7 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
             commentId: candidate.commentId,
             canonicalSourceUrl: form.get("url"),
             evidenceNote: form.get("evidence"),
+            showEvidenceNote: form.get("showEvidenceNote") === "true",
           }),
         },
       );
@@ -471,6 +474,12 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
           maxLength={500}
           rows={4}
         />
+        <Checkbox
+          name="showEvidenceNote"
+          value="true"
+          label={t("admin.source.integrity.showEvidenceNote")}
+          description={t("admin.source.integrity.showEvidenceNoteDescription")}
+        />
         <Button type="submit" loading={busy}>
           {t("admin.source.integrity.verifyAction")}
         </Button>
@@ -480,17 +489,80 @@ function VerificationCandidate({ candidate }: { candidate: Candidate }) {
   );
 }
 
-function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; canRevoke: boolean }) {
+function VerifiedSourceCard({
+  source,
+  canEdit,
+  canRevoke,
+}: {
+  source: VerifiedSource;
+  canEdit: boolean;
+  canRevoke: boolean;
+}) {
   const { t } = useI18n();
   const revalidator = useRevalidator();
   const [reason, setReason] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editValues, setEditValues] = useState({
+    url: source.canonicalSourceUrl,
+    evidence: source.evidenceNote ?? "",
+    showEvidenceNote: source.evidenceNotePublic === 1,
+  });
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const [editStatus, setEditStatus] = useState<string | null>(null);
+  const [revokeStatus, setRevokeStatus] = useState<string | null>(null);
+
+  function beginEdit() {
+    setEditValues({
+      url: source.canonicalSourceUrl,
+      evidence: source.evidenceNote ?? "",
+      showEvidenceNote: source.evidenceNotePublic === 1,
+    });
+    setEditStatus(null);
+    setEditing(true);
+  }
+
+  async function update(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canEdit || busy) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    setEditStatus(null);
+    try {
+      const response = await fetch(
+        `/api/posts/${encodeURIComponent(source.postId)}/source/update`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-csrf-token": readCsrfToken() },
+          body: JSON.stringify({
+            resolutionId: source.resolutionId,
+            commentId: source.commentId,
+            canonicalSourceUrl: form.get("url"),
+            evidenceNote: form.get("evidence"),
+            showEvidenceNote: form.get("showEvidenceNote") === "true",
+          }),
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      if (!response.ok) {
+        setEditStatus(payload?.error?.message ?? t("admin.source.integrity.updateFailed"));
+        return;
+      }
+      setEditStatus(t("admin.source.integrity.updateSucceeded"));
+      setEditing(false);
+      revalidator.revalidate();
+    } catch {
+      setEditStatus(t("admin.source.integrity.updateFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function revoke() {
     if (!canRevoke || reason.trim().length < 3) return;
     setBusy(true);
-    setStatus(null);
+    setRevokeStatus(null);
     try {
       const response = await fetch("/api/admin/moderation/action", {
         method: "POST",
@@ -506,10 +578,10 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
         error?: { message?: string };
       } | null;
       if (!response.ok) {
-        setStatus(payload?.error?.message ?? t("admin.source.integrity.revokeFailed"));
+        setRevokeStatus(payload?.error?.message ?? t("admin.source.integrity.revokeFailed"));
         return;
       }
-      setStatus(t("admin.source.integrity.revokeSucceeded"));
+      setRevokeStatus(t("admin.source.integrity.revokeSucceeded"));
       setReason("");
       revalidator.revalidate();
     } finally {
@@ -523,6 +595,11 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
         <div>
           <div className="product-chip-row">
             <Badge>{t("admin.source.integrity.verifiedLabel")}</Badge>
+            <Badge tone={source.evidenceNotePublic === 1 ? "success" : "neutral"}>
+              {source.evidenceNotePublic === 1
+                ? t("admin.source.integrity.evidenceNoteVisible")
+                : t("admin.source.integrity.evidenceNoteHidden")}
+            </Badge>
             <span className="admin-status-badge">@{source.authorLabel}</span>
           </div>
           <h2>{source.postTitle}</h2>
@@ -549,7 +626,60 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
         <Link className="product-text-action" to={postHref(source.postId, source.postSlug)}>
           {t("admin.source.integrity.openPost")}
         </Link>
+        {canEdit ? (
+          <Button variant="secondary" size="sm" onClick={beginEdit} disabled={busy}>
+            {t("admin.source.integrity.editAction")}
+          </Button>
+        ) : null}
       </div>
+      {editing ? (
+        <form className="admin-integrity-edit" onSubmit={(event) => void update(event)}>
+          <div>
+            <span className="product-eyebrow">{t("admin.source.integrity.editTitle")}</span>
+            <p>{t("admin.source.integrity.editDescription")}</p>
+          </div>
+          <Input
+            name="url"
+            label={t("admin.source.integrity.canonicalUrl")}
+            type="url"
+            defaultValue={editValues.url}
+            required
+          />
+          <Textarea
+            name="evidence"
+            label={t("admin.source.integrity.evidenceNote")}
+            defaultValue={editValues.evidence}
+            required
+            minLength={10}
+            maxLength={500}
+            rows={4}
+          />
+          <Checkbox
+            name="showEvidenceNote"
+            value="true"
+            defaultChecked={editValues.showEvidenceNote}
+            label={t("admin.source.integrity.showEvidenceNote")}
+            description={t("admin.source.integrity.showEvidenceNoteDescription")}
+          />
+          <div className="admin-integrity-actions">
+            <Button type="submit" loading={busy}>
+              {t("admin.source.integrity.updateAction")}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setEditing(false);
+                setEditStatus(null);
+              }}
+            >
+              {t("admin.source.integrity.cancelEdit")}
+            </Button>
+          </div>
+          {editStatus ? <small role="status">{editStatus}</small> : null}
+        </form>
+      ) : null}
+      {editStatus && !editing ? <small role="status">{editStatus}</small> : null}
       {canRevoke ? (
         <div className="admin-integrity-revoke">
           <Textarea
@@ -567,7 +697,7 @@ function VerifiedSourceCard({ source, canRevoke }: { source: VerifiedSource; can
           >
             {t("admin.source.integrity.revokeAction")}
           </Button>
-          {status ? <small role="status">{status}</small> : null}
+          {revokeStatus ? <small role="status">{revokeStatus}</small> : null}
         </div>
       ) : null}
     </Card>

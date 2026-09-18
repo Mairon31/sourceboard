@@ -220,6 +220,20 @@ export const esAdminMessages = {
     "Conserva la URL canónica y la evidencia que respalda la verificación.",
   "admin.source.integrity.canonicalUrl": "URL canónica de la fuente",
   "admin.source.integrity.evidenceNote": "Nota de evidencia",
+  "admin.source.integrity.showEvidenceNote":
+    "Mostrar la nota de evidencia en la publicación pública",
+  "admin.source.integrity.showEvidenceNoteDescription":
+    "El comentario aceptado sigue siendo público. Esto solo controla la nota de evidencia separada del verificador.",
+  "admin.source.integrity.evidenceNoteVisible": "Nota de evidencia pública",
+  "admin.source.integrity.evidenceNoteHidden": "Nota de evidencia oculta",
+  "admin.source.integrity.editAction": "Editar verificación",
+  "admin.source.integrity.editTitle": "Editar fuente verificada",
+  "admin.source.integrity.editDescription":
+    "Actualiza la URL canónica, la nota de evidencia y su visibilidad pública.",
+  "admin.source.integrity.updateAction": "Guardar cambios",
+  "admin.source.integrity.cancelEdit": "Cancelar edición",
+  "admin.source.integrity.updateFailed": "No se pudo actualizar la fuente verificada.",
+  "admin.source.integrity.updateSucceeded": "Fuente verificada actualizada.",
   "admin.source.integrity.verifyAction": "Verificar fuente aceptada",
   "admin.source.integrity.verifyFailed": "No se pudo guardar la verificación de la fuente.",
   "admin.source.integrity.verifySucceeded":

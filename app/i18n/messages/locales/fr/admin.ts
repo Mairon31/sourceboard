@@ -221,6 +221,20 @@ export const frAdminMessages = {
     "Préservez l’URL canonique et les preuves qui justifient la vérification.",
   "admin.source.integrity.canonicalUrl": "URL canonique de la source",
   "admin.source.integrity.evidenceNote": "Note de preuve",
+  "admin.source.integrity.showEvidenceNote":
+    "Afficher la note de preuve sur la publication publique",
+  "admin.source.integrity.showEvidenceNoteDescription":
+    "Le commentaire accepté reste public. Cette option contrôle uniquement la note de preuve distincte du vérificateur.",
+  "admin.source.integrity.evidenceNoteVisible": "Note de preuve publique",
+  "admin.source.integrity.evidenceNoteHidden": "Note de preuve masquée",
+  "admin.source.integrity.editAction": "Modifier la vérification",
+  "admin.source.integrity.editTitle": "Modifier la source vérifiée",
+  "admin.source.integrity.editDescription":
+    "Mettez à jour l’URL canonique, la note de preuve et sa visibilité publique.",
+  "admin.source.integrity.updateAction": "Enregistrer les modifications",
+  "admin.source.integrity.cancelEdit": "Annuler la modification",
+  "admin.source.integrity.updateFailed": "La source vérifiée n’a pas pu être mise à jour.",
+  "admin.source.integrity.updateSucceeded": "Source vérifiée mise à jour.",
   "admin.source.integrity.verifyAction": "Vérifier la source acceptée",
   "admin.source.integrity.verifyFailed":
     "La vérification de la source n’a pas pu être enregistrée.",

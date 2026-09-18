@@ -144,7 +144,13 @@ export function SourceResolution({
           <div className="product-source-card__summary">
             <Badge tone={isVerified ? "success" : "accent"}>{badge}</Badge>
             <h2>{title}</h2>
-            <p>{isVerified ? verified?.evidenceSummary : t("source.accepted.description")}</p>
+            {isVerified ? (
+              verified?.evidenceSummary ? (
+                <p>{verified.evidenceSummary}</p>
+              ) : null
+            ) : (
+              <p>{t("source.accepted.description")}</p>
+            )}
           </div>
         </div>
         {acceptedComment ? <AcceptedComment comment={acceptedComment} /> : null}

@@ -43,4 +43,19 @@ describe("source integrity admin presentation contract", () => {
     expect(adminCss).toContain(".admin-integrity-actions");
     expect(adminCss).toContain("@media (max-width: 720px)");
   });
+
+  it("offers an explicit public evidence-note choice while verifying", () => {
+    expect(route).toContain('form.get("showEvidenceNote") === "true"');
+    expect(route).toContain('name="showEvidenceNote"');
+    expect(route).toContain("source.integrity.showEvidenceNote");
+  });
+
+  it("offers editing for active verified source metadata", () => {
+    expect(route).toContain("source/update");
+    expect(route).toContain("source.integrity.editAction");
+    expect(route).toContain("source.integrity.updateAction");
+    expect(route).toContain("showEvidenceNote: source.evidenceNotePublic === 1");
+    expect(route).toContain("defaultChecked={editValues.showEvidenceNote}");
+    expect(route).toContain("resolutionId: source.resolutionId");
+  });
 });

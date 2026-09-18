@@ -79,3 +79,7 @@ and its lookup index. It is additive and keeps existing reaction rows intact.
 
 Migration `0042` adds the nullable `theme_color` metadata captured from public
 link previews. Existing preview snapshots and their image URLs are preserved.
+
+Migration `0043` adds the private-by-default `evidence_note_public` flag to
+source resolutions. It preserves existing evidence notes while preventing them
+from appearing on public posts unless a verifier explicitly opts in.

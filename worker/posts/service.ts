@@ -490,7 +490,9 @@ async function toPostSummary(
       ? {
           commentId: post.verifiedSource.commentId,
           canonicalUrl: post.verifiedSource.canonicalUrl,
-          evidenceSummary: post.verifiedSource.evidenceSummary,
+          ...(post.verifiedSource.evidenceSummary
+            ? { evidenceSummary: post.verifiedSource.evidenceSummary }
+            : {}),
           verifiedAt: new Date(post.verifiedSource.verifiedAt).toISOString(),
           verifierLabel: post.verifiedSource.verifierLabel,
           label: "Verified Source",

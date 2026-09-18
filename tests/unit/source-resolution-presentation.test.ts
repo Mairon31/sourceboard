@@ -7,6 +7,7 @@ const read = (path: string) => readFileSync(resolve(import.meta.dirname, path), 
 const sourceResolution = read("../../app/components/product/SourceResolution.tsx");
 const icons = read("../../app/components/ui/icons.tsx");
 const postCard = read("../../app/components/product/PostCard.tsx");
+const contracts = read("../../shared/ui/contracts.ts");
 
 describe("canonical accepted / verified source presentation", () => {
   it("renders one canonical source card with accepted and verified variants", () => {
@@ -37,5 +38,10 @@ describe("canonical accepted / verified source presentation", () => {
     expect(sourceResolution).toContain(
       "acceptedComment ? <AcceptedComment comment={acceptedComment} />",
     );
+  });
+
+  it("does not render a verifier evidence note unless the public DTO includes it", () => {
+    expect(contracts).toContain("evidenceSummary?: string;");
+    expect(sourceResolution).toContain("verified?.evidenceSummary ?");
   });
 });

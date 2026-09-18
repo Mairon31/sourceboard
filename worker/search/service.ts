@@ -82,6 +82,7 @@ interface PostSearchRow {
   verified_comment_id: string | null;
   verified_canonical_url: string | null;
   verified_evidence_note: string | null;
+  verified_evidence_note_public: number | null;
   verified_created_at: number | null;
   verified_by_username: string | null;
 }
@@ -153,7 +154,9 @@ function verifiedSource(row: PostSearchRow): VerifiedSourceView | undefined {
   return {
     commentId: row.verified_comment_id,
     canonicalUrl: row.verified_canonical_url,
-    evidenceSummary: row.verified_evidence_note ?? "Verified source",
+    ...(row.verified_evidence_note_public === 1 && row.verified_evidence_note
+      ? { evidenceSummary: row.verified_evidence_note }
+      : {}),
     verifiedAt: new Date(row.verified_created_at ?? row.created_at).toISOString(),
     verifierLabel: row.verified_by_username ?? "Source verifier",
     label: "Verified Source",
@@ -330,6 +333,7 @@ function postSearchQuery(
       verified_source.comment_id AS verified_comment_id,
       verified_source.canonical_source_url AS verified_canonical_url,
       verified_source.evidence_note AS verified_evidence_note,
+      verified_source.evidence_note_public AS verified_evidence_note_public,
       verified_source.created_at AS verified_created_at,
       verifier.username AS verified_by_username
     FROM search_hits

@@ -220,6 +220,20 @@ export const ruAdminMessages = {
     "Сохраните канонический URL источника и доказательства, подтверждающие проверку.",
   "admin.source.integrity.canonicalUrl": "Канонический URL источника",
   "admin.source.integrity.evidenceNote": "Примечание с доказательствами",
+  "admin.source.integrity.showEvidenceNote":
+    "Показывать примечание с доказательствами в публичном посте",
+  "admin.source.integrity.showEvidenceNoteDescription":
+    "Принятый комментарий остается публичным. Этот параметр управляет только отдельным примечанием проверяющего.",
+  "admin.source.integrity.evidenceNoteVisible": "Примечание публично",
+  "admin.source.integrity.evidenceNoteHidden": "Примечание скрыто",
+  "admin.source.integrity.editAction": "Изменить проверку",
+  "admin.source.integrity.editTitle": "Изменить проверенный источник",
+  "admin.source.integrity.editDescription":
+    "Измените канонический URL, примечание с доказательствами и его публичность.",
+  "admin.source.integrity.updateAction": "Сохранить изменения",
+  "admin.source.integrity.cancelEdit": "Отменить редактирование",
+  "admin.source.integrity.updateFailed": "Не удалось обновить проверенный источник.",
+  "admin.source.integrity.updateSucceeded": "Проверенный источник обновлен.",
   "admin.source.integrity.verifyAction": "Проверить принятый источник",
   "admin.source.integrity.verifyFailed": "Не удалось сохранить проверку источника.",
   "admin.source.integrity.verifySucceeded": "Источник проверен и перемещен в реестр проверенных.",
