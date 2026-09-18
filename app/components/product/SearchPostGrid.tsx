@@ -6,6 +6,7 @@ import { Badge, HeartIcon, MessageIcon } from "../ui";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
 import { PostModerationMenu } from "./PostModerationMenu";
+import { PostResolutionLabel } from "./PostResolutionLabel";
 import { postDetailHref, SearchPostMedia } from "./SearchPostMedia";
 
 export function SearchPostGrid({ posts }: { posts: PostSummary[] }) {
@@ -15,7 +16,6 @@ export function SearchPostGrid({ posts }: { posts: PostSummary[] }) {
       {posts.map((post) => {
         const detailHref = postDetailHref(post);
         const mediaRestricted = post.isNsfw && post.nsfwPresentation !== "VISIBLE";
-        const showOpenStatus = !post.acceptedSource && !post.verifiedSource;
         return (
           <article className="product-search-grid-card" key={post.id} data-search-post-id={post.id}>
             <SearchPostMedia
@@ -71,11 +71,7 @@ export function SearchPostGrid({ posts }: { posts: PostSummary[] }) {
                 {post.isNsfw ? <Badge tone="danger">NSFW</Badge> : null}
               </div>
               <div className="product-search-grid-card__footer">
-                {showOpenStatus ? (
-                  <Badge className="product-search-grid-card__status">
-                    {t("post.status.open")}
-                  </Badge>
-                ) : null}
+                <PostResolutionLabel post={post} showOpen />
                 <div
                   className="product-search-grid-card__metrics"
                   aria-label={t("post.engagementAria")}

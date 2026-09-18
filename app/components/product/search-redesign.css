@@ -415,11 +415,9 @@ a.product-search-grid-card__media-button {
   color: var(--danger);
 }
 
-.product-search-gallery__status,
-.product-search-grid-card__status {
-  color: var(--text-secondary);
+.product-search-gallery__footer .product-resolution-label,
+.product-search-grid-card__footer .product-resolution-label {
   font-size: 0.68rem;
-  font-weight: 750;
 }
 
 .product-search-gallery__overlay > strong {

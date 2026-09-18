@@ -952,9 +952,22 @@
   font-weight: 720;
 }
 
-.product-meta-open {
+.product-resolution-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--text-secondary);
   font-weight: 720;
+  white-space: nowrap;
+}
+
+.product-resolution-label svg {
+  flex: 0 0 auto;
+}
+
+.product-resolution-label--accepted,
+.product-resolution-label--verified {
+  color: var(--success);
 }
 
 .product-post__actions {

@@ -13,6 +13,7 @@ import { canOpenPostModeration } from "../../data/post-actions";
 import { useI18n } from "../../i18n/I18nProvider";
 import { CosmeticIdentity } from "./CosmeticIdentity";
 import { PostCategoryBadge } from "./PostCategoryBadge";
+import { PostResolutionLabel } from "./PostResolutionLabel";
 import { ShareAction } from "./ShareAction";
 import { RichText } from "./RichText";
 import { renderMarkdownPreview } from "../../../shared/richtext/markdown";
@@ -124,7 +125,6 @@ export function PostCard({
   const detailHref = postDetailHref(post);
   const archived = post.status === "ARCHIVED";
   const blurredNsfw = post.isNsfw && post.nsfwPresentation === "BLURRED" && !showNsfw;
-  const showOpenStatus = !post.acceptedSource && !post.verifiedSource;
   const statusLabel = {
     OPEN: t("post.status.open"),
     ANSWERED: t("post.status.answered"),
@@ -684,14 +684,7 @@ export function PostCard({
           >
             {tp("comments.summary", post.commentCount)}
           </Link>
-          {detail && (post.verifiedSource || post.acceptedSource) ? (
-            <span className="product-meta-success">
-              {post.verifiedSource ? t("post.meta.verified") : t("post.meta.acceptedSource")}
-            </span>
-          ) : null}
-          {!detail && showOpenStatus ? (
-            <span className="product-meta-open">{t("post.status.open")}</span>
-          ) : null}
+          <PostResolutionLabel post={post} showOpen={!detail} />
           {detail && commentsClosed ? (
             <span className="product-meta-success">{t("post.meta.commentsClosed")}</span>
           ) : null}

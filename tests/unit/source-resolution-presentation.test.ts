@@ -7,6 +7,7 @@ const read = (path: string) => readFileSync(resolve(import.meta.dirname, path), 
 const sourceResolution = read("../../app/components/product/SourceResolution.tsx");
 const icons = read("../../app/components/ui/icons.tsx");
 const postCard = read("../../app/components/product/PostCard.tsx");
+const resolutionLabel = read("../../app/components/product/PostResolutionLabel.tsx");
 const contracts = read("../../shared/ui/contracts.ts");
 
 describe("canonical accepted / verified source presentation", () => {
@@ -16,7 +17,9 @@ describe("canonical accepted / verified source presentation", () => {
       'product-source-card--${isVerified ? "verified" : "accepted"}',
     );
     expect(sourceResolution.match(/<Card/g)?.length ?? 0).toBe(1);
-    expect(postCard).toContain("post.verifiedSource || post.acceptedSource");
+    expect(postCard).toContain("<PostResolutionLabel post={post} showOpen={!detail} />");
+    expect(resolutionLabel).toContain("post.verifiedSource");
+    expect(resolutionLabel).toContain("post.acceptedSource");
   });
 
   it("uses SourceBoard icon primitives for source status and reference actions", () => {
