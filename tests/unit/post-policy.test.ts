@@ -75,7 +75,12 @@ function dependencies() {
   const getRelationship = vi.fn(async (): Promise<Relationship> => "NONE");
   const getBlock = vi.fn(async () => false);
   const listFeed = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
-  const listByAuthor = vi.fn(async () => ({ posts: [post()], nextCursor: null }));
+  const listByAuthor = vi.fn(
+    async (): Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }> => ({
+      posts: [post()],
+      nextCursor: null,
+    }),
+  );
   const listAcceptedByContributor = vi.fn(
     async (): Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }> => ({
       posts: [],
@@ -495,6 +500,49 @@ describe("Phase 4 post policy", () => {
 
     expect(activity.posts.map((item) => item.id)).toEqual(["authored-resolved"]);
     expect(activity.acceptedSources.map((item) => item.id)).toEqual(["contributed-source"]);
+  });
+
+  it("starts authored posts and accepted-source reads in parallel", async () => {
+    const { profileStore, store, listByAuthor, listAcceptedByContributor } = dependencies();
+    let releaseAuthored!: (value: { posts: PostWithAuthor[]; nextCursor: string | null }) => void;
+    let releaseAccepted!: (value: { posts: PostWithAuthor[]; nextCursor: string | null }) => void;
+    const authored = new Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }>(
+      (resolve) => {
+        releaseAuthored = resolve;
+      },
+    );
+    const accepted = new Promise<{ posts: PostWithAuthor[]; nextCursor: string | null }>(
+      (resolve) => {
+        releaseAccepted = resolve;
+      },
+    );
+    let authoredStarted = false;
+    let acceptedStarted = false;
+    listByAuthor.mockImplementation(async () => {
+      authoredStarted = true;
+      return authored;
+    });
+    listAcceptedByContributor.mockImplementation(async () => {
+      acceptedStarted = true;
+      return accepted;
+    });
+
+    const activityPromise = createPostService({
+      store,
+      profileStore,
+      now: () => 2,
+    }).listProfileActivity({
+      authorId: "author-1",
+      viewerId: null,
+      limit: 20,
+    });
+    await Promise.resolve();
+
+    expect(authoredStarted).toBe(true);
+    expect(acceptedStarted).toBe(true);
+    releaseAuthored({ posts: [], nextCursor: null });
+    releaseAccepted({ posts: [], nextCursor: null });
+    await expect(activityPromise).resolves.toEqual({ posts: [], acceptedSources: [] });
   });
 
   it("keeps accepted contribution discovery privacy-safe without hiding anonymous requests", async () => {

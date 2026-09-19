@@ -48,11 +48,13 @@ export async function loader({ params, request, context }: LoaderArgs) {
           unavailable: false,
         };
       }
-      const activity = await createPostService({
-        store: createD1PostStore(runtime.db),
-        profileStore,
-      }).listProfileActivity({ authorId: profile.id, viewerId: userId, limit: 24 });
-      const actionPermissions = await readPostActionPermissions(runtime.db, userId);
+      const [activity, actionPermissions] = await Promise.all([
+        createPostService({
+          store: createD1PostStore(runtime.db),
+          profileStore,
+        }).listProfileActivity({ authorId: profile.id, viewerId: userId, limit: 24 }),
+        readPostActionPermissions(runtime.db, userId),
+      ]);
       return {
         profile,
         activityPosts: withPostActionPermissions(activity.posts, actionPermissions),

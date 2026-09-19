@@ -222,26 +222,68 @@ async function listCommunityStoreMetadata(
   }
 }
 
-async function listEmotePreviewAssets(db: D1Database, packId: string) {
+type PreviewAssetRow = StorePreviewAsset & { packId: string };
+
+async function listPackPreviewAssets(
+  db: D1Database,
+  type: "EMOTE_PACK" | "STICKER_PACK",
+  packIds: string[],
+): Promise<Map<string, StorePreviewAsset[]>> {
+  const assetsByPack = new Map<string, StorePreviewAsset[]>();
+  if (!packIds.length) return assetsByPack;
+  const placeholders = packIds.map(() => "?").join(", ");
+  const isEmote = type === "EMOTE_PACK";
+  const table = isEmote ? "emote_catalog" : "sticker_catalog";
+  const lifecycleWhere =
+    "lifecycle_state = 'PUBLISHED' AND is_enabled = 1 AND moderation_state NOT IN ('HIDDEN', 'REMOVED')";
+  let rows: D1Result<PreviewAssetRow>;
   try {
-    return await db
+    rows = await db
       .prepare(
-        `SELECT id, label, asset_key AS assetKey FROM emote_catalog
-       WHERE pack_id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1 AND moderation_state NOT IN ('HIDDEN', 'REMOVED')
-       ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+        `SELECT packId, id, label, assetKey FROM (
+           SELECT pack_id AS packId, id, label, asset_key AS assetKey,
+             ROW_NUMBER() OVER (PARTITION BY pack_id ORDER BY sort_order ASC, created_at DESC) AS previewRank
+           FROM ${table}
+           WHERE pack_id IN (${placeholders}) AND ${lifecycleWhere}
+         ) WHERE previewRank <= 4 ORDER BY packId, previewRank`,
       )
-      .bind(packId)
-      .all<StorePreviewAsset>();
+      .bind(...packIds)
+      .all<PreviewAssetRow>();
   } catch (error) {
-    if (!isStoreLifecycleSchemaError(error)) throw error;
-    return db
+    if (!isEmote || !isStoreLifecycleSchemaError(error)) throw error;
+    rows = await db
       .prepare(
-        `SELECT id, label, asset_key AS assetKey FROM emote_catalog WHERE pack_id = ? AND status = 'ACTIVE'
-       ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
+        `SELECT packId, id, label, assetKey FROM (
+           SELECT pack_id AS packId, id, label, asset_key AS assetKey,
+             ROW_NUMBER() OVER (PARTITION BY pack_id ORDER BY sort_order ASC, created_at DESC) AS previewRank
+           FROM emote_catalog
+           WHERE pack_id IN (${placeholders}) AND status = 'ACTIVE'
+         ) WHERE previewRank <= 4 ORDER BY packId, previewRank`,
       )
-      .bind(packId)
-      .all<StorePreviewAsset>();
+      .bind(...packIds)
+      .all<PreviewAssetRow>();
   }
+  for (const row of rows.results) {
+    const assets = assetsByPack.get(row.packId) ?? [];
+    if (assets.length < 4) assets.push({ id: row.id, label: row.label, assetKey: row.assetKey });
+    assetsByPack.set(row.packId, assets);
+  }
+  return assetsByPack;
+}
+
+async function listGlobalPackIds(
+  db: D1Database,
+  type: "EMOTE_PACK" | "STICKER_PACK",
+  packIds: string[],
+): Promise<Set<string>> {
+  if (!packIds.length) return new Set();
+  const placeholders = packIds.map(() => "?").join(", ");
+  const table = type === "EMOTE_PACK" ? "emote_packs" : "sticker_packs";
+  const rows = await db
+    .prepare(`SELECT id AS packId FROM ${table} WHERE id IN (${placeholders}) AND is_global = 1`)
+    .bind(...packIds)
+    .all<{ packId: string }>();
+  return new Set(rows.results.map((row) => row.packId));
 }
 
 export async function isStoreAdmin(db: D1Database, userId: string): Promise<boolean> {
@@ -273,53 +315,55 @@ export function createStoreService(db: D1Database) {
       const publicItems = checked.filter(
         ({ community }) => !community.isSubmission || Boolean(community.metadata),
       );
-      return Promise.all(
-        publicItems.map(async ({ item, community }): Promise<StoreCatalogRow> => {
-          let config: { packId?: unknown } = {};
-          try {
-            config = JSON.parse(String(item.configJson)) as { packId?: unknown };
-          } catch {
-            /* Invalid legacy config has no pack preview. */
-          }
-          const type = String(item.type);
-          const packId = typeof config.packId === "string" ? config.packId : null;
-          if (!packId || (type !== "EMOTE_PACK" && type !== "STICKER_PACK"))
-            return {
-              ...item,
-              previewAssets: [] as StorePreviewAsset[],
-              isGlobal: false,
-              community: community.metadata,
-            };
-          const rows =
-            type === "EMOTE_PACK"
-              ? await listEmotePreviewAssets(db, packId)
-              : await db
-                  .prepare(
-                    `SELECT id, label, asset_key AS assetKey FROM sticker_catalog
-                     WHERE pack_id = ? AND lifecycle_state = 'PUBLISHED' AND is_enabled = 1
-                       AND moderation_state NOT IN ('HIDDEN', 'REMOVED')
-                     ORDER BY sort_order ASC, created_at DESC LIMIT 4`,
-                  )
-                  .bind(packId)
-                  .all<StorePreviewAsset>();
-          const globalRow =
-            type === "EMOTE_PACK"
-              ? await db
-                  .prepare("SELECT is_global AS isGlobal FROM emote_packs WHERE id = ?")
-                  .bind(packId)
-                  .first<{ isGlobal: number }>()
-              : await db
-                  .prepare("SELECT is_global AS isGlobal FROM sticker_packs WHERE id = ?")
-                  .bind(packId)
-                  .first<{ isGlobal: number }>();
-          return {
-            ...item,
-            previewAssets: rows.results,
-            isGlobal: Boolean(globalRow?.isGlobal),
-            community: community.metadata,
-          };
-        }),
-      );
+      const entries = publicItems.map(({ item, community }) => {
+        let config: { packId?: unknown } = {};
+        try {
+          config = JSON.parse(String(item.configJson)) as { packId?: unknown };
+        } catch {
+          /* Invalid legacy config has no pack preview. */
+        }
+        const type = item.type === "EMOTE_PACK" || item.type === "STICKER_PACK" ? item.type : null;
+        return {
+          item,
+          community,
+          type,
+          packId: type && typeof config.packId === "string" ? config.packId : null,
+        };
+      });
+      const emotePackIds = [
+        ...new Set(
+          entries.flatMap((entry) =>
+            entry.type === "EMOTE_PACK" && entry.packId ? [entry.packId] : [],
+          ),
+        ),
+      ];
+      const stickerPackIds = [
+        ...new Set(
+          entries.flatMap((entry) =>
+            entry.type === "STICKER_PACK" && entry.packId ? [entry.packId] : [],
+          ),
+        ),
+      ];
+      const [emotePreviewAssets, stickerPreviewAssets, globalEmotePacks, globalStickerPacks] =
+        await Promise.all([
+          listPackPreviewAssets(db, "EMOTE_PACK", emotePackIds),
+          listPackPreviewAssets(db, "STICKER_PACK", stickerPackIds),
+          listGlobalPackIds(db, "EMOTE_PACK", emotePackIds),
+          listGlobalPackIds(db, "STICKER_PACK", stickerPackIds),
+        ]);
+      return entries.map(({ item, community, type, packId }): StoreCatalogRow => ({
+        ...item,
+        previewAssets: packId
+          ? ((type === "EMOTE_PACK"
+              ? emotePreviewAssets.get(packId)
+              : stickerPreviewAssets.get(packId)) ?? [])
+          : [],
+        isGlobal: Boolean(
+          packId &&
+          (type === "EMOTE_PACK" ? globalEmotePacks.has(packId) : globalStickerPacks.has(packId)),
+        ),
+        community: community.metadata,
+      }));
     },
 
     async balance(userId: string) {

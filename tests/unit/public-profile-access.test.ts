@@ -187,4 +187,25 @@ describe("Block B public profile access", () => {
       sqlite.close();
     }
   });
+
+  it("does not initialize missing defaults during a public username lookup", async () => {
+    const { sqlite, store } = createProfileDatabase();
+    try {
+      sqlite
+        .prepare(
+          "INSERT INTO users (id, username, username_normalized, status) VALUES (?, ?, ?, ?)",
+        )
+        .run("public-user", "public-user", "public-user", "ACTIVE");
+
+      await expect(store.getProfileByUsernameNormalized("public-user", 10)).resolves.toMatchObject({
+        displayName: "public-user",
+        profileVisibility: "PUBLIC",
+      });
+      expect(sqlite.prepare("SELECT COUNT(*) AS count FROM user_profiles").get()).toEqual({
+        count: 0,
+      });
+    } finally {
+      sqlite.close();
+    }
+  });
 });

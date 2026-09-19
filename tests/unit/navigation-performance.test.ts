@@ -95,4 +95,39 @@ describe("navigation session performance", () => {
     expect(detailRoute).toContain("service.getPost");
     expect(detailRoute).toMatch(/commentService\s*\.listForPost/);
   });
+
+  it("does not re-fetch the session from the top bar after the root loader resolved it", () => {
+    const topBar = read("../../app/components/layout/TopBar.tsx");
+
+    expect(topBar).toContain("useRouteLoaderData");
+    expect(topBar).not.toContain('fetch("/api/auth/session")');
+    expect(topBar).toContain('fetch("/api/notifications"');
+  });
+
+  it("starts Home category discovery before the child loader work completes", () => {
+    const homeRoute = read("../../app/routes/_index.tsx");
+
+    expect(homeRoute).toContain("const categoriesPromise");
+    expect(homeRoute).toContain("Promise.all([resultPromise, categoriesPromise])");
+  });
+
+  it("exposes a safe worker timing header for route diagnostics", () => {
+    const worker = read("../../worker/app.ts");
+
+    expect(worker).toMatch(/headers\.set\(\s*"server-timing"/);
+    expect(worker).toContain("worker;dur=");
+    expect(worker).toContain("if (secured.status === 101)");
+  });
+
+  it("loads profile activity and action permissions concurrently", () => {
+    const profileRoute = read("../../app/routes/profile.tsx");
+
+    expect(profileRoute).toContain("const [activity, actionPermissions] = await Promise.all");
+  });
+
+  it("loads Home reaction state and action permissions concurrently after the feed", () => {
+    const homeRoute = read("../../app/routes/_index.tsx");
+
+    expect(homeRoute).toContain("const [likedIds, actionPermissions] = await Promise.all");
+  });
 });

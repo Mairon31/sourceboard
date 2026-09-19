@@ -56,8 +56,27 @@ export default {
       const secured = preventHtmlTransforms(
         withSecurityHeaders(response, new URL(request.url).protocol === "https:", cspNonce),
       );
-      observeRequest(request, secured, startedAt);
-      return secured;
+      // Cloudflare's 101 response carries the accepted WebSocket on the
+      // response object. Re-wrapping it in `new Response(...)` would drop
+      // that handle and break realtime connections.
+      if (secured.status === 101) {
+        observeRequest(request, secured, startedAt);
+        return secured;
+      }
+      const headers = new Headers(secured.headers);
+      const workerTiming = `worker;dur=${Math.max(0, Date.now() - startedAt)}`;
+      const existingTiming = headers.get("server-timing");
+      headers.set(
+        "server-timing",
+        existingTiming ? `${existingTiming}, ${workerTiming}` : workerTiming,
+      );
+      const timed = new Response(secured.body, {
+        status: secured.status,
+        statusText: secured.statusText,
+        headers,
+      });
+      observeRequest(request, timed, startedAt);
+      return timed;
     };
     const requestId = resolveRequestId(request.headers);
     if (

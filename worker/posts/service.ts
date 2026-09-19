@@ -650,43 +650,55 @@ export function createPostService(dependencies: PostServiceDependencies): PostSe
 
     async listProfileActivity({ authorId, viewerId, limit }) {
       const safeLimit = Math.min(Math.max(1, Math.floor(limit)), MAX_FEED_LIMIT);
-      let decodedCursor = decodePostCursor(null);
-      const visible: PostWithAuthor[] = [];
-      for (let page = 0; page < 5 && visible.length < safeLimit; page += 1) {
-        const result = await dependencies.store.listByAuthor({
-          authorId,
-          cursor: decodedCursor,
-          limit: safeLimit * 2,
-        });
-        for (const post of result.posts) {
-          if (await canListPostOnProfile(viewerId, post.post, policyDependencies)) {
-            visible.push(post);
-            if (visible.length >= safeLimit) break;
+      const [visible, acceptedSources] = await Promise.all([
+        (async () => {
+          let decodedCursor = decodePostCursor(null);
+          const posts: PostWithAuthor[] = [];
+          for (let page = 0; page < 5 && posts.length < safeLimit; page += 1) {
+            const result = await dependencies.store.listByAuthor({
+              authorId,
+              cursor: decodedCursor,
+              limit: safeLimit * 2,
+            });
+            for (const post of result.posts) {
+              if (await canListPostOnProfile(viewerId, post.post, policyDependencies)) {
+                posts.push(post);
+                if (posts.length >= safeLimit) break;
+              }
+            }
+            if (!result.nextCursor) break;
+            decodedCursor = decodePostCursor(result.nextCursor);
           }
-        }
-        if (!result.nextCursor) break;
-        decodedCursor = decodePostCursor(result.nextCursor);
-      }
-
-      let acceptedCursor = decodePostCursor(null);
-      const acceptedSources: PostWithAuthor[] = [];
-      for (let page = 0; page < 5 && acceptedSources.length < safeLimit; page += 1) {
-        const result = await dependencies.store.listAcceptedByContributor({
-          contributorId: authorId,
-          cursor: acceptedCursor,
-          limit: safeLimit * 2,
-        });
-        for (const post of result.posts) {
-          if (
-            await canListAcceptedSourceOnProfile(authorId, viewerId, post.post, policyDependencies)
-          ) {
-            acceptedSources.push(post);
-            if (acceptedSources.length >= safeLimit) break;
+          return posts;
+        })(),
+        (async () => {
+          let acceptedCursor = decodePostCursor(null);
+          const posts: PostWithAuthor[] = [];
+          for (let page = 0; page < 5 && posts.length < safeLimit; page += 1) {
+            const result = await dependencies.store.listAcceptedByContributor({
+              contributorId: authorId,
+              cursor: acceptedCursor,
+              limit: safeLimit * 2,
+            });
+            for (const post of result.posts) {
+              if (
+                await canListAcceptedSourceOnProfile(
+                  authorId,
+                  viewerId,
+                  post.post,
+                  policyDependencies,
+                )
+              ) {
+                posts.push(post);
+                if (posts.length >= safeLimit) break;
+              }
+            }
+            if (!result.nextCursor) break;
+            acceptedCursor = decodePostCursor(result.nextCursor);
           }
-        }
-        if (!result.nextCursor) break;
-        acceptedCursor = decodePostCursor(result.nextCursor);
-      }
+          return posts;
+        })(),
+      ]);
 
       const emoteAssets = await getPostEmoteAssets(
         [...visible, ...acceptedSources],

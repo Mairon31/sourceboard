@@ -475,14 +475,10 @@ export function createD1ProfileStore(db: D1Database): ProfileStore {
         .bind(usernameNormalized)
         .first<ProfileRow>();
       if (!row) return null;
-      await ensureUserDefaults(row.user_id, row.username, now);
-      const hydrated = await db
-        .prepare(
-          `SELECT ${PROFILE_COLUMNS} FROM users u JOIN user_profiles p ON p.user_id = u.id WHERE u.id = ? AND u.status = 'ACTIVE'`,
-        )
-        .bind(row.user_id)
-        .first<ProfileRow>();
-      return hydrated ? toProfile(hydrated, now) : null;
+      // Public reads must stay read-only. Missing profile defaults are handled by
+      // authenticated/profile-edit flows; initializing them here added two D1
+      // round trips to every public profile navigation.
+      return toProfile(row, now);
     },
 
     getProfileByUserId,

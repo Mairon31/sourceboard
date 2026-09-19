@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useRouteLoaderData } from "react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { BellIcon, SearchIcon } from "../ui";
 import { NotificationCard } from "../product/NotificationCard";
@@ -12,9 +12,12 @@ import { markNavigationStart } from "../../data/performance-metrics";
 import { readCsrfToken } from "../../data/csrf";
 import { useI18n } from "../../i18n/I18nProvider";
 import { ThemeControl } from "./ThemeControl";
+import type { RootLoaderData } from "../../root";
 
 export function TopBar() {
   const navigate = useNavigate();
+  const rootData = useRouteLoaderData<RootLoaderData>("root");
+  const sessionUserId = rootData?.session?.user.id ?? null;
   const { t, tp } = useI18n();
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifications, setRecentNotifications] = useState<NotificationCardView[]>([]);
@@ -36,31 +39,25 @@ export function TopBar() {
     let reconnectTimer: number | undefined;
     let attempts = 0;
 
-    async function refresh(): Promise<{ authenticated: boolean; lastSeen: string | null }> {
-      try {
-        const sessionResponse = await fetch("/api/auth/session");
-        if (!sessionResponse.ok) {
-          if (!disposed) setNotificationsLoading(false);
-          return { authenticated: false, lastSeen: null };
-        }
-        const session = (await sessionResponse.json()) as { authenticated?: unknown };
-        if (session.authenticated !== true) {
-          if (!disposed) {
-            setNotificationsLoading(false);
-            setUnreadCount(0);
-            setRecentNotifications([]);
-          }
-          return { authenticated: false, lastSeen: null };
-        }
+    if (!sessionUserId) {
+      setNotificationsLoading(false);
+      setUnreadCount(0);
+      setRecentNotifications([]);
+      return () => {
+        disposed = true;
+      };
+    }
 
+    async function refresh(): Promise<string | null> {
+      try {
         const response = await fetch("/api/notifications", { cache: "no-store" });
         if (response.status === 401 || response.status === 403) {
           if (!disposed) setNotificationsLoading(false);
-          return { authenticated: false, lastSeen: null };
+          return null;
         }
         if (!response.ok) {
           if (!disposed) setNotificationsLoading(false);
-          return { authenticated: true, lastSeen: null };
+          return null;
         }
         const snapshot = readNotificationSnapshot(await response.json());
         if (!disposed) {
@@ -70,17 +67,17 @@ export function TopBar() {
           }
           setNotificationsLoading(false);
         }
-        return { authenticated: true, lastSeen: snapshot?.lastSeen ?? null };
+        return snapshot?.lastSeen ?? null;
       } catch {
         if (!disposed) setNotificationsLoading(false);
-        return { authenticated: true, lastSeen: null };
+        return null;
       }
     }
 
     async function connect(): Promise<void> {
-      const state = await refresh();
-      if (disposed || !state.authenticated || typeof WebSocket === "undefined") return;
-      socket = new WebSocket(notificationWebSocketUrl(window.location, state.lastSeen));
+      const lastSeen = await refresh();
+      if (disposed || typeof WebSocket === "undefined") return;
+      socket = new WebSocket(notificationWebSocketUrl(window.location, lastSeen));
       socket.onopen = () => {
         attempts = 0;
       };
@@ -106,7 +103,7 @@ export function TopBar() {
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
       socket?.close(1000, "navigation");
     };
-  }, []);
+  }, [sessionUserId]);
 
   useEffect(() => {
     if (!notificationsOpen) return;

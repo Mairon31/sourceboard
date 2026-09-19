@@ -44,9 +44,10 @@ export async function loader({ request, context }: LoaderArgs) {
   const url = new URL(request.url);
   const locale = requestedLocale(request);
   const rawCategory = url.searchParams.get("category");
-  let categories: PostCategory[] = [...POST_CATEGORIES];
   const db = readSourceBoardRequestContext(context)?.env.DB;
-  if (db) {
+  const categoriesPromise = (async (): Promise<PostCategory[]> => {
+    let categories: PostCategory[] = [...POST_CATEGORIES];
+    if (!db) return categories;
     try {
       categories = (await createCategoryService(db).list()).map((category) => ({
         slug: category.slug,
@@ -60,15 +61,16 @@ export async function loader({ request, context }: LoaderArgs) {
     } catch (error) {
       if (!isMissingCategorySchemaError(error)) throw error;
     }
-  }
+    return categories;
+  })();
   const categorySlug = rawCategory
     ? (parsePostCategorySlug(rawCategory) ?? parsePostCategoryValue(rawCategory))
     : null;
 
-  return withOptionalServerSession(
+  const resultPromise = withOptionalServerSession(
     request,
     context,
-    (unavailable) => ({ locale, unavailable, categorySlug, categories, posts: [] }),
+    (unavailable) => ({ locale, unavailable, categorySlug, posts: [] }),
     async (runtime, userId) => {
       const service = createPostService({
         store: createD1PostStore(runtime.db),
@@ -81,17 +83,18 @@ export async function loader({ request, context }: LoaderArgs) {
         cursor: null,
         limit: 20,
       });
-      const likedIds = await readViewerLikedPostIds(
-        runtime.db,
-        userId,
-        recent.posts.map((post) => post.id),
-      );
-      const actionPermissions = await readPostActionPermissions(runtime.db, userId);
+      const [likedIds, actionPermissions] = await Promise.all([
+        readViewerLikedPostIds(
+          runtime.db,
+          userId,
+          recent.posts.map((post) => post.id),
+        ),
+        readPostActionPermissions(runtime.db, userId),
+      ]);
       return {
         locale,
         unavailable: false,
         categorySlug,
-        categories,
         posts: withPostActionPermissions(
           recent.posts.map((post) => ({
             ...post,
@@ -102,6 +105,8 @@ export async function loader({ request, context }: LoaderArgs) {
       };
     },
   );
+  const [result, categories] = await Promise.all([resultPromise, categoriesPromise]);
+  return { ...result, categories };
 }
 
 type LoaderData = Awaited<ReturnType<typeof loader>>;
