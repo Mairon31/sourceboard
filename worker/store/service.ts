@@ -28,7 +28,15 @@ export const STORE_TYPES = [
 ] as const;
 export type StoreType = (typeof STORE_TYPES)[number];
 export type CosmeticSlot =
-  "AVATAR_FRAME" | "PROFILE_BANNER" | "PROFILE_EFFECT" | "NAME_FONT" | "NAME_EFFECT";
+  | "AVATAR_FRAME"
+  | "PROFILE_BANNER"
+  | "PROFILE_EFFECT"
+  | "NAME_FONT"
+  | "NAME_EFFECT"
+  | "EMOTE_PACK"
+  | "STICKER_PACK";
+
+const PACK_SLOTS = new Set<CosmeticSlot>(["EMOTE_PACK", "STICKER_PACK"]);
 
 interface StorePreviewAsset {
   id: string;
@@ -300,7 +308,10 @@ export function createStoreService(db: D1Database) {
                   .prepare("SELECT is_global AS isGlobal FROM emote_packs WHERE id = ?")
                   .bind(packId)
                   .first<{ isGlobal: number }>()
-              : null;
+              : await db
+                  .prepare("SELECT is_global AS isGlobal FROM sticker_packs WHERE id = ?")
+                  .bind(packId)
+                  .first<{ isGlobal: number }>();
           return {
             ...item,
             previewAssets: rows.results,
@@ -326,9 +337,16 @@ export function createStoreService(db: D1Database) {
       const item = await db
         .prepare(
           `SELECT s.id, s.price_points AS pricePoints,
-                  CASE WHEN s.type = 'EMOTE_PACK' THEN COALESCE(p.is_global, 0) ELSE 0 END AS isGlobal
+                  CASE
+                    WHEN s.type = 'EMOTE_PACK' THEN COALESCE(ep.is_global, 0)
+                    WHEN s.type = 'STICKER_PACK' THEN COALESCE(sp.is_global, 0)
+                    ELSE 0
+                  END AS isGlobal
            FROM store_items s
-           LEFT JOIN emote_packs p ON p.id = json_extract(s.config_json, '$.packId')
+           LEFT JOIN emote_packs ep
+             ON s.type = 'EMOTE_PACK' AND ep.id = json_extract(s.config_json, '$.packId')
+           LEFT JOIN sticker_packs sp
+             ON s.type = 'STICKER_PACK' AND sp.id = json_extract(s.config_json, '$.packId')
            WHERE s.id = ? AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
              AND (s.starts_at IS NULL OR s.starts_at <= ?)
              AND (s.ends_at IS NULL OR s.ends_at > ?)`,
@@ -368,6 +386,15 @@ export function createStoreService(db: D1Database) {
                SELECT user_id, store_item_id, created_at, 'PURCHASE' FROM store_purchases WHERE idempotency_key = ?`,
             )
             .bind(claimKey),
+          db
+            .prepare(
+              `INSERT OR IGNORE INTO user_pack_equips (user_id, store_item_id, updated_at)
+               SELECT p.user_id, p.store_item_id, p.created_at
+               FROM store_purchases p JOIN store_items s ON s.id = p.store_item_id
+               WHERE p.id = ?
+                 AND s.type IN ('EMOTE_PACK', 'STICKER_PACK')`,
+            )
+            .bind(purchaseId),
         ]);
         const claim = await db
           .prepare(
@@ -431,6 +458,15 @@ export function createStoreService(db: D1Database) {
              SELECT user_id, store_item_id, created_at, 'PURCHASE' FROM store_purchases WHERE idempotency_key = ?`,
           )
           .bind(purchaseKey),
+        db
+          .prepare(
+            `INSERT OR IGNORE INTO user_pack_equips (user_id, store_item_id, updated_at)
+             SELECT p.user_id, p.store_item_id, p.created_at
+             FROM store_purchases p JOIN store_items s ON s.id = p.store_item_id
+             WHERE p.id = ?
+               AND s.type IN ('EMOTE_PACK', 'STICKER_PACK')`,
+          )
+          .bind(purchaseId),
       ]);
       const purchase = await db
         .prepare(
@@ -500,7 +536,15 @@ export function createStoreService(db: D1Database) {
         .prepare("SELECT slot, store_item_id AS storeItemId FROM user_cosmetics WHERE user_id = ?")
         .bind(userId)
         .all();
-      return result.results;
+      const packResult = await db
+        .prepare(
+          `SELECT s.type AS slot, e.store_item_id AS storeItemId
+           FROM user_pack_equips e JOIN store_items s ON s.id = e.store_item_id
+           WHERE e.user_id = ? AND s.type IN ('EMOTE_PACK', 'STICKER_PACK')`,
+        )
+        .bind(userId)
+        .all();
+      return [...result.results, ...packResult.results];
     },
 
     async equip(
@@ -512,6 +556,41 @@ export function createStoreService(db: D1Database) {
       const now = options.now ?? Date.now();
       const allowUnowned = options.allowUnowned === true;
       const available = publicAvailabilityPredicate(now);
+      if (PACK_SLOTS.has(slot)) {
+        const packTable = slot === "EMOTE_PACK" ? "emote_packs" : "sticker_packs";
+        const result = allowUnowned
+          ? await db
+              .prepare(
+                `INSERT INTO user_pack_equips (user_id, store_item_id, updated_at)
+                 SELECT ?, s.id, ? FROM store_items s
+                 WHERE s.id = ? AND s.type = ? AND s.${available.sql}
+                 ON CONFLICT(user_id, store_item_id) DO UPDATE SET updated_at = excluded.updated_at`,
+              )
+              .bind(userId, now, itemId, slot, ...available.binds)
+              .run()
+          : await db
+              .prepare(
+                `INSERT INTO user_pack_equips (user_id, store_item_id, updated_at)
+                 SELECT ?, i.store_item_id, ? FROM user_inventory i
+                 JOIN store_items s ON s.id = i.store_item_id
+                 LEFT JOIN ${packTable} p ON p.id = json_extract(s.config_json, '$.packId')
+                 WHERE i.user_id = ? AND i.store_item_id = ? AND s.type = ? AND s.${available.sql}
+                   AND (COALESCE(p.is_global, 0) = 1 OR i.user_id IS NOT NULL)
+                 ON CONFLICT(user_id, store_item_id) DO UPDATE SET updated_at = excluded.updated_at`,
+              )
+              .bind(userId, now, userId, itemId, slot, ...available.binds)
+              .run();
+        if (!result.meta.changes) {
+          throw new StoreError(
+            409,
+            allowUnowned ? "COSMETIC_UNAVAILABLE" : "COSMETIC_NOT_OWNED",
+            allowUnowned
+              ? "That pack is unavailable."
+              : "That pack is not in your inventory or is unavailable.",
+          );
+        }
+        return { slot, storeItemId: itemId };
+      }
       const result = allowUnowned
         ? await db
             .prepare(
@@ -546,7 +625,25 @@ export function createStoreService(db: D1Database) {
       return { slot, storeItemId: itemId };
     },
 
-    async unequip(userId: string, slot: CosmeticSlot) {
+    async unequip(userId: string, slot: CosmeticSlot, itemId?: string) {
+      if (PACK_SLOTS.has(slot)) {
+        if (!itemId) {
+          throw new StoreError(400, "STORE_ITEM_REQUIRED", "A pack is required to unequip.");
+        }
+        const result = await db
+          .prepare(
+            `DELETE FROM user_pack_equips
+             WHERE user_id = ? AND store_item_id = ?
+               AND EXISTS (SELECT 1 FROM store_items WHERE id = ? AND type = ?)`,
+          )
+          .bind(userId, itemId, itemId, slot)
+          .run();
+        return {
+          slot,
+          storeItemId: itemId,
+          removed: Number(result.meta.changes ?? 0) > 0,
+        };
+      }
       const result = await db
         .prepare("DELETE FROM user_cosmetics WHERE user_id = ? AND slot = ?")
         .bind(userId, slot)

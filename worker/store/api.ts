@@ -25,6 +25,8 @@ const SLOTS = [
   "PROFILE_EFFECT",
   "NAME_FONT",
   "NAME_EFFECT",
+  "EMOTE_PACK",
+  "STICKER_PACK",
 ] as const;
 const STORE_ADMIN_ACTIONS = [
   "PUBLISH",
@@ -187,19 +189,28 @@ export async function handleStoreRequest(
     }
     if (
       (request.method === "PUT" || request.method === "DELETE") &&
-      /^\/api\/me\/cosmetics\/[^/]+$/.test(url.pathname)
+      /^\/api\/me\/cosmetics\/[^/]+(?:\/[^/]+)?$/.test(url.pathname)
     ) {
       assertSameOrigin(request);
       assertCsrfToken(request);
       const userId = await sessionUser(request, env);
       if (!userId)
         return failure("AUTHENTICATION_REQUIRED", "Sign in to continue.", requestId, 401);
-      const slot = decodeURIComponent(url.pathname.split("/")[4] ?? "");
+      const pathParts = url.pathname.split("/");
+      const slot = decodeURIComponent(pathParts[4] ?? "");
+      const packItemId = pathParts[5] ? decodeURIComponent(pathParts[5]) : undefined;
       if (!isSlot(slot))
         return failure("INVALID_SLOT", "That cosmetic slot is not supported.", requestId, 400);
       if (request.method === "DELETE") {
-        return response({ cosmetic: await service.unequip(userId, slot) }, requestId);
+        return response({ cosmetic: await service.unequip(userId, slot, packItemId) }, requestId);
       }
+      if (packItemId)
+        return failure(
+          "INVALID_REQUEST",
+          "A pack item cannot be included in this request.",
+          requestId,
+          400,
+        );
       const body = parseBody(await request.json());
       if (typeof body.storeItemId !== "string")
         return failure("INVALID_REQUEST", "A store item is required.", requestId, 400);

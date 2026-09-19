@@ -35,6 +35,15 @@ const COSMETIC_TYPES = new Set<StoreItemType>([
   "PROFILE_EFFECT",
   "NAME_FONT",
   "NAME_EFFECT",
+  "EMOTE_PACK",
+  "STICKER_PACK",
+]);
+const EXCLUSIVE_EQUIP_TYPES = new Set<StoreItemType>([
+  "AVATAR_FRAME",
+  "PROFILE_BANNER",
+  "PROFILE_EFFECT",
+  "NAME_FONT",
+  "NAME_EFFECT",
 ]);
 
 export async function loader({ request, context }: ServerLoaderArgs) {
@@ -75,8 +84,8 @@ export async function loader({ request, context }: ServerLoaderArgs) {
             }))
           : [];
         const id = String(item.id);
-        const equippedItem = equippedIds.has(id);
         const isGlobal = Boolean(item.isGlobal);
+        const equippedItem = isGlobal || equippedIds.has(id);
         const ownedItem = adminUnlocked || ownedIds.has(id);
         const state: StoreItemView["state"] = isGlobal
           ? INCLUDED_STORE_STATE
@@ -211,10 +220,16 @@ export default function StoreRoute() {
   const sections = partitionStoreItems(visibleItems, authenticated);
 
   function markOwned(item: StoreItemView) {
+    const isPack = item.type === "EMOTE_PACK" || item.type === "STICKER_PACK";
     setCatalogItems((current) =>
       current.map((candidate) =>
         candidate.id === item.id
-          ? { ...candidate, owned: true, equipped: false, state: "OWNED" }
+          ? {
+              ...candidate,
+              owned: true,
+              equipped: isPack,
+              state: isPack ? "EQUIPPED" : "OWNED",
+            }
           : candidate,
       ),
     );
@@ -231,7 +246,11 @@ export default function StoreRoute() {
         if (candidate.id === item.id) {
           return { ...candidate, owned: true, equipped: true, state: "EQUIPPED" };
         }
-        if (candidate.type === item.type && candidate.equipped) {
+        if (
+          EXCLUSIVE_EQUIP_TYPES.has(item.type) &&
+          candidate.type === item.type &&
+          candidate.equipped
+        ) {
           return { ...candidate, owned: true, equipped: false, state: "OWNED" };
         }
         return candidate;
@@ -299,10 +318,13 @@ export default function StoreRoute() {
     setBusyId(item.id);
     setFeedback(null);
     try {
-      const response = await fetch(`/api/me/cosmetics/${encodeURIComponent(item.type)}`, {
-        method: "DELETE",
-        headers: { "x-csrf-token": readCsrfToken() },
-      });
+      const response = await fetch(
+        `/api/me/cosmetics/${encodeURIComponent(item.type)}/${encodeURIComponent(item.id)}`,
+        {
+          method: "DELETE",
+          headers: { "x-csrf-token": readCsrfToken() },
+        },
+      );
       if (!response.ok) {
         setFeedback(t("store.unequipError"));
         return;
@@ -328,7 +350,6 @@ export default function StoreRoute() {
       return;
     }
     if (item.state === "DISABLED") return;
-    if (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked)) return;
     if (item.state === "OWNED" || adminUnlocked) {
       if (COSMETIC_TYPES.has(item.type)) void equip(item);
       return;

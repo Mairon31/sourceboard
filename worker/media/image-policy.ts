@@ -310,7 +310,7 @@ function uint16LittleEndian(bytes: Uint8Array, offset: number): number {
   return bytes[offset] | (bytes[offset + 1] << 8);
 }
 
-function detectImage(
+export function detectImage(
   bytes: Uint8Array,
 ): { contentType: ImageContentType; width: number; height: number } | null {
   const candidates: Array<

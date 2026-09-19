@@ -202,7 +202,7 @@ async function legacyReadItem(db: D1Database, id: string): Promise<RawStoreItem 
             s.is_active AS isEnabled, 0 AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt, s.sort_order AS sortOrder,
             s.created_at AS createdAt, s.updated_at AS updatedAt,
             (SELECT COUNT(*) FROM user_inventory i WHERE i.store_item_id = s.id) AS ownerCount,
-            (SELECT COUNT(*) FROM user_cosmetics c WHERE c.store_item_id = s.id) AS equippedCount
+             (SELECT COUNT(*) FROM user_cosmetics c WHERE c.store_item_id = s.id) AS equippedCount
      FROM store_items s WHERE s.id = ?`,
     )
     .bind(id)
@@ -218,7 +218,8 @@ async function readItem(db: D1Database, id: string): Promise<AdminStoreItemRow> 
               s.lifecycle_state AS lifecycleState, s.is_enabled AS isEnabled, s.is_featured AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt,
               s.sort_order AS sortOrder, s.created_at AS createdAt, s.updated_at AS updatedAt,
               (SELECT COUNT(*) FROM user_inventory i WHERE i.store_item_id = s.id) AS ownerCount,
-              (SELECT COUNT(*) FROM user_cosmetics c WHERE c.store_item_id = s.id) AS equippedCount
+             (SELECT COUNT(*) FROM user_cosmetics c WHERE c.store_item_id = s.id) +
+             (SELECT COUNT(*) FROM user_pack_equips p WHERE p.store_item_id = s.id) AS equippedCount
        FROM store_items s WHERE s.id = ?`,
       )
       .bind(id)
@@ -240,8 +241,12 @@ export function createStoreAdminService(db: D1Database) {
             `SELECT s.id, s.type, s.name, s.description, s.price_points AS pricePoints, s.asset_id AS assetId, s.config_json AS configJson,
                   s.lifecycle_state AS lifecycleState, s.is_enabled AS isEnabled, s.is_featured AS isFeatured, s.starts_at AS startsAt, s.ends_at AS endsAt,
                   s.sort_order AS sortOrder, s.created_at AS createdAt, s.updated_at AS updatedAt,
-                  COUNT(DISTINCT i.user_id) AS ownerCount, COUNT(DISTINCT c.user_id) AS equippedCount
-           FROM store_items s LEFT JOIN user_inventory i ON i.store_item_id = s.id LEFT JOIN user_cosmetics c ON c.store_item_id = s.id
+                   COUNT(DISTINCT i.user_id) AS ownerCount,
+                   COUNT(DISTINCT c.user_id) + COUNT(DISTINCT pe.user_id) AS equippedCount
+            FROM store_items s
+            LEFT JOIN user_inventory i ON i.store_item_id = s.id
+            LEFT JOIN user_cosmetics c ON c.store_item_id = s.id
+            LEFT JOIN user_pack_equips pe ON pe.store_item_id = s.id
            GROUP BY s.id ORDER BY s.sort_order ASC, s.created_at DESC`,
           )
           .all<RawStoreItem>();
@@ -303,10 +308,16 @@ export function createStoreAdminService(db: D1Database) {
             `SELECT
                (SELECT COUNT(*) FROM user_inventory WHERE store_item_id = ?) AS inventoryCount,
                (SELECT COUNT(*) FROM user_cosmetics WHERE store_item_id = ?) AS cosmeticCount,
+               (SELECT COUNT(*) FROM user_pack_equips WHERE store_item_id = ?) AS packEquipCount,
                (SELECT COUNT(*) FROM store_purchases WHERE store_item_id = ?) AS purchaseCount`,
           )
-          .bind(id, id, id)
-          .first<{ inventoryCount: number; cosmeticCount: number; purchaseCount: number }>();
+          .bind(id, id, id, id)
+          .first<{
+            inventoryCount: number;
+            cosmeticCount: number;
+            packEquipCount: number;
+            purchaseCount: number;
+          }>();
         const config = parseConfig(existing.configJson);
         const packId = typeof config.packId === "string" ? config.packId : null;
         let memberCount = 0;
@@ -332,6 +343,7 @@ export function createStoreAdminService(db: D1Database) {
         const referenceCount =
           Number(references?.inventoryCount ?? 0) +
           Number(references?.cosmeticCount ?? 0) +
+          Number(references?.packEquipCount ?? 0) +
           Number(references?.purchaseCount ?? 0) +
           memberCount;
         if (referenceCount > 0) {

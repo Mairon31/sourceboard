@@ -763,6 +763,23 @@ export const userCosmetics = sqliteTable(
   ],
 );
 
+export const userPackEquips = sqliteTable(
+  "user_pack_equips",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    storeItemId: text("store_item_id")
+      .notNull()
+      .references(() => storeItems.id, { onDelete: "restrict" }),
+    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.storeItemId] }),
+    index("user_pack_equips_user_updated_index").on(table.userId, table.updatedAt),
+  ],
+);
+
 export const postRevisions = sqliteTable(
   "post_revisions",
   {

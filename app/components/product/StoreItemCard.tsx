@@ -26,9 +26,6 @@ function actionLabel(
   if (item.state === "EQUIPPED") return "store.action.unequip";
   if (item.state === "DISABLED") return "store.action.unavailable";
   if (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) return "store.action.notEnoughPoints";
-  if (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked)) {
-    return "store.action.unlocked";
-  }
   if (item.state === "OWNED" || adminUnlocked) return "store.action.equip";
   if (item.price === 0) return "store.action.get";
   return "store.action.purchase";
@@ -136,8 +133,7 @@ export function StoreItemCard({
     busy ||
     item.state === "INCLUDED" ||
     item.state === "DISABLED" ||
-    (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked) ||
-    (item.type === "EMOTE_PACK" && (item.state === "OWNED" || adminUnlocked));
+    (item.state === "INSUFFICIENT_POINTS" && !adminUnlocked);
   const price =
     item.price === 0
       ? t("store.free")
@@ -167,10 +163,10 @@ export function StoreItemCard({
             {item.state === "INCLUDED" ? t("store.action.included") : price}
           </span>
           <div className="product-store-state">
-            {item.state === "INCLUDED"
-              ? t("store.includedEveryone")
-              : item.equipped
-                ? t("store.currentlyEquipped")
+            {item.equipped
+              ? t("store.currentlyEquipped")
+              : item.state === "INCLUDED"
+                ? t("store.includedEveryone")
                 : item.owned
                   ? t("store.owned")
                   : item.state === "INSUFFICIENT_POINTS"

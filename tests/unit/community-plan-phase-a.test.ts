@@ -22,6 +22,20 @@ function headerOnlyGif(): Uint8Array {
   ]);
 }
 
+function png(width: number, height: number): Uint8Array {
+  const bytes = new Uint8Array(8 + 25 + 13 + 12);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(8, 13);
+  bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+  view.setUint32(16, width);
+  view.setUint32(20, height);
+  view.setUint32(33, 1);
+  bytes.set([0x49, 0x44, 0x41, 0x54, 0x00], 37);
+  bytes.set([0x49, 0x45, 0x4e, 0x44], 50);
+  return bytes;
+}
+
 describe("community plan phase A", () => {
   it("accepts animated GIF emotes by magic bytes and preserves animation metadata", () => {
     const bytes = animatedGif();
@@ -42,6 +56,19 @@ describe("community plan phase A", () => {
         "image/gif",
       ),
     ).toThrow(/invalid|image/i);
+  });
+
+  it("accepts real PNG bytes when a browser sends a generic file MIME", () => {
+    expect(assertCatalogImage(png(5000, 3000), "application/octet-stream")).toMatchObject({
+      contentType: "image/png",
+      width: 5000,
+      height: 3000,
+      animated: false,
+    });
+    expect(assertCatalogImage(png(2, 2), "")).toMatchObject({ contentType: "image/png" });
+    expect(assertCatalogImage(png(2, 2), "image/x-png")).toMatchObject({
+      contentType: "image/png",
+    });
   });
 
   it("exposes GIF upload and animated status in Admin emote management", () => {

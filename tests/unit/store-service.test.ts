@@ -80,6 +80,22 @@ describe("store service", () => {
     expect(queries.some((query) => query.includes("DELETE FROM user_inventory"))).toBe(false);
   });
 
+  it("equips and unequips emote packs without treating them as profile slots", async () => {
+    const { db, queries } = createDb();
+    const service = createStoreService(db);
+
+    await expect(
+      service.equip("user", "EMOTE_PACK", "item", { allowUnowned: true }),
+    ).resolves.toEqual({ slot: "EMOTE_PACK", storeItemId: "item" });
+    await expect(service.unequip("user", "EMOTE_PACK", "item")).resolves.toMatchObject({
+      slot: "EMOTE_PACK",
+      storeItemId: "item",
+      removed: true,
+    });
+    expect(queries.some((query) => query.includes("INSERT INTO user_pack_equips"))).toBe(true);
+    expect(queries.some((query) => query.includes("DELETE FROM user_pack_equips"))).toBe(true);
+  });
+
   it("records admin grants in the authoritative inventory source", async () => {
     const { db, queries } = createDb();
     await expect(createStoreService(db).grant("user", "item", 100)).resolves.toEqual({

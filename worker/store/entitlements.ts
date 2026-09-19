@@ -57,14 +57,15 @@ export async function listEntitledEmotePacks(
          JOIN store_items s ON s.type = 'EMOTE_PACK'
            AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
            AND json_extract(s.config_json, '$.packId') = e.pack_id
-         LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
-         WHERE e.lifecycle_state = 'PUBLISHED' AND e.is_enabled = 1
+          LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+          LEFT JOIN user_pack_equips pe ON pe.store_item_id = s.id AND pe.user_id = ?
+          WHERE e.lifecycle_state = 'PUBLISHED' AND e.is_enabled = 1
            AND e.moderation_state NOT IN ('HIDDEN', 'REMOVED')
            AND p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
-           AND (p.is_global = 1 OR ? = 1 OR i.user_id IS NOT NULL)
+            AND (p.is_global = 1 OR ? = 1 OR (i.user_id IS NOT NULL AND pe.user_id IS NOT NULL))
          ORDER BY p.label ASC, e.sort_order ASC, e.created_at ASC`,
       )
-      .bind(userId, adminUnlocked ? 1 : 0)
+      .bind(userId, userId, adminUnlocked ? 1 : 0)
       .all<EntitledEmoteRow>();
     return groupEmotes(rows.results);
   } catch (error) {
@@ -76,9 +77,9 @@ export async function listEntitledEmotePacks(
          JOIN emote_packs p ON p.id = e.pack_id
          JOIN store_items s ON s.type = 'EMOTE_PACK' AND s.is_active = 1
            AND json_extract(s.config_json, '$.packId') = e.pack_id
-         LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
-         WHERE e.status = 'ACTIVE' AND p.status = 'ACTIVE'
-           AND (? = 1 OR i.user_id IS NOT NULL)
+          LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+          WHERE e.status = 'ACTIVE' AND p.status = 'ACTIVE'
+            AND (? = 1 OR i.user_id IS NOT NULL)
          ORDER BY p.label ASC, e.sort_order ASC, e.created_at ASC`,
       )
       .bind(userId, adminUnlocked ? 1 : 0)
@@ -172,15 +173,16 @@ export async function listEntitledStickerPacks(
          JOIN store_items s ON s.type = 'STICKER_PACK'
            AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
            AND json_extract(s.config_json, '$.packId') = st.pack_id
-         LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
-         WHERE st.lifecycle_state = 'PUBLISHED' AND st.is_enabled = 1
+          LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+          LEFT JOIN user_pack_equips pe ON pe.store_item_id = s.id AND pe.user_id = ?
+          WHERE st.lifecycle_state = 'PUBLISHED' AND st.is_enabled = 1
            AND st.moderation_state NOT IN ('HIDDEN', 'REMOVED')
            AND p.lifecycle_state = 'PUBLISHED' AND p.is_enabled = 1
            AND p.moderation_state NOT IN ('HIDDEN', 'REMOVED')
-           AND (p.is_global = 1 OR ? = 1 OR i.user_id IS NOT NULL)
+            AND (p.is_global = 1 OR ? = 1 OR (i.user_id IS NOT NULL AND pe.user_id IS NOT NULL))
          ORDER BY p.label ASC, st.sort_order ASC, st.created_at ASC`,
       )
-      .bind(userId, adminUnlocked ? 1 : 0)
+      .bind(userId, userId, adminUnlocked ? 1 : 0)
       .all<EntitledStickerRow>();
     return groupStickers(rows.results);
   } catch (error) {
@@ -194,9 +196,9 @@ export async function listEntitledStickerPacks(
          JOIN sticker_packs p ON p.id = st.pack_id
          JOIN store_items s ON s.type = 'STICKER_PACK' AND s.is_active = 1
            AND json_extract(s.config_json, '$.packId') = st.pack_id
-         LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
-         WHERE st.status = 'ACTIVE' AND p.status = 'ACTIVE'
-           AND (? = 1 OR i.user_id IS NOT NULL)
+          LEFT JOIN user_inventory i ON i.store_item_id = s.id AND i.user_id = ?
+          WHERE st.status = 'ACTIVE' AND p.status = 'ACTIVE'
+            AND (? = 1 OR i.user_id IS NOT NULL)
          ORDER BY p.label ASC, st.sort_order ASC, st.created_at ASC`,
       )
       .bind(userId, adminUnlocked ? 1 : 0)
@@ -252,6 +254,10 @@ export function createEmoteEntitlementChecker(db: D1Database) {
                    WHERE i.user_id = ? AND s.type = 'EMOTE_PACK'
                      AND s.lifecycle_state = 'PUBLISHED' AND s.is_enabled = 1
                      AND json_extract(s.config_json, '$.packId') = e.pack_id
+                     AND EXISTS (
+                       SELECT 1 FROM user_pack_equips pe
+                       WHERE pe.user_id = i.user_id AND pe.store_item_id = s.id
+                     )
                  ))
                ))`,
           )
@@ -349,6 +355,10 @@ export function createEntitlementChecker(db: D1Database) {
                  WHERE i.user_id = ? AND item.type = 'STICKER_PACK'
                    AND item.lifecycle_state = 'PUBLISHED' AND item.is_enabled = 1
                    AND json_extract(item.config_json, '$.packId') = s.pack_id
+                   AND EXISTS (
+                     SELECT 1 FROM user_pack_equips pe
+                     WHERE pe.user_id = i.user_id AND pe.store_item_id = item.id
+                   )
                ))
              ))`,
         )

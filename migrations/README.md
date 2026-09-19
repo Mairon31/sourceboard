@@ -83,3 +83,7 @@ link previews. Existing preview snapshots and their image URLs are preserved.
 Migration `0043` adds the private-by-default `evidence_note_public` flag to
 source resolutions. It preserves existing evidence notes while preventing them
 from appearing on public posts unless a verifier explicitly opts in.
+
+Migration `0044` adds independent equipment state for emote and sticker packs.
+Pack ownership remains in `user_inventory`; global packs remain implicitly
+equipped and do not create per-user rows.
